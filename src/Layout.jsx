@@ -384,26 +384,32 @@ export default function Layout({ children, currentPageName }) {
                 </div>
               </div>
 
-              {/* User section - מעבר לראש הסיידבר */}
+              {/* User section - ✅ מעוצב ובולט יותר! */}
               {user && (
-                <div className="px-4 py-3 border-b bg-slate-50">
-                  <div className="flex items-center justify-between gap-2">
+                <div className="px-3 py-3 border-b-2 bg-gradient-to-l from-slate-50 to-white">
+                  <div className="flex items-center justify-between gap-3">
+                    {/* User Info */}
                     <div className="flex items-center gap-2 flex-1 min-w-0">
                       <div 
-                        className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
+                        className="w-10 h-10 rounded-full flex items-center justify-center text-white text-base font-bold flex-shrink-0 shadow-md"
                         style={{ backgroundColor: accentColor }}
                       >
                         {getUserDisplayName().substring(0, 1).toUpperCase()}
                       </div>
                       
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm font-semibold text-slate-900 truncate" title={user.full_name || user.email}>
+                        <div className="text-sm font-bold text-slate-900 truncate" title={user.full_name || user.email}>
                           {getUserDisplayName()}
+                        </div>
+                        <div className="text-xs text-slate-500">
+                          {user.role === 'admin' || user.role === 'super_admin' ? '👑 מנהל' : 'משתמש'}
                         </div>
                       </div>
                     </div>
 
-                    <div className="flex gap-1 flex-shrink-0">
+                    {/* Action Buttons - ✅ גדולים ובולטים יותר! */}
+                    <div className="flex gap-2 flex-shrink-0">
+                      {/* Switch User Button */}
                       <button
                         onClick={async () => {
                           if (confirm('האם ברצונך להחליף משתמש? תצטרך להתחבר מחדש.')) {
@@ -416,13 +422,16 @@ export default function Layout({ children, currentPageName }) {
                             }
                           }
                         }}
-                        className="p-1.5 hover:bg-blue-100 rounded-lg transition-colors duration-200"
-                        style={{ color: iconColor }}
+                        className="group relative p-2.5 hover:bg-blue-100 rounded-xl transition-all duration-200 border-2 border-transparent hover:border-blue-300 shadow-sm hover:shadow-md"
                         title="החלף משתמש"
                       >
-                        <UserCog className="w-4 h-4" />
+                        <UserCog className="w-5 h-5 text-blue-600 group-hover:scale-110 transition-transform" />
+                        <span className="absolute -bottom-5 right-0 text-[10px] text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                          החלף
+                        </span>
                       </button>
                       
+                      {/* Logout Button */}
                       <button
                         onClick={async () => {
                           if (confirm('האם אתה בטוח שברצונך להתנתק?')) {
@@ -435,12 +444,20 @@ export default function Layout({ children, currentPageName }) {
                             }
                           }
                         }}
-                        className="p-1.5 hover:bg-red-100 rounded-lg transition-colors duration-200"
+                        className="group relative p-2.5 hover:bg-red-100 rounded-xl transition-all duration-200 border-2 border-transparent hover:border-red-300 shadow-sm hover:shadow-md"
                         title="התנתק"
                       >
-                        <LogOut className="w-4 h-4 text-red-600" />
+                        <LogOut className="w-5 h-5 text-red-600 group-hover:scale-110 transition-transform" />
+                        <span className="absolute -bottom-5 right-0 text-[10px] text-red-600 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                          התנתק
+                        </span>
                       </button>
                     </div>
+                  </div>
+
+                  {/* Email - ✅ הוספתי הצגת מייל */}
+                  <div className="mt-2 text-xs text-slate-500 truncate" title={user.email}>
+                    📧 {user.email}
                   </div>
                 </div>
               )}
