@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -7,7 +6,7 @@ import {
   BarChart3, Archive, FolderOpen, MessageSquare,
   Calculator, Pin, PinOff, ChevronRight, Home,
   Briefcase, CheckSquare2, Timer, Receipt, Menu,
-  Calendar, Mail, Brain
+  Calendar, Mail, Brain, LogOut, UserCog
 } from "lucide-react";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import FloatingTimer from "@/components/timer/FloatingTimer";
@@ -28,7 +27,7 @@ export default function Layout({ children, currentPageName }) {
     }
   });
   const [hovered, setHovered] = React.useState(false);
-  const loadedRef = React.useRef(false); // To ensure initial theme load runs only once
+  const loadedRef = React.useRef(false);
 
   const accentColor = "#2C3A50";
   const iconColor = "#2C3A50";
@@ -41,7 +40,6 @@ export default function Layout({ children, currentPageName }) {
     }
   }, [pinned]);
 
-  // דיבאג מפורט לאירועי נושא
   React.useEffect(() => {
     console.log('🔧 [LAYOUT] Setting up theme event listener...');
     
@@ -53,7 +51,6 @@ export default function Layout({ children, currentPageName }) {
         currentCSSVar: getComputedStyle(document.documentElement).getPropertyValue('--bg-cream')
       });
       
-      // רק trigger resize
       const event = new Event('resize');
       window.dispatchEvent(event);
       
@@ -69,7 +66,6 @@ export default function Layout({ children, currentPageName }) {
     };
   }, []);
 
-  // טעינת נושא ראשונית - רק פעם אחת!
   React.useEffect(() => {
     if (loadedRef.current) {
       console.log('⏭️ [LAYOUT] Theme already loaded, skipping...');
@@ -113,7 +109,6 @@ export default function Layout({ children, currentPageName }) {
         const theme = themes[themeId] || themes.cream;
         console.log('🎨 [LAYOUT] Step 5: Theme config:', theme);
         
-        // בדיקת מצב נוכחי
         const currentBg = document.body.style.backgroundColor;
         const currentVar = getComputedStyle(document.documentElement).getPropertyValue('--bg-cream');
         
@@ -122,7 +117,6 @@ export default function Layout({ children, currentPageName }) {
           cssVar: currentVar
         });
         
-        // החלה תמיד בטעינה ראשונית
         console.log('🎨 [LAYOUT] Step 7: Applying theme to DOM...');
         
         document.body.style.backgroundColor = theme.bg;
@@ -145,8 +139,7 @@ export default function Layout({ children, currentPageName }) {
     };
 
     loadTheme();
-  }, []); // Empty dependency array ensures this runs once on mount
-
+  }, []);
 
   React.useEffect(() => {
     let mounted = true;
@@ -241,7 +234,6 @@ export default function Layout({ children, currentPageName }) {
             width: 100%;
           }
           
-          /* RTL Global Styles */
           * {
             direction: rtl;
             text-align: right;
@@ -252,13 +244,11 @@ export default function Layout({ children, currentPageName }) {
             direction: rtl !important;
           }
           
-          /* Dropdown menus RTL */
           [role="menu"], [role="listbox"], .dropdown-content {
             text-align: right !important;
             direction: rtl !important;
           }
           
-          /* Tables RTL */
           table {
             direction: rtl;
           }
@@ -267,12 +257,10 @@ export default function Layout({ children, currentPageName }) {
             text-align: right !important;
           }
           
-          /* Cards and content */
           .card, [class*="card"] {
             text-align: right;
           }
           
-          /* Buttons */
           button {
             direction: rtl;
           }
@@ -292,7 +280,6 @@ export default function Layout({ children, currentPageName }) {
             background: transparent;
           }
           
-          /* סגנון גלובלי לכל הטאבים באתר */
           [role="tablist"] button[data-state="active"] {
             background-color: #2C3A50 !important;
             color: white !important;
@@ -311,7 +298,6 @@ export default function Layout({ children, currentPageName }) {
             opacity: 0.9;
           }
           
-          /* טאבים ספציפיים עם data-value */
           [role="tab"][data-state="active"] {
             background-color: #2C3A50 !important;
             color: white !important;
@@ -345,7 +331,7 @@ export default function Layout({ children, currentPageName }) {
           onMouseLeave={handleMouseLeave}
         >
           {(isExpanded || hovered || pinned) && (
-            <div className="h-full bg-white border-l border-slate-200 shadow-lg relative group rounded-r-2xl overflow-hidden">
+            <div className="h-full bg-white border-l border-slate-200 shadow-lg relative group rounded-r-2xl overflow-hidden flex flex-col">
               {/* Header */}
               <div
                 className="relative p-6 min-h-[120px] flex items-center overflow-hidden rounded-tr-2xl rounded-tl-2xl"
@@ -398,8 +384,69 @@ export default function Layout({ children, currentPageName }) {
                 </div>
               </div>
 
+              {/* User section - מעבר לראש הסיידבר */}
+              {user && (
+                <div className="px-4 py-3 border-b bg-slate-50">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <div 
+                        className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
+                        style={{ backgroundColor: accentColor }}
+                      >
+                        {getUserDisplayName().substring(0, 1).toUpperCase()}
+                      </div>
+                      
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-semibold text-slate-900 truncate" title={user.full_name || user.email}>
+                          {getUserDisplayName()}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-1 flex-shrink-0">
+                      <button
+                        onClick={async () => {
+                          if (confirm('האם ברצונך להחליף משתמש? תצטרך להתחבר מחדש.')) {
+                            try {
+                              await base44.auth.logout();
+                              window.location.href = '/';
+                            } catch (e) {
+                              alert('שגיאה בהחלפת משתמש: ' + e.message);
+                              window.location.href = '/';
+                            }
+                          }
+                        }}
+                        className="p-1.5 hover:bg-blue-100 rounded-lg transition-colors duration-200"
+                        style={{ color: iconColor }}
+                        title="החלף משתמש"
+                      >
+                        <UserCog className="w-4 h-4" />
+                      </button>
+                      
+                      <button
+                        onClick={async () => {
+                          if (confirm('האם אתה בטוח שברצונך להתנתק?')) {
+                            try {
+                              await base44.auth.logout();
+                              window.location.href = '/';
+                            } catch (e) {
+                              alert('שגיאה בהתנתקות: ' + e.message);
+                              window.location.href = '/';
+                            }
+                          }
+                        }}
+                        className="p-1.5 hover:bg-red-100 rounded-lg transition-colors duration-200"
+                        title="התנתק"
+                      >
+                        <LogOut className="w-4 h-4 text-red-600" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Navigation menu */}
-              <nav className="flex-1 p-2 space-y-1 overflow-y-auto max-h-[calc(100vh-200px)]">
+              <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
                 {menuItems.map((item) => {
                   const isActive = currentPageName === item.path;
                   const Icon = item.icon;
@@ -440,86 +487,6 @@ export default function Layout({ children, currentPageName }) {
             </div>
           )}
         </div>
-
-        {/* User section */}
-        {(isExpanded || hovered || pinned) && (
-          <div className="order-1 fixed bottom-4 right-4 z-40">
-            <div className="bg-white/90 backdrop-blur-sm border border-slate-200/50 rounded-xl shadow-sm px-3 py-2">
-              {user ? (
-                <div className="flex items-center gap-2">
-                  <div 
-                    className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium"
-                    style={{ backgroundColor: accentColor }}
-                  >
-                    {getUserDisplayName().substring(0, 1).toUpperCase()}
-                  </div>
-                  
-                  <div className="flex-1 min-w-0 max-w-[150px]">
-                    <div className="text-xs text-slate-600 truncate" title={user.email}>
-                      {user.email || 'לא זמין'}
-                    </div>
-                  </div>
-
-                  <div className="flex gap-1">
-                    <button
-                      onClick={async () => {
-                        if (confirm('האם ברצונך להחליף משתמש? תצטרך להתחבר מחדש.')) {
-                          try {
-                            await base44.auth.logout();
-                            window.location.href = '/';
-                          } catch (e) {
-                            alert('שגיאה בהחלפת משתמש: ' + e.message);
-                            window.location.href = '/';
-                          }
-                        }
-                      }}
-                      className="p-1 hover:text-blue-600 transition-colors duration-200"
-                      style={{ color: iconColor }}
-                      title="החלף משתמש"
-                    >
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                      </svg>
-                    </button>
-                    
-                    <button
-                      onClick={async () => {
-                        if (confirm('האם אתה בטוח שברצונך להתנתק?')) {
-                          try {
-                            await base44.auth.logout();
-                            window.location.href = '/';
-                          } catch (e) {
-                            alert('שגיאה בהתנתקות: ' + e.message);
-                            window.location.href = '/';
-                          }
-                        }
-                      }}
-                      className="p-1 text-slate-400 hover:text-red-600 transition-colors duration-200"
-                      title="התנתק"
-                    >
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <button
-                  onClick={async () => {
-                    try {
-                      await base44.auth.redirectToLogin();
-                    } catch (e) {
-                      alert('שגיאה בהתחברות: ' + e.message);
-                    }
-                  }}
-                  className="text-xs text-slate-600 hover:text-blue-600 transition-colors duration-200"
-                >
-                  התחבר
-                </button>
-              )}
-            </div>
-          </div>
-        )}
 
         {/* Main content */}
         <div className="order-2 flex-1 transition-all duration-200" style={{ backgroundColor: 'var(--bg-cream)', overflow: 'visible', width: '100%' }} dir="rtl">
