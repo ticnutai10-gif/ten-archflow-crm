@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
@@ -48,12 +47,11 @@ export default function FloatingChatButton() {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
-      // ניקוי חיבור WebSocket בעת unmount
       if (subscriptionRef.current && typeof subscriptionRef.current === 'function') {
         try {
           subscriptionRef.current();
         } catch (error) {
-          console.warn('⚠️ [FLOAT] Unmount cleanup error (ignored):', error.message);
+          // Silent cleanup
         }
         subscriptionRef.current = null;
       }
@@ -74,9 +72,10 @@ export default function FloatingChatButton() {
     }
   }, [messages]);
 
-  // מנוי לעדכונים בזמן אמת - FIX מוחלט!
+  // מנוי לעדכונים - רק כשהדיאלוג פתוח!
   useEffect(() => {
-    if (!currentConversationId || !mountedRef.current) {
+    // ⚠️ חשוב: התחבר רק אם הדיאלוג פתוח
+    if (!isOpen || !currentConversationId || !mountedRef.current) {
       return;
     }
     
@@ -85,20 +84,20 @@ export default function FloatingChatButton() {
       try {
         subscriptionRef.current();
       } catch (error) {
-        console.warn('⚠️ [FLOAT-WS] Cleanup error (ignored):', error.message);
+        // Silent
       }
       subscriptionRef.current = null;
     }
     
     // Delay להתחברות
     const setupTimeout = setTimeout(() => {
-      if (!mountedRef.current) return;
+      if (!mountedRef.current || !isOpen) return;
       
       try {
         const unsubscribe = base44.agents.subscribeToConversation(
           currentConversationId,
           (data) => {
-            if (mountedRef.current) {
+            if (mountedRef.current && isOpen) {
               setMessages([...data.messages || []]);
             }
           }
@@ -109,25 +108,27 @@ export default function FloatingChatButton() {
         console.error('❌ [FLOAT-WS] Error:', error.message);
         subscriptionRef.current = null;
       }
-    }, 100);
+    }, 150);
     
     return () => {
       clearTimeout(setupTimeout);
       
-      const cleanupTimeout = setTimeout(() => {
-        if (subscriptionRef.current && typeof subscriptionRef.current === 'function') {
+      if (subscriptionRef.current && typeof subscriptionRef.current === 'function') {
+        const cleanupTimeout = setTimeout(() => {
           try {
-            subscriptionRef.current();
+            if (subscriptionRef.current && typeof subscriptionRef.current === 'function') {
+              subscriptionRef.current();
+            }
           } catch (error) {
-            console.warn('⚠️ [FLOAT-WS] Cleanup error (ignored):', error.message);
+            // Silent
           }
           subscriptionRef.current = null;
-        }
-      }, 50);
-      
-      return () => clearTimeout(cleanupTimeout);
+        }, 50);
+        
+        return () => clearTimeout(cleanupTimeout);
+      }
     };
-  }, [currentConversationId]);
+  }, [currentConversationId, isOpen]); // ⚠️ הוספתי isOpen כתלות!
 
   const loadConversations = async () => {
     setLoadingConversations(true);
@@ -315,7 +316,6 @@ export default function FloatingChatButton() {
 
   return (
     <>
-      {/* Floating Button */}
       <div className="fixed bottom-6 right-6 z-50">
         <Button
           onClick={() => setIsOpen(true)}
@@ -330,11 +330,9 @@ export default function FloatingChatButton() {
         </Button>
       </div>
 
-      {/* Chat Dialog */}
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className="max-w-4xl h-[80vh] p-0 gap-0" dir="rtl">
           <div className="flex h-full">
-            {/* Sidebar */}
             <div className="w-64 bg-slate-50 border-l flex flex-col">
               <div className="p-3 border-b bg-white">
                 <Button 
@@ -420,9 +418,7 @@ export default function FloatingChatButton() {
               </ScrollArea>
             </div>
 
-            {/* Main Chat */}
             <div className="flex-1 flex flex-col bg-white">
-              {/* Header */}
               <div className="p-4 border-b bg-gradient-to-r from-blue-50 to-purple-50">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -448,7 +444,6 @@ export default function FloatingChatButton() {
                 </div>
               </div>
 
-              {/* Messages */}
               <ScrollArea className="flex-1 p-4" ref={scrollRef}>
                 {messages.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-full text-center">
@@ -494,7 +489,6 @@ export default function FloatingChatButton() {
                 )}
               </ScrollArea>
 
-              {/* Input */}
               <div className="p-4 border-t bg-slate-50">
                 <div className="flex gap-2">
                   <Input
@@ -532,7 +526,6 @@ export default function FloatingChatButton() {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent className="max-w-md" dir="rtl">
           <DialogHeader>

@@ -63,7 +63,7 @@ export default function AIChatPage() {
   const scrollRef = useRef(null);
   const sendingRef = useRef(false);
   const subscriptionRef = useRef(null);
-  const mountedRef = useRef(true);
+  const mountedRef = useRef(false); // Changed from null to false
 
   // טעינה ראשונית
   useEffect(() => {
@@ -74,6 +74,15 @@ export default function AIChatPage() {
 
     return () => {
       mountedRef.current = false;
+      // ניקוי WebSocket בעת unmount של העמוד
+      if (subscriptionRef.current && typeof subscriptionRef.current === 'function') {
+        try {
+          subscriptionRef.current();
+        } catch (error) {
+          // Silent cleanup
+        }
+        subscriptionRef.current = null;
+      }
     };
   }, []);
 
@@ -176,80 +185,62 @@ export default function AIChatPage() {
     }
   };
 
-  // מנוי לעדכונים בזמן אמת - FIX מוחלט!
+  // מנוי לעדכונים - FIX סופי!
   useEffect(() => {
-    // בדיקה שיש ID תקף וש-component עדיין mounted
     if (!currentConversationId || !mountedRef.current) {
-      console.log('⏭️ [WEBSOCKET] Skipping subscription');
       return;
     }
 
-    console.log('🔌 [WEBSOCKET] Setting up subscription for:', currentConversationId);
-
-    // ניקוי מנוי קודם בזהירות
-    if (subscriptionRef.current) {
-      console.log('🧹 [WEBSOCKET] Cleaning previous subscription');
+    // ניקוי מנוי קודם
+    if (subscriptionRef.current && typeof subscriptionRef.current === 'function') {
       try {
-        if (typeof subscriptionRef.current === 'function') {
-          subscriptionRef.current();
-        }
+        subscriptionRef.current();
       } catch (error) {
-        console.warn('⚠️ [WEBSOCKET] Error cleaning previous subscription (ignored):', error.message);
+        // Silent
       }
       subscriptionRef.current = null;
     }
 
-    // Delay כדי לתת ל-WebSocket זמן להתחבר
+    // Delay להתחברות
     const setupTimeout = setTimeout(() => {
-      if (!mountedRef.current) {
-        console.log('⏭️ [WEBSOCKET] Component unmounted during setup');
-        return;
-      }
-
-      let unsubscribe = null;
+      if (!mountedRef.current) return;
 
       try {
-        unsubscribe = base44.agents.subscribeToConversation(
+        const unsubscribe = base44.agents.subscribeToConversation(
           currentConversationId,
           (data) => {
             if (mountedRef.current) {
-              console.log('📨 [WEBSOCKET] Received update');
               setMessages([...data.messages || []]);
             }
           }
         );
 
         subscriptionRef.current = unsubscribe;
-        console.log('✅ [WEBSOCKET] Subscription established');
-
       } catch (error) {
-        console.error('❌ [WEBSOCKET] Subscription error:', error.message);
+        console.error('❌ [WEBSOCKET] Error:', error.message);
         subscriptionRef.current = null;
       }
-    }, 100); // המתנה של 100ms
+    }, 150); // Changed from 100ms to 150ms
 
     return () => {
-      console.log('🔌 [WEBSOCKET] Cleanup initiated');
       clearTimeout(setupTimeout);
 
-      // נותנים ל-WebSocket זמן להיסגר בצורה נקייה
-      const cleanupTimeout = setTimeout(() => {
-        if (subscriptionRef.current) {
+      // Clean up previous subscription reference if it exists
+      if (subscriptionRef.current && typeof subscriptionRef.current === 'function') {
+        const cleanupTimeout = setTimeout(() => {
           try {
-            if (typeof subscriptionRef.current === 'function') {
+            if (subscriptionRef.current && typeof subscriptionRef.current === 'function') {
               subscriptionRef.current();
-              console.log('✅ [WEBSOCKET] Cleanup successful');
             }
           } catch (error) {
-            // אל תזרוק שגיאה - רק log
-            console.warn('⚠️ [WEBSOCKET] Cleanup error (ignored):', error.message);
+            // Silent
           } finally {
             subscriptionRef.current = null;
           }
-        }
-      }, 50); // המתנה קטנה לפני cleanup
+        }, 50); // Small delay for cleanup
 
-      return () => clearTimeout(cleanupTimeout);
+        return () => clearTimeout(cleanupTimeout); // Return cleanup for this specific timeout
+      }
     };
   }, [currentConversationId]);
 
