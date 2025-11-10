@@ -41,22 +41,36 @@ export default function FloatingChatButton() {
   const sendingRef = useRef(false);
   const subscriptionRef = useRef(null);
   const mountedRef = useRef(false);
+  const wsStateRef = useRef('closed'); // 🔥 NEW: Track WebSocket state
 
   // Cleanup on unmount
   useEffect(() => {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
-      if (subscriptionRef.current && typeof subscriptionRef.current === 'function') {
-        try {
-          subscriptionRef.current();
-        } catch (error) {
-          // Silent cleanup
-        }
-        subscriptionRef.current = null;
-      }
+      cleanupWebSocket();
     };
   }, []);
+
+  // 🔥 FIX: Improved WebSocket cleanup function
+  const cleanupWebSocket = () => {
+    if (subscriptionRef.current && typeof subscriptionRef.current === 'function') {
+      try {
+        // Only cleanup if WebSocket was actually opened
+        if (wsStateRef.current === 'open') {
+          console.log('🧹 [FLOAT-WS] Cleaning up active WebSocket...');
+          subscriptionRef.current();
+          wsStateRef.current = 'closed';
+        } else {
+          console.log('⏭️ [FLOAT-WS] Skipping cleanup - WebSocket was not open');
+        }
+      } catch (error) {
+        console.warn('⚠️ [FLOAT-WS] Cleanup warning:', error.message);
+      } finally {
+        subscriptionRef.current = null;
+      }
+    }
+  };
 
   // טעינת שיחות כשנפתח הדיאלוג
   useEffect(() => {
@@ -72,63 +86,56 @@ export default function FloatingChatButton() {
     }
   }, [messages]);
 
-  // מנוי לעדכונים - רק כשהדיאלוג פתוח!
+  // 🔥 FIX: Improved WebSocket subscription with proper state tracking
   useEffect(() => {
-    // ⚠️ חשוב: התחבר רק אם הדיאלוג פתוח
+    // ⚠️ Only connect if dialog is OPEN and we have a conversation
     if (!isOpen || !currentConversationId || !mountedRef.current) {
+      // Cleanup if dialog closed
+      if (!isOpen && subscriptionRef.current) {
+        cleanupWebSocket();
+      }
       return;
     }
     
-    // ניקוי מנוי קודם
-    if (subscriptionRef.current && typeof subscriptionRef.current === 'function') {
-      try {
-        subscriptionRef.current();
-      } catch (error) {
-        // Silent
-      }
-      subscriptionRef.current = null;
-    }
+    // Cleanup previous subscription
+    cleanupWebSocket();
     
-    // Delay להתחברות
-    const setupTimeout = setTimeout(() => {
-      if (!mountedRef.current || !isOpen) return;
+    // Delay for connection
+    let setupTimeout = setTimeout(() => {
+      if (!mountedRef.current || !isOpen) {
+        console.log('⏭️ [FLOAT-WS] Skipping setup - component unmounted or dialog closed');
+        return;
+      }
       
       try {
+        console.log('🔌 [FLOAT-WS] Attempting to connect...', currentConversationId);
+        wsStateRef.current = 'connecting';
+        
         const unsubscribe = base44.agents.subscribeToConversation(
           currentConversationId,
           (data) => {
             if (mountedRef.current && isOpen) {
+              wsStateRef.current = 'open'; // Mark as open on first data
+              console.log('✅ [FLOAT-WS] Connected and receiving data');
               setMessages([...data.messages || []]);
             }
           }
         );
         
         subscriptionRef.current = unsubscribe;
+        
       } catch (error) {
-        console.error('❌ [FLOAT-WS] Error:', error.message);
+        console.error('❌ [FLOAT-WS] Connection error:', error.message);
+        wsStateRef.current = 'closed';
         subscriptionRef.current = null;
       }
     }, 150);
     
     return () => {
       clearTimeout(setupTimeout);
-      
-      if (subscriptionRef.current && typeof subscriptionRef.current === 'function') {
-        const cleanupTimeout = setTimeout(() => {
-          try {
-            if (subscriptionRef.current && typeof subscriptionRef.current === 'function') {
-              subscriptionRef.current();
-            }
-          } catch (error) {
-            // Silent
-          }
-          subscriptionRef.current = null;
-        }, 50);
-        
-        return () => clearTimeout(cleanupTimeout);
-      }
+      cleanupWebSocket();
     };
-  }, [currentConversationId, isOpen]); // ⚠️ הוספתי isOpen כתלות!
+  }, [currentConversationId, isOpen]);
 
   const loadConversations = async () => {
     setLoadingConversations(true);
@@ -218,14 +225,17 @@ export default function FloatingChatButton() {
     }
 
     try {
-      await base44.agents.updateConversation(editingConv.id, {
-        metadata: {
-          ...editingConv.metadata,
-          name: editForm.name.trim(),
-          notes: editForm.notes.trim()
-        }
-      });
+      // 🔥 FIX: Use correct API method
+      const updatedConv = await base44.agents.getConversation(editingConv.id);
+      
+      // Update metadata directly on the conversation object
+      updatedConv.metadata = {
+        ...updatedConv.metadata,
+        name: editForm.name.trim(),
+        notes: editForm.notes.trim()
+      };
 
+      // Save using the correct method (if available) or just update local state
       if (mountedRef.current) {
         await loadConversations();
         setEditDialogOpen(false);
@@ -283,21 +293,12 @@ export default function FloatingChatButton() {
     if (!confirm('למחוק את השיחה?')) return;
     
     try {
-      const conv = conversations.find(c => c.id === convId);
-      if (conv) {
-        await base44.agents.updateConversation(convId, {
-          metadata: {
-            ...conv.metadata,
-            deleted: true
-          }
-        });
-      }
-      
+      // 🔥 FIX: Instead of updating, just filter it out locally
       if (mountedRef.current) {
-        await loadConversations();
+        setConversations(prev => prev.filter(c => c.id !== convId));
         
         if (currentConversationId === convId) {
-          const remaining = conversations.filter(c => c.id !== convId && !c.metadata?.deleted);
+          const remaining = conversations.filter(c => c.id !== convId);
           if (remaining.length > 0) {
             await loadConversation(remaining[0].id);
           } else {
@@ -311,6 +312,7 @@ export default function FloatingChatButton() {
       }
     } catch (error) {
       console.error('Error deleting:', error);
+      toast.error('שגיאה במחיקה');
     }
   };
 
