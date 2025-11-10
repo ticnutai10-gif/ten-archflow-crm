@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -77,19 +76,19 @@ export default function Dashboard() {
     try {
       const saved = localStorage.getItem('dashboard-expanded-cards');
       return saved ? JSON.parse(saved) : {
-        projects: false, // Changed default to false
-        tasks: false,    // Changed default to false
-        quotes: false,   // Changed default to false
-        timeLogs: false, // Changed default to false
-        meetings: false  // Changed default to false
+        projects: false,
+        tasks: false,
+        quotes: false,
+        timeLogs: false,
+        meetings: false
       };
     } catch {
       return {
-        projects: false, // Changed default to false
-        tasks: false,    // Changed default to false
-        quotes: false,   // Changed default to false
-        timeLogs: false, // Changed default to false
-        meetings: false  // Changed default to false
+        projects: false,
+        tasks: false,
+        quotes: false,
+        timeLogs: false,
+        meetings: false
       };
     }
   });
@@ -282,6 +281,7 @@ export default function Dashboard() {
   ];
 
   const currentViewOption = viewModeOptions.find(opt => opt.value === viewMode) || viewModeOptions[2];
+  const CurrentViewIcon = currentViewOption.icon;
 
   return (
     <div className="p-6 min-h-screen" dir="rtl" style={{ backgroundColor: '#FCF6E3' }}>
@@ -317,29 +317,30 @@ export default function Dashboard() {
                       title="מצב תצוגה"
                       className="bg-white/10 border-white/20 hover:bg-white/20 text-white"
                     >
-                      {React.createElement(currentViewOption.icon, { className: "w-5 h-5" })}
+                      <CurrentViewIcon className="w-5 h-5" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-64" dir="rtl">
                     <DropdownMenuLabel className="text-right">מצב תצוגה</DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    {viewModeOptions.map((option) => (
-                      <DropdownMenuItem
-                        key={option.value}
-                        onClick={() => setViewMode(option.value)}
-                        className={`flex items-center gap-3 cursor-pointer ${
-                          viewMode === option.value ? 'bg-blue-50 text-blue-700' : ''
-                        }`}
-                      >
-                        {React.createElement(option.icon, { 
-                          className: `w-4 h-4 ${viewMode === option.value ? 'text-blue-600' : 'text-slate-600'}` 
-                        })}
-                        <span className="flex-1 text-right">{option.label}</span>
-                        {viewMode === option.value && (
-                          <Eye className="w-4 h-4 text-blue-600" />
-                        )}
-                      </DropdownMenuItem>
-                    ))}
+                    {viewModeOptions.map((option) => {
+                      const OptionIcon = option.icon;
+                      return (
+                        <DropdownMenuItem
+                          key={option.value}
+                          onClick={() => setViewMode(option.value)}
+                          className={`flex items-center gap-3 cursor-pointer ${
+                            viewMode === option.value ? 'bg-blue-50 text-blue-700' : ''
+                          }`}
+                        >
+                          <OptionIcon className={`w-4 h-4 ${viewMode === option.value ? 'text-blue-600' : 'text-slate-600'}`} />
+                          <span className="flex-1 text-right">{option.label}</span>
+                          {viewMode === option.value && (
+                            <Eye className="w-4 h-4 text-blue-600" />
+                          )}
+                        </DropdownMenuItem>
+                      );
+                    })}
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
                       onClick={() => setCompactHeaders(!compactHeaders)}
