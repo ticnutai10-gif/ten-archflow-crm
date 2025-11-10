@@ -1,0 +1,1088 @@
+
+import React, { useState, useEffect } from 'react';
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Clock,
+  Calendar,
+  User,
+  Search,
+  Filter,
+  Eye,
+  BarChart3,
+  Download,
+  List,
+  Table as TableIcon,
+  Pencil,
+  Trash2,
+  CheckSquare,
+  Square,
+  Users,
+  Mail,
+  UserCircle
+} from 'lucide-react';
+import { Table as UITable, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  format,
+  isToday,
+  isYesterday,
+  startOfWeek,
+  endOfWeek,
+  isWithinInterval,
+  startOfMonth,
+  endOfMonth,
+  startOfYear,
+  endOfYear
+} from "date-fns";
+import { he } from "date-fns/locale";
+import { Link } from "react-router-dom";
+import { createPageUrl } from "@/utils";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { TimeLog } from "@/entities/all";
+import { User as UserEntity } from "@/entities/User";
+
+function formatDuration(seconds) {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+
+  if (hours === 0) {
+    return `${minutes} דקות`;
+  }
+  return `${hours}:${minutes.toString().padStart(2, '0')} שעות`;
+}
+
+function getDateLabel(dateString) {
+  const date = new Date(dateString);
+
+  if (isToday(date)) return 'היום';
+  if (isYesterday(date)) return 'אתמול';
+
+  return format(date, 'dd/MM/yyyy', { locale: he });
+}
+
+// פונקציה לקבלת created_by מהלוג - תומך ב-created_by או created_by_id
+function getCreatedBy(log) {
+  const result = log.created_by || log.created_by_id || null;
+  console.log('🔍 [TimerLogs] getCreatedBy:', { 
+    logId: log.id, 
+    created_by: log.created_by, 
+    created_by_id: log.created_by_id,
+    result 
+  });
+  return result;
+}
+
+// פונקציה לבדוק אם זה מייל
+function isEmail(str) {
+  const result = str && typeof str === 'string' && str.includes('@');
+  console.log('📧 [TimerLogs] isEmail:', { str, result });
+  return result;
+}
+
+export default function TimerLogs({ timeLogs, isLoading, onUpdate }) {
+  console.log('🎬 [TimerLogs] Component rendered with:', {
+    timeLogsCount: timeLogs?.length || 0,
+    isLoading,
+    timeLogsSample: timeLogs?.slice(0, 2)
+  });
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [clientFilter, setClientFilter] = useState("all");
+  const [timeFilter, setTimeFilter] = useState("all");
+  const [userFilter, setUserFilter] = useState("all");
+  const [userSearchTerm, setUserSearchTerm] = useState("");
+  const [showStats, setShowStats] = useState(false);
+  const [viewMode, setViewMode] = useState(() => {
+    try {
+      const saved = localStorage.getItem('timer-logs-view-mode') || 'list';
+      console.log('💾 [TimerLogs] Loaded viewMode from localStorage:', saved);
+      return saved;
+    } catch {
+      console.log('⚠️ [TimerLogs] Failed to load viewMode, using default');
+      return 'list';
+    }
+  });
+  const [summaryMode, setSummaryMode] = useState(false);
+  const [summaryGranularity, setSummaryGranularity] = useState("day");
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [editing, setEditing] = useState(null);
+  const [editData, setEditData] = useState({ title: "", notes: "" });
+  const [userIdToDataMap, setUserIdToDataMap] = useState({});
+
+  useEffect(() => {
+    console.log('💾 [TimerLogs] Saving viewMode to localStorage:', viewMode);
+    try {
+      localStorage.setItem('timer-logs-view-mode', viewMode);
+    } catch (e) {
+      console.error("❌ [TimerLogs] Failed to save view mode to local storage:", e);
+    }
+  }, [viewMode]);
+
+  const safeTimeLogs = timeLogs || [];
+  console.log('✅ [TimerLogs] safeTimeLogs:', { count: safeTimeLogs.length });
+
+  // טעינת מיפוי של user IDs למיילים ושמות
+  useEffect(() => {
+    const loadUserMapping = async () => {
+      console.log('👥 [TimerLogs] 🚀 Starting loadUserMapping...');
+      try {
+        // קבלת כל ה-IDs הייחודיים שהם לא מיילים
+        const allCreatedBys = safeTimeLogs.map(log => getCreatedBy(log)).filter(Boolean);
+        const userIds = [...new Set(allCreatedBys)].filter(id => !isEmail(id));
+
+        console.log('👥 [TimerLogs] Extracted user data:', {
+          totalLogs: safeTimeLogs.length,
+          allCreatedBys: allCreatedBys.length,
+          uniqueCreatedBys: [...new Set(allCreatedBys)],
+          userIds,
+          userIdsCount: userIds.length
+        });
+
+        if (userIds.length === 0) {
+          console.log('⚠️ [TimerLogs] No user IDs to map (all are emails or null)');
+          return;
+        }
+
+        console.log('📞 [TimerLogs] Calling UserEntity.list()...');
+        const users = await UserEntity.list();
+        console.log('✅ [TimerLogs] UserEntity.list() returned:', {
+          count: users.length,
+          users: users.map(u => ({ id: u.id, email: u.email, full_name: u.full_name }))
+        });
+        
+        // יצירת מיפוי מ-ID למייל ושם מלא
+        const mapping = {};
+        users.forEach(user => {
+          if (user.id) {
+            mapping[user.id] = {
+              email: user.email || null,
+              full_name: user.full_name || null
+            };
+          }
+        });
+
+        console.log('✅ [TimerLogs] User mapping created:', {
+          mappingSize: Object.keys(mapping).length,
+          mapping
+        });
+        
+        setUserIdToDataMap(mapping);
+      } catch (error) {
+        console.error('❌ [TimerLogs] Error loading user mapping:', {
+          error,
+          message: error.message,
+          stack: error.stack
+        });
+      }
+    };
+
+    if (safeTimeLogs.length > 0) {
+      console.log('🎯 [TimerLogs] Triggering loadUserMapping (safeTimeLogs.length > 0)');
+      loadUserMapping();
+    } else {
+      console.log('⏭️ [TimerLogs] Skipping loadUserMapping (no timeLogs)');
+    }
+  }, [safeTimeLogs]);
+
+  // פונקציה לקבלת מייל מ-ID או מייל
+  const getUserEmail = (idOrEmail) => {
+    console.log('📧 [TimerLogs] getUserEmail called:', { idOrEmail });
+    if (!idOrEmail) {
+      console.log('📧 [TimerLogs] getUserEmail → null (no input)');
+      return null;
+    }
+    if (isEmail(idOrEmail)) {
+      console.log('📧 [TimerLogs] getUserEmail → (is already email):', idOrEmail);
+      return idOrEmail;
+    }
+    const result = userIdToDataMap[idOrEmail]?.email || idOrEmail;
+    console.log('📧 [TimerLogs] getUserEmail → mapped:', { idOrEmail, result, mapping: userIdToDataMap[idOrEmail] });
+    return result;
+  };
+
+  // פונקציה לקבלת שם מלא מ-ID
+  const getUserFullName = (idOrEmail) => {
+    console.log('👤 [TimerLogs] getUserFullName called:', { idOrEmail });
+    if (!idOrEmail) {
+      console.log('👤 [TimerLogs] getUserFullName → null (no input)');
+      return null;
+    }
+    if (isEmail(idOrEmail)) {
+      console.log('👤 [TimerLogs] getUserFullName → null (is email)');
+      return null;
+    }
+    const result = userIdToDataMap[idOrEmail]?.full_name || null;
+    console.log('👤 [TimerLogs] getUserFullName → mapped:', { idOrEmail, result, mapping: userIdToDataMap[idOrEmail] });
+    return result;
+  };
+
+  // פונקציה לקבלת שם תצוגה - מעדיף שם מלא, אחרת חלק מהמייל
+  const getUserDisplayName = (idOrEmail) => {
+    console.log('🏷️ [TimerLogs] getUserDisplayName called:', { idOrEmail });
+    const fullName = getUserFullName(idOrEmail);
+    if (fullName) {
+      console.log('🏷️ [TimerLogs] getUserDisplayName → full_name:', fullName);
+      return fullName;
+    }
+    
+    const email = getUserEmail(idOrEmail);
+    if (!email) {
+      console.log('🏷️ [TimerLogs] getUserDisplayName → "לא ידוע" (no email)');
+      return 'לא ידוע';
+    }
+    if (isEmail(email)) {
+      const displayName = email.split('@')[0];
+      console.log('🏷️ [TimerLogs] getUserDisplayName → email prefix:', displayName);
+      return displayName;
+    }
+    console.log('🏷️ [TimerLogs] getUserDisplayName → ID as string:', email);
+    return String(email);
+  };
+
+  const toggleSelect = (id) => {
+    console.log('☑️ [TimerLogs] toggleSelect:', { id, currentSelected: selectedIds });
+    setSelectedIds((prev) => {
+      const newSelected = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id];
+      console.log('☑️ [TimerLogs] toggleSelect → new selection:', newSelected);
+      return newSelected;
+    });
+  };
+
+  const selectAll = () => {
+    console.log('☑️ [TimerLogs] selectAll called');
+    const all = filteredLogs.map(l => l.id);
+    const isAllSelected = selectedIds.length === all.length && all.length > 0 && selectedIds.every(id => all.includes(id));
+    const newSelection = isAllSelected ? [] : all;
+    console.log('☑️ [TimerLogs] selectAll:', { all, isAllSelected, newSelection });
+    setSelectedIds(newSelection);
+  };
+
+  const deleteOne = async (id) => {
+    console.log('🗑️ [TimerLogs] deleteOne called:', { id });
+    if (!confirm("למחוק רישום זמן זה?")) {
+      console.log('🗑️ [TimerLogs] deleteOne cancelled by user');
+      return;
+    }
+    try {
+      console.log('🗑️ [TimerLogs] Calling TimeLog.delete...');
+      await TimeLog.delete(id);
+      console.log('✅ [TimerLogs] TimeLog deleted successfully');
+      onUpdate && onUpdate();
+      setSelectedIds(prev => prev.filter(x => x !== id));
+    } catch (error) {
+      console.error('❌ [TimerLogs] Error deleting TimeLog:', error);
+    }
+  };
+
+  const bulkDelete = async () => {
+    console.log('🗑️ [TimerLogs] bulkDelete called:', { selectedCount: selectedIds.length });
+    if (selectedIds.length === 0) {
+      console.log('🗑️ [TimerLogs] bulkDelete - no items selected');
+      return;
+    }
+    
+    const allSelectedInFilter = selectedIds.length === filteredLogs.length && 
+                                filteredLogs.length > 0 && 
+                                selectedIds.every(id => filteredLogs.map(l => l.id).includes(id));
+
+    let confirmationMessage = `למחוק ${selectedIds.length} רישומים?`;
+    if (allSelectedInFilter) {
+      confirmationMessage = `נבחרו כל ${selectedIds.length} הרישומים המוצגים למחיקה. להמשיך?`;
+    }
+
+    console.log('🗑️ [TimerLogs] bulkDelete confirmation:', { 
+      allSelectedInFilter, 
+      confirmationMessage 
+    });
+
+    if (!confirm(confirmationMessage)) {
+      console.log('🗑️ [TimerLogs] bulkDelete cancelled by user');
+      return;
+    }
+
+    console.log('🗑️ [TimerLogs] Starting bulk delete...');
+    const results = await Promise.allSettled(selectedIds.map((id) => TimeLog.delete(id)));
+
+    results.forEach((result, index) => {
+      if (result.status === 'rejected') {
+        console.error(`❌ [TimerLogs] Failed to delete log ID ${selectedIds[index]}:`, result.reason);
+      } else {
+        console.log(`✅ [TimerLogs] Successfully deleted log ID ${selectedIds[index]}`);
+      }
+    });
+
+    setSelectedIds([]);
+    setSelectionMode(false);
+    onUpdate && onUpdate();
+    console.log('✅ [TimerLogs] bulkDelete completed');
+  };
+
+  const openEdit = (log) => {
+    console.log('✏️ [TimerLogs] openEdit:', log);
+    setEditing(log);
+    setEditData({ title: log.title || "", notes: log.notes || "" });
+  };
+
+  const saveEdit = async () => {
+    console.log('💾 [TimerLogs] saveEdit called:', { editing, editData });
+    if (!editing) {
+      console.log('💾 [TimerLogs] saveEdit - no editing log');
+      return;
+    }
+    try {
+      console.log('💾 [TimerLogs] Calling TimeLog.update...');
+      await TimeLog.update(editing.id, { title: editData.title, notes: editData.notes });
+      console.log('✅ [TimerLogs] TimeLog updated successfully');
+      setEditing(null);
+      onUpdate && onUpdate();
+    } catch (error) {
+      console.error('❌ [TimerLogs] Error updating TimeLog:', error);
+    }
+  };
+
+  // קבלת רשימת לקוחות ייחודיים
+  const uniqueClients = [...new Set(safeTimeLogs.map(log => log.client_name))].filter(Boolean);
+  console.log('👥 [TimerLogs] uniqueClients:', { count: uniqueClients.length, clients: uniqueClients });
+
+  // קבלת רשימת משתמשים ייחודיים עם פרטים מלאים
+  const allUsers = React.useMemo(() => {
+    console.log('👥 [TimerLogs] 🔄 Computing allUsers...');
+    const uniqueIds = [...new Set(safeTimeLogs.map(log => getCreatedBy(log)))].filter(Boolean);
+
+    console.log('👥 [TimerLogs] Found unique user IDs/Emails:', {
+      count: uniqueIds.length,
+      ids: uniqueIds
+    });
+
+    const users = uniqueIds.map(idOrEmail => {
+      const userLogs = safeTimeLogs.filter(l => getCreatedBy(l) === idOrEmail);
+      const totalSeconds = userLogs.reduce((sum, log) => sum + (log.duration_seconds || 0), 0);
+      const email = getUserEmail(idOrEmail);
+      const fullName = getUserFullName(idOrEmail);
+      
+      const user = {
+        id: idOrEmail,
+        email: email,
+        full_name: fullName,
+        name: getUserDisplayName(idOrEmail),
+        totalHours: totalSeconds / 3600,
+        sessionsCount: userLogs.length,
+        clients: [...new Set(userLogs.map(l => l.client_name).filter(Boolean))]
+      };
+
+      console.log('👥 [TimerLogs] Created user object:', user);
+      return user;
+    }).sort((a, b) => b.totalHours - a.totalHours);
+
+    console.log('👥 [TimerLogs] ✅ allUsers computed:', {
+      count: users.length,
+      users
+    });
+
+    return users;
+  }, [safeTimeLogs, userIdToDataMap]);
+
+  // פילטור משתמשים לפי חיפוש
+  const filteredUsers = userSearchTerm
+    ? allUsers.filter(user => {
+        const matches = user.email?.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+                       user.name?.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+                       user.full_name?.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+                       user.id?.toLowerCase().includes(userSearchTerm.toLowerCase());
+        console.log('🔍 [TimerLogs] Filtering user:', { user: user.name, searchTerm: userSearchTerm, matches });
+        return matches;
+      })
+    : allUsers;
+
+  console.log('🔍 [TimerLogs] filteredUsers:', { count: filteredUsers.length });
+
+  // פילטור הנתונים
+  const filteredLogs = safeTimeLogs.filter(log => {
+    const matchesSearch = log.client_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         log.title?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesClient = clientFilter === "all" || log.client_name === clientFilter;
+    const matchesUser = userFilter === "all" || getCreatedBy(log) === userFilter;
+
+    let matchesTime = true;
+    if (timeFilter !== "all") {
+      const logDate = new Date(log.log_date);
+      const now = new Date();
+
+      switch (timeFilter) {
+        case 'today':
+          matchesTime = isToday(logDate);
+          break;
+        case 'week':
+          matchesTime = isWithinInterval(logDate, {
+            start: startOfWeek(now, { weekStartsOn: 0 }),
+            end: endOfWeek(now, { weekStartsOn: 0 })
+          });
+          break;
+        case 'month':
+          matchesTime = logDate.getMonth() === now.getMonth() &&
+                      logDate.getFullYear() === now.getFullYear();
+          break;
+        default:
+          break;
+      }
+    }
+
+    const result = matchesSearch && matchesClient && matchesUser && matchesTime;
+    if (!result) {
+      console.log('🔍 [TimerLogs] Log filtered out:', { 
+        logId: log.id, 
+        matchesSearch, 
+        matchesClient, 
+        matchesUser, 
+        matchesTime 
+      });
+    }
+    return result;
+  });
+
+  console.log('🔍 [TimerLogs] filteredLogs:', { 
+    count: filteredLogs.length,
+    filters: { searchTerm, clientFilter, userFilter, timeFilter }
+  });
+
+  // חישוב סטטיסטיקות
+  const totalTime = filteredLogs.reduce((sum, log) => sum + (log.duration_seconds || 0), 0);
+  console.log('📊 [TimerLogs] Total time:', { totalTime, formatted: formatDuration(totalTime) });
+  const clientStats = uniqueClients.map(clientName => {
+    const clientLogs = filteredLogs.filter(log => log.client_name === clientName);
+    const clientTime = clientLogs.reduce((sum, log) => sum + (log.duration_seconds || 0), 0);
+    return {
+      clientName,
+      time: clientTime,
+      sessions: clientLogs.length
+    };
+  }).sort((a, b) => b.time - a.time);
+
+  // חישוב סטטיסטיקות משתמשים מפולטרות
+  const userStats = allUsers
+    .map(user => {
+      const userLogs = filteredLogs.filter(log => getCreatedBy(log) === user.id); // Filter by user.id
+      const userTime = userLogs.reduce((sum, log) => sum + (log.duration_seconds || 0), 0);
+      return {
+        ...user,
+        filteredHours: userTime / 3600,
+        filteredSessions: userLogs.length
+      };
+    })
+    .filter(user => user.filteredSessions > 0)
+    .sort((a, b) => b.filteredHours - a.filteredHours);
+
+  // Build summary columns
+  const getSummaryColumns = () => {
+    const now = new Date();
+    const cols = [];
+    if (summaryGranularity === "day") {
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+        cols.push({
+          key: format(d, 'yyyy-MM-dd'),
+          label: format(d, 'dd/MM', { locale: he }),
+          start: new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0),
+          end: new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999)
+        });
+      }
+    } else if (summaryGranularity === "week") {
+      const startOfCurrentWeek = startOfWeek(now, { weekStartsOn: 0 });
+      for (let i = 7; i >= 0; i--) {
+        const dateForWeek = new Date(startOfCurrentWeek);
+        dateForWeek.setDate(startOfCurrentWeek.getDate() - (i * 7));
+
+        const start = startOfWeek(dateForWeek, { weekStartsOn: 0 });
+        const end = endOfWeek(dateForWeek, { weekStartsOn: 0 });
+        cols.push({
+          key: format(start, 'yyyy-MM-dd'),
+          label: `שבוע ${format(start, 'dd/MM', { locale: he })}`,
+          start: start,
+          end: end,
+        });
+      }
+    } else if (summaryGranularity === "month") {
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const start = startOfMonth(d);
+        const end = endOfMonth(d);
+        cols.push({
+          key: format(start, 'yyyy-MM'),
+          label: format(start, 'MMM yyyy', { locale: he }),
+          start: start,
+          end: end
+        });
+      }
+    } else { // Year granularity
+      for (let i = 4; i >= 0; i--) {
+        const d = new Date(now.getFullYear() - i, 0, 1);
+        const start = startOfYear(d);
+        const end = endOfYear(d);
+        cols.push({
+          key: format(start, 'yyyy'),
+          label: format(start, 'yyyy'),
+          start: start,
+          end: end
+        });
+      }
+    }
+    return cols;
+  };
+
+  const summaryColumns = getSummaryColumns();
+
+  // Changed from useMemo to direct calculation as per outline, ensuring it still reacts to changes
+  const summaryRows = (() => {
+    if (!summaryMode) return [];
+    const rowsMap = new Map();
+
+    const clientsInFilteredLogs = [...new Set(filteredLogs.map(l => l.client_name))].filter(Boolean);
+    clientsInFilteredLogs.forEach(name => {
+      rowsMap.set(name, { clientName: name, totals: Object.fromEntries(summaryColumns.map(c => [c.key, 0])), total: 0 });
+    });
+
+    filteredLogs.forEach(log => {
+      const row = rowsMap.get(log.client_name);
+      if (!row) return;
+      const logDate = new Date(log.log_date);
+
+      for (const col of summaryColumns) {
+        if (isWithinInterval(logDate, { start: col.start, end: col.end })) {
+          row.totals[col.key] += (log.duration_seconds || 0);
+          row.total += (log.duration_seconds || 0);
+          break;
+        }
+      }
+    });
+
+    return Array.from(rowsMap.values()).sort((a, b) => b.total - a.total);
+  })();
+
+  if (isLoading) {
+    console.log('⏳ [TimerLogs] Rendering loading state...');
+    return (
+      <div className="p-6 h-[400px] overflow-y-auto">
+        <div className="space-y-3">
+          {Array(5).fill(0).map((_, i) => (
+            <div key={i} className="animate-pulse">
+              <div className="h-16 bg-slate-200 rounded-lg"></div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  console.log('🎨 [TimerLogs] Rendering main component...');
+
+  return (
+    <div className="h-[400px] flex flex-col">
+      {/* מידע על המצב */}
+      {safeTimeLogs.length === 0 ? (
+        <div className="p-4 text-center text-slate-500">אין רישומי זמן</div>
+      ) : allUsers.length === 0 ? (
+        <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg mx-4 mt-4">
+          <p className="font-semibold text-yellow-800 text-center">⚠️ יש {safeTimeLogs.length} רישומי זמן אבל אין משתמשים</p>
+          <p className="text-sm text-yellow-700 text-center mt-2">
+            כל הרישומים חסרים את השדה created_by
+          </p>
+        </div>
+      ) : null}
+
+      {/* כלי בקרה */}
+      <div className="flex-shrink-0 overflow-x-auto">
+        <div className="flex flex-col md:flex-row md:flex-wrap items-stretch gap-3 p-4 min-w-0 whitespace-nowrap md:whitespace-normal">
+          <div className="relative flex-1 min-w-0">
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Input
+              placeholder="חיפוש לקוח או פעילות..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pr-10 w-full"
+            />
+          </div>
+
+          <Select value={clientFilter} onValueChange={setClientFilter}>
+            <SelectTrigger className="w-full md:w-48">
+              <SelectValue placeholder="כל הלקוחות" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">כל הלקוחות</SelectItem>
+              {uniqueClients.map(client => (
+                <SelectItem key={client} value={client}>{client}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* פילטר משתמשים מתקדם */}
+          <div className="relative w-full md:w-64">
+            <Select value={userFilter} onValueChange={setUserFilter}>
+              <SelectTrigger className="w-full">
+                <div className="flex items-center gap-2">
+                  <UserCircle className="w-4 h-4" />
+                  <SelectValue placeholder="כל המשתמשים" />
+                </div>
+              </SelectTrigger>
+              <SelectContent className="w-80">
+                <div className="p-2 border-b sticky top-0 bg-white z-10">
+                  <div className="relative">
+                    <Search className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <Input
+                      placeholder="חפש לפי שם או מייל..."
+                      value={userSearchTerm}
+                      onChange={(e) => setUserSearchTerm(e.target.value)}
+                      className="pr-8 h-9 text-sm"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </div>
+                </div>
+
+                <SelectItem value="all">
+                  <div className="flex items-center gap-2 py-1">
+                    <Users className="w-4 h-4 text-slate-500" />
+                    <div>
+                      <div className="font-medium">כל המשתמשים</div>
+                      <div className="text-xs text-slate-500">{allUsers.length} משתמשים במערכת</div>
+                    </div>
+                  </div>
+                </SelectItem>
+
+                {allUsers.length === 0 ? (
+                  <div className="p-4 text-center text-slate-500 text-sm">
+                    <p className="font-semibold mb-2">⚠️ אין משתמשים</p>
+                    <p className="text-xs">לא נמצאו רישומי זמן עם created_by תקין</p>
+                  </div>
+                ) : (
+                  <div className="max-h-96 overflow-y-auto">
+                    {filteredUsers.length === 0 ? (
+                      <div className="p-4 text-center text-slate-500 text-sm">
+                        אין תוצאות לחיפוש
+                      </div>
+                    ) : (
+                      filteredUsers.map(user => (
+                        <SelectItem key={user.id} value={user.id}>
+                          <div className="flex items-center gap-3 py-1">
+                            <Avatar className="w-8 h-8">
+                              <AvatarFallback className="text-xs bg-gradient-to-br from-blue-500 to-purple-600 text-white">
+                                {user.name.substring(0, 2).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium text-sm truncate">{user.full_name || user.name}</div>
+                              <div className="text-xs text-slate-500 truncate flex items-center gap-1">
+                                <Mail className="w-3 h-3" />
+                                {user.email || user.id}
+                              </div>
+                              <div className="flex items-center gap-2 mt-1">
+                                <Badge variant="outline" className="text-[10px] px-1 py-0">
+                                  {Math.round(user.totalHours * 10) / 10}ש׳
+                                </Badge>
+                                <Badge variant="outline" className="text-[10px] px-1 py-0">
+                                  {user.clients.length} לקוחות
+                                </Badge>
+                              </div>
+                            </div>
+                          </div>
+                        </SelectItem>
+                      ))
+                    )}
+                  </div>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Select value={timeFilter} onValueChange={setTimeFilter}>
+            <SelectTrigger className="w-full md:w-40">
+              <SelectValue placeholder="תקופה" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">כל התקופות</SelectItem>
+              <SelectItem value="today">היום</SelectItem>
+              <SelectItem value="week">השבוע</SelectItem>
+              <SelectItem value="month">החודש</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowStats(!showStats)}
+              title={showStats ? 'הסתר סטטיסטיקות' : 'הצג סטטיסטיקות'}
+              className="shrink-0"
+            >
+              <BarChart3 className="w-4 h-4 ml-2" />
+              {showStats ? 'הסתר סטטיסטיקות' : 'סטטיסטיקות'}
+            </Button>
+
+            {/* Toggle view mode icons */}
+            <div className="flex items-center gap-1 bg-white border rounded-md p-1 shrink-0">
+              <Button
+                variant={!summaryMode && viewMode === 'list' ? 'default' : 'ghost'}
+                size="icon"
+                className={!summaryMode && viewMode === 'list' ? 'h-8 w-8 bg-slate-900 text-white' : 'h-8 w-8'}
+                onClick={() => { setSummaryMode(false); setViewMode('list'); }}
+                title="תצוגת רשימה"
+              >
+                <List className="w-4 h-4" />
+              </Button>
+              <Button
+                variant={!summaryMode && viewMode === 'table' ? 'default' : 'ghost'}
+                size="icon"
+                className={!summaryMode && viewMode === 'table' ? 'h-8 w-8 bg-slate-900 text-white' : 'h-8 w-8'}
+                onClick={() => { setSummaryMode(false); setViewMode('table'); }}
+                title="תצוגת טבלה לפריטים"
+              >
+                <TableIcon className="w-4 h-4" />
+              </Button>
+            </div>
+
+            {/* Summary mode toggle + granularity */}
+            <div className="flex items-center gap-2 bg-white border rounded-md p-1 pl-2 shrink-0">
+              <Button
+                variant={summaryMode ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setSummaryMode((v) => !v)}
+                title="סיכום טבלאי לפי לקוח"
+              >
+                סיכום
+              </Button>
+              <Select value={summaryGranularity} onValueChange={setSummaryGranularity}>
+                <SelectTrigger className="w-28 h-8">
+                  <SelectValue placeholder="גרנולריות" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="day">יום</SelectItem>
+                  <SelectItem value="week">שבוע</SelectItem>
+                  <SelectItem value="month">חודש</SelectItem>
+                  <SelectItem value="year">שנה</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Selection mode controls */}
+            <div className="flex items-center gap-2 w-full md:w-auto">
+                <Button
+                  variant={selectionMode ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => { setSelectionMode(v => !v); setSelectedIds([]); }}
+                  className={selectionMode ? "bg-purple-600 hover:bg-purple-700 text-white" : ""}
+                  title="מצב בחירה מרובה"
+                >
+                  {selectionMode ? 'בטל בחירה' : 'בחירה'}
+                </Button>
+                {selectionMode && (
+                  <>
+                    <Button variant="outline" size="sm" onClick={selectAll}>בחר הכל</Button>
+                    <Button variant="destructive" size="sm" onClick={bulkDelete} disabled={selectedIds.length === 0}>מחק נבחרים ({selectedIds.length})</Button>
+                  </>
+                )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* סטטיסטיקות משתמשים */}
+      {showStats && userFilter === "all" && userStats.length > 0 && (
+        <div className="flex-shrink-0 mx-4 mb-4 p-4 bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg border border-blue-200">
+          <div className="flex justify-between items-center mb-3">
+            <h4 className="font-semibold text-slate-800 flex items-center gap-2">
+              <Users className="w-5 h-5 text-blue-600" />
+              פילוח לפי משתמשים
+            </h4>
+            <div className="text-sm text-slate-600">
+              {userStats.length} משתמשים פעילים
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 max-h-64 overflow-y-auto">
+            {userStats.slice(0, 9).map(user => (
+              <div key={user.id} className="bg-white p-3 rounded-lg border border-slate-200 hover:shadow-md transition-shadow">
+                <div className="flex items-start gap-3">
+                  <Avatar className="w-10 h-10 flex-shrink-0">
+                    <AvatarFallback className="text-sm font-bold bg-gradient-to-br from-blue-500 to-purple-600 text-white">
+                      {user.name.substring(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-slate-800 truncate">{user.full_name || user.name}</div>
+                    <div className="text-xs text-slate-500 truncate">{user.email || user.id}</div>
+                    <div className="mt-2 flex items-center gap-2">
+                      <Badge variant="secondary" className="text-xs">
+                        <Clock className="w-3 h-3 ml-1" />
+                        {formatDuration(user.filteredHours * 3600)}
+                      </Badge>
+                      <Badge variant="outline" className="text-xs">
+                        {user.filteredSessions} רישומים
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* סטטיסטיקות לקוחות */}
+      {showStats && clientFilter === "all" && (
+        <div className="flex-shrink-0 mx-4 mb-4 p-4 bg-slate-50 rounded-lg space-y-4">
+          <div className="flex justify-between items-center">
+            <h4 className="font-semibold text-slate-800">סטטיסטיקות מהירות</h4>
+            <div className="text-2xl font-bold text-blue-600">
+              {formatDuration(totalTime)}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {clientStats.slice(0, 3).map(stat => (
+              <div key={stat.clientName} className="bg-white p-3 rounded-lg border">
+                <div className="font-medium text-slate-800 truncate">{stat.clientName}</div>
+                <div className="text-sm text-slate-600">{formatDuration(stat.time)}</div>
+                <div className="text-xs text-slate-500">{stat.sessions} פעילויות</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Scrollable content */}
+      <div className="flex-1 overflow-y-auto px-6">
+        {/* Summary table mode */}
+        {summaryMode ? (
+          <div className="bg-white border border-slate-200 rounded-lg overflow-auto">
+            <UITable>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-right min-w-[180px]">לקוח</TableHead>
+                  {summaryColumns.map(col => (
+                    <TableHead key={col.key} className="text-right whitespace-nowrap">{col.label}</TableHead>
+                  ))}
+                  <TableHead className="text-right">סה״כ</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {summaryRows.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={summaryColumns.length + 2} className="text-center text-slate-500 py-10">
+                      אין נתונים לתצוגה עבור הפילטרים הנוכחיים.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  summaryRows.map(row => (
+                    <TableRow key={row.clientName}>
+                      <TableCell className="font-medium">
+                        <Link
+                          to={`${createPageUrl("Clients")}?open=details&client_name=${encodeURIComponent(row.clientName || "")}`}
+                          className="hover:text-blue-600 transition-colors"
+                        >
+                          {row.clientName}
+                        </Link>
+                      </TableCell>
+                      {summaryColumns.map(col => (
+                        <TableCell key={col.key} className="whitespace-nowrap">{formatDuration(row.totals[col.key] || 0)}</TableCell>
+                      ))}
+                      <TableCell className="font-bold text-blue-600">{formatDuration(row.total)}</TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </UITable>
+          </div>
+        ) : (
+          <>
+            {filteredLogs.length === 0 ? (
+              <div className="text-center py-8 text-slate-500">
+                <Clock className="w-12 h-12 mx-auto mb-3 text-slate-300" />
+                <p>אין רישומי זמן להצגה</p>
+                {searchTerm && (
+                  <p className="text-sm mt-2">נסה לשנות את החיפוש או הפילטרים</p>
+                )}
+              </div>
+            ) : viewMode === 'table' ? (
+              <div className="bg-white border border-slate-200 rounded-lg overflow-auto">
+                <UITable>
+                  <TableHeader>
+                    <TableRow>
+                      {selectionMode && <TableHead className="text-right w-10"></TableHead>}
+                      <TableHead className="text-right">משתמש</TableHead>
+                      <TableHead className="text-right">לקוח</TableHead>
+                      <TableHead className="text-right">תאריך</TableHead>
+                      <TableHead className="text-right">כותרת</TableHead>
+                      <TableHead className="text-right">הערות</TableHead>
+                      <TableHead className="text-right">משך</TableHead>
+                      <TableHead className="text-right">פעולות</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredLogs.map((log) => (
+                      <TableRow key={log.id}>
+                        {selectionMode && (
+                          <TableCell>
+                            <button onClick={() => toggleSelect(log.id)} title="בחר/בטל" className="p-1">
+                              {selectedIds.includes(log.id) ? <CheckSquare className="w-4 h-4 text-purple-600" /> : <Square className="w-4 h-4 text-slate-500" />}
+                            </button>
+                          </TableCell>
+                        )}
+                        <TableCell className="whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <Avatar className="w-6 h-6">
+                              <AvatarFallback className="text-[10px] bg-gradient-to-br from-blue-500 to-purple-600 text-white">
+                                {getUserDisplayName(getCreatedBy(log)).substring(0, 2).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="text-slate-600 text-sm">{getUserDisplayName(getCreatedBy(log))}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          <div className="flex items-center gap-1">
+                            <User className="w-3 h-3" />
+                            <Link
+                              to={`${createPageUrl("Clients")}?open=details&client_name=${encodeURIComponent(log.client_name || "")}`}
+                              className="hover:text-blue-600 transition-colors"
+                            >
+                              {log.client_name}
+                            </Link>
+                          </div>
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap">{getDateLabel(log.log_date)}</TableCell>
+                        <TableCell className="max-w-[280px] truncate">{log.title || '—'}</TableCell>
+                        <TableCell className="max-w-[360px] truncate text-slate-600">{log.notes || ''}</TableCell>
+                        <TableCell className="whitespace-nowrap font-medium">{formatDuration(log.duration_seconds)}</TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          <div className="flex items-center gap-1">
+                            <Button variant="ghost" size="sm" onClick={() => openEdit(log)} title="ערוך">
+                              <Pencil className="w-4 h-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => deleteOne(log.id)} title="מחק" className="text-red-600 hover:text-red-700">
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    <TableRow>
+                      <TableCell colSpan={selectionMode ? 6 : 5} className="text-left font-semibold">סה״כ</TableCell>
+                      <TableCell className="font-bold text-blue-600">{formatDuration(totalTime)}</TableCell>
+                      <TableCell />
+                    </TableRow>
+                  </TableBody>
+                </UITable>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {filteredLogs.map((log) => (
+                  <div key={log.id} className="bg-white border border-slate-200 rounded-lg p-4 hover:shadow-md transition-all relative">
+                    {selectionMode && (
+                      <button
+                        onClick={() => toggleSelect(log.id)}
+                        className="absolute top-3 left-3 bg-white rounded border p-1 z-10"
+                        title={selectedIds.includes(log.id) ? "בטל בחירה" : "בחר"}
+                      >
+                        {selectedIds.includes(log.id) ? <CheckSquare className="w-4 h-4 text-purple-600" /> : <Square className="w-4 h-4 text-slate-500" />}
+                      </button>
+                    )}
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h4 className="font-semibold text-slate-900">{log.title || 'פעילות ללא כותרת'}</h4>
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700">
+                            {formatDuration(log.duration_seconds)}
+                          </Badge>
+                        </div>
+
+                        <div className="flex items-center gap-4 text-sm text-slate-600 mb-2 flex-wrap">
+                          <div className="flex items-center gap-2">
+                            <Avatar className="w-5 h-5">
+                              <AvatarFallback className="text-[10px] bg-gradient-to-br from-blue-500 to-purple-600 text-white">
+                                {getUserDisplayName(getCreatedBy(log)).substring(0, 2).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="truncate max-w-[180px]">{getUserDisplayName(getCreatedBy(log))}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <User className="w-3 h-3" />
+                            <Link
+                              to={`${createPageUrl("Clients")}?open=details&client_name=${encodeURIComponent(log.client_name || "")}`}
+                              className="hover:text-blue-600 transition-colors"
+                            >
+                              {log.client_name}
+                            </Link>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3" />
+                            <span>{getDateLabel(log.log_date)}</span>
+                          </div>
+                        </div>
+
+                        {log.notes && (
+                          <p className="text-sm text-slate-600 bg-slate-50 p-2 rounded truncate">
+                            {log.notes}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => openEdit(log)} title="ערוך">
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => deleteOne(log.id)} title="מחק" className="text-red-600 hover:text-red-700">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {filteredLogs.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-slate-200">
+                <div className="flex justify-between items-center text-sm text-slate-600">
+                  <span>{filteredLogs.length} רישומי זמן</span>
+                  <span className="font-semibold">סה"כ: {formatDuration(totalTime)}</span>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Edit dialog */}
+      {editing && (
+        <Dialog open={true} onOpenChange={() => setEditing(null)}>
+          <DialogContent dir="rtl">
+            <DialogHeader>
+              <DialogTitle>עריכת רישום זמן</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-slate-500 mb-1 block">כותרת</label>
+                <Input value={editData.title} onChange={(e) => setEditData(d => ({ ...d, title: e.target.value }))} />
+              </div>
+              <div>
+                <label className="text-xs text-slate-500 mb-1 block">הערות</label>
+                <Textarea value={editData.notes} onChange={(e) => setEditData(d => ({ ...d, notes: e.target.value }))} />
+              </div>
+            </div>
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={() => setEditing(null)}>ביטול</Button>
+              <Button onClick={saveEdit}>שמור</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Added total summary at the bottom */}
+      <div className="flex-shrink-0 p-4 text-sm text-slate-600 border-t border-slate-200 mt-auto">
+        <span className="font-medium text-slate-800">{allUsers.length}</span> משתמשים • <span className="font-medium text-slate-800">{safeTimeLogs.length}</span> רישומים
+      </div>
+    </div>
+  );
+}
