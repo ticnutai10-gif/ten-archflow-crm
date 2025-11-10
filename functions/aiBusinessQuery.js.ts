@@ -26,43 +26,37 @@ Deno.serve(async (req) => {
 
         console.log('❓ [AI QUERY] Question:', question);
 
-        // שליפת נתונים מהמערכת - עם כל הלקוחות!
+        // שליפת כל הנתונים מהמערכת
         console.log('📊 [AI QUERY] Loading ALL data...');
         
         const [clients, projects, tasks, timeLogs, meetings, invoices] = await Promise.all([
-            // הבאת כל הלקוחות - ללא הגבלה!
             base44.asServiceRole.entities.Client.list('-created_date', 10000).catch((e) => {
                 console.log('⚠️ Clients error:', e.message);
                 return [];
             }),
-            // הבאת כל הפרויקטים
             base44.asServiceRole.entities.Project.list('-created_date', 5000).catch((e) => {
                 console.log('⚠️ Projects error:', e.message);
                 return [];
             }),
-            // הבאת כל המשימות
             base44.asServiceRole.entities.Task.list('-created_date', 5000).catch((e) => {
                 console.log('⚠️ Tasks error:', e.message);
                 return [];
             }),
-            // הבאת כל רישומי הזמן
             base44.asServiceRole.entities.TimeLog.list('-created_date', 5000).catch((e) => {
                 console.log('⚠️ TimeLogs error:', e.message);
                 return [];
             }),
-            // הבאת כל הפגישות
             base44.asServiceRole.entities.Meeting.list('-created_date', 2000).catch((e) => {
                 console.log('⚠️ Meetings error:', e.message);
                 return [];
             }),
-            // הבאת כל החשבוניות
             base44.asServiceRole.entities.Invoice.list('-created_date', 2000).catch((e) => {
                 console.log('⚠️ Invoices error:', e.message);
                 return [];
             })
         ]);
 
-        console.log('✅ [AI QUERY] ALL Data loaded:', {
+        console.log('✅ [AI QUERY] Data loaded:', {
             clients: clients.length,
             projects: projects.length,
             tasks: tasks.length,
@@ -71,7 +65,12 @@ Deno.serve(async (req) => {
             invoices: invoices.length
         });
 
-        // בניית קונטקסט מקוצר וממוקד
+        // חישוב סטטיסטיקות מדויקות
+        const stats = calculateStats({ clients, projects, tasks, timeLogs, meetings, invoices });
+        
+        console.log('📊 [AI QUERY] Calculated stats:', stats);
+
+        // בניית קונטקסט ממוקד
         const context = buildCompactContext({
             clients,
             projects,
@@ -79,29 +78,57 @@ Deno.serve(async (req) => {
             timeLogs,
             meetings,
             invoices,
-            question
+            question,
+            stats
         });
 
         console.log('📝 [AI QUERY] Context size:', context.length, 'chars');
 
-        // הכנת הפרומפט
+        // הכנת הפרומפט עם המספרים המדויקים
         const prompt = `אתה עוזר AI מקצועי למערכת ניהול של חברת אדריכלות טננבאום.
 
 המשתמש: ${user.full_name || user.email}
 
-נתונים רלוונטיים מהמערכת:
+📊 **סטטיסטיקות מדויקות מהמערכת:**
+
+**לקוחות (${stats.clients.total} סה"כ):**
+- פעילים: ${stats.clients.active}
+- פוטנציאליים: ${stats.clients.potential}
+- לא פעילים: ${stats.clients.inactive}
+
+**פרויקטים (${stats.projects.total} סה"כ):**
+- בביצוע: ${stats.projects.inProgress}
+- בתכנון: ${stats.projects.planning}
+- הושלמו: ${stats.projects.completed}
+
+**משימות (${stats.tasks.total} סה"כ):**
+- פתוחות: ${stats.tasks.open}
+- בתהליך: ${stats.tasks.inProgress}
+- הושלמו: ${stats.tasks.completed}
+
+**פגישות החודש: ${stats.meetings.thisMonth}**
+**שעות עבודה החודש: ${stats.timeLogs.hoursThisMonth} שעות**
+**חשבוניות החודש: ${stats.invoices.thisMonth} (${stats.invoices.totalThisMonth.toLocaleString('he-IL')}₪)**
+
+---
+
+נתונים מפורטים רלוונטיים:
 ${context}
 
 ---
-שאלת המשתמש: ${question}
 
-הנחיות:
-1. ענה בעברית בצורה ברורה ומקצועית
-2. השתמש במספרים ופרטים ממשיים מהנתונים
-3. אם אין מספיק נתונים - ציין זאת
-4. ארגן את התשובה בצורה מובנית עם כותרות וסעיפים
-5. היה מדויק - השתמש בנתונים המדויקים שקיבלת
-6. אם שואלים "כמה" - תן מספר מדויק!`;
+🎯 **שאלת המשתמש:** ${question}
+
+**הנחיות חשובות:**
+1. ✅ השתמש במספרים המדויקים שניתנו למעלה - אלו המספרים האמיתיים!
+2. ✅ אם שואלים "כמה לקוחות" - תן את המספר ${stats.clients.total}
+3. ✅ אם שואלים "כמה פרויקטים" - תן את המספר ${stats.projects.total}
+4. ✅ ענה בעברית בצורה ברורה ומקצועית
+5. ✅ אם צריך פירוט - השתמש בנתונים המפורטים למטה
+6. ✅ ארגן את התשובה בצורה מובנית עם כותרות
+7. ✅ היה מדויק - המספרים האלו הם אמיתיים מהמערכת
+
+אם שואלים על מספרים - תשתמש במספרים המדויקים שניתנו בסטטיסטיקות!`;
 
         console.log('🧠 [AI QUERY] Calling LLM...');
 
@@ -116,14 +143,7 @@ ${context}
         return Response.json({
             answer: response,
             metadata: {
-                data_sources: {
-                    clients: clients.length,
-                    projects: projects.length,
-                    tasks: tasks.length,
-                    timeLogs: timeLogs.length,
-                    meetings: meetings.length,
-                    invoices: invoices.length
-                },
+                data_sources: stats,
                 timestamp: new Date().toISOString(),
                 user: user.email
             }
@@ -139,9 +159,64 @@ ${context}
     }
 });
 
-// פונקציה לבניית קונטקסט מקוצר וממוקד
+// חישוב סטטיסטיקות מדויקות
+function calculateStats(data) {
+    const { clients, projects, tasks, timeLogs, meetings, invoices } = data;
+    
+    const today = new Date();
+    const thisMonth = today.getMonth();
+    const thisYear = today.getFullYear();
+
+    return {
+        clients: {
+            total: clients.length,
+            active: clients.filter(c => c.status === 'פעיל').length,
+            potential: clients.filter(c => c.status === 'פוטנציאלי').length,
+            inactive: clients.filter(c => c.status === 'לא פעיל').length
+        },
+        projects: {
+            total: projects.length,
+            inProgress: projects.filter(p => p.status === 'בביצוע').length,
+            planning: projects.filter(p => p.status === 'תכנון').length,
+            completed: projects.filter(p => p.status === 'הושלם').length
+        },
+        tasks: {
+            total: tasks.length,
+            open: tasks.filter(t => t.status === 'חדשה').length,
+            inProgress: tasks.filter(t => t.status === 'בתהליך').length,
+            completed: tasks.filter(t => t.status === 'הושלמה').length
+        },
+        meetings: {
+            total: meetings.length,
+            thisMonth: meetings.filter(m => {
+                const d = new Date(m.created_date);
+                return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
+            }).length
+        },
+        timeLogs: {
+            total: timeLogs.length,
+            hoursThisMonth: (timeLogs.filter(tl => {
+                const d = new Date(tl.log_date);
+                return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
+            }).reduce((s, t) => s + (t.duration_seconds || 0), 0) / 3600).toFixed(1)
+        },
+        invoices: {
+            total: invoices.length,
+            thisMonth: invoices.filter(inv => {
+                const d = new Date(inv.created_date);
+                return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
+            }).length,
+            totalThisMonth: invoices.filter(inv => {
+                const d = new Date(inv.created_date);
+                return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
+            }).reduce((s, i) => s + (i.amount || 0), 0)
+        }
+    };
+}
+
+// בניית קונטקסט מפורט
 function buildCompactContext(data) {
-    const { clients, projects, tasks, timeLogs, meetings, invoices, question } = data;
+    const { clients, projects, tasks, timeLogs, meetings, invoices, question, stats } = data;
     
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
@@ -149,17 +224,6 @@ function buildCompactContext(data) {
     const thisYear = today.getFullYear();
 
     let context = '';
-
-    // סטטיסטיקות כלליות - עם המספרים המדויקים!
-    context += `## 📊 סטטיסטיקות כלליות\n`;
-    context += `סה"כ לקוחות: ${clients.length}\n`;
-    context += `  - פעילים: ${clients.filter(c => c.status === 'פעיל').length}\n`;
-    context += `  - פוטנציאליים: ${clients.filter(c => c.status === 'פוטנציאלי').length}\n`;
-    context += `  - לא פעילים: ${clients.filter(c => c.status === 'לא פעיל').length}\n`;
-    context += `סה"כ פרויקטים: ${projects.length}\n`;
-    context += `  - בביצוע: ${projects.filter(p => p.status === 'בביצוע').length}\n`;
-    context += `סה"כ משימות: ${tasks.length}\n`;
-    context += `  - פתוחות: ${tasks.filter(t => t.status !== 'הושלמה').length}\n\n`;
 
     // פעילות היום
     const todayTimeLogs = timeLogs.filter(tl => tl.log_date === todayStr);
@@ -169,7 +233,7 @@ function buildCompactContext(data) {
     });
 
     if (todayTimeLogs.length > 0 || todayMeetings.length > 0) {
-        context += `## 📅 היום (${todayStr})\n`;
+        context += `## 📅 פעילות היום (${todayStr})\n`;
         if (todayTimeLogs.length > 0) {
             const hours = (todayTimeLogs.reduce((s, t) => s + (t.duration_seconds || 0), 0) / 3600).toFixed(1);
             context += `שעות עבודה: ${hours}h\n`;
@@ -180,23 +244,22 @@ function buildCompactContext(data) {
         context += '\n';
     }
 
-    // לקוחות - תלוי בשאלה
+    // לקוחות - אם השאלה קשורה ללקוחות
     const lowerQuestion = question.toLowerCase();
     const isClientQuery = lowerQuestion.includes('לקוח') || 
                           lowerQuestion.includes('client') ||
-                          lowerQuestion.includes('כמה');
+                          lowerQuestion.includes('כמה') ||
+                          lowerQuestion.includes('מי');
     
     if (isClientQuery) {
-        // פירוט לקוחות לפי סטטוס
-        context += `## 👥 לקוחות מפורטים\n`;
+        context += `## 👥 לקוחות מפורטים\n\n`;
         
         const activeClients = clients.filter(c => c.status === 'פעיל');
         const potentialClients = clients.filter(c => c.status === 'פוטנציאלי');
-        const inactiveClients = clients.filter(c => c.status === 'לא פעיל');
         
         if (activeClients.length > 0) {
-            context += `\n### לקוחות פעילים (${activeClients.length}):\n`;
-            activeClients.slice(0, 30).forEach(c => {
+            context += `### לקוחות פעילים (${activeClients.length}):\n`;
+            activeClients.slice(0, 50).forEach(c => {
                 context += `- ${c.name}`;
                 if (c.email) context += ` | ${c.email}`;
                 if (c.phone) context += ` | ${c.phone}`;
@@ -206,28 +269,24 @@ function buildCompactContext(data) {
                 }
                 context += '\n';
             });
-            if (activeClients.length > 30) {
-                context += `... ועוד ${activeClients.length - 30} לקוחות פעילים\n`;
+            if (activeClients.length > 50) {
+                context += `... ועוד ${activeClients.length - 50} לקוחות פעילים נוספים\n`;
             }
+            context += '\n';
         }
         
         if (potentialClients.length > 0) {
-            context += `\n### לקוחות פוטנציאליים (${potentialClients.length}):\n`;
-            potentialClients.slice(0, 20).forEach(c => {
+            context += `### לקוחות פוטנציאליים (${potentialClients.length}):\n`;
+            potentialClients.slice(0, 30).forEach(c => {
                 context += `- ${c.name}`;
                 if (c.email) context += ` | ${c.email}`;
                 context += '\n';
             });
-            if (potentialClients.length > 20) {
-                context += `... ועוד ${potentialClients.length - 20} לקוחות פוטנציאליים\n`;
+            if (potentialClients.length > 30) {
+                context += `... ועוד ${potentialClients.length - 30} לקוחות פוטנציאליים נוספים\n`;
             }
+            context += '\n';
         }
-        
-        if (inactiveClients.length > 0) {
-            context += `\n### לקוחות לא פעילים: ${inactiveClients.length}\n`;
-        }
-        
-        context += '\n';
     }
 
     // פרויקטים דחופים
@@ -241,7 +300,7 @@ function buildCompactContext(data) {
 
     if (urgentProjects.length > 0) {
         context += `## ⚠️ פרויקטים דחופים (${urgentProjects.length})\n`;
-        urgentProjects.forEach(p => {
+        urgentProjects.slice(0, 15).forEach(p => {
             const days = Math.ceil((new Date(p.end_date) - today) / (1000 * 60 * 60 * 24));
             context += `- ${p.name} (${p.client_name}): ${days} ימים | ${p.status}\n`;
         });
@@ -251,11 +310,10 @@ function buildCompactContext(data) {
     // משימות פתוחות
     const openTasks = tasks.filter(t => t.status !== 'הושלמה');
     if (openTasks.length > 0) {
-        context += `## ✅ משימות פתוחות (${openTasks.length} סה"כ)\n`;
         const highPriority = openTasks.filter(t => t.priority === 'גבוהה');
         if (highPriority.length > 0) {
-            context += `\n### עדיפות גבוהה (${highPriority.length}):\n`;
-            highPriority.slice(0, 10).forEach(t => {
+            context += `## ✅ משימות דחופות (${highPriority.length})\n`;
+            highPriority.slice(0, 15).forEach(t => {
                 context += `- ${t.title}`;
                 if (t.project_name) context += ` | ${t.project_name}`;
                 context += ` | ${t.status}`;
@@ -266,47 +324,34 @@ function buildCompactContext(data) {
                 }
                 context += '\n';
             });
+            context += '\n';
         }
-        context += '\n';
     }
 
-    // ניתוח שעות החודש
+    // שעות עבודה לפי לקוח החודש
     const thisMonthLogs = timeLogs.filter(tl => {
         const d = new Date(tl.log_date);
         return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
     });
 
     if (thisMonthLogs.length > 0) {
-        const totalHours = (thisMonthLogs.reduce((s, t) => s + (t.duration_seconds || 0), 0) / 3600).toFixed(1);
-        context += `## ⏱️ שעות החודש\n`;
-        context += `סה"כ: ${totalHours} שעות\n`;
-        
         const byClient = {};
         thisMonthLogs.forEach(t => {
             const name = t.client_name || 'לא משויך';
             byClient[name] = (byClient[name] || 0) + (t.duration_seconds || 0);
         });
         
-        const top = Object.entries(byClient)
+        const topClients = Object.entries(byClient)
             .sort((a, b) => b[1] - a[1])
-            .slice(0, 5)
-            .map(([name, secs]) => `${name}: ${(secs/3600).toFixed(1)}h`)
-            .join(', ');
+            .slice(0, 10);
         
-        if (top) context += `חלוקה: ${top}\n\n`;
-    }
-
-    // חשבוניות החודש
-    const thisMonthInvoices = invoices.filter(inv => {
-        const d = new Date(inv.created_date);
-        return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
-    });
-
-    if (thisMonthInvoices.length > 0) {
-        const total = thisMonthInvoices.reduce((s, i) => s + (i.amount || 0), 0);
-        context += `## 💰 חשבוניות החודש\n`;
-        context += `כמות: ${thisMonthInvoices.length} | סכום: ${total.toLocaleString('he-IL')}₪\n`;
-        context += `ששולמו: ${thisMonthInvoices.filter(i => i.status === 'paid').length}\n\n`;
+        if (topClients.length > 0) {
+            context += `## ⏱️ שעות עבודה החודש (לפי לקוח)\n`;
+            topClients.forEach(([name, secs]) => {
+                context += `- ${name}: ${(secs/3600).toFixed(1)}h\n`;
+            });
+            context += '\n';
+        }
     }
 
     return context;
