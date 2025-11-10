@@ -41,13 +41,22 @@ export default function FloatingChatButton() {
   const scrollRef = useRef(null);
   const sendingRef = useRef(false);
   const subscriptionRef = useRef(null);
-  const mountedRef = useRef(true); // Added mountedRef
+  const mountedRef = useRef(false);
 
   // Cleanup on unmount
   useEffect(() => {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
+      // ניקוי חיבור WebSocket בעת unmount
+      if (subscriptionRef.current && typeof subscriptionRef.current === 'function') {
+        try {
+          subscriptionRef.current();
+        } catch (error) {
+          console.warn('⚠️ [FLOAT] Unmount cleanup error (ignored):', error.message);
+        }
+        subscriptionRef.current = null;
+      }
     };
   }, []);
 
@@ -67,50 +76,35 @@ export default function FloatingChatButton() {
 
   // מנוי לעדכונים בזמן אמת - FIX מוחלט!
   useEffect(() => {
-    // בדיקה שיש ID תקף וש-component עדיין mounted
     if (!currentConversationId || !mountedRef.current) {
-      console.log('⏭️ [FLOAT-WS] Skipping subscription');
       return;
     }
     
-    console.log('🔌 [FLOAT-WS] Setting up for:', currentConversationId);
-    
     // ניקוי מנוי קודם
-    if (subscriptionRef.current) {
-      console.log('🧹 [FLOAT-WS] Cleaning previous');
+    if (subscriptionRef.current && typeof subscriptionRef.current === 'function') {
       try {
-        if (typeof subscriptionRef.current === 'function') {
-          subscriptionRef.current();
-        }
+        subscriptionRef.current();
       } catch (error) {
         console.warn('⚠️ [FLOAT-WS] Cleanup error (ignored):', error.message);
       }
       subscriptionRef.current = null;
     }
     
-    // Delay כדי לתת ל-WebSocket זמן להתחבר
+    // Delay להתחברות
     const setupTimeout = setTimeout(() => {
-      if (!mountedRef.current) {
-        console.log('⏭️ [FLOAT-WS] Unmounted during setup');
-        return;
-      }
-      
-      let unsubscribe = null;
+      if (!mountedRef.current) return;
       
       try {
-        unsubscribe = base44.agents.subscribeToConversation(
+        const unsubscribe = base44.agents.subscribeToConversation(
           currentConversationId,
           (data) => {
             if (mountedRef.current) {
-              console.log('📨 [FLOAT-WS] Update');
               setMessages([...data.messages || []]);
             }
           }
         );
         
         subscriptionRef.current = unsubscribe;
-        console.log('✅ [FLOAT-WS] Established');
-        
       } catch (error) {
         console.error('❌ [FLOAT-WS] Error:', error.message);
         subscriptionRef.current = null;
@@ -118,22 +112,16 @@ export default function FloatingChatButton() {
     }, 100);
     
     return () => {
-      console.log('🔌 [FLOAT-WS] Cleanup initiated');
       clearTimeout(setupTimeout);
       
-      // Cleanup בצורה בטוחה
       const cleanupTimeout = setTimeout(() => {
-        if (subscriptionRef.current) {
+        if (subscriptionRef.current && typeof subscriptionRef.current === 'function') {
           try {
-            if (typeof subscriptionRef.current === 'function') {
-              subscriptionRef.current();
-              console.log('✅ [FLOAT-WS] Cleanup OK');
-            }
+            subscriptionRef.current();
           } catch (error) {
             console.warn('⚠️ [FLOAT-WS] Cleanup error (ignored):', error.message);
-          } finally {
-            subscriptionRef.current = null;
           }
+          subscriptionRef.current = null;
         }
       }, 50);
       
