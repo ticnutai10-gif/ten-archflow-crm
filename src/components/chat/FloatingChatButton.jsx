@@ -39,6 +39,7 @@ export default function FloatingChatButton() {
   const [editForm, setEditForm] = useState({ name: '', notes: '' });
   const scrollRef = useRef(null);
   const sendingRef = useRef(false);
+  const subscriptionRef = useRef(null);
 
   // טעינת שיחות כשנפתח הדיאלוג
   useEffect(() => {
@@ -54,31 +55,59 @@ export default function FloatingChatButton() {
     }
   }, [messages]);
 
-  // מנוי לעדכונים בזמן אמת - FIX: טיפול טוב יותר ב-WebSocket
+  // מנוי לעדכונים בזמן אמת - FIX מלא
   useEffect(() => {
-    if (!currentConversationId) return;
+    // בדיקה חזקה
+    if (!currentConversationId || typeof currentConversationId !== 'string') {
+      console.log('⏭️ [FLOAT-WEBSOCKET] Skipping - no valid ID');
+      return;
+    }
     
-    let unsubscribe;
+    console.log('🔌 [FLOAT-WEBSOCKET] Setting up for:', currentConversationId);
+    
+    // נקה קודם
+    if (subscriptionRef.current && typeof subscriptionRef.current === 'function') {
+      console.log('🧹 [FLOAT-WEBSOCKET] Cleaning previous');
+      try {
+        subscriptionRef.current();
+      } catch (error) {
+        console.error('⚠️ [FLOAT-WEBSOCKET] Cleanup error:', error);
+      }
+      subscriptionRef.current = null;
+    }
+    
+    let isSubscribed = false;
     
     try {
-      unsubscribe = base44.agents.subscribeToConversation(
+      const unsubscribe = base44.agents.subscribeToConversation(
         currentConversationId,
         (data) => {
-          setMessages([...data.messages || []]);
+          if (isSubscribed) {
+            console.log('📨 [FLOAT-WEBSOCKET] Update');
+            setMessages([...data.messages || []]);
+          }
         }
       );
+      
+      isSubscribed = true;
+      subscriptionRef.current = unsubscribe;
+      console.log('✅ [FLOAT-WEBSOCKET] Established');
+      
     } catch (error) {
-      console.error('❌ [WEBSOCKET] Subscription error:', error);
-      // אל תעצור את האפליקציה בגלל שגיאת WebSocket
+      console.error('❌ [FLOAT-WEBSOCKET] Error:', error);
     }
     
     return () => {
-      if (unsubscribe && typeof unsubscribe === 'function') {
+      isSubscribed = false;
+      console.log('🔌 [FLOAT-WEBSOCKET] Cleanup');
+      
+      if (subscriptionRef.current && typeof subscriptionRef.current === 'function') {
         try {
-          unsubscribe();
+          subscriptionRef.current();
         } catch (error) {
-          console.error('❌ [WEBSOCKET] Unsubscribe error:', error);
+          console.error('⚠️ [FLOAT-WEBSOCKET] Cleanup error:', error);
         }
+        subscriptionRef.current = null;
       }
     };
   }, [currentConversationId]);

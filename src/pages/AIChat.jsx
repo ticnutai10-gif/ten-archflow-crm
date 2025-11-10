@@ -61,6 +61,7 @@ export default function AIChatPage() {
   const [copiedUrl, setCopiedUrl] = useState(false);
   const scrollRef = useRef(null);
   const sendingRef = useRef(false);
+  const subscriptionRef = useRef(null);
 
   // טעינה ראשונית
   useEffect(() => {
@@ -152,31 +153,60 @@ export default function AIChatPage() {
     }
   };
 
-  // מנוי לעדכונים בזמן אמת - FIX: טיפול טוב יותר ב-WebSocket
+  // מנוי לעדכונים בזמן אמת - FIX מלא עם ניקוי מנוי קודם
   useEffect(() => {
-    if (!currentConversationId) return;
+    // בדיקה חזקה - רק אם יש ID תקף
+    if (!currentConversationId || typeof currentConversationId !== 'string') {
+      console.log('⏭️ [WEBSOCKET] Skipping subscription - no valid conversation ID');
+      return;
+    }
     
-    let unsubscribe;
+    console.log('🔌 [WEBSOCKET] Setting up subscription for:', currentConversationId);
+    
+    // נקה מנוי קודם אם קיים
+    if (subscriptionRef.current && typeof subscriptionRef.current === 'function') {
+      console.log('🧹 [WEBSOCKET] Cleaning up previous subscription');
+      try {
+        subscriptionRef.current();
+      } catch (error) {
+        console.error('⚠️ [WEBSOCKET] Error cleaning previous subscription:', error);
+      }
+      subscriptionRef.current = null;
+    }
+    
+    let isSubscribed = false;
     
     try {
-      unsubscribe = base44.agents.subscribeToConversation(
+      const unsubscribe = base44.agents.subscribeToConversation(
         currentConversationId,
         (data) => {
-          setMessages([...data.messages || []]);
+          if (isSubscribed) {
+            console.log('📨 [WEBSOCKET] Received update');
+            setMessages([...data.messages || []]);
+          }
         }
       );
+      
+      isSubscribed = true;
+      subscriptionRef.current = unsubscribe;
+      console.log('✅ [WEBSOCKET] Subscription established');
+      
     } catch (error) {
       console.error('❌ [WEBSOCKET] Subscription error:', error);
-      // אל תעצור את האפליקציה בגלל שגיאת WebSocket
+      // אל תעצור את האפליקציה - המשך בלי WebSocket
     }
     
     return () => {
-      if (unsubscribe && typeof unsubscribe === 'function') {
+      isSubscribed = false;
+      console.log('🔌 [WEBSOCKET] Cleaning up subscription');
+      
+      if (subscriptionRef.current && typeof subscriptionRef.current === 'function') {
         try {
-          unsubscribe();
+          subscriptionRef.current();
         } catch (error) {
-          console.error('❌ [WEBSOCKET] Unsubscribe error:', error);
+          console.error('⚠️ [WEBSOCKET] Error during cleanup:', error);
         }
+        subscriptionRef.current = null;
       }
     };
   }, [currentConversationId]);
