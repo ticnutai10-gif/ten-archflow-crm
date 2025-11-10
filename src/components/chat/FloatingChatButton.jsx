@@ -1,11 +1,12 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { 
   MessageCircle, 
   X,
@@ -16,6 +17,7 @@ import {
   Plus,
   Trash2,
   Edit2,
+  Save,
   Zap
 } from "lucide-react";
 import { toast } from "sonner";
@@ -32,6 +34,9 @@ export default function FloatingChatButton() {
   const [inputMessage, setInputMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingConversations, setLoadingConversations] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingConv, setEditingConv] = useState(null);
+  const [editForm, setEditForm] = useState({ name: '', notes: '' });
   const scrollRef = useRef(null);
   const sendingRef = useRef(false);
 
@@ -121,6 +126,46 @@ export default function FloatingChatButton() {
       console.error('Error creating conversation:', error);
       toast.error('שגיאה ביצירת שיחה');
       return null;
+    }
+  };
+
+  const handleEditConversation = (conv, e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
+    setEditingConv(conv);
+    setEditForm({
+      name: conv.metadata?.name || '',
+      notes: conv.metadata?.notes || ''
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingConv || !editForm.name.trim()) {
+      toast.error('נא להזין שם לשיחה');
+      return;
+    }
+
+    try {
+      await base44.agents.updateConversation(editingConv.id, {
+        metadata: {
+          ...editingConv.metadata,
+          name: editForm.name.trim(),
+          notes: editForm.notes.trim()
+        }
+      });
+
+      await loadConversations();
+      setEditDialogOpen(false);
+      setEditingConv(null);
+      
+      toast.success('✅ השיחה עודכנה!');
+    } catch (error) {
+      console.error('Error updating conversation:', error);
+      toast.error('שגיאה בעדכון השיחה');
     }
   };
 
@@ -244,6 +289,7 @@ export default function FloatingChatButton() {
                     conversations.map((conv) => {
                       const isActive = currentConversationId === conv.id;
                       const convName = conv.metadata?.name || 'שיחה';
+                      const convNotes = conv.metadata?.notes || '';
 
                       return (
                         <div
@@ -256,24 +302,44 @@ export default function FloatingChatButton() {
                           onClick={() => loadConversation(conv.id)}
                         >
                           <div className="flex justify-between items-start gap-1">
-                            <h4 className={`text-xs font-semibold truncate flex-1 ${
-                              isActive ? "text-blue-900" : "text-slate-900"
-                            }`}>
-                              {convName}
-                            </h4>
+                            <div className="flex-1 min-w-0">
+                              <h4 className={`text-xs font-semibold truncate ${
+                                isActive ? "text-blue-900" : "text-slate-900"
+                              }`}>
+                                {convName}
+                              </h4>
+                              {convNotes && (
+                                <p className="text-[10px] text-slate-500 mt-0.5 truncate">
+                                  💬 {convNotes}
+                                </p>
+                              )}
+                              <p className="text-[10px] text-slate-400 mt-0.5">
+                                {new Date(conv.created_date).toLocaleDateString('he-IL')}
+                              </p>
+                            </div>
                             
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-5 w-5 hover:bg-red-100 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0"
-                              onClick={(e) => handleDeleteConversation(conv.id, e)}
-                            >
-                              <Trash2 className="w-3 h-3 text-red-500" />
-                            </Button>
+                            <div className="flex gap-0.5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-all">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-5 w-5 hover:bg-blue-200"
+                                onClick={(e) => handleEditConversation(conv, e)}
+                                title="ערוך"
+                              >
+                                <Edit2 className="w-3 h-3 text-blue-600" />
+                              </Button>
+                              
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-5 w-5 hover:bg-red-100"
+                                onClick={(e) => handleDeleteConversation(conv.id, e)}
+                                title="מחק"
+                              >
+                                <Trash2 className="w-3 h-3 text-red-500" />
+                              </Button>
+                            </div>
                           </div>
-                          <p className="text-xs text-slate-400 mt-0.5">
-                            {new Date(conv.created_date).toLocaleDateString('he-IL')}
-                          </p>
                         </div>
                       );
                     })
@@ -391,6 +457,63 @@ export default function FloatingChatButton() {
               </div>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-w-md" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-right">
+              <Edit2 className="w-5 h-5 text-blue-600" />
+              עריכת שיחה
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-name" className="text-right">שם השיחה *</Label>
+              <Input
+                id="edit-name"
+                value={editForm.name}
+                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                placeholder="לדוגמה: שיחה עם העוזר"
+                className="text-right"
+                dir="rtl"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-notes" className="text-right">הערות (אופציונלי)</Label>
+              <Textarea
+                id="edit-notes"
+                value={editForm.notes}
+                onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                placeholder="הוסף הערות..."
+                className="text-right h-24"
+                dir="rtl"
+              />
+            </div>
+          </div>
+
+          <DialogFooter dir="rtl">
+            <div className="flex gap-2 justify-start w-full">
+              <Button 
+                onClick={handleSaveEdit}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                <Save className="w-4 h-4 ml-2" />
+                שמור
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => setEditDialogOpen(false)}
+              >
+                <X className="w-4 h-4 ml-2" />
+                ביטול
+              </Button>
+            </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>
