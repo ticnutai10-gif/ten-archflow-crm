@@ -275,6 +275,20 @@ export default function FloatingTimer() {
   const [newNotesTemplate, setNewNotesTemplate] = React.useState("");
 
   const { getAllowedClientsForTimer, loading: accessLoading } = useAccessControl();
+  
+  const mountedRef = React.useRef(false);
+  const wsOpenRef = React.useRef(false); // 🆕 Track if WebSocket is actually open
+
+  React.useEffect(() => {
+    mountedRef.current = true;
+    console.log('✅ [TIMER] Component mounted');
+    
+    return () => {
+      console.log('🧹 [TIMER] Component unmounting...');
+      mountedRef.current = false;
+      // 🆕 Safe cleanup - no WebSocket to clean here
+    };
+  }, []);
 
   // Detect Ctrl key press/release
   React.useEffect(() => {

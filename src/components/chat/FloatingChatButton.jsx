@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
@@ -42,26 +41,29 @@ export default function FloatingChatButton() {
   const sendingRef = useRef(false);
   const subscriptionRef = useRef(null);
   const mountedRef = useRef(false);
-  const wsStateRef = useRef('closed'); // 🔥 NEW: Track WebSocket state
+  const wsOpenRef = useRef(false); // 🆕 Track if WebSocket is actually open
 
-  // Cleanup on unmount
+  // 🚀 FIX: Cleanup on unmount
   useEffect(() => {
     mountedRef.current = true;
+    console.log('✅ [FLOAT-CHAT] Component mounted');
+    
     return () => {
+      console.log('🧹 [FLOAT-CHAT] Component unmounting...');
       mountedRef.current = false;
       cleanupWebSocket();
     };
   }, []);
 
-  // 🔥 FIX: Improved WebSocket cleanup function
+  // 🚀 FIX: Improved WebSocket cleanup function
   const cleanupWebSocket = () => {
     if (subscriptionRef.current && typeof subscriptionRef.current === 'function') {
       try {
-        // Only cleanup if WebSocket was actually opened
-        if (wsStateRef.current === 'open') {
+        // 🆕 Only cleanup if WebSocket was actually opened
+        if (wsOpenRef.current) {
           console.log('🧹 [FLOAT-WS] Cleaning up active WebSocket...');
           subscriptionRef.current();
-          wsStateRef.current = 'closed';
+          wsOpenRef.current = false;
         } else {
           console.log('⏭️ [FLOAT-WS] Skipping cleanup - WebSocket was not open');
         }
@@ -102,6 +104,9 @@ export default function FloatingChatButton() {
     // Cleanup previous subscription
     cleanupWebSocket();
     
+    // 🆕 Reset WebSocket state
+    wsOpenRef.current = false;
+    
     // Delay for connection
     let setupTimeout = setTimeout(() => {
       if (!mountedRef.current || !isOpen) {
@@ -111,14 +116,16 @@ export default function FloatingChatButton() {
       
       try {
         console.log('🔌 [FLOAT-WS] Attempting to connect...', currentConversationId);
-        wsStateRef.current = 'connecting';
         
         const unsubscribe = base44.agents.subscribeToConversation(
           currentConversationId,
           (data) => {
             if (mountedRef.current && isOpen) {
-              wsStateRef.current = 'open'; // Mark as open on first data
-              console.log('✅ [FLOAT-WS] Connected and receiving data');
+              // 🆕 Mark WebSocket as open on first data
+              if (!wsOpenRef.current) {
+                wsOpenRef.current = true;
+                console.log('✅ [FLOAT-WS] Connection confirmed - first data received');
+              }
               setMessages([...data.messages || []]);
             }
           }
@@ -128,7 +135,7 @@ export default function FloatingChatButton() {
         
       } catch (error) {
         console.error('❌ [FLOAT-WS] Connection error:', error.message);
-        wsStateRef.current = 'closed';
+        wsOpenRef.current = false;
         subscriptionRef.current = null;
       }
     }, 150);
@@ -148,7 +155,7 @@ export default function FloatingChatButton() {
       });
       
       if (mountedRef.current) {
-        const activeConvs = convs.filter(c => !c.metadata?.deleted).slice(0, 20); // מגביל ל-20
+        const activeConvs = convs.filter(c => !c.metadata?.deleted).slice(0, 20);
         setConversations(activeConvs);
         
         if (activeConvs.length > 0 && !currentConversationId) {
@@ -238,7 +245,6 @@ export default function FloatingChatButton() {
         notes: editForm.notes.trim()
       };
 
-      // Save using the correct method (if available) or just update local state
       if (mountedRef.current) {
         await loadConversations();
         setEditDialogOpen(false);
@@ -296,7 +302,6 @@ export default function FloatingChatButton() {
     if (!confirm('למחוק את השיחה?')) return;
     
     try {
-      // 🔥 FIX: Instead of updating, just filter it out locally
       if (mountedRef.current) {
         setConversations(prev => prev.filter(c => c.id !== convId));
         
