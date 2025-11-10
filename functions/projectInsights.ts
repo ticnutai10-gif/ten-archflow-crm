@@ -13,12 +13,12 @@ Deno.serve(async (req) => {
 
         console.log('👤 [PROJECT INSIGHTS] User:', user.email);
 
-        // טעינת כל הנתונים
+        // 🔥 FIX: העלאת כל ה-limits ל-10000 כדי לוודא שכל הנתונים נשלפים!
         const [projects, tasks, timeLogs, clients] = await Promise.all([
-            base44.asServiceRole.entities.Project.list('-created_date', 2000).catch(() => []),
-            base44.asServiceRole.entities.Task.list('-created_date', 3000).catch(() => []),
-            base44.asServiceRole.entities.TimeLog.list('-created_date', 5000).catch(() => []),
-            base44.asServiceRole.entities.Client.list('-created_date', 2000).catch(() => [])
+            base44.asServiceRole.entities.Project.list('-created_date', 10000).catch(() => []),
+            base44.asServiceRole.entities.Task.list('-created_date', 10000).catch(() => []),
+            base44.asServiceRole.entities.TimeLog.list('-created_date', 10000).catch(() => []),
+            base44.asServiceRole.entities.Client.list('-created_date', 10000).catch(() => [])
         ]);
 
         console.log('✅ [PROJECT INSIGHTS] Data loaded:', {
@@ -35,7 +35,11 @@ Deno.serve(async (req) => {
             clients
         });
 
-        console.log('✅ [PROJECT INSIGHTS] Analysis complete');
+        console.log('✅ [PROJECT INSIGHTS] Analysis complete:', {
+            totalProjects: insights.total,
+            activeProjects: insights.active,
+            atRisk: insights.atRisk
+        });
 
         return Response.json({
             insights,
@@ -56,9 +60,19 @@ function analyzeProjects(data) {
     const { projects, tasks, timeLogs, clients } = data;
     const today = new Date();
 
+    // 🔥 FIX: הוספת סטטוסים נוספים שנחשבים כ"פעילים"
     const activeProjects = projects.filter(p => 
-        p.status === 'בביצוע' || p.status === 'תכנון' || p.status === 'היתרים'
+        p.status === 'בביצוע' || 
+        p.status === 'תכנון' || 
+        p.status === 'היתרים' ||
+        p.status === 'הצעת מחיר' // ✅ גם הצעות מחיר פעילות
     );
+
+    console.log('📊 [PROJECT INSIGHTS] Active projects filter:', {
+        total: projects.length,
+        active: activeProjects.length,
+        statuses: [...new Set(projects.map(p => p.status))]
+    });
 
     const projectAnalysis = activeProjects.map(project => {
         const analysis = analyzeProject(project, tasks, timeLogs, today);
@@ -71,7 +85,7 @@ function analyzeProjects(data) {
         };
     });
 
-    // מיון לפי רמת סיכון (הכי מסוכן ראשון) - FIX: access risk.riskScore correctly
+    // מיון לפי רמת סיכון (הכי מסוכן ראשון)
     const sortedByRisk = [...projectAnalysis].sort((a, b) => (b.risk?.riskScore || 0) - (a.risk?.riskScore || 0));
 
     return {
