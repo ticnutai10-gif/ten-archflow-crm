@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -153,18 +152,33 @@ export default function AIChatPage() {
     }
   };
 
-  // מנוי לעדכונים בזמן אמת
+  // מנוי לעדכונים בזמן אמת - FIX: טיפול טוב יותר ב-WebSocket
   useEffect(() => {
     if (!currentConversationId) return;
     
-    const unsubscribe = base44.agents.subscribeToConversation(
-      currentConversationId,
-      (data) => {
-        setMessages([...data.messages || []]);
-      }
-    );
+    let unsubscribe;
     
-    return () => unsubscribe();
+    try {
+      unsubscribe = base44.agents.subscribeToConversation(
+        currentConversationId,
+        (data) => {
+          setMessages([...data.messages || []]);
+        }
+      );
+    } catch (error) {
+      console.error('❌ [WEBSOCKET] Subscription error:', error);
+      // אל תעצור את האפליקציה בגלל שגיאת WebSocket
+    }
+    
+    return () => {
+      if (unsubscribe && typeof unsubscribe === 'function') {
+        try {
+          unsubscribe();
+        } catch (error) {
+          console.error('❌ [WEBSOCKET] Unsubscribe error:', error);
+        }
+      }
+    };
   }, [currentConversationId]);
 
   // יצירת שיחה חדשה

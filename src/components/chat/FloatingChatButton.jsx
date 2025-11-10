@@ -54,18 +54,33 @@ export default function FloatingChatButton() {
     }
   }, [messages]);
 
-  // מנוי לעדכונים בזמן אמת
+  // מנוי לעדכונים בזמן אמת - FIX: טיפול טוב יותר ב-WebSocket
   useEffect(() => {
     if (!currentConversationId) return;
     
-    const unsubscribe = base44.agents.subscribeToConversation(
-      currentConversationId,
-      (data) => {
-        setMessages([...data.messages || []]);
-      }
-    );
+    let unsubscribe;
     
-    return () => unsubscribe();
+    try {
+      unsubscribe = base44.agents.subscribeToConversation(
+        currentConversationId,
+        (data) => {
+          setMessages([...data.messages || []]);
+        }
+      );
+    } catch (error) {
+      console.error('❌ [WEBSOCKET] Subscription error:', error);
+      // אל תעצור את האפליקציה בגלל שגיאת WebSocket
+    }
+    
+    return () => {
+      if (unsubscribe && typeof unsubscribe === 'function') {
+        try {
+          unsubscribe();
+        } catch (error) {
+          console.error('❌ [WEBSOCKET] Unsubscribe error:', error);
+        }
+      }
+    };
   }, [currentConversationId]);
 
   const loadConversations = async () => {
