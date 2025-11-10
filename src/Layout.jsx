@@ -6,7 +6,7 @@ import {
   BarChart3, Archive, FolderOpen, MessageSquare,
   Calculator, Pin, PinOff, ChevronRight, Home,
   Briefcase, CheckSquare2, Timer, Receipt, Menu,
-  Calendar, Mail, Brain, LogOut, UserCog
+  Calendar, Mail, Brain, LogOut, UserCog, MessageCircleMore
 } from "lucide-react";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { base44 } from "@/api/base44Client";
@@ -29,6 +29,7 @@ export default function Layout({ children, currentPageName }) {
     }
   });
   const [hovered, setHovered] = React.useState(false);
+  const [userSectionHovered, setUserSectionHovered] = React.useState(false); // 🆕 מצב hover על אזור המשתמש
   const loadedRef = React.useRef(false);
 
   const accentColor = "#2C3A50";
@@ -89,7 +90,7 @@ export default function Layout({ children, currentPageName }) {
             email: userData.email,
             theme: userData.theme
           });
-          setUser(userData); // 🚀 מעדכן user מיד
+          setUser(userData);
         } catch (error) {
           console.warn('⚠️ [LAYOUT] Failed to load user:', error);
           userData = {};
@@ -157,6 +158,7 @@ export default function Layout({ children, currentPageName }) {
   const menuItems = [
     { name: "Dashboard", icon: Home, path: "Dashboard" },
     { name: "צ'אט AI חכם", icon: Brain, path: "AIChat" },
+    { name: "צ'אט צוות", icon: MessageCircleMore, path: "TeamChat" }, // 🆕 צ'אט צוות
     { name: "לקוחות", icon: Users, path: "Clients" },
     { name: "פרויקטים", icon: Briefcase, path: "Projects" },
     { name: "הצעות מחיר", icon: Calculator, path: "Quotes" },
@@ -354,9 +356,13 @@ export default function Layout({ children, currentPageName }) {
                 </div>
               </div>
 
-              {/* User section */}
+              {/* 🆕 User section עם hover */}
               {user && (
-                <div className="px-3 py-3 border-b-2 bg-gradient-to-l from-slate-50 to-white">
+                <div 
+                  className="px-3 py-3 border-b-2 bg-gradient-to-l from-slate-50 to-white relative"
+                  onMouseEnter={() => setUserSectionHovered(true)}
+                  onMouseLeave={() => setUserSectionHovered(false)}
+                >
                   <div className="flex items-center justify-between gap-3">
                     {/* User Info */}
                     <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -377,8 +383,10 @@ export default function Layout({ children, currentPageName }) {
                       </div>
                     </div>
 
-                    {/* Action Buttons */}
-                    <div className="flex gap-2 flex-shrink-0">
+                    {/* 🆕 Action Buttons - מופיעים רק ב-hover */}
+                    <div className={`flex gap-2 flex-shrink-0 transition-all duration-200 ${
+                      userSectionHovered ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4 pointer-events-none'
+                    }`}>
                       {/* Switch User Button */}
                       <button
                         onClick={async () => {
@@ -396,9 +404,6 @@ export default function Layout({ children, currentPageName }) {
                         title="החלף משתמש"
                       >
                         <UserCog className="w-5 h-5 text-blue-600 group-hover:scale-110 transition-transform" />
-                        <span className="absolute -bottom-5 right-0 text-[10px] text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                          החלף
-                        </span>
                       </button>
                       
                       {/* Logout Button */}
@@ -418,15 +423,15 @@ export default function Layout({ children, currentPageName }) {
                         title="התנתק"
                       >
                         <LogOut className="w-5 h-5 text-red-600 group-hover:scale-110 transition-transform" />
-                        <span className="absolute -bottom-5 right-0 text-[10px] text-red-600 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                          התנתק
-                        </span>
                       </button>
                     </div>
                   </div>
 
-                  {/* Email */}
-                  <div className="mt-2 text-xs text-slate-500 truncate" title={user.email}>
+                  {/* Email - hover מעליו מפעיל את הכפתורים */}
+                  <div 
+                    className="mt-2 text-xs text-slate-500 truncate cursor-pointer hover:text-slate-700 transition-colors" 
+                    title={user.email}
+                  >
                     📧 {user.email}
                   </div>
                 </div>
