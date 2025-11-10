@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
@@ -72,9 +73,10 @@ export default function FloatingChatButton() {
     }
   };
 
-  // טעינת שיחות כשנפתח הדיאלוג
+  // 🚀 FIX: טעינת שיחות רק כשנפתח הדיאלוג
   useEffect(() => {
     if (isOpen && conversations.length === 0 && mountedRef.current) {
+      console.log('🔄 [FLOAT-CHAT] Loading conversations on open...');
       loadConversations();
     }
   }, [isOpen]);
@@ -140,12 +142,13 @@ export default function FloatingChatButton() {
   const loadConversations = async () => {
     setLoadingConversations(true);
     try {
+      // 🚀 FIX: limit ל-20 שיחות במקום הכל
       const convs = await base44.agents.listConversations({
         agent_name: AGENT_NAME
       });
       
       if (mountedRef.current) {
-        const activeConvs = convs.filter(c => !c.metadata?.deleted);
+        const activeConvs = convs.filter(c => !c.metadata?.deleted).slice(0, 20); // מגביל ל-20
         setConversations(activeConvs);
         
         if (activeConvs.length > 0 && !currentConversationId) {

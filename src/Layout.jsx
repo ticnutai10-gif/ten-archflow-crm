@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Suspense, lazy } from "react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import {
@@ -9,11 +9,13 @@ import {
   Calendar, Mail, Brain, LogOut, UserCog
 } from "lucide-react";
 import { SidebarProvider } from "@/components/ui/sidebar";
-import FloatingTimer from "@/components/timer/FloatingTimer";
-import ReminderPopup from "@/components/reminders/ReminderPopup";
-import FloatingDebugPanel from "@/components/debug/FloatingDebugPanel";
-import FloatingChatButton from "@/components/chat/FloatingChatButton";
 import { base44 } from "@/api/base44Client";
+
+// 🚀 LAZY LOADING - רכיבים כבדים נטענים רק כשצריך
+const FloatingTimer = lazy(() => import("@/components/timer/FloatingTimer"));
+const ReminderPopup = lazy(() => import("@/components/reminders/ReminderPopup"));
+const FloatingDebugPanel = lazy(() => import("@/components/debug/FloatingDebugPanel"));
+const FloatingChatButton = lazy(() => import("@/components/chat/FloatingChatButton"));
 
 export default function Layout({ children, currentPageName }) {
   const [user, setUser] = React.useState(null);
@@ -66,36 +68,36 @@ export default function Layout({ children, currentPageName }) {
     };
   }, []);
 
+  // 🚀 FIX: מיזוג קריאות auth + theme לקריאה אחת
   React.useEffect(() => {
     if (loadedRef.current) {
-      console.log('⏭️ [LAYOUT] Theme already loaded, skipping...');
+      console.log('⏭️ [LAYOUT] Already loaded, skipping...');
       return;
     }
     
     loadedRef.current = true;
-    console.log('🎨 [LAYOUT] 🚀 INITIAL THEME LOAD - START');
+    console.log('🎨 [LAYOUT] 🚀 INITIAL LOAD - START');
     
-    const loadTheme = async () => {
+    const loadUserAndTheme = async () => {
       try {
-        console.log('🎨 [LAYOUT] Step 1: Loading user data...');
+        console.log('🎨 [LAYOUT] Loading user and theme...');
         
         let userData;
         try {
           userData = await base44.auth.me();
-          console.log('🎨 [LAYOUT] Step 2: User loaded:', {
+          console.log('✅ [LAYOUT] User loaded:', {
             email: userData.email,
             theme: userData.theme
           });
+          setUser(userData); // 🚀 מעדכן user מיד
         } catch (error) {
-          console.warn('⚠️ [LAYOUT] Failed to load user, using defaults:', error);
+          console.warn('⚠️ [LAYOUT] Failed to load user:', error);
           userData = {};
+          setUser(null);
         }
         
         const localTheme = localStorage.getItem('app-theme');
-        console.log('🎨 [LAYOUT] Step 3: localStorage theme:', localTheme);
-        
         const themeId = userData.theme || localTheme || 'cream';
-        console.log('🎨 [LAYOUT] Step 4: Selected theme:', themeId);
         
         const themes = {
           cream: { bg: '#FCF6E3', text: '#1e293b' },
@@ -107,52 +109,20 @@ export default function Layout({ children, currentPageName }) {
         };
         
         const theme = themes[themeId] || themes.cream;
-        console.log('🎨 [LAYOUT] Step 5: Theme config:', theme);
-        
-        const currentBg = document.body.style.backgroundColor;
-        const currentVar = getComputedStyle(document.documentElement).getPropertyValue('--bg-cream');
-        
-        console.log('🎨 [LAYOUT] Step 6: Current state:', {
-          bodyBg: currentBg,
-          cssVar: currentVar
-        });
-        
-        console.log('🎨 [LAYOUT] Step 7: Applying theme to DOM...');
         
         document.body.style.backgroundColor = theme.bg;
         document.body.style.color = theme.text;
         document.documentElement.style.setProperty('--bg-cream', theme.bg);
         document.documentElement.style.setProperty('--text-color', theme.text);
         
-        console.log('🎨 [LAYOUT] Step 8: Theme applied!', {
-          bodyBg: document.body.style.backgroundColor,
-          bodyColor: document.body.style.color,
-          cssVarBg: getComputedStyle(document.documentElement).getPropertyValue('--bg-cream'),
-          cssVarText: getComputedStyle(document.documentElement).getPropertyValue('--text-color')
-        });
-        
-        console.log('🎨 [LAYOUT] ✅ INITIAL THEME LOAD - COMPLETE');
+        console.log('✅ [LAYOUT] User & Theme loaded in single call');
         
       } catch (e) {
-        console.error('❌ [LAYOUT] Error loading theme:', e);
+        console.error('❌ [LAYOUT] Error loading:', e);
       }
     };
 
-    loadTheme();
-  }, []);
-
-  React.useEffect(() => {
-    let mounted = true;
-    base44.auth.me()
-      .then((u) => {
-        if (mounted) setUser(u);
-      })
-      .catch(() => {
-        if (mounted) setUser(null);
-      });
-    return () => {
-      mounted = false;
-    };
+    loadUserAndTheme();
   }, []);
 
   React.useEffect(() => {
@@ -384,7 +354,7 @@ export default function Layout({ children, currentPageName }) {
                 </div>
               </div>
 
-              {/* User section - ✅ מעוצב ובולט יותר! */}
+              {/* User section */}
               {user && (
                 <div className="px-3 py-3 border-b-2 bg-gradient-to-l from-slate-50 to-white">
                   <div className="flex items-center justify-between gap-3">
@@ -407,7 +377,7 @@ export default function Layout({ children, currentPageName }) {
                       </div>
                     </div>
 
-                    {/* Action Buttons - ✅ גדולים ובולטים יותר! */}
+                    {/* Action Buttons */}
                     <div className="flex gap-2 flex-shrink-0">
                       {/* Switch User Button */}
                       <button
@@ -455,7 +425,7 @@ export default function Layout({ children, currentPageName }) {
                     </div>
                   </div>
 
-                  {/* Email - ✅ הוספתי הצגת מייל */}
+                  {/* Email */}
                   <div className="mt-2 text-xs text-slate-500 truncate" title={user.email}>
                     📧 {user.email}
                   </div>
@@ -536,10 +506,13 @@ export default function Layout({ children, currentPageName }) {
           </div>
         </div>
 
-        <FloatingTimer />
-        <ReminderPopup />
-        <FloatingDebugPanel />
-        <FloatingChatButton />
+        {/* 🚀 LAZY LOADED - רכיבים כבדים עם Suspense */}
+        <Suspense fallback={null}>
+          <FloatingTimer />
+          <ReminderPopup />
+          <FloatingDebugPanel />
+          <FloatingChatButton />
+        </Suspense>
       </div>
     </SidebarProvider>
   );

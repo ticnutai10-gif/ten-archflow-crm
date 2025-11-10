@@ -247,7 +247,7 @@ function useTimer(initial = 0) {
 
 let clientsCache = null;
 let clientsCacheTime = 0;
-const CACHE_DURATION = 5 * 60 * 1000;
+const CACHE_DURATION = 10 * 60 * 1000; // 🚀 FIX: הגדלת cache ל-10 דקות במקום 5
 
 export default function FloatingTimer() {
   const [prefs, setPrefs] = React.useState(readPrefs());
@@ -347,6 +347,7 @@ export default function FloatingTimer() {
       console.log('⏱️ [TIMER] Loading clients...');
 
       const now = Date.now();
+      // 🚀 FIX: הגדלת cache ל-10 דקות במקום 5
       if (clientsCache && now - clientsCacheTime < CACHE_DURATION) {
         console.log('✅ [TIMER] Using cached clients:', clientsCache.length);
         setClients(clientsCache);
@@ -359,17 +360,24 @@ export default function FloatingTimer() {
       console.log('✅ [TIMER] Received clients from server:', allowedClients.length);
       console.log('📋 [TIMER] Sample clients:', allowedClients.slice(0, 5).map((c) => ({ name: c.name, phone: c.phone })));
 
-      // כבר לא מסננים לפי טלפון - מציגים את כל הלקוחות
-      clientsCache = allowedClients;
-      clientsCacheTime = now;
-
-      setClients(allowedClients);
-      console.log('✅ [TIMER] Loaded and cached all clients:', allowedClients.length);
+      // 🚀 FIX: שמירה בcache רק אם הייתה טעינה מוצלחת
+      if (allowedClients && allowedClients.length > 0) {
+        clientsCache = allowedClients;
+        clientsCacheTime = now;
+        setClients(allowedClients);
+        console.log('✅ [TIMER] Loaded and cached all clients:', allowedClients.length);
+      } else {
+        console.log('⚠️ [TIMER] No clients returned, keeping old cache');
+        if (clientsCache) {
+          setClients(clientsCache);
+        }
+      }
     } catch (error) {
       console.error('❌ [TIMER] Error loading clients:', error);
 
-      if (error.response?.status === 429 && clientsCache) {
-        console.log('⚠️ [TIMER] Rate limit - using old cache');
+      // 🚀 FIX: שימוש ב-cache גם במקרה של שגיאה
+      if (clientsCache) {
+        console.log('⚠️ [TIMER] Error - using old cache');
         setClients(clientsCache);
       }
     }

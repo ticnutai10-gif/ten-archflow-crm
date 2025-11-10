@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -187,10 +188,10 @@ export default function Dashboard() {
       }
 
       const timeLogsPromise = canSeeAllTimeLogs ?
-        base44.entities.TimeLog.filter({}, '-log_date', 1000) :
-        base44.entities.TimeLog.filter({ created_by: currentUser.email }, '-log_date', 300);
+        base44.entities.TimeLog.filter({}, '-log_date', 200) :
+        base44.entities.TimeLog.filter({ created_by: currentUser.email }, '-log_date', 100);
 
-      const allMeetings = await base44.entities.Meeting.list('-meeting_date');
+      const allMeetings = await base44.entities.Meeting.list('-meeting_date', 100);
       const now = new Date();
       const futureMeetings = allMeetings.filter(m => {
         if (!m.meeting_date) return false;
@@ -204,10 +205,10 @@ export default function Dashboard() {
       });
 
       const [clientsData, projectsData, quotesData, tasksData, myTimeLogs] = await Promise.all([
-        base44.entities.Client.list(),
-        base44.entities.Project.list('-created_date'),
-        base44.entities.Quote.list('-created_date'),
-        base44.entities.Task.filter({ status: { $ne: 'הושלמה' } }, '-due_date'),
+        base44.entities.Client.list('-created_date', 100),
+        base44.entities.Project.list('-created_date', 100),
+        base44.entities.Quote.list('-created_date', 50),
+        base44.entities.Task.filter({ status: { $ne: 'הושלמה' } }, '-due_date', 100),
         timeLogsPromise
       ]);
 
