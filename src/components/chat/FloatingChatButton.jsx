@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
@@ -40,75 +41,103 @@ export default function FloatingChatButton() {
   const scrollRef = useRef(null);
   const sendingRef = useRef(false);
   const subscriptionRef = useRef(null);
+  const mountedRef = useRef(true); // Added mountedRef
+
+  // Cleanup on unmount
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   // טעינת שיחות כשנפתח הדיאלוג
   useEffect(() => {
-    if (isOpen && conversations.length === 0) {
+    if (isOpen && conversations.length === 0 && mountedRef.current) {
       loadConversations();
     }
   }, [isOpen]);
 
   // סקרול אוטומטי
   useEffect(() => {
-    if (scrollRef.current) {
+    if (scrollRef.current && mountedRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
 
-  // מנוי לעדכונים בזמן אמת - FIX מלא
+  // מנוי לעדכונים בזמן אמת - FIX מוחלט!
   useEffect(() => {
-    // בדיקה חזקה
-    if (!currentConversationId || typeof currentConversationId !== 'string') {
-      console.log('⏭️ [FLOAT-WEBSOCKET] Skipping - no valid ID');
+    // בדיקה שיש ID תקף וש-component עדיין mounted
+    if (!currentConversationId || !mountedRef.current) {
+      console.log('⏭️ [FLOAT-WS] Skipping subscription');
       return;
     }
     
-    console.log('🔌 [FLOAT-WEBSOCKET] Setting up for:', currentConversationId);
+    console.log('🔌 [FLOAT-WS] Setting up for:', currentConversationId);
     
-    // נקה קודם
-    if (subscriptionRef.current && typeof subscriptionRef.current === 'function') {
-      console.log('🧹 [FLOAT-WEBSOCKET] Cleaning previous');
+    // ניקוי מנוי קודם
+    if (subscriptionRef.current) {
+      console.log('🧹 [FLOAT-WS] Cleaning previous');
       try {
-        subscriptionRef.current();
+        if (typeof subscriptionRef.current === 'function') {
+          subscriptionRef.current();
+        }
       } catch (error) {
-        console.error('⚠️ [FLOAT-WEBSOCKET] Cleanup error:', error);
+        console.warn('⚠️ [FLOAT-WS] Cleanup error (ignored):', error.message);
       }
       subscriptionRef.current = null;
     }
     
-    let isSubscribed = false;
-    
-    try {
-      const unsubscribe = base44.agents.subscribeToConversation(
-        currentConversationId,
-        (data) => {
-          if (isSubscribed) {
-            console.log('📨 [FLOAT-WEBSOCKET] Update');
-            setMessages([...data.messages || []]);
+    // Delay כדי לתת ל-WebSocket זמן להתחבר
+    const setupTimeout = setTimeout(() => {
+      if (!mountedRef.current) {
+        console.log('⏭️ [FLOAT-WS] Unmounted during setup');
+        return;
+      }
+      
+      let unsubscribe = null;
+      
+      try {
+        unsubscribe = base44.agents.subscribeToConversation(
+          currentConversationId,
+          (data) => {
+            if (mountedRef.current) {
+              console.log('📨 [FLOAT-WS] Update');
+              setMessages([...data.messages || []]);
+            }
           }
-        }
-      );
-      
-      isSubscribed = true;
-      subscriptionRef.current = unsubscribe;
-      console.log('✅ [FLOAT-WEBSOCKET] Established');
-      
-    } catch (error) {
-      console.error('❌ [FLOAT-WEBSOCKET] Error:', error);
-    }
-    
-    return () => {
-      isSubscribed = false;
-      console.log('🔌 [FLOAT-WEBSOCKET] Cleanup');
-      
-      if (subscriptionRef.current && typeof subscriptionRef.current === 'function') {
-        try {
-          subscriptionRef.current();
-        } catch (error) {
-          console.error('⚠️ [FLOAT-WEBSOCKET] Cleanup error:', error);
-        }
+        );
+        
+        subscriptionRef.current = unsubscribe;
+        console.log('✅ [FLOAT-WS] Established');
+        
+      } catch (error) {
+        console.error('❌ [FLOAT-WS] Error:', error.message);
         subscriptionRef.current = null;
       }
+    }, 100);
+    
+    return () => {
+      console.log('🔌 [FLOAT-WS] Cleanup initiated');
+      clearTimeout(setupTimeout);
+      
+      // Cleanup בצורה בטוחה
+      const cleanupTimeout = setTimeout(() => {
+        if (subscriptionRef.current) {
+          try {
+            if (typeof subscriptionRef.current === 'function') {
+              subscriptionRef.current();
+              console.log('✅ [FLOAT-WS] Cleanup OK');
+            }
+          } catch (error) {
+            console.warn('⚠️ [FLOAT-WS] Cleanup error (ignored):', error.message);
+          } finally {
+            subscriptionRef.current = null;
+          }
+        }
+      }, 50);
+      
+      return () => clearTimeout(cleanupTimeout);
     };
   }, [currentConversationId]);
 
@@ -119,23 +148,28 @@ export default function FloatingChatButton() {
         agent_name: AGENT_NAME
       });
       
-      const activeConvs = convs.filter(c => !c.metadata?.deleted);
-      setConversations(activeConvs);
-      
-      if (activeConvs.length > 0 && !currentConversationId) {
-        await loadConversation(activeConvs[0].id);
+      if (mountedRef.current) {
+        const activeConvs = convs.filter(c => !c.metadata?.deleted);
+        setConversations(activeConvs);
+        
+        if (activeConvs.length > 0 && !currentConversationId) {
+          await loadConversation(activeConvs[0].id);
+        }
       }
     } catch (error) {
       console.error('Error loading conversations:', error);
+    } finally {
+      if (mountedRef.current) {
+        setLoadingConversations(false);
+      }
     }
-    setLoadingConversations(false);
   };
 
   const loadConversation = async (convId) => {
     try {
       const conv = await base44.agents.getConversation(convId);
       
-      if (conv) {
+      if (conv && mountedRef.current) {
         setCurrentConversationId(convId);
         setCurrentConversation(conv);
         setMessages([...conv.messages || []]);
@@ -160,10 +194,11 @@ export default function FloatingChatButton() {
         }
       });
       
-      await loadConversations();
-      await loadConversation(newConv.id);
-      
-      toast.success('🎉 שיחה חדשה!');
+      if (mountedRef.current) {
+        await loadConversations();
+        await loadConversation(newConv.id);
+        toast.success('🎉 שיחה חדשה!');
+      }
       
       return newConv.id;
     } catch (error) {
@@ -202,11 +237,12 @@ export default function FloatingChatButton() {
         }
       });
 
-      await loadConversations();
-      setEditDialogOpen(false);
-      setEditingConv(null);
-      
-      toast.success('✅ השיחה עודכנה!');
+      if (mountedRef.current) {
+        await loadConversations();
+        setEditDialogOpen(false);
+        setEditingConv(null);
+        toast.success('✅ השיחה עודכנה!');
+      }
     } catch (error) {
       console.error('Error updating conversation:', error);
       toast.error('שגיאה בעדכון השיחה');
@@ -245,8 +281,10 @@ export default function FloatingChatButton() {
       console.error('Error:', error);
       toast.error(`שגיאה: ${error.message}`);
     } finally {
-      setLoading(false);
-      sendingRef.current = false;
+      if (mountedRef.current) {
+        setLoading(false);
+        sendingRef.current = false;
+      }
     }
   };
 
@@ -266,20 +304,22 @@ export default function FloatingChatButton() {
         });
       }
       
-      await loadConversations();
-      
-      if (currentConversationId === convId) {
-        const remaining = conversations.filter(c => c.id !== convId && !c.metadata?.deleted);
-        if (remaining.length > 0) {
-          await loadConversation(remaining[0].id);
-        } else {
-          setCurrentConversationId(null);
-          setCurrentConversation(null);
-          setMessages([]);
+      if (mountedRef.current) {
+        await loadConversations();
+        
+        if (currentConversationId === convId) {
+          const remaining = conversations.filter(c => c.id !== convId && !c.metadata?.deleted);
+          if (remaining.length > 0) {
+            await loadConversation(remaining[0].id);
+          } else {
+            setCurrentConversationId(null);
+            setCurrentConversation(null);
+            setMessages([]);
+          }
         }
+        
+        toast.success('נמחק');
       }
-      
-      toast.success('נמחק');
     } catch (error) {
       console.error('Error deleting:', error);
     }
