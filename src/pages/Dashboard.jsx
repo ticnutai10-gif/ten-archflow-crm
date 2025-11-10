@@ -38,6 +38,7 @@ import TimerLogs from "../components/dashboard/TimerLogs";
 import ReminderManager from "../components/reminders/ReminderManager";
 import DashboardSettings from "../components/dashboard/DashboardSettings";
 import UpcomingMeetings from "../components/dashboard/UpcomingMeetings";
+import ProjectInsightsCard from "../components/dashboard/ProjectInsightsCard";
 
 export default function Dashboard() {
   const [stats, setStats] = useState({
@@ -371,6 +372,11 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* AI Project Insights - NEW! */}
+        <div className="mb-8">
+          <ProjectInsightsCard />
         </div>
 
         {/* Stats Grid */}

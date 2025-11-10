@@ -9,7 +9,8 @@ export default function QuickActions({ actions, onActionClick, insights }) {
     red: "from-red-500 to-red-600 hover:from-red-600 hover:to-red-700",
     purple: "from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700",
     orange: "from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700",
-    teal: "from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700"
+    teal: "from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700",
+    indigo: "from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700"
   };
 
   // תובנות מהירות
@@ -22,37 +23,35 @@ export default function QuickActions({ actions, onActionClick, insights }) {
       badge: insights.summary?.risks?.length || 0
     },
     {
+      icon: () => <span className="text-2xl">🎯</span>,
+      label: "ניתוח פרויקטים",
+      question: "תן לי ניתוח מתקדם של כל הפרויקטים - סיכונים, חיזויים וחלוקת משאבים",
+      color: "indigo"
+    },
+    {
+      icon: () => <span className="text-2xl">🔮</span>,
+      label: "חיזוי דדליינים",
+      question: "אילו פרויקטים לא יעמדו בדדלין? תן חיזוי מדויק לפי הקצב הנוכחי",
+      color: "purple"
+    },
+    {
       icon: () => <span className="text-2xl">💡</span>,
-      label: "הזדמנויות עסקיות",
-      question: "אילו הזדמנויות עסקיות יש לי כרגע? תן המלצות קונקרטיות",
+      label: "המלצות אופטימיזציה",
+      question: "איך אפשר לייעל את הפרויקטים? תן לי המלצות קונקרטיות עם מספרים",
       color: "green",
       badge: insights.opportunities?.length || 0
     },
     {
       icon: () => <span className="text-2xl">📊</span>,
-      label: "ניתוח פיננסי",
-      question: "תן לי ניתוח פיננסי מפורט - הכנסות, חשבוניות, מגמות",
-      color: "purple"
-    },
-    {
-      icon: () => <span className="text-2xl">👥</span>,
-      label: "לקוחות בסיכון",
-      question: "אילו לקוחות בסיכון או דורשים תשומת לב?",
-      color: "orange",
-      badge: insights.clients?.inactive?.length || 0
-    },
-    {
-      icon: () => <span className="text-2xl">🏗️</span>,
-      label: "פרויקטים דחופים",
-      question: "אילו פרויקטים דחופים או בסיכון?",
-      color: "red",
-      badge: (insights.projects?.risky?.length || 0) + (insights.projects?.overdue?.length || 0)
-    },
-    {
-      icon: () => <span className="text-2xl">⏱️</span>,
-      label: "ניתוח פרודוקטיביות",
-      question: "תן לי ניתוח של הפרודוקטיביות והשעות החודש",
+      label: "ניתוח משאבים",
+      question: "תן לי ניתוח של הקצאת המשאבים - איפה יש חוסר ואיפה עודף?",
       color: "teal"
+    },
+    {
+      icon: () => <span className="text-2xl">💰</span>,
+      label: "ניתוח פיננסי",
+      question: "תן לי ניתוח פיננסי מפורט - הכנסות, חשבוניות, מגמות ורווחיות",
+      color: "purple"
     }
   ] : [];
 
@@ -62,8 +61,8 @@ export default function QuickActions({ actions, onActionClick, insights }) {
     <div className="w-full max-w-4xl space-y-6">
       {insights && (
         <div className="text-center mb-4">
-          <h3 className="text-lg font-bold text-slate-900 mb-2">🎯 תובנות מהירות</h3>
-          <p className="text-sm text-slate-600">לחץ לקבלת ניתוח מפורט</p>
+          <h3 className="text-lg font-bold text-slate-900 mb-2">🎯 תובנות ופעולות מהירות</h3>
+          <p className="text-sm text-slate-600">לחץ לקבלת ניתוח מפורט או בקש פעולה</p>
         </div>
       )}
       
