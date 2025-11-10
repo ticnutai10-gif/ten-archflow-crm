@@ -71,13 +71,13 @@ function analyzeProjects(data) {
         };
     });
 
-    // מיון לפי רמת סיכון (הכי מסוכן ראשון)
-    const sortedByRisk = [...projectAnalysis].sort((a, b) => b.riskScore - a.riskScore);
+    // מיון לפי רמת סיכון (הכי מסוכן ראשון) - FIX: access risk.riskScore correctly
+    const sortedByRisk = [...projectAnalysis].sort((a, b) => (b.risk?.riskScore || 0) - (a.risk?.riskScore || 0));
 
     return {
         total: projects.length,
         active: activeProjects.length,
-        atRisk: projectAnalysis.filter(p => p.riskLevel === 'high').length,
+        atRisk: projectAnalysis.filter(p => p.risk?.riskLevel === 'high').length,
         projects: sortedByRisk,
         summary: generateProjectSummary(projectAnalysis)
     };
@@ -218,14 +218,15 @@ function analyzeProject(project, allTasks, allTimeLogs, today) {
     // המלצות לאופטימיזציה
     const recommendations = generateRecommendations({
         project,
-        completionRate,
+        completionRate: parseFloat(completionRate),
         recentHours,
         contributorCount,
         openTasks: openTasks.length,
         overdueTasks: overdueTasks.length,
         deadlineStatus,
         estimatedCompletion,
-        riskLevel
+        riskLevel,
+        daysUntilDeadline
     });
 
     return {
@@ -285,7 +286,7 @@ function generateRecommendations(data) {
             priority: 'high',
             category: 'activity',
             title: 'הגבר את הפעילות בפרויקט',
-            description: `רק ${data.recentHours} שעות עבודה בשבועיים האחרונים. פרויקט בביצוע צריך יותר פעילות.`,
+            description: `רק ${data.recentHours.toFixed(1)} שעות עבודה בשבועיים האחרונים. פרויקט בביצוע צריך יותר פעילות.`,
             action: 'קבע פגישת סטטוס ותכנן את השלבים הבאים'
         });
     }
@@ -338,15 +339,15 @@ function generateRecommendations(data) {
 }
 
 function generateProjectSummary(projectAnalysis) {
-    const highRisk = projectAnalysis.filter(p => p.risk.riskLevel === 'high');
-    const mediumRisk = projectAnalysis.filter(p => p.risk.riskLevel === 'medium');
-    const onTrack = projectAnalysis.filter(p => p.risk.riskLevel === 'low');
+    const highRisk = projectAnalysis.filter(p => p.risk?.riskLevel === 'high');
+    const mediumRisk = projectAnalysis.filter(p => p.risk?.riskLevel === 'medium');
+    const onTrack = projectAnalysis.filter(p => p.risk?.riskLevel === 'low');
 
     const avgCompletionRate = projectAnalysis.length > 0
-        ? (projectAnalysis.reduce((sum, p) => sum + p.metrics.completionRate, 0) / projectAnalysis.length).toFixed(1)
+        ? (projectAnalysis.reduce((sum, p) => sum + (p.metrics?.completionRate || 0), 0) / projectAnalysis.length).toFixed(1)
         : 0;
 
-    const totalRecommendations = projectAnalysis.reduce((sum, p) => sum + p.recommendations.length, 0);
+    const totalRecommendations = projectAnalysis.reduce((sum, p) => sum + (p.recommendations?.length || 0), 0);
 
     return {
         healthScore: calculateHealthScore(projectAnalysis),
@@ -360,8 +361,8 @@ function generateProjectSummary(projectAnalysis) {
         topRisks: highRisk.slice(0, 5).map(p => ({
             name: p.projectName,
             client: p.clientName,
-            riskScore: p.risk.riskScore,
-            mainIssue: p.risk.riskFactors[0]
+            riskScore: p.risk?.riskScore || 0,
+            mainIssue: p.risk?.riskFactors?.[0] || 'לא זוהה'
         }))
     };
 }
@@ -372,10 +373,9 @@ function calculateHealthScore(projectAnalysis) {
     let score = 100;
 
     projectAnalysis.forEach(project => {
-        // הפחת ציון לפי רמת סיכון
-        if (project.risk.riskLevel === 'high') {
+        if (project.risk?.riskLevel === 'high') {
             score -= 15;
-        } else if (project.risk.riskLevel === 'medium') {
+        } else if (project.risk?.riskLevel === 'medium') {
             score -= 5;
         }
     });
