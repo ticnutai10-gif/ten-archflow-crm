@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,7 +34,9 @@ import {
   MessageCircle,
   ExternalLink,
   Copy,
-  Check
+  Check,
+  Target,
+  Activity
 } from "lucide-react";
 import { toast } from "sonner";
 import MessageBubble from "@/components/chat/MessageBubble";
@@ -49,6 +52,8 @@ export default function AIChatPage() {
   const [inputMessage, setInputMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingConversations, setLoadingConversations] = useState(true);
+  const [loadingInsights, setLoadingInsights] = useState(false);
+  const [businessInsights, setBusinessInsights] = useState(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [whatsappDialogOpen, setWhatsappDialogOpen] = useState(false);
   const [editingConv, setEditingConv] = useState(null);
@@ -62,6 +67,7 @@ export default function AIChatPage() {
   useEffect(() => {
     loadConversations();
     generateWhatsAppUrl();
+    loadBusinessInsights();
   }, []);
 
   // סקרול אוטומטי
@@ -71,12 +77,24 @@ export default function AIChatPage() {
     }
   }, [messages]);
 
+  // טעינת תובנות עסקיות
+  const loadBusinessInsights = async () => {
+    setLoadingInsights(true);
+    try {
+      const response = await base44.functions.invoke('businessInsights');
+      setBusinessInsights(response.data.insights);
+      console.log('✅ [INSIGHTS] Loaded:', response.data.insights);
+    } catch (error) {
+      console.error('❌ [INSIGHTS] Error:', error);
+    }
+    setLoadingInsights(false);
+  };
+
   // יצירת URL ל-WhatsApp
   const generateWhatsAppUrl = () => {
     try {
       const url = base44.agents.getWhatsAppConnectURL(AGENT_NAME);
       setWhatsappUrl(url);
-      console.log('📱 [WHATSAPP] Generated URL:', url);
     } catch (error) {
       console.error('❌ [WHATSAPP] Error generating URL:', error);
     }
@@ -92,19 +110,16 @@ export default function AIChatPage() {
 
   // טעינת שיחות מה-API
   const loadConversations = async () => {
-    console.log('🔄 [CHAT] Loading conversations from API...');
     setLoadingConversations(true);
     try {
       const convs = await base44.agents.listConversations({
         agent_name: AGENT_NAME
       });
       
-      console.log('✅ [CHAT] Loaded conversations:', convs.length);
       setConversations(convs);
       
       if (convs.length > 0 && !currentConversationId) {
         const firstConv = convs[0];
-        console.log('📂 [CHAT] Auto-loading first conversation:', firstConv.id);
         await loadConversation(firstConv.id);
       }
     } catch (error) {
@@ -116,14 +131,10 @@ export default function AIChatPage() {
 
   // טעינת שיחה ספציפית
   const loadConversation = async (convId) => {
-    console.log('📂 [CHAT] Loading conversation:', convId);
-    
     try {
       const conv = await base44.agents.getConversation(convId);
       
       if (conv) {
-        console.log('✅ [CHAT] Found conversation with', conv.messages?.length || 0, 'messages');
-        
         setCurrentConversationId(convId);
         setCurrentConversation(conv);
         setMessages([...conv.messages || []]);
@@ -146,26 +157,18 @@ export default function AIChatPage() {
   useEffect(() => {
     if (!currentConversationId) return;
     
-    console.log('🔔 [CHAT] Subscribing to conversation:', currentConversationId);
-    
     const unsubscribe = base44.agents.subscribeToConversation(
       currentConversationId,
       (data) => {
-        console.log('📨 [CHAT] Received update:', data.messages?.length, 'messages');
         setMessages([...data.messages || []]);
       }
     );
     
-    return () => {
-      console.log('🔕 [CHAT] Unsubscribing from conversation');
-      unsubscribe();
-    };
+    return () => unsubscribe();
   }, [currentConversationId]);
 
   // יצירת שיחה חדשה
   const handleNewConversation = async () => {
-    console.log('➕ [CHAT] Creating new conversation');
-    
     try {
       const newConv = await base44.agents.createConversation({
         agent_name: AGENT_NAME,
@@ -179,8 +182,6 @@ export default function AIChatPage() {
           notes: ''
         }
       });
-      
-      console.log('✅ [CHAT] Created conversation:', newConv.id);
       
       await loadConversations();
       await loadConversation(newConv.id);
@@ -202,7 +203,6 @@ export default function AIChatPage() {
       e.stopPropagation();
     }
     
-    console.log('✏️ [CHAT] Opening edit dialog for:', conv.id);
     setEditingConv(conv);
     setEditForm({
       name: conv.metadata?.name || '',
@@ -216,8 +216,6 @@ export default function AIChatPage() {
       toast.error('נא להזין שם לשיחה');
       return;
     }
-
-    console.log('💾 [CHAT] Saving edit for:', editingConv.id);
 
     try {
       await base44.agents.updateConversation(editingConv.id, {
@@ -243,10 +241,7 @@ export default function AIChatPage() {
   const handleSendMessage = async (messageText = null) => {
     const text = messageText || inputMessage.trim();
     
-    console.log('📤 [CHAT] Sending message:', text);
-    
     if (!text || loading || sendingRef.current) {
-      console.log('⚠️ [CHAT] Cannot send');
       return;
     }
 
@@ -256,7 +251,6 @@ export default function AIChatPage() {
     let conv = currentConversation;
     
     if (!convId) {
-      console.log('ℹ️ [CHAT] Creating new conversation for message');
       convId = await handleNewConversation();
       if (!convId) {
         sendingRef.current = false;
@@ -270,16 +264,10 @@ export default function AIChatPage() {
     setLoading(true);
 
     try {
-      console.log('🤖 [AGENT] Adding message to conversation...');
-      
       await base44.agents.addMessage(conv, {
         role: "user",
         content: text
       });
-
-      console.log('✅ [AGENT] Message added successfully');
-      
-      // המנוי בזמן אמת יעדכן את ההודעות אוטומטית
 
     } catch (error) {
       console.error('❌ [AGENT] Error:', error);
@@ -292,8 +280,6 @@ export default function AIChatPage() {
 
   // מחיקת שיחה
   const handleDeleteConversation = async (convId, e) => {
-    console.log('🗑️ [CHAT] Delete request:', convId);
-    
     if (e) {
       e.preventDefault();
       e.stopPropagation();
@@ -498,21 +484,34 @@ export default function AIChatPage() {
                 <Brain className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold">העוזר העסקי המלא</h1>
+                <h1 className="text-2xl font-bold">יועץ עסקי AI פרואקטיבי</h1>
                 <p className="text-sm text-slate-600 flex items-center gap-1">
-                  <Zap className="w-3 h-3" />
-                  שאלות, פעולות, מיילים ו-WhatsApp
+                  <Target className="w-3 h-3" />
+                  ניתוח תובנות, זיהוי סיכונים והזדמנויות
                 </p>
               </div>
             </div>
             <div className="flex gap-2">
+              <Button
+                onClick={loadBusinessInsights}
+                disabled={loadingInsights}
+                variant="outline"
+                className="gap-2"
+              >
+                {loadingInsights ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Activity className="w-4 h-4" />
+                )}
+                רענן תובנות
+              </Button>
               <Badge className="bg-gradient-to-r from-green-500 to-green-600 text-white shadow-md">
                 <MessageCircle className="w-3 h-3 ml-1" />
                 WhatsApp זמין
               </Badge>
               <Badge className="bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-md">
                 <Sparkles className="w-3 h-3 ml-1" />
-                100% בחינם
+                AI מתקדם
               </Badge>
             </div>
           </div>
@@ -525,38 +524,43 @@ export default function AIChatPage() {
               <div className="p-6 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full mb-6 shadow-lg">
                 <Brain className="w-16 h-16 text-blue-600" />
               </div>
-              <h2 className="text-2xl font-bold mb-2">שלום! מה תרצה שאעשה?</h2>
+              <h2 className="text-2xl font-bold mb-2">שלום! אני היועץ העסקי החכם שלך 🧠</h2>
               <p className="text-slate-600 mb-2 max-w-md">
-                אני סוכן AI מלא שיכול לבצע כל דבר שאתה צריך
+                אני מנתח באופן פרואקטיבי את העסק שלך ומזהה הזדמנויות וסיכונים
               </p>
               <p className="text-xs text-slate-500 mb-4">
-                ✅ שאלות ותשובות | ✅ קביעת פגישות | ✅ יצירת משימות | ✅ הוספת לקוחות | ✅ שליחת מיילים
+                ✅ ניתוח לקוחות | ✅ זיהוי סיכונים | ✅ הזדמנויות עסקיות | ✅ המלצות חכמות
               </p>
-              <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 rounded-lg p-4 mb-6 max-w-lg">
-                <div className="flex items-start gap-3">
-                  <Zap className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                  <div className="text-right text-sm">
-                    <div className="font-bold text-amber-900 mb-2">💡 דוגמאות:</div>
-                    <ul className="text-amber-800 space-y-1 text-xs">
-                      <li>• "תוסיף לקוח חדש בשם יוסי כהן"</li>
-                      <li>• "תקבע פגישה עם משה מחר ב-14:00"</li>
-                      <li>• "תשלח מייל ללקוח X ותעדכן על התקדמות"</li>
-                      <li>• "צור משימה: בדיקת תוכניות, עדיפות גבוהה"</li>
-                      <li>• "כמה לקוחות פעילים יש לי?"</li>
-                    </ul>
+              
+              {businessInsights && (
+                <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-200 rounded-lg p-4 mb-6 max-w-lg">
+                  <div className="flex items-start gap-3">
+                    <Target className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                    <div className="text-right text-sm">
+                      <div className="font-bold text-blue-900 mb-2">🎯 תובנות עכשיו:</div>
+                      {businessInsights.summary?.risks?.length > 0 && (
+                        <div className="text-red-700 mb-1">
+                          ⚠️ {businessInsights.summary.risks.length} סיכונים דורשים תשומת לב
+                        </div>
+                      )}
+                      {businessInsights.opportunities?.length > 0 && (
+                        <div className="text-green-700 mb-1">
+                          💡 {businessInsights.opportunities.length} הזדמנויות עסקיות זוהו
+                        </div>
+                      )}
+                      <div className="text-blue-700">
+                        📊 ציון בריאות עסקי: {businessInsights.summary?.score}/100
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-lg p-4 mb-8 max-w-lg">
-                <div className="flex items-center gap-3">
-                  <MessageCircle className="w-5 h-5 text-green-600" />
-                  <div className="text-right text-sm text-green-900">
-                    <div className="font-bold mb-1">📱 גם ב-WhatsApp!</div>
-                    <div className="text-xs text-green-700">לחץ "חבר ל-WhatsApp" כדי להשתמש בעוזר גם מהנייד</div>
-                  </div>
-                </div>
-              </div>
-              <QuickActions actions={quickActionQuestions} onActionClick={handleSendMessage} />
+              )}
+              
+              <QuickActions 
+                actions={quickActionQuestions} 
+                onActionClick={handleSendMessage}
+                insights={businessInsights}
+              />
             </div>
           ) : (
             <div className="max-w-4xl mx-auto space-y-4">
@@ -568,8 +572,8 @@ export default function AIChatPage() {
                 <div className="flex gap-3 p-4 bg-white rounded-lg shadow-sm border-2 border-blue-200">
                   <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
                   <div>
-                    <div className="font-medium text-blue-900">הסוכן עובד...</div>
-                    <div className="text-xs text-blue-600">מנתח ומבצע פעולות</div>
+                    <div className="font-medium text-blue-900">היועץ מנתח...</div>
+                    <div className="text-xs text-blue-600">בודק נתונים ומפיק תובנות</div>
                   </div>
                 </div>
               )}
@@ -589,7 +593,7 @@ export default function AIChatPage() {
                   handleSendMessage();
                 }
               }}
-              placeholder="בקש ממני משהו או שאל שאלה..."
+              placeholder='שאל שאלה או נסה: "מה המצב?", "תן לי תובנות", "אילו לקוחות בסיכון?"'
               className="flex-1 text-lg py-6 shadow-sm"
               disabled={loading}
               dir="rtl"
@@ -612,7 +616,7 @@ export default function AIChatPage() {
           
           <div className="mt-3 flex items-center justify-center gap-2 text-xs text-slate-500">
             <Sparkles className="w-3 h-3" />
-            <span>סוכן AI מלא - שאלות, פעולות, מיילים ו-WhatsApp</span>
+            <span>יועץ AI פרואקטיבי - תובנות אוטומטיות וניתוח חכם</span>
           </div>
         </div>
       </div>
@@ -683,7 +687,7 @@ export default function AIChatPage() {
               חיבור ל-WhatsApp
             </DialogTitle>
             <DialogDescription className="text-right">
-              קבל את העוזר החכם גם ב-WhatsApp! תוכל לשאול שאלות ולבצע פעולות ישירות מהנייד 📱
+              קבל את היועץ החכם גם ב-WhatsApp! תובנות, התראות והמלצות ישירות לנייד 📱
             </DialogDescription>
           </DialogHeader>
 
@@ -691,11 +695,11 @@ export default function AIChatPage() {
             <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4">
               <h3 className="font-bold text-green-900 mb-2">✨ מה אפשר לעשות ב-WhatsApp?</h3>
               <ul className="text-sm text-green-800 space-y-1">
-                <li>✅ לשאול שאלות על לקוחות ופרויקטים</li>
-                <li>✅ לקבוע פגישות ולהוסיף משימות</li>
-                <li>✅ להוסיף לקוחות חדשים</li>
-                <li>✅ לקבל עדכונים ותזכורות</li>
-                <li>✅ לשלוח מיילים ללקוחות</li>
+                <li>✅ לקבל תובנות עסקיות פרואקטיביות</li>
+                <li>✅ התראות על סיכונים והזדמנויות</li>
+                <li>✅ ניתוח לקוחות ופרויקטים</li>
+                <li>✅ ניהול משימות ופגישות</li>
+                <li>✅ המלצות חכמות מבוססות נתונים</li>
               </ul>
             </div>
 
@@ -740,7 +744,7 @@ export default function AIChatPage() {
             </div>
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-900">
-              <strong>💡 טיפ:</strong> שמור את השיחה עם הבוט בהודעות שמורות או קבע כוכבית כדי למצוא אותו בקלות!
+              <strong>💡 טיפ:</strong> שמור את השיחה בהודעות שמורות לגישה מהירה!
             </div>
           </div>
 
