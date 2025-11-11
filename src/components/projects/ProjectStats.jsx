@@ -1,34 +1,80 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { FolderOpen, CheckCircle2, Clock } from "lucide-react";
-import { ClientApproval } from "@/entities/ClientApproval";
+import { base44 } from "@/api/base44Client";
 
 export default function ProjectStats({ projects = [], isLoading = false }) {
   const [pendingApprovals, setPendingApprovals] = useState(0);
 
-  const activeProjects = useMemo(
-    () => projects.filter(p => p.status !== "הושלם" && p.status !== "מבוטל"),
-    [projects]
-  );
+  useEffect(() => {
+    console.log('📊 [ProjectStats] Received projects:', {
+      projectsCount: projects?.length,
+      projectsType: typeof projects,
+      isArray: Array.isArray(projects),
+      projects
+    });
+
+    if (projects && Array.isArray(projects)) {
+      projects.forEach((project, index) => {
+        if (!project) {
+          console.error(`❌ [ProjectStats] Project at index ${index} is null/undefined!`);
+        } else if (typeof project !== 'object') {
+          console.error(`❌ [ProjectStats] Project at index ${index} is not an object:`, project);
+        } else {
+          console.log(`✅ [ProjectStats] Project ${index}:`, {
+            id: project.id,
+            status: project.status,
+            progress: project.progress
+          });
+        }
+      });
+    }
+  }, [projects]);
+
+  const validProjects = useMemo(() => {
+    return (projects || []).filter(p => p && typeof p === 'object');
+  }, [projects]);
+
+  const activeProjects = useMemo(() => {
+    return validProjects.filter(p => {
+      const status = p?.status;
+      return status && status !== "הושלם" && status !== "מבוטל";
+    });
+  }, [validProjects]);
 
   const avgProgress = useMemo(() => {
     if (activeProjects.length === 0) return 0;
-    const sum = activeProjects.reduce((acc, p) => acc + (Number(p.progress || 0)), 0);
-    return Math.round((sum / activeProjects.length) || 0);
+    
+    const sum = activeProjects.reduce((acc, p) => {
+      const progress = Number(p?.progress || 0);
+      return acc + progress;
+    }, 0);
+    
+    const avg = Math.round((sum / activeProjects.length) || 0);
+    console.log('📊 [ProjectStats] Average progress:', avg, 'from', activeProjects.length, 'projects');
+    return avg;
   }, [activeProjects]);
 
-  useEffect(() => {
-    const loadApprovals = async () => {
-      try {
-        const approvals = await ClientApproval.list();
-        const pending = (approvals || []).filter(a => a.status !== "אושר" && a.status !== "נדחה").length;
-        setPendingApprovals(pending);
-      } catch {
-        setPendingApprovals(0);
-      }
-    };
-    loadApprovals();
+  const loadApprovals = useCallback(async () => {
+    try {
+      const approvals = await base44.entities.ClientApproval.list();
+      const validApprovals = (approvals || []).filter(a => a && typeof a === 'object');
+      const pending = validApprovals.filter(a => {
+        const status = a?.status;
+        return status && status !== "אושר" && status !== "נדחה";
+      }).length;
+      
+      console.log('📊 [ProjectStats] Pending approvals:', pending);
+      setPendingApprovals(pending);
+    } catch (error) {
+      console.error('❌ [ProjectStats] Error loading approvals:', error);
+      setPendingApprovals(0);
+    }
   }, []);
+
+  useEffect(() => {
+    loadApprovals();
+  }, [loadApprovals]);
 
   if (isLoading) {
     return (

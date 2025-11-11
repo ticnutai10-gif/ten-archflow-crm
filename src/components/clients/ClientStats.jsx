@@ -1,15 +1,44 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, UserCheck, UserX, TrendingUp } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
-export default function ClientStats({ clients, isLoading }) {
+export default function ClientStats({ clients = [], isLoading }) {
+  useEffect(() => {
+    console.log('📊 [ClientStats] Received clients:', {
+      clientsCount: clients?.length,
+      clientsType: typeof clients,
+      isArray: Array.isArray(clients),
+      clients
+    });
+
+    if (clients && Array.isArray(clients)) {
+      clients.forEach((client, index) => {
+        if (!client) {
+          console.error(`❌ [ClientStats] Client at index ${index} is null/undefined!`);
+        } else if (typeof client !== 'object') {
+          console.error(`❌ [ClientStats] Client at index ${index} is not an object:`, client);
+        } else {
+          console.log(`✅ [ClientStats] Client ${index}:`, {
+            id: client.id,
+            status: client.status,
+            hasStatus: 'status' in client
+          });
+        }
+      });
+    }
+  }, [clients]);
+
+  const validClients = (clients || []).filter(c => c && typeof c === 'object');
+  
   const stats = {
-    total: clients.length,
-    active: clients.filter(c => c.status === 'פעיל').length,
-    potential: clients.filter(c => c.status === 'פוטנציאלי').length,
-    inactive: clients.filter(c => c.status === 'לא פעיל').length
+    total: validClients.length,
+    active: validClients.filter(c => c?.status === 'פעיל').length,
+    potential: validClients.filter(c => c?.status === 'פוטנציאלי').length,
+    inactive: validClients.filter(c => c?.status === 'לא פעיל').length
   };
+
+  console.log('📊 [ClientStats] Calculated stats:', stats);
 
   const statsData = [
     {
