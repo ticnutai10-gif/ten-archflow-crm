@@ -1,4 +1,3 @@
-
 import React, { Suspense, lazy } from "react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -29,7 +28,7 @@ export default function Layout({ children, currentPageName }) {
     }
   });
   const [hovered, setHovered] = React.useState(false);
-  const [userSectionHovered, setUserSectionHovered] = React.useState(false); // מצב hover על אזור המשתמש
+  const [userSectionHovered, setUserSectionHovered] = React.useState(false);
   const loadedRef = React.useRef(false);
 
   const accentColor = "#2C3A50";
@@ -69,7 +68,6 @@ export default function Layout({ children, currentPageName }) {
     };
   }, []);
 
-  // 🚀 FIX: מיזוג קריאות auth + theme לקריאה אחת
   React.useEffect(() => {
     if (loadedRef.current) {
       console.log('⏭️ [LAYOUT] Already loaded, skipping...');
@@ -87,8 +85,8 @@ export default function Layout({ children, currentPageName }) {
         try {
           userData = await base44.auth.me();
           console.log('✅ [LAYOUT] User loaded:', {
-            email: userData.email,
-            theme: userData.theme
+            email: userData?.email,
+            theme: userData?.theme
           });
           setUser(userData);
         } catch (error) {
@@ -98,7 +96,7 @@ export default function Layout({ children, currentPageName }) {
         }
         
         const localTheme = localStorage.getItem('app-theme');
-        const themeId = userData.theme || localTheme || 'cream';
+        const themeId = userData?.theme || localTheme || 'cream';
         
         const themes = {
           cream: { bg: '#FCF6E3', text: '#1e293b' },
@@ -158,7 +156,7 @@ export default function Layout({ children, currentPageName }) {
   const menuItems = [
     { name: "Dashboard", icon: Home, path: "Dashboard" },
     { name: "צ'אט AI חכם", icon: Brain, path: "AIChat" },
-    { name: "צ'אט צוות", icon: MessageCircleMore, path: "TeamChat" }, // צ'אט צוות
+    { name: "צ'אט צוות", icon: MessageCircleMore, path: "TeamChat" },
     { name: "לקוחות", icon: Users, path: "Clients" },
     { name: "פרויקטים", icon: Briefcase, path: "Projects" },
     { name: "הצעות מחיר", icon: Calculator, path: "Quotes" },
@@ -181,7 +179,7 @@ export default function Layout({ children, currentPageName }) {
   ];
 
   const getUserDisplayName = () => {
-    if (!user) return null;
+    if (!user) return 'משתמש';
     return user.full_name || user.email?.split('@')[0] || 'משתמש';
   };
 
@@ -430,7 +428,7 @@ export default function Layout({ children, currentPageName }) {
                     className="mt-2 text-xs text-slate-500 truncate cursor-pointer hover:text-slate-700 transition-colors" 
                     title={user.email}
                   >
-                    📧 {user.email}
+                    📧 {user.email || ''}
                   </div>
                 </div>
               )}
