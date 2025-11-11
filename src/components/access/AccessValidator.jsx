@@ -1,8 +1,6 @@
-
 import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
-import { User } from "@/entities/User";
-import { AccessControl, Client, Project } from "@/entities/all";
-import { toast } from "react-hot-toast";
+import { base44 } from "@/api/base44Client";
+import { toast } from "sonner";
 
 // רשימת Super Admins
 const SUPER_ADMIN_EMAILS = [
@@ -15,7 +13,7 @@ const SUPER_ADMIN_EMAILS = [
  */
 export function useAccessControl() {
   const [me, setMe] = useState(null);
-  const [accessRules, setAccessRules] = useState([]); // This will hold all access control records
+  const [accessRules, setAccessRules] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -24,7 +22,7 @@ export function useAccessControl() {
         console.log('🔐 [ACCESS] Loading user and rules...');
         setLoading(true);
         
-        const user = await User.me().catch(() => null);
+        const user = await base44.auth.me().catch(() => null);
         
         if (user) {
           console.log('👤 [ACCESS] User loaded:', {
@@ -36,16 +34,18 @@ export function useAccessControl() {
           setMe(user);
 
           // טען כללי גישה
-          // Fetch up to 100 active access rules (adjust limit if needed for larger orgs)
-          const rules = await AccessControl.filter({ active: true }, '-created_date', 100)
+          const rules = await base44.entities.AccessControl.filter({ active: true }, '-created_date', 100)
             .catch(() => []);
           
-          console.log('📋 [ACCESS] Access rules loaded:', rules.length);
-          setAccessRules(rules);
+          // ✅ הגנה על תוצאות undefined
+          const validRules = Array.isArray(rules) ? rules : [];
+          
+          console.log('📋 [ACCESS] Access rules loaded:', validRules.length);
+          setAccessRules(validRules);
 
           // חפש את הכלל של המשתמש הנוכחי
-          const myRule = rules.find(r => 
-            r.email?.toLowerCase() === user.email?.toLowerCase()
+          const myRule = validRules.find(r => 
+            r?.email?.toLowerCase() === user.email?.toLowerCase()
           );
 
           if (myRule) {
@@ -82,87 +82,58 @@ export function useAccessControl() {
     const result = SUPER_ADMIN_EMAILS.some(
       email => email.toLowerCase() === me.email?.toLowerCase()
     );
-    // console.log('👑 [ACCESS] Super admin check:', { email: me.email, result });
     return result;
   }, [me]);
 
-  // קבלת הכלל הספציפי של המשתמש הנוכחי מתוך רשימת הכללים
+  // קבלת הכלל הספציפי של המשתמש הנוכחי
   const myAccessRule = useMemo(() => {
     if (!me) return null;
     
     const rule = accessRules.find(r => 
-      r.email?.toLowerCase() === me.email?.toLowerCase() && r.active
+      r?.email?.toLowerCase() === me.email?.toLowerCase() && r?.active
     );
     
-    // console.log('📝 [ACCESS] My specific access rule:', rule);
-    return rule;
+    return rule || null;
   }, [me, accessRules]);
 
-  // בדיקה האם המשתמש הוא מנהל (רואה הכל)
+  // בדיקה האם המשתמש הוא מנהל
   const isAdmin = useMemo(() => {
     if (!me) return false;
     
-    // Super admin = תמיד admin
-    if (isSuperAdmin) {
-      // console.log('✅ [ACCESS] Admin via super admin');
-      return true;
-    }
+    if (isSuperAdmin) return true;
+    if (me.role === 'admin') return true;
+    if (myAccessRule?.role === 'admin' || myAccessRule?.role === 'super_admin') return true;
 
-    // בדיקת role ב-User entity (for legacy/fallback)
-    if (me.role === 'admin') {
-      // console.log('✅ [ACCESS] Admin via user.role');
-      return true;
-    }
-
-    // בדיקת AccessControl rule
-    if (myAccessRule?.role === 'admin' || myAccessRule?.role === 'super_admin') {
-      // console.log('✅ [ACCESS] Admin via AccessControl rule');
-      return true;
-    }
-
-    // console.log('❌ [ACCESS] Not admin');
     return false;
   }, [me, isSuperAdmin, myAccessRule]);
 
-  // בדיקה האם המשתמש הוא מנהל פלוס (רואה הכל אבל לא מנהל משתמשים)
+  // בדיקה האם המשתמש הוא מנהל פלוס
   const isManagerPlus = useMemo(() => {
-    if (!me || isAdmin) return false; // If already admin, not Manager Plus
-    
-    const result = myAccessRule?.role === 'manager_plus';
-    // console.log('⭐ [ACCESS] Manager plus check:', { result, role: myAccessRule?.role });
-    return result;
+    if (!me || isAdmin) return false;
+    return myAccessRule?.role === 'manager_plus';
   }, [me, isAdmin, myAccessRule]);
 
-  // בדיקה האם המשתמש הוא עובד (רואה רק את המשויכים אליו)
+  // בדיקה האם המשתמש הוא עובד
   const isStaff = useMemo(() => {
     if (!me || isAdmin || isManagerPlus) return false;
-    const result = myAccessRule?.role === 'staff';
-    // console.log('👷 [ACCESS] Staff check:', { result, role: myAccessRule?.role });
-    return result;
+    return myAccessRule?.role === 'staff';
   }, [me, isAdmin, isManagerPlus, myAccessRule]);
 
-  // בדיקה האם המשתמש הוא לקוח (גישה לפורטל בלבד)
+  // בדיקה האם המשתמש הוא לקוח
   const isClient = useMemo(() => {
     if (!me || isAdmin || isManagerPlus || isStaff) return false;
-    const result = myAccessRule?.role === 'client';
-    // console.log('👤 [ACCESS] Client check:', { result, role: myAccessRule?.role });
-    return result;
+    return myAccessRule?.role === 'client';
   }, [me, isAdmin, isManagerPlus, isStaff, myAccessRule]);
 
-  // בדיקה האם יש למשתמש גישה ללקוח מסוים
+  // בדיקה האם יש גישה ללקוח מסוים
   const canAccessClient = useCallback((clientId) => {
-    if (!clientId) return false;
-    if (!me) return false; // No user, no access
-
-    // מנהלים ומנהלי פלוס רואים הכל
+    if (!clientId || !me) return false;
     if (isAdmin || isManagerPlus) return true;
     
-    // עובדים רואים רק את המשויכים אליהם
     if (isStaff && myAccessRule?.assigned_clients) {
       return myAccessRule.assigned_clients.includes(clientId);
     }
     
-    // לקוחות רואים רק את עצמם
     if (isClient && myAccessRule?.client_id) {
       return myAccessRule.client_id === clientId;
     }
@@ -170,108 +141,101 @@ export function useAccessControl() {
     return false;
   }, [me, isAdmin, isManagerPlus, isStaff, isClient, myAccessRule]);
 
-  // בדיקה האם יש למשתמש גישה לפרויקט מסוים
+  // בדיקה האם יש גישה לפרויקט מסוים
   const canAccessProject = useCallback((projectId) => {
-    if (!projectId) return false;
-    if (!me) return false; // No user, no access
-
-    // מנהלים ומנהלי פלוס רואים הכל
+    if (!projectId || !me) return false;
     if (isAdmin || isManagerPlus) return true;
     
-    // עובדים רואים רק את המשויכים אליהם (או של לקוחות משויכים)
     if (isStaff && myAccessRule) {
       const assignedProjects = myAccessRule.assigned_projects || [];
-      // This is a simplified check. A full check would require fetching the project's client_id.
-      // For now, if staff is assigned to project or client, assume access
-      return assignedProjects.includes(projectId); // We only have project IDs here. Client projects needs lookup.
+      return assignedProjects.includes(projectId);
     }
     
-    // לקוחות רואים את הפרויקטים של הלקוח שלהם
     if (isClient && myAccessRule?.client_id) {
-      // This check would ideally involve checking the project's client_id against myAccessRule.client_id
-      // For now, assuming a helper will filter full lists
       return true; 
     }
     
     return false;
   }, [me, isAdmin, isManagerPlus, isStaff, isClient, myAccessRule]);
 
-  // סינון רשימת לקוחות לפי הרשאות
+  // ✅ סינון לקוחות עם הגנה מלאה
   const filterClients = useCallback((allClients) => {
-    if (!me || !Array.isArray(allClients)) {
-      // console.log('⚠️ [ACCESS] filterClients: No user or clients');
+    console.log('🔍 [ACCESS] filterClients called with:', {
+      allClients,
+      isArray: Array.isArray(allClients),
+      length: allClients?.length,
+      type: typeof allClients
+    });
+
+    // ✅ הגנה: בדוק אם allClients הוא array תקין
+    if (!Array.isArray(allClients)) {
+      console.error('❌ [ACCESS] filterClients: allClients is not an array!', allClients);
       return [];
     }
-    
-    // console.log('🔍 [ACCESS] Filtering clients:', {
-    //   totalClients: allClients.length,
-    //   userEmail: me.email,
-    //   isAdmin,
-    //   isManagerPlus,
-    //   isSuperAdmin
-    // });
+
+    if (!me) {
+      console.log('⚠️ [ACCESS] filterClients: No user');
+      return [];
+    }
 
     // Admin/Manager Plus/SuperAdmin רואים הכל
     if (isAdmin || isManagerPlus || isSuperAdmin) {
-      // console.log('✅ [ACCESS] Admin/Manager+/SuperAdmin - returning all clients:', allClients.length);
+      console.log('✅ [ACCESS] Admin/Manager+/SuperAdmin - returning all clients:', allClients.length);
       return allClients;
     }
 
     // Client - רואה רק את עצמו
     if (isClient && myAccessRule?.client_id) {
-      const filtered = allClients.filter(c => c.id === myAccessRule.client_id);
-      // console.log('👤 [ACCESS] Client role - filtered clients:', {
-      //   clientId: myAccessRule.client_id,
-      //   found: filtered.length
-      // });
+      const filtered = allClients.filter(c => c?.id === myAccessRule.client_id);
+      console.log('👤 [ACCESS] Client role - filtered:', filtered.length);
       return filtered;
     }
 
     // Staff - רואה רק לקוחות משוייכים
     if (isStaff) {
       const assignedIds = myAccessRule?.assigned_clients || [];
-      // console.log('👷 [ACCESS] Staff role:', {
-      //   assignedClients: assignedIds.length,
-      //   assignedIds
-      // });
+      console.log('👷 [ACCESS] Staff role:', {
+        assignedClients: assignedIds.length,
+        assignedIds
+      });
 
-      const filtered = allClients.filter(c => assignedIds.includes(c.id));
-      // console.log('👷 [ACCESS] Staff filtered clients:', {
-      //   total: allClients.length,
-      //   filtered: filtered.length,
-      //   clientNames: filtered.map(c => c.name)
-      // });
+      const filtered = allClients.filter(c => c && assignedIds.includes(c.id));
+      console.log('👷 [ACCESS] Staff filtered:', filtered.length);
       return filtered;
     }
 
-    // אין הרשאה - ריק
-    // console.log('⛔ [ACCESS] No permissions for clients - returning empty');
+    console.log('⛔ [ACCESS] No permissions - returning empty');
     return [];
   }, [me, isAdmin, isManagerPlus, isSuperAdmin, isClient, isStaff, myAccessRule]);
 
-  // סינון רשימת פרויקטים לפי הרשאות
+  // ✅ סינון פרויקטים עם הגנה מלאה
   const filterProjects = useCallback((allProjects) => {
-    if (!me || !Array.isArray(allProjects)) {
-      // console.log('⚠️ [ACCESS] filterProjects: No user or projects');
+    console.log('🔍 [ACCESS] filterProjects called with:', {
+      allProjects,
+      isArray: Array.isArray(allProjects),
+      length: allProjects?.length,
+      type: typeof allProjects
+    });
+
+    // ✅ הגנה: בדוק אם allProjects הוא array תקין
+    if (!Array.isArray(allProjects)) {
+      console.error('❌ [ACCESS] filterProjects: allProjects is not an array!', allProjects);
       return [];
     }
-    
-    // console.log('🔍 [ACCESS] Filtering projects:', {
-    //   totalProjects: allProjects.length,
-    //   userEmail: me.email,
-    //   isAdmin,
-    //   isManagerPlus,
-    //   isSuperAdmin
-    // });
+
+    if (!me) {
+      console.log('⚠️ [ACCESS] filterProjects: No user');
+      return [];
+    }
 
     if (isAdmin || isManagerPlus || isSuperAdmin) {
-      // console.log('✅ [ACCESS] Admin/Manager+/SuperAdmin - returning all projects');
+      console.log('✅ [ACCESS] Admin/Manager+/SuperAdmin - returning all projects');
       return allProjects;
     }
 
     if (isClient && myAccessRule?.client_id) {
-      const filtered = allProjects.filter(p => p.client_id === myAccessRule.client_id);
-      // console.log('👤 [ACCESS] Client role - filtered projects:', filtered.length);
+      const filtered = allProjects.filter(p => p?.client_id === myAccessRule.client_id);
+      console.log('👤 [ACCESS] Client role - filtered projects:', filtered.length);
       return filtered;
     }
 
@@ -279,96 +243,100 @@ export function useAccessControl() {
       const assignedProjectIds = myAccessRule?.assigned_projects || [];
       const assignedClientIds = myAccessRule?.assigned_clients || [];
       
-      // console.log('👷 [ACCESS] Staff assignments:', {
-      //   projects: assignedProjectIds.length,
-      //   clients: assignedClientIds.length
-      // });
+      console.log('👷 [ACCESS] Staff assignments:', {
+        projects: assignedProjectIds.length,
+        clients: assignedClientIds.length
+      });
 
       const filtered = allProjects.filter(p => 
-        assignedProjectIds.includes(p.id) || 
-        assignedClientIds.includes(p.client_id)
+        p && (
+          assignedProjectIds.includes(p.id) || 
+          assignedClientIds.includes(p.client_id)
+        )
       );
       
-      // console.log('👷 [ACCESS] Staff filtered projects:', filtered.length);
+      console.log('👷 [ACCESS] Staff filtered projects:', filtered.length);
       return filtered;
     }
 
-    // console.log('⛔ [ACCESS] No permissions for projects - returning empty');
+    console.log('⛔ [ACCESS] No permissions - returning empty');
     return [];
   }, [me, isAdmin, isManagerPlus, isSuperAdmin, isClient, isStaff, myAccessRule]);
 
-  // סינון משימות לפי הרשאות
+  // ✅ סינון משימות עם הגנה מלאה
   const filterTasks = useCallback((allTasks) => {
-    if (!me || !Array.isArray(allTasks)) return [];
+    if (!Array.isArray(allTasks)) {
+      console.error('❌ [ACCESS] filterTasks: allTasks is not an array!', allTasks);
+      return [];
+    }
+
+    if (!me) return [];
     
-    // מנהלים ומנהלי פלוס רואים הכל
     if (isAdmin || isManagerPlus || isSuperAdmin) return allTasks;
     
-    // עובדים רואים משימות של הפרויקטים והלקוחות המשויכים אליהם
     if (isStaff) {
       const assignedProjectIds = myAccessRule?.assigned_projects || [];
       const assignedClientIds = myAccessRule?.assigned_clients || [];
       
       return allTasks.filter(t => 
-        (t.project_id && assignedProjectIds.includes(t.project_id)) ||
-        (t.client_id && assignedClientIds.includes(t.client_id)) ||
-        t.assigned_to === me?.email // משימות שהוקצו לו
+        t && (
+          (t.project_id && assignedProjectIds.includes(t.project_id)) ||
+          (t.client_id && assignedClientIds.includes(t.client_id)) ||
+          t.assigned_to === me?.email
+        )
       );
     }
     
-    // לקוחות רואים משימות של הלקוח שלהם
     if (isClient && myAccessRule?.client_id) {
-      return allTasks.filter(t => t.client_id === myAccessRule.client_id);
+      return allTasks.filter(t => t?.client_id === myAccessRule.client_id);
     }
     
     return [];
   }, [me, isAdmin, isManagerPlus, isSuperAdmin, isStaff, isClient, myAccessRule]);
 
-  // סינון לוגי זמן לפי הרשאות
+  // ✅ סינון לוגי זמן עם הגנה מלאה
   const filterTimeLogs = useCallback((allLogs) => {
-    if (!me || !Array.isArray(allLogs)) return [];
+    if (!Array.isArray(allLogs)) {
+      console.error('❌ [ACCESS] filterTimeLogs: allLogs is not an array!', allLogs);
+      return [];
+    }
+
+    if (!me) return [];
     
-    // מנהלים ומנהלי פלוס רואים הכל
     if (isAdmin || isManagerPlus || isSuperAdmin) return allLogs;
     
-    // עובדים רואים לוגים של הלקוחות המשויכים אליהם + הלוגים שלהם
     if (isStaff) {
       const assignedClientIds = myAccessRule?.assigned_clients || [];
       
       return allLogs.filter(log => 
-        (log.client_id && assignedClientIds.includes(log.client_id)) ||
-        log.created_by === me?.email // הלוגים שלו
+        log && (
+          (log.client_id && assignedClientIds.includes(log.client_id)) ||
+          log.created_by === me?.email
+        )
       );
     }
     
-    // לקוחות רואים לוגים של הלקוח שלהם
     if (isClient && myAccessRule?.client_id) {
-      return allLogs.filter(log => log.client_id === myAccessRule.client_id);
+      return allLogs.filter(log => log?.client_id === myAccessRule.client_id);
     }
     
     return [];
   }, [me, isAdmin, isManagerPlus, isSuperAdmin, isStaff, isClient, myAccessRule]);
 
-  // האם העובד יכול ליצור לקוח חדש?
   const canCreateClient = useCallback(() => {
-    // מנהלים, מנהלי פלוס ועובדים יכולים ליצור לקוחות
     return isAdmin || isManagerPlus || isStaff;
   }, [isAdmin, isManagerPlus, isStaff]);
 
-  // האם העובד יכול ליצור פרויקט חדש?
   const canCreateProject = useCallback(() => {
-    // מנהלים, מנהלי פלוס ועובדים יכולים ליצור פרויקטים
     return isAdmin || isManagerPlus || isStaff;
   }, [isAdmin, isManagerPlus, isStaff]);
 
-
-  // Cache לקוחות למניעת טעינה מיותרת
+  // Cache לקוחות
   const clientsCacheRef = useRef(null);
   const clientsCacheTimeRef = useRef(0);
 
   const getAllowedClientsForTimer = useCallback(async () => {
     try {
-      // בדיקת Cache (2 דקות)
       const now = Date.now();
       if (clientsCacheRef.current && (now - clientsCacheTimeRef.current) < 2 * 60 * 1000) {
         console.log('✅ [ACCESS] Using cached clients for timer');
@@ -376,10 +344,12 @@ export function useAccessControl() {
       }
 
       console.log('🔄 [ACCESS] Fetching clients for timer...');
-      const allClients = await Client.list();
-      const filtered = filterClients(allClients); // Use the memoized filterClients
+      const allClients = await base44.entities.Client.list();
       
-      // שמירה ב-Cache
+      // ✅ הגנה על תוצאות undefined
+      const validClients = Array.isArray(allClients) ? allClients : [];
+      const filtered = filterClients(validClients);
+      
       clientsCacheRef.current = filtered;
       clientsCacheTimeRef.current = now;
       
@@ -387,7 +357,6 @@ export function useAccessControl() {
     } catch (error) {
       console.error('Error loading clients for timer:', error);
       
-      // אם יש שגיאה ויש Cache ישן - השתמש בו
       if (clientsCacheRef.current) {
         console.log('⚠️ [ACCESS] Error loading clients, using old cache');
         return clientsCacheRef.current;
@@ -395,16 +364,15 @@ export function useAccessControl() {
       
       return [];
     }
-  }, [filterClients]); // Dependency: filterClients
+  }, [filterClients]);
 
   const assignedClientsCount = useMemo(() => myAccessRule?.assigned_clients?.length || 0, [myAccessRule]);
   const assignedProjectsCount = useMemo(() => myAccessRule?.assigned_projects?.length || 0, [myAccessRule]);
 
-  // The final return object of the hook, combining all derived values and functions
   return {
     me,
     loading,
-    myAccessRule, // Expose the specific access rule for the user
+    myAccessRule,
     isSuperAdmin,
     isAdmin,
     isManagerPlus,
@@ -418,14 +386,14 @@ export function useAccessControl() {
     filterProjects,
     filterTasks,
     filterTimeLogs,
-    getAllowedClientsForTimer, // This is the new function with caching
+    getAllowedClientsForTimer,
     assignedClientsCount,
     assignedProjectsCount
   };
 }
 
 /**
- * רכיב לבדיקת הרשאות - מציג רק אם יש הרשאה
+ * רכיב לבדיקת הרשאות
  */
 export function ProtectedContent({ children, requireAdmin = false, requireManagerPlus = false }) {
   const { isAdmin, isManagerPlus, loading } = useAccessControl();
@@ -460,28 +428,30 @@ export function ProtectedContent({ children, requireAdmin = false, requireManage
 }
 
 /**
- * פונקציה לשיוך אוטומטי של לקוח/פרויקט חדש לעובד
+ * פונקציה לשיוך אוטומטי
  */
 export async function autoAssignToCreator(itemType, itemId) {
   try {
-    const user = await User.me();
+    const user = await base44.auth.me();
     if (!user?.email) return;
 
-    const accessRecords = await AccessControl.filter({
+    const accessRecords = await base44.entities.AccessControl.filter({
       email: user.email,
       active: true
     });
 
-    const access = accessRecords[0];
-    if (!access || access.role !== 'staff') return; // רק עובדים
+    // ✅ הגנה על תוצאות undefined
+    const validRecords = Array.isArray(accessRecords) ? accessRecords : [];
+    const access = validRecords[0];
+    
+    if (!access || access.role !== 'staff') return;
 
     console.log('🔗 [AUTO ASSIGN] Assigning', itemType, itemId, 'to', user.email);
 
-    // שיוך הפריט לעובד
     if (itemType === 'client') {
       const existingClients = access.assigned_clients || [];
       if (!existingClients.includes(itemId)) {
-        await AccessControl.update(access.id, {
+        await base44.entities.AccessControl.update(access.id, {
           assigned_clients: [...existingClients, itemId]
         });
         console.log('✅ [AUTO ASSIGN] Client assigned successfully');
@@ -489,7 +459,7 @@ export async function autoAssignToCreator(itemType, itemId) {
     } else if (itemType === 'project') {
       const existingProjects = access.assigned_projects || [];
       if (!existingProjects.includes(itemId)) {
-        await AccessControl.update(access.id, {
+        await base44.entities.AccessControl.update(access.id, {
           assigned_projects: [...existingProjects, itemId]
         });
         console.log('✅ [AUTO ASSIGN] Project assigned successfully');
