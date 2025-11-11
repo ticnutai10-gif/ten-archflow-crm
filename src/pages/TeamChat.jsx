@@ -27,11 +27,17 @@ import {
   CheckCheck,
   Pin,
   Filter,
-  UserPlus
+  UserPlus,
+  Mic,
+  Image as ImageIcon,
+  File,
+  Save
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
+import { Link } from "react-router-dom";
+import { createPageUrl } from "@/utils";
 
 export default function TeamChatPage() {
   const [rooms, setRooms] = useState([]);
@@ -55,6 +61,22 @@ export default function TeamChatPage() {
     participants: []
   });
 
+  // Edit room dialog
+  const [editRoomDialogOpen, setEditRoomDialogOpen] = useState(false);
+  const [editingRoom, setEditingRoom] = useState(null);
+  const [editRoomName, setEditRoomName] = useState('');
+  const [editRoomTopic, setEditRoomTopic] = useState('');
+
+  // File upload
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const [attachedFiles, setAttachedFiles] = useState([]);
+  const fileInputRef = useRef(null);
+
+  // Voice recording
+  const [isRecording, setIsRecording] = useState(false);
+  const [mediaRecorder, setMediaRecorder] = useState(null);
+  const audioChunksRef = useRef([]);
+
   const [clients, setClients] = useState([]);
   const [projects, setProjects] = useState([]);
   const [allUsers, setAllUsers] = useState([]);
@@ -71,6 +93,10 @@ export default function TeamChatPage() {
       mountedRef.current = false;
       if (messagesPollingRef.current) {
         clearInterval(messagesPollingRef.current);
+      }
+      // Cleanup media recorder
+      if (mediaRecorder) {
+        mediaRecorder.stream.getTracks().forEach(track => track.stop());
       }
     };
   }, []);
@@ -194,13 +220,12 @@ export default function TeamChatPage() {
       const roomData = {
         name: newRoomForm.name.trim(),
         type: newRoomForm.type,
-        participants: [...new Set([...newRoomForm.participants, user.email])], // הוסף את המשתמש הנוכחי
+        participants: [...new Set([...newRoomForm.participants, user.email])],
         active: true,
         archived: false,
         topic: newRoomForm.topic.trim() || undefined
       };
 
-      // הוסף שדות נוספים לפי סוג החדר
       if (newRoomForm.type === 'client' && newRoomForm.client_id) {
         roomData.client_id = newRoomForm.client_id;
         roomData.client_name = clients.find(c => c.id === newRoomForm.client_id)?.name;
@@ -233,12 +258,134 @@ export default function TeamChatPage() {
     }
   };
 
+  const openEditRoomDialog = (room) => {
+    setEditingRoom(room);
+    setEditRoomName(room.name || '');
+    setEditRoomTopic(room.topic || '');
+    setEditRoomDialogOpen(true);
+  };
+
+  const handleEditRoom = async () => {
+    if (!editRoomName.trim()) {
+      toast.error('נא להזין שם לחדר');
+      return;
+    }
+
+    try {
+      await base44.entities.ChatRoom.update(editingRoom.id, {
+        name: editRoomName.trim(),
+        topic: editRoomTopic.trim()
+      });
+
+      if (mountedRef.current) {
+        await loadRooms(user.email);
+        setEditRoomDialogOpen(false);
+        setEditingRoom(null);
+        toast.success('החדר עודכן בהצלחה! ✅');
+      }
+    } catch (error) {
+      console.error('Error updating room:', error);
+      toast.error('שגיאה בעדכון החדר');
+    }
+  };
+
+  const handleFileUpload = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    setUploadingFile(true);
+    try {
+      const uploadedFiles = [];
+      
+      for (const file of files) {
+        const { file_url } = await base44.integrations.Core.UploadFile({ file });
+        uploadedFiles.push({
+          name: file.name,
+          url: file_url,
+          type: file.type
+        });
+      }
+
+      setAttachedFiles(prev => [...prev, ...uploadedFiles]);
+      toast.success(`✅ ${files.length} קבצים הועלו!`);
+    } catch (error) {
+      console.error('Error uploading files:', error);
+      toast.error('שגיאה בהעלאת הקבצים');
+    } finally {
+      setUploadingFile(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const removeAttachedFile = (index) => {
+    setAttachedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      
+      audioChunksRef.current = [];
+      
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          audioChunksRef.current.push(e.data);
+        }
+      };
+      
+      recorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const audioFile = new File([audioBlob], `הקלטה-${Date.now()}.webm`, { type: 'audio/webm' });
+        
+        setUploadingFile(true);
+        try {
+          const { file_url } = await base44.integrations.Core.UploadFile({ file: audioFile });
+          setAttachedFiles(prev => [...prev, {
+            name: audioFile.name,
+            url: file_url,
+            type: 'audio/webm'
+          }]);
+          toast.success('✅ הקלטה הועלתה!');
+        } catch (error) {
+          console.error('Error uploading audio:', error);
+          toast.error('שגיאה בהעלאת ההקלטה');
+        } finally {
+          setUploadingFile(false);
+        }
+        
+        stream.getTracks().forEach(track => track.stop());
+      };
+      
+      recorder.start();
+      setMediaRecorder(recorder);
+      setIsRecording(true);
+      toast.info('🎤 מקליט...');
+    } catch (error) {
+      console.error('Error starting recording:', error);
+      toast.error('שגיאה בהתחלת הקלטה - בדוק הרשאות מיקרופון');
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stop();
+      setIsRecording(false);
+      setMediaRecorder(null);
+    }
+  };
+
   const handleSendMessage = async () => {
     const text = inputMessage.trim();
     
-    if (!text || !currentRoom || loading) return;
+    if (!text && attachedFiles.length === 0) return;
+    if (!currentRoom || loading) return;
 
     setInputMessage("");
+    const filesToSend = [...attachedFiles];
+    setAttachedFiles([]);
     setLoading(true);
 
     try {
@@ -247,8 +394,9 @@ export default function TeamChatPage() {
         sender_email: user.email,
         sender_name: user.full_name || user.email,
         content: text,
-        message_type: 'text',
-        read_by: [user.email]
+        message_type: attachedFiles.length > 0 ? 'file' : 'text',
+        read_by: [user.email],
+        attachments: filesToSend.length > 0 ? filesToSend : undefined
       };
 
       await base44.entities.ChatMessage.create(messageData);
@@ -256,7 +404,7 @@ export default function TeamChatPage() {
       // Update room's last message
       await base44.entities.ChatRoom.update(currentRoom.id, {
         last_message_at: new Date().toISOString(),
-        last_message_preview: text.substring(0, 100)
+        last_message_preview: text || `📎 ${filesToSend.length} קבצים`
       });
 
       if (mountedRef.current) {
@@ -328,7 +476,7 @@ export default function TeamChatPage() {
   };
 
   const filteredRooms = rooms.filter(room => {
-    const matchesType = filterType === 'all' || room.type === filterType;
+    const matchesType = filterType === "all" || room.type === filterType;
     const matchesSearch = room.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          room.topic?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          room.client_name?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -463,17 +611,32 @@ export default function TeamChatPage() {
                         </div>
                       </div>
 
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 opacity-0 group-hover:opacity-100"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteRoom(room.id);
-                        }}
-                      >
-                        <Trash2 className="w-3 h-3 text-red-500" />
-                      </Button>
+                      <div className="flex gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openEditRoomDialog(room);
+                          }}
+                          title="ערוך"
+                        >
+                          <Edit2 className="w-3 h-3 text-blue-600" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteRoom(room.id);
+                          }}
+                          title="מחק"
+                        >
+                          <Trash2 className="w-3 h-3 text-red-500" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 );
@@ -499,10 +662,18 @@ export default function TeamChatPage() {
                     <Badge variant="outline" className="text-xs">
                       {getRoomTypeLabel(currentRoom.type)}
                     </Badge>
-                    {currentRoom.client_name && (
-                      <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
-                        לקוח: {currentRoom.client_name}
-                      </Badge>
+                    {currentRoom.client_name && currentRoom.client_id && (
+                      <Link 
+                        to={createPageUrl('Clients') + `?open=details&client_id=${currentRoom.client_id}`}
+                        className="inline-block"
+                      >
+                        <Badge 
+                          variant="outline" 
+                          className="text-xs bg-green-50 text-green-700 hover:bg-green-100 cursor-pointer transition-colors"
+                        >
+                          לקוח: {currentRoom.client_name}
+                        </Badge>
+                      </Link>
                     )}
                     {currentRoom.participants && (
                       <span className="text-xs text-slate-500 flex items-center gap-1">
@@ -564,9 +735,46 @@ export default function TeamChatPage() {
                                 ? 'bg-blue-600 text-white' 
                                 : 'bg-white border border-slate-200'
                             }`}>
-                              <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
-                                {msg.content}
-                              </p>
+                              {msg.content && (
+                                <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+                                  {msg.content}
+                                </p>
+                              )}
+                              
+                              {msg.attachments && msg.attachments.length > 0 && (
+                                <div className="mt-2 space-y-2">
+                                  {msg.attachments.map((file, i) => (
+                                    <a
+                                      key={i}
+                                      href={file.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className={`flex items-center gap-2 p-2 rounded-lg transition-colors ${
+                                        isOwn 
+                                          ? 'bg-blue-700 hover:bg-blue-800' 
+                                          : 'bg-slate-50 hover:bg-slate-100'
+                                      }`}
+                                    >
+                                      {file.type?.startsWith('image/') ? (
+                                        <>
+                                          <ImageIcon className="w-4 h-4" />
+                                          <span className="text-xs truncate">{file.name}</span>
+                                        </>
+                                      ) : file.type?.startsWith('audio/') ? (
+                                        <>
+                                          <Mic className="w-4 h-4" />
+                                          <span className="text-xs">הקלטה קולית</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <File className="w-4 h-4" />
+                                          <span className="text-xs truncate">{file.name}</span>
+                                        </>
+                                      )}
+                                    </a>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                             
                             <div className="flex items-center gap-1 mt-1">
@@ -600,7 +808,69 @@ export default function TeamChatPage() {
 
             {/* Input */}
             <div className="bg-white border-t px-6 py-4">
+              {/* Attached files preview */}
+              {attachedFiles.length > 0 && (
+                <div className="mb-3 flex flex-wrap gap-2">
+                  {attachedFiles.map((file, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center gap-2 bg-slate-100 rounded-lg px-3 py-2 text-sm"
+                    >
+                      {file.type?.startsWith('image/') ? (
+                        <ImageIcon className="w-4 h-4 text-blue-600" />
+                      ) : file.type?.startsWith('audio/') ? (
+                        <Mic className="w-4 h-4 text-green-600" />
+                      ) : (
+                        <File className="w-4 h-4 text-slate-600" />
+                      )}
+                      <span className="truncate max-w-[150px]">{file.name}</span>
+                      <button
+                        onClick={() => removeAttachedFile(index)}
+                        className="hover:bg-slate-200 rounded p-1"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <div className="max-w-4xl mx-auto flex gap-3">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept="image/*,audio/*,video/*,.pdf,.doc,.docx"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+                
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingFile}
+                  title="צרף קבצים"
+                  className="flex-shrink-0"
+                >
+                  {uploadingFile ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <Paperclip className="w-5 h-5" />
+                  )}
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={isRecording ? stopRecording : startRecording}
+                  disabled={uploadingFile}
+                  title={isRecording ? "עצור הקלטה" : "הקלטה קולית"}
+                  className={`flex-shrink-0 ${isRecording ? 'bg-red-100 text-red-600' : ''}`}
+                >
+                  <Mic className={`w-5 h-5 ${isRecording ? 'animate-pulse' : ''}`} />
+                </Button>
+
                 <Input
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
@@ -612,12 +882,12 @@ export default function TeamChatPage() {
                   }}
                   placeholder="הקלד הודעה..."
                   className="flex-1"
-                  disabled={loading}
+                  disabled={loading || isRecording}
                   dir="rtl"
                 />
                 <Button
                   onClick={handleSendMessage}
-                  disabled={!inputMessage.trim() || loading}
+                  disabled={(!inputMessage.trim() && attachedFiles.length === 0) || loading || isRecording}
                   className="bg-blue-600 hover:bg-blue-700"
                 >
                   {loading ? (
@@ -754,7 +1024,6 @@ export default function TeamChatPage() {
               />
             </div>
 
-            {/* בחירת משתתפים - חדש ומשופר */}
             <div className="space-y-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
               <div className="flex items-center justify-between">
                 <label className="text-sm font-medium text-blue-900 flex items-center gap-2">
@@ -823,6 +1092,53 @@ export default function TeamChatPage() {
             >
               <Plus className="w-4 h-4 ml-2" />
               צור חדר
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Room Dialog */}
+      <Dialog open={editRoomDialogOpen} onOpenChange={setEditRoomDialogOpen}>
+        <DialogContent className="max-w-md" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="text-xl flex items-center gap-2">
+              <Edit2 className="w-5 h-5 text-blue-600" />
+              עריכת חדר צ'אט
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">שם החדר *</label>
+              <Input
+                value={editRoomName}
+                onChange={(e) => setEditRoomName(e.target.value)}
+                placeholder="שם החדר"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">נושא (אופציונלי)</label>
+              <Textarea
+                value={editRoomTopic}
+                onChange={(e) => setEditRoomTopic(e.target.value)}
+                placeholder="תיאור הנושא..."
+                className="h-24"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditRoomDialogOpen(false)}>
+              ביטול
+            </Button>
+            <Button 
+              onClick={handleEditRoom} 
+              className="bg-blue-600 hover:bg-blue-700"
+              disabled={!editRoomName.trim()}
+            >
+              <Save className="w-4 h-4 ml-2" />
+              שמור
             </Button>
           </DialogFooter>
         </DialogContent>
