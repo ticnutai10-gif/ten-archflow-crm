@@ -1,32 +1,52 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.7.1';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.4';
 
 Deno.serve(async (req) => {
     try {
-        console.log('🎯 [PROJECT INSIGHTS] Starting advanced project analysis...');
+        console.log('');
+        console.log('🎯 ========================================');
+        console.log('🎯 [PROJECT INSIGHTS] STARTING ANALYSIS');
+        console.log('🎯 ========================================');
+        console.log('');
         
         const base44 = createClientFromRequest(req);
         
         const user = await base44.auth.me();
         if (!user) {
+            console.error('❌ [PROJECT INSIGHTS] No user authenticated');
             return Response.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
         console.log('👤 [PROJECT INSIGHTS] User:', user.email);
+        console.log('🔄 [PROJECT INSIGHTS] Fetching all data from database...');
 
-        // 🔥 FIX: העלאת כל ה-limits ל-10000 כדי לוודא שכל הנתונים נשלפים!
+        // 🔥 FIX: טעינת כל הנתונים ללא הגבלה
         const [projects, tasks, timeLogs, clients] = await Promise.all([
-            base44.asServiceRole.entities.Project.list('-created_date', 10000).catch(() => []),
-            base44.asServiceRole.entities.Task.list('-created_date', 10000).catch(() => []),
-            base44.asServiceRole.entities.TimeLog.list('-created_date', 10000).catch(() => []),
-            base44.asServiceRole.entities.Client.list('-created_date', 10000).catch(() => [])
+            base44.asServiceRole.entities.Project.list('-created_date').catch(() => []),
+            base44.asServiceRole.entities.Task.list('-created_date').catch(() => []),
+            base44.asServiceRole.entities.TimeLog.list('-created_date').catch(() => []),
+            base44.asServiceRole.entities.Client.list('-created_date').catch(() => [])
         ]);
 
-        console.log('✅ [PROJECT INSIGHTS] Data loaded:', {
-            projects: projects.length,
-            tasks: tasks.length,
-            timeLogs: timeLogs.length,
-            clients: clients.length
+        console.log('');
+        console.log('✅ [PROJECT INSIGHTS] DATA LOADED:');
+        console.log('   📊 Total Projects:', projects.length);
+        console.log('   📊 Total Tasks:', tasks.length);
+        console.log('   📊 Total Time Logs:', timeLogs.length);
+        console.log('   📊 Total Clients:', clients.length);
+        console.log('');
+
+        // הדפסת סטטוסים של פרויקטים
+        const statusCounts = {};
+        projects.forEach(p => {
+            const status = p.status || 'ללא סטטוס';
+            statusCounts[status] = (statusCounts[status] || 0) + 1;
         });
+        
+        console.log('📋 [PROJECT INSIGHTS] PROJECT STATUS BREAKDOWN:');
+        Object.entries(statusCounts).forEach(([status, count]) => {
+            console.log(`   • ${status}: ${count} פרויקטים`);
+        });
+        console.log('');
 
         const insights = analyzeProjects({
             projects,
@@ -35,11 +55,15 @@ Deno.serve(async (req) => {
             clients
         });
 
-        console.log('✅ [PROJECT INSIGHTS] Analysis complete:', {
-            totalProjects: insights.total,
-            activeProjects: insights.active,
-            atRisk: insights.atRisk
-        });
+        console.log('');
+        console.log('✅ [PROJECT INSIGHTS] ANALYSIS COMPLETE:');
+        console.log('   🎯 Total Projects in System:', insights.total);
+        console.log('   ✨ Active Projects:', insights.active);
+        console.log('   ⚠️  Projects at High Risk:', insights.atRisk);
+        console.log('   📊 Projects Analyzed:', insights.projects?.length || 0);
+        console.log('');
+        console.log('🎯 ========================================');
+        console.log('');
 
         return Response.json({
             insights,
@@ -48,7 +72,10 @@ Deno.serve(async (req) => {
         });
 
     } catch (error) {
-        console.error('❌ [PROJECT INSIGHTS] Error:', error);
+        console.error('');
+        console.error('❌ [PROJECT INSIGHTS] FATAL ERROR:', error.message);
+        console.error('❌ Stack:', error.stack);
+        console.error('');
         return Response.json({ 
             error: error.message,
             details: error.stack
@@ -60,21 +87,32 @@ function analyzeProjects(data) {
     const { projects, tasks, timeLogs, clients } = data;
     const today = new Date();
 
-    // 🔥 FIX: הוספת סטטוסים נוספים שנחשבים כ"פעילים"
-    const activeProjects = projects.filter(p => 
-        p.status === 'בביצוע' || 
-        p.status === 'תכנון' || 
-        p.status === 'היתרים' ||
-        p.status === 'הצעת מחיר' // ✅ גם הצעות מחיר פעילות
-    );
+    console.log('🔍 [ANALYSIS] Starting project analysis...');
 
-    console.log('📊 [PROJECT INSIGHTS] Active projects filter:', {
-        total: projects.length,
-        active: activeProjects.length,
-        statuses: [...new Set(projects.map(p => p.status))]
+    // 🔥 FIX: הרחבת הסטטוסים שנחשבים כ"פעילים"
+    const activeStatuses = ['ביצוע', 'בביצוע', 'תכנון', 'היתרים', 'הצעת מחיר'];
+    const activeProjects = projects.filter(p => {
+        const status = p.status || '';
+        return activeStatuses.some(activeStatus => 
+            status.includes(activeStatus) || activeStatus.includes(status)
+        );
     });
 
-    const projectAnalysis = activeProjects.map(project => {
+    console.log('🔍 [ANALYSIS] Active projects filter results:');
+    console.log('   📊 Total projects:', projects.length);
+    console.log('   ✅ Active projects:', activeProjects.length);
+    console.log('   ❌ Inactive projects:', projects.length - activeProjects.length);
+    console.log('   🎯 Active statuses filter:', activeStatuses.join(', '));
+
+    if (activeProjects.length === 0) {
+        console.warn('⚠️  [ANALYSIS] WARNING: No active projects found!');
+        console.log('   Available statuses in DB:', [...new Set(projects.map(p => p.status))].join(', '));
+    }
+
+    console.log('🔄 [ANALYSIS] Analyzing each project...');
+    
+    const projectAnalysis = activeProjects.map((project, index) => {
+        console.log(`   ${index + 1}/${activeProjects.length} Analyzing: ${project.name} (${project.status})`);
         const analysis = analyzeProject(project, tasks, timeLogs, today);
         return {
             projectId: project.id,
@@ -85,15 +123,34 @@ function analyzeProjects(data) {
         };
     });
 
+    console.log('✅ [ANALYSIS] Project analysis complete!');
+
     // מיון לפי רמת סיכון (הכי מסוכן ראשון)
-    const sortedByRisk = [...projectAnalysis].sort((a, b) => (b.risk?.riskScore || 0) - (a.risk?.riskScore || 0));
+    const sortedByRisk = [...projectAnalysis].sort((a, b) => 
+        (b.risk?.riskScore || 0) - (a.risk?.riskScore || 0)
+    );
+
+    const highRiskCount = projectAnalysis.filter(p => p.risk?.riskLevel === 'high').length;
+    const mediumRiskCount = projectAnalysis.filter(p => p.risk?.riskLevel === 'medium').length;
+    const lowRiskCount = projectAnalysis.filter(p => p.risk?.riskLevel === 'low').length;
+
+    console.log('📊 [ANALYSIS] Risk distribution:');
+    console.log(`   🔴 High risk: ${highRiskCount}`);
+    console.log(`   🟡 Medium risk: ${mediumRiskCount}`);
+    console.log(`   🟢 Low risk: ${lowRiskCount}`);
+
+    const summary = generateProjectSummary(projectAnalysis);
+    
+    console.log('📊 [ANALYSIS] Summary generated:');
+    console.log(`   💯 Health score: ${summary.healthScore}/100`);
+    console.log(`   📋 Total recommendations: ${summary.totalRecommendations}`);
 
     return {
         total: projects.length,
         active: activeProjects.length,
-        atRisk: projectAnalysis.filter(p => p.risk?.riskLevel === 'high').length,
+        atRisk: highRiskCount,
         projects: sortedByRisk,
-        summary: generateProjectSummary(projectAnalysis)
+        summary
     };
 }
 

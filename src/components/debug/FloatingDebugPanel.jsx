@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -49,19 +48,19 @@ export default function FloatingDebugPanel() {
 
   const { me, isAdmin, isSuperAdmin, isManagerPlus, myAccessRule, loading } = useAccessControl();
 
-  // האזנה לשינויים בהגדרות
-  useEffect(() => {
-    const handleSettingsChange = (e) => {
-      console.log('🔧 [DEBUG] Settings changed:', e.detail);
-      setSettings(e.detail);
-    };
+  // 🔥 FIX: האזנה לשינויים בהגדרות - עם useCallback למניעת re-renders
+  const handleSettingsChange = useCallback((e) => {
+    console.log('🔧 [DEBUG] Settings changed:', e.detail);
+    setSettings(e.detail);
+  }, []);
 
+  useEffect(() => {
     window.addEventListener('debug-settings-changed', handleSettingsChange);
     
     return () => {
       window.removeEventListener('debug-settings-changed', handleSettingsChange);
     };
-  }, []); // Empty dependency array means this runs once on mount and cleans up on unmount
+  }, [handleSettingsChange]); // ✅ Now includes handleSettingsChange in dependency array
 
   // לכידת console.log
   useEffect(() => {
@@ -116,8 +115,10 @@ export default function FloatingDebugPanel() {
     };
   }, []);
 
-  // טען נתוני גישה
-  const loadAccessData = async () => {
+  // טען נתוני גישה - עם useCallback
+  const loadAccessData = useCallback(async () => {
+    if (!me) return;
+    
     try {
       const [clients, projects, accessRules] = await Promise.all([
         Client.list(),
@@ -149,13 +150,13 @@ export default function FloatingDebugPanel() {
     } catch (error) {
       console.error('Error loading access data:', error);
     }
-  };
+  }, [me]); // ✅ Only depends on me
 
   useEffect(() => {
     if (me && isOpen) {
       loadAccessData();
     }
-  }, [me, isOpen]);
+  }, [me, isOpen, loadAccessData]); // ✅ Now includes loadAccessData
 
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text).then(() => {
