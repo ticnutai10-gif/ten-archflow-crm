@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -49,19 +48,19 @@ export default function FloatingDebugPanel() {
 
   const { me, isAdmin, isSuperAdmin, isManagerPlus, myAccessRule, loading } = useAccessControl();
 
-  // 🔥 FIX: האזנה לשינויים בהגדרות - עם useCallback למניעת re-renders
-  const handleSettingsChange = useCallback((e) => {
-    console.log('🔧 [DEBUG] Settings changed:', e.detail);
-    setSettings(e.detail);
-  }, []);
-
+  // 🔥 FIX: הסרת useCallback - פשוט שימוש ב-useEffect ישיר
   useEffect(() => {
+    const handleSettingsChange = (e) => {
+      console.log('🔧 [DEBUG] Settings changed:', e.detail);
+      setSettings(e.detail);
+    };
+
     window.addEventListener('debug-settings-changed', handleSettingsChange);
     
     return () => {
       window.removeEventListener('debug-settings-changed', handleSettingsChange);
     };
-  }, [handleSettingsChange]); // ✅ Now includes handleSettingsChange in dependency array
+  }, []); // 🔥 FIX: מערך ריק - רק פעם אחת
 
   // לכידת console.log
   useEffect(() => {
@@ -116,7 +115,6 @@ export default function FloatingDebugPanel() {
     };
   }, []);
 
-  // טען נתוני גישה - עם useCallback
   const loadAccessData = useCallback(async () => {
     if (!me) return;
     
@@ -127,10 +125,9 @@ export default function FloatingDebugPanel() {
       console.log('🐛 ========================================');
       console.log('');
       
-      // 🔥 FIX: טעינה ללא limit כדי לקבל את כל הנתונים!
       const [clients, projects, accessRules] = await Promise.all([
-        Client.list(), // ✅ ללא limit
-        Project.list(), // ✅ ללא limit
+        Client.list(),
+        Project.list(),
         AccessControl.list()
       ]);
 
@@ -182,7 +179,7 @@ export default function FloatingDebugPanel() {
     if (me && isOpen) {
       loadAccessData();
     }
-  }, [me, isOpen, loadAccessData]); // ✅ Now includes loadAccessData
+  }, [me, isOpen, loadAccessData]);
 
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text).then(() => {
@@ -220,11 +217,6 @@ export default function FloatingDebugPanel() {
   }
 
   if (!me) return null;
-
-  console.log('🎨 [DEBUG PANEL] Rendering with data:', {
-    clients: clientsData?.total,
-    projects: projectsData?.total
-  });
 
   return (
     <>
@@ -397,7 +389,7 @@ export default function FloatingDebugPanel() {
                     )}
                   </div>
 
-                  {/* 🔥 FIX: סטטיסטיקות עם לוגים מפורטים */}
+                  {/* סטטיסטיקות */}
                   <div className="grid grid-cols-2 gap-2">
                     <div className="bg-green-50 rounded-lg p-3">
                       <div className="flex items-center gap-2 mb-1">
