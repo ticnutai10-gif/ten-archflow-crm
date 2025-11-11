@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,6 @@ import {
   Send,
   Loader2,
   Brain,
-  Sparkles,
   Plus,
   Trash2,
   Edit2,
@@ -37,60 +36,15 @@ export default function FloatingChatButton() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingConv, setEditingConv] = useState(null);
   const [editForm, setEditForm] = useState({ name: '', notes: '' });
+  
   const scrollRef = useRef(null);
   const sendingRef = useRef(false);
 
-  // טעינת שיחות כשנפתח הדיאלוג
-  useEffect(() => {
-    if (isOpen && conversations.length === 0) {
-      loadConversations();
-    }
-  }, [isOpen]);
-
-  // סקרול אוטומטי
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages]);
-
-  // מנוי לעדכונים בזמן אמת - FIX: טיפול טוב יותר ב-WebSocket
-  useEffect(() => {
-    if (!currentConversationId) return;
-    
-    let unsubscribe;
-    
-    try {
-      unsubscribe = base44.agents.subscribeToConversation(
-        currentConversationId,
-        (data) => {
-          setMessages([...data.messages || []]);
-        }
-      );
-    } catch (error) {
-      console.error('❌ [WEBSOCKET] Subscription error:', error);
-      // אל תעצור את האפליקציה בגלל שגיאת WebSocket
-    }
-    
-    return () => {
-      if (unsubscribe && typeof unsubscribe === 'function') {
-        try {
-          unsubscribe();
-        } catch (error) {
-          console.error('❌ [WEBSOCKET] Unsubscribe error:', error);
-        }
-      }
-    };
-  }, [currentConversationId]);
-
-  const loadConversations = async () => {
+  const loadConversations = useCallback(async () => {
     setLoadingConversations(true);
     try {
-      const convs = await base44.agents.listConversations({
-        agent_name: AGENT_NAME
-      });
-      
-      const activeConvs = convs.filter(c => !c.metadata?.deleted);
+      const convs = await base44.agents.listConversations({ agent_name: AGENT_NAME });
+      const activeConvs = (convs || []).filter(c => !c.metadata?.deleted);
       setConversations(activeConvs);
       
       if (activeConvs.length > 0 && !currentConversationId) {
@@ -100,23 +54,23 @@ export default function FloatingChatButton() {
       console.error('Error loading conversations:', error);
     }
     setLoadingConversations(false);
-  };
+  }, [currentConversationId]);
 
-  const loadConversation = async (convId) => {
+  const loadConversation = useCallback(async (convId) => {
     try {
       const conv = await base44.agents.getConversation(convId);
       
       if (conv) {
         setCurrentConversationId(convId);
         setCurrentConversation(conv);
-        setMessages([...conv.messages || []]);
+        setMessages([...(conv.messages || [])]);
       }
     } catch (error) {
       console.error('Error loading conversation:', error);
     }
-  };
+  }, []);
 
-  const handleNewConversation = async () => {
+  const handleNewConversation = useCallback(async () => {
     try {
       const newConv = await base44.agents.createConversation({
         agent_name: AGENT_NAME,
@@ -135,16 +89,15 @@ export default function FloatingChatButton() {
       await loadConversation(newConv.id);
       
       toast.success('🎉 שיחה חדשה!');
-      
       return newConv.id;
     } catch (error) {
       console.error('Error creating conversation:', error);
       toast.error('שגיאה ביצירת שיחה');
       return null;
     }
-  };
+  }, [loadConversations, loadConversation]);
 
-  const handleEditConversation = (conv, e) => {
+  const handleEditConversation = useCallback((conv, e) => {
     if (e) {
       e.preventDefault();
       e.stopPropagation();
@@ -156,9 +109,9 @@ export default function FloatingChatButton() {
       notes: conv.metadata?.notes || ''
     });
     setEditDialogOpen(true);
-  };
+  }, []);
 
-  const handleSaveEdit = async () => {
+  const handleSaveEdit = useCallback(async () => {
     if (!editingConv || !editForm.name.trim()) {
       toast.error('נא להזין שם לשיחה');
       return;
@@ -182,9 +135,9 @@ export default function FloatingChatButton() {
       console.error('Error updating conversation:', error);
       toast.error('שגיאה בעדכון השיחה');
     }
-  };
+  }, [editingConv, editForm, loadConversations]);
 
-  const handleSendMessage = async () => {
+  const handleSendMessage = useCallback(async () => {
     const text = inputMessage.trim();
     
     if (!text || loading || sendingRef.current) return;
@@ -213,15 +166,15 @@ export default function FloatingChatButton() {
         content: text
       });
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error sending message:', error);
       toast.error(`שגיאה: ${error.message}`);
     } finally {
       setLoading(false);
       sendingRef.current = false;
     }
-  };
+  }, [inputMessage, loading, currentConversationId, currentConversation, handleNewConversation]);
 
-  const handleDeleteConversation = async (convId, e) => {
+  const handleDeleteConversation = useCallback(async (convId, e) => {
     e.stopPropagation();
     
     if (!confirm('למחוק את השיחה?')) return;
@@ -252,13 +205,51 @@ export default function FloatingChatButton() {
       
       toast.success('נמחק');
     } catch (error) {
-      console.error('Error deleting:', error);
+      console.error('Error deleting conversation:', error);
     }
-  };
+  }, [conversations, currentConversationId, loadConversations, loadConversation]);
+
+  useEffect(() => {
+    if (isOpen && conversations.length === 0) {
+      loadConversations();
+    }
+  }, [isOpen, conversations.length, loadConversations]);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  useEffect(() => {
+    if (!currentConversationId) return;
+    
+    let unsubscribe;
+    
+    try {
+      unsubscribe = base44.agents.subscribeToConversation(
+        currentConversationId,
+        (data) => {
+          setMessages([...(data.messages || [])]);
+        }
+      );
+    } catch (error) {
+      console.error('WebSocket subscription error:', error);
+    }
+    
+    return () => {
+      if (unsubscribe && typeof unsubscribe === 'function') {
+        try {
+          unsubscribe();
+        } catch (error) {
+          console.error('WebSocket unsubscribe error:', error);
+        }
+      }
+    };
+  }, [currentConversationId]);
 
   return (
     <>
-      {/* Floating Button */}
       <div className="fixed bottom-6 right-6 z-50">
         <Button
           onClick={() => setIsOpen(true)}
@@ -273,11 +264,9 @@ export default function FloatingChatButton() {
         </Button>
       </div>
 
-      {/* Chat Dialog */}
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className="max-w-4xl h-[80vh] p-0 gap-0" dir="rtl">
           <div className="flex h-full">
-            {/* Sidebar */}
             <div className="w-64 bg-slate-50 border-l flex flex-col">
               <div className="p-3 border-b bg-white">
                 <Button 
@@ -363,9 +352,7 @@ export default function FloatingChatButton() {
               </ScrollArea>
             </div>
 
-            {/* Main Chat */}
             <div className="flex-1 flex flex-col bg-white">
-              {/* Header */}
               <div className="p-4 border-b bg-gradient-to-r from-blue-50 to-purple-50">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -391,7 +378,6 @@ export default function FloatingChatButton() {
                 </div>
               </div>
 
-              {/* Messages */}
               <ScrollArea className="flex-1 p-4" ref={scrollRef}>
                 {messages.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-full text-center">
@@ -404,19 +390,19 @@ export default function FloatingChatButton() {
                     </p>
                     <div className="grid grid-cols-2 gap-2 text-xs text-slate-500">
                       <div className="flex items-center gap-1">
-                        <Sparkles className="w-3 h-3" />
+                        <MessageCircle className="w-3 h-3" />
                         שאלות ותשובות
                       </div>
                       <div className="flex items-center gap-1">
-                        <Sparkles className="w-3 h-3" />
+                        <MessageCircle className="w-3 h-3" />
                         קביעת פגישות
                       </div>
                       <div className="flex items-center gap-1">
-                        <Sparkles className="w-3 h-3" />
+                        <MessageCircle className="w-3 h-3" />
                         הוספת לקוחות
                       </div>
                       <div className="flex items-center gap-1">
-                        <Sparkles className="w-3 h-3" />
+                        <MessageCircle className="w-3 h-3" />
                         שליחת מיילים
                       </div>
                     </div>
@@ -437,7 +423,6 @@ export default function FloatingChatButton() {
                 )}
               </ScrollArea>
 
-              {/* Input */}
               <div className="p-4 border-t bg-slate-50">
                 <div className="flex gap-2">
                   <Input
@@ -475,7 +460,6 @@ export default function FloatingChatButton() {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent className="max-w-md" dir="rtl">
           <DialogHeader>

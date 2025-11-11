@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -10,23 +9,15 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { 
   Send, 
-  Sparkles, 
   Trash2, 
   Plus,
   Brain,
   MessageSquare,
   Loader2,
-  AlertCircle,
   TrendingUp,
-  Users,
-  Briefcase,
-  CheckSquare,
-  Clock,
-  Database,
   Edit2,
   Save,
   X,
-  Zap,
   Calendar,
   Mail,
   UserPlus,
@@ -35,13 +26,47 @@ import {
   Copy,
   Check,
   Target,
-  Activity
+  Activity,
+  CheckSquare
 } from "lucide-react";
 import { toast } from "sonner";
 import MessageBubble from "@/components/chat/MessageBubble";
 import QuickActions from "@/components/chat/QuickActions";
 
 const AGENT_NAME = "business_assistant";
+
+const QUICK_ACTION_QUESTIONS = [
+  {
+    icon: UserPlus,
+    label: "הוסף לקוח",
+    question: "תוסיף לקוח חדש בשם משה כהן, מייל: moshe@example.com, טלפון: 050-1234567",
+    color: "green"
+  },
+  {
+    icon: Calendar,
+    label: "קבע פגישה",
+    question: "תקבע לי פגישה עם לקוח מחר בשעה 10:00 בבוקר",
+    color: "blue"
+  },
+  {
+    icon: CheckSquare,
+    label: "צור משימה",
+    question: "תיצור משימה חדשה בשם 'בדיקת תוכניות' עם עדיפות גבוהה",
+    color: "purple"
+  },
+  {
+    icon: Mail,
+    label: "שלח מייל",
+    question: "תשלח מייל ללקוח ותעדכן אותו על התקדמות הפרויקט",
+    color: "orange"
+  },
+  {
+    icon: TrendingUp,
+    label: "סיכום היום",
+    question: "תן לי סיכום מפורט של כל הפעילות שהייתה היום",
+    color: "red"
+  }
+];
 
 export default function AIChatPage() {
   const [conversations, setConversations] = useState([]);
@@ -59,84 +84,54 @@ export default function AIChatPage() {
   const [editForm, setEditForm] = useState({ name: '', notes: '' });
   const [whatsappUrl, setWhatsappUrl] = useState('');
   const [copiedUrl, setCopiedUrl] = useState(false);
+  
   const scrollRef = useRef(null);
   const sendingRef = useRef(false);
 
-  // טעינה ראשונית
-  useEffect(() => {
-    loadConversations();
-    generateWhatsAppUrl();
-    loadBusinessInsights();
-  }, []);
-
-  // סקרול אוטומטי
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages]);
-
-  // טעינת תובנות עסקיות
-  const loadBusinessInsights = async () => {
+  const loadBusinessInsights = useCallback(async () => {
     setLoadingInsights(true);
     try {
       const response = await base44.functions.invoke('businessInsights');
-      setBusinessInsights(response.data.insights);
-      console.log('✅ [INSIGHTS] Loaded:', response.data.insights);
+      setBusinessInsights(response?.data?.insights || null);
     } catch (error) {
-      console.error('❌ [INSIGHTS] Error:', error);
+      console.error('Error loading insights:', error);
     }
     setLoadingInsights(false);
-  };
+  }, []);
 
-  // יצירת URL ל-WhatsApp
-  const generateWhatsAppUrl = () => {
+  const generateWhatsAppUrl = useCallback(() => {
     try {
       const url = base44.agents.getWhatsAppConnectURL(AGENT_NAME);
       setWhatsappUrl(url);
     } catch (error) {
-      console.error('❌ [WHATSAPP] Error generating URL:', error);
+      console.error('Error generating WhatsApp URL:', error);
     }
-  };
+  }, []);
 
-  // העתקת URL
-  const copyWhatsAppUrl = () => {
-    navigator.clipboard.writeText(whatsappUrl);
-    setCopiedUrl(true);
-    toast.success('✅ הקישור הועתק!');
-    setTimeout(() => setCopiedUrl(false), 2000);
-  };
-
-  // טעינת שיחות מה-API
-  const loadConversations = async () => {
+  const loadConversations = useCallback(async () => {
     setLoadingConversations(true);
     try {
-      const convs = await base44.agents.listConversations({
-        agent_name: AGENT_NAME
-      });
+      const convs = await base44.agents.listConversations({ agent_name: AGENT_NAME });
+      setConversations(convs || []);
       
-      setConversations(convs);
-      
-      if (convs.length > 0 && !currentConversationId) {
-        const firstConv = convs[0];
-        await loadConversation(firstConv.id);
+      if (convs?.length > 0 && !currentConversationId) {
+        await loadConversation(convs[0].id);
       }
     } catch (error) {
-      console.error('❌ [CHAT] Error loading conversations:', error);
+      console.error('Error loading conversations:', error);
       toast.error('שגיאה בטעינת שיחות');
     }
     setLoadingConversations(false);
-  };
+  }, [currentConversationId]);
 
-  // טעינת שיחה ספציפית
-  const loadConversation = async (convId) => {
+  const loadConversation = useCallback(async (convId) => {
     try {
       const conv = await base44.agents.getConversation(convId);
       
       if (conv) {
         setCurrentConversationId(convId);
         setCurrentConversation(conv);
-        setMessages([...conv.messages || []]);
+        setMessages([...(conv.messages || [])]);
         
         setTimeout(() => {
           if (scrollRef.current) {
@@ -147,42 +142,12 @@ export default function AIChatPage() {
         toast.success(`נטענה: ${conv.metadata?.name || 'שיחה'}`);
       }
     } catch (error) {
-      console.error('❌ [CHAT] Error loading conversation:', error);
+      console.error('Error loading conversation:', error);
       toast.error('השיחה לא נמצאה');
     }
-  };
+  }, []);
 
-  // מנוי לעדכונים בזמן אמת - FIX: טיפול טוב יותר ב-WebSocket
-  useEffect(() => {
-    if (!currentConversationId) return;
-    
-    let unsubscribe;
-    
-    try {
-      unsubscribe = base44.agents.subscribeToConversation(
-        currentConversationId,
-        (data) => {
-          setMessages([...data.messages || []]);
-        }
-      );
-    } catch (error) {
-      console.error('❌ [WEBSOCKET] Subscription error:', error);
-      // אל תעצור את האפליקציה בגלל שגיאת WebSocket
-    }
-    
-    return () => {
-      if (unsubscribe && typeof unsubscribe === 'function') {
-        try {
-          unsubscribe();
-        } catch (error) {
-          console.error('❌ [WEBSOCKET] Unsubscribe error:', error);
-        }
-      }
-    };
-  }, [currentConversationId]);
-
-  // יצירת שיחה חדשה
-  const handleNewConversation = async () => {
+  const handleNewConversation = useCallback(async () => {
     try {
       const newConv = await base44.agents.createConversation({
         agent_name: AGENT_NAME,
@@ -201,17 +166,15 @@ export default function AIChatPage() {
       await loadConversation(newConv.id);
       
       toast.success('🎉 שיחה חדשה נוצרה!');
-      
       return newConv.id;
     } catch (error) {
-      console.error('❌ [CHAT] Error creating conversation:', error);
+      console.error('Error creating conversation:', error);
       toast.error('שגיאה ביצירת שיחה');
       return null;
     }
-  };
+  }, [loadConversations, loadConversation]);
 
-  // עריכת כותרת והערות
-  const handleEditConversation = (conv, e) => {
+  const handleEditConversation = useCallback((conv, e) => {
     if (e) {
       e.preventDefault();
       e.stopPropagation();
@@ -223,9 +186,9 @@ export default function AIChatPage() {
       notes: conv.metadata?.notes || ''
     });
     setEditDialogOpen(true);
-  };
+  }, []);
 
-  const handleSaveEdit = async () => {
+  const handleSaveEdit = useCallback(async () => {
     if (!editingConv || !editForm.name.trim()) {
       toast.error('נא להזין שם לשיחה');
       return;
@@ -246,18 +209,15 @@ export default function AIChatPage() {
       
       toast.success('✅ השיחה עודכנה!');
     } catch (error) {
-      console.error('❌ [CHAT] Error updating conversation:', error);
+      console.error('Error updating conversation:', error);
       toast.error('שגיאה בעדכון השיחה');
     }
-  };
+  }, [editingConv, editForm, loadConversations]);
 
-  // שליחת הודעה
-  const handleSendMessage = async (messageText = null) => {
+  const handleSendMessage = useCallback(async (messageText = null) => {
     const text = messageText || inputMessage.trim();
     
-    if (!text || loading || sendingRef.current) {
-      return;
-    }
+    if (!text || loading || sendingRef.current) return;
 
     sendingRef.current = true;
 
@@ -282,26 +242,22 @@ export default function AIChatPage() {
         role: "user",
         content: text
       });
-
     } catch (error) {
-      console.error('❌ [AGENT] Error:', error);
+      console.error('Error sending message:', error);
       toast.error(`שגיאה: ${error.message}`);
     } finally {
       setLoading(false);
       sendingRef.current = false;
     }
-  };
+  }, [inputMessage, loading, currentConversationId, currentConversation, handleNewConversation]);
 
-  // מחיקת שיחה
-  const handleDeleteConversation = async (convId, e) => {
+  const handleDeleteConversation = useCallback(async (convId, e) => {
     if (e) {
       e.preventDefault();
       e.stopPropagation();
     }
     
-    if (!confirm('❓ למחוק את השיחה? לא ניתן לשחזר!')) {
-      return;
-    }
+    if (!confirm('❓ למחוק את השיחה? לא ניתן לשחזר!')) return;
     
     try {
       const conv = conversations.find(c => c.id === convId);
@@ -329,43 +285,56 @@ export default function AIChatPage() {
       
       toast.success('🗑️ השיחה נמחקה');
     } catch (error) {
-      console.error('❌ [CHAT] Error deleting:', error);
+      console.error('Error deleting conversation:', error);
       toast.error('שגיאה במחיקה');
     }
-  };
+  }, [conversations, currentConversationId, loadConversations, loadConversation]);
 
-  const quickActionQuestions = [
-    {
-      icon: UserPlus,
-      label: "הוסף לקוח",
-      question: "תוסיף לקוח חדש בשם משה כהן, מייל: moshe@example.com, טלפון: 050-1234567",
-      color: "green"
-    },
-    {
-      icon: Calendar,
-      label: "קבע פגישה",
-      question: "תקבע לי פגישה עם לקוח מחר בשעה 10:00 בבוקר",
-      color: "blue"
-    },
-    {
-      icon: CheckSquare,
-      label: "צור משימה",
-      question: "תיצור משימה חדשה בשם 'בדיקת תוכניות' עם עדיפות גבוהה",
-      color: "purple"
-    },
-    {
-      icon: Mail,
-      label: "שלח מייל",
-      question: "תשלח מייל ללקוח ותעדכן אותו על התקדמות הפרויקט",
-      color: "orange"
-    },
-    {
-      icon: TrendingUp,
-      label: "סיכום היום",
-      question: "תן לי סיכום מפורט של כל הפעילות שהייתה היום",
-      color: "red"
+  const copyWhatsAppUrl = useCallback(() => {
+    navigator.clipboard.writeText(whatsappUrl);
+    setCopiedUrl(true);
+    toast.success('✅ הקישור הועתק!');
+    setTimeout(() => setCopiedUrl(false), 2000);
+  }, [whatsappUrl]);
+
+  useEffect(() => {
+    loadConversations();
+    generateWhatsAppUrl();
+    loadBusinessInsights();
+  }, [loadConversations, generateWhatsAppUrl, loadBusinessInsights]);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  ];
+  }, [messages]);
+
+  useEffect(() => {
+    if (!currentConversationId) return;
+    
+    let unsubscribe;
+    
+    try {
+      unsubscribe = base44.agents.subscribeToConversation(
+        currentConversationId,
+        (data) => {
+          setMessages([...(data.messages || [])]);
+        }
+      );
+    } catch (error) {
+      console.error('WebSocket subscription error:', error);
+    }
+    
+    return () => {
+      if (unsubscribe && typeof unsubscribe === 'function') {
+        try {
+          unsubscribe();
+        } catch (error) {
+          console.error('WebSocket unsubscribe error:', error);
+        }
+      }
+    };
+  }, [currentConversationId]);
 
   if (loadingConversations) {
     return (
@@ -382,7 +351,6 @@ export default function AIChatPage() {
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-slate-50 to-slate-100" dir="rtl">
-      {/* Sidebar */}
       <div className="w-80 bg-white border-l border-slate-200 flex flex-col shadow-lg">
         <div className="p-4 border-b border-slate-200 space-y-2">
           <Button 
@@ -488,9 +456,7 @@ export default function AIChatPage() {
         </div>
       </div>
 
-      {/* Main Chat */}
       <div className="flex-1 flex flex-col">
-        {/* Header */}
         <div className="bg-white border-b px-6 py-4 shadow-sm">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-3">
@@ -524,14 +490,13 @@ export default function AIChatPage() {
                 WhatsApp זמין
               </Badge>
               <Badge className="bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-md">
-                <Sparkles className="w-3 h-3 ml-1" />
+                <Activity className="w-3 h-3 ml-1" />
                 AI מתקדם
               </Badge>
             </div>
           </div>
         </div>
 
-        {/* Messages */}
         <ScrollArea className="flex-1 p-6" ref={scrollRef}>
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center">
@@ -563,7 +528,7 @@ export default function AIChatPage() {
                         </div>
                       )}
                       <div className="text-blue-700">
-                        📊 ציון בריאות עסקי: {businessInsights.summary?.score}/100
+                        📊 ציון בריאות עסקי: {businessInsights.summary?.score || 0}/100
                       </div>
                     </div>
                   </div>
@@ -571,7 +536,7 @@ export default function AIChatPage() {
               )}
               
               <QuickActions 
-                actions={quickActionQuestions} 
+                actions={QUICK_ACTION_QUESTIONS} 
                 onActionClick={handleSendMessage}
                 insights={businessInsights}
               />
@@ -595,7 +560,6 @@ export default function AIChatPage() {
           )}
         </ScrollArea>
 
-        {/* Input */}
         <div className="bg-white border-t px-6 py-4 shadow-inner">
           <div className="max-w-4xl mx-auto flex gap-3">
             <Input
@@ -629,13 +593,12 @@ export default function AIChatPage() {
           </div>
           
           <div className="mt-3 flex items-center justify-center gap-2 text-xs text-slate-500">
-            <Sparkles className="w-3 h-3" />
+            <Activity className="w-3 h-3" />
             <span>יועץ AI פרואקטיבי - תובנות אוטומטיות וניתוח חכם</span>
           </div>
         </div>
       </div>
 
-      {/* Edit Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent className="max-w-md" dir="rtl">
           <DialogHeader>
@@ -692,7 +655,6 @@ export default function AIChatPage() {
         </DialogContent>
       </Dialog>
 
-      {/* WhatsApp Dialog */}
       <Dialog open={whatsappDialogOpen} onOpenChange={setWhatsappDialogOpen}>
         <DialogContent className="max-w-lg" dir="rtl">
           <DialogHeader>
