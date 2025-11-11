@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -197,45 +198,55 @@ export default function Dashboard() {
       let canSeeAllTimeLogs = currentUser?.role === 'admin';
       if (!canSeeAllTimeLogs && currentUser?.email) {
         const rows = await base44.entities.AccessControl.filter({ email: currentUser.email, active: true }).catch(() => []);
-        canSeeAllTimeLogs = !!rows?.[0] && rows[0].role === 'manager_plus';
+        const validRows = Array.isArray(rows) ? rows : [];
+        canSeeAllTimeLogs = !!validRows?.[0] && validRows[0].role === 'manager_plus';
       }
 
       const timeLogsPromise = canSeeAllTimeLogs ?
         base44.entities.TimeLog.filter({}, '-log_date', 1000) :
         base44.entities.TimeLog.filter({ created_by: currentUser.email }, '-log_date', 300);
 
-      const allMeetings = await base44.entities.Meeting.list('-meeting_date');
+      const allMeetings = await base44.entities.Meeting.list('-meeting_date').catch(() => []);
+      
+      const validMeetings = Array.isArray(allMeetings) ? allMeetings : [];
+      
       const now = new Date();
-      const futureMeetings = allMeetings.filter(m => {
-        if (!m.meeting_date) return false;
+      const futureMeetings = validMeetings.filter(m => {
+        if (!m || !m.meeting_date) return false;
         try {
           const meetingDate = new Date(m.meeting_date);
           if (isNaN(meetingDate.getTime())) return false;
-          return meetingDate >= now && ['מתוכננת', 'אושרה'].includes(m.status);
+          return meetingDate >= now && ['מתוכננת', 'אושרה'].includes(m?.status);
         } catch (e) {
           return false;
         }
       });
 
       const [clientsData, projectsData, quotesData, tasksData, myTimeLogs] = await Promise.all([
-        base44.entities.Client.list(),
-        base44.entities.Project.list('-created_date'),
-        base44.entities.Quote.list('-created_date'),
-        base44.entities.Task.filter({ status: { $ne: 'הושלמה' } }, '-due_date'),
-        timeLogsPromise
+        base44.entities.Client.list().catch(() => []),
+        base44.entities.Project.list('-created_date').catch(() => []),
+        base44.entities.Quote.list('-created_date').catch(() => []),
+        base44.entities.Task.filter({ status: { $ne: 'הושלמה' } }, '-due_date').catch(() => []),
+        timeLogsPromise.catch(() => [])
       ]);
 
+      const validClients = Array.isArray(clientsData) ? clientsData : [];
+      const validProjects = Array.isArray(projectsData) ? projectsData : [];
+      const validQuotes = Array.isArray(quotesData) ? quotesData : [];
+      const validTasks = Array.isArray(tasksData) ? tasksData : [];
+      const validTimeLogs = Array.isArray(myTimeLogs) ? myTimeLogs : [];
+
       setStats({
-        clients: clientsData.length,
-        projects: projectsData.filter((p) => p.status !== 'הושלם').length,
-        quotes: quotesData.filter((q) => q.status === 'בהמתנה').length,
-        tasks: tasksData.length
+        clients: validClients.length,
+        projects: validProjects.filter((p) => p?.status !== 'הושלם').length,
+        quotes: validQuotes.filter((q) => q?.status === 'בהמתנה').length,
+        tasks: validTasks.length
       });
 
-      setRecentProjects(projectsData.slice(0, 5));
-      setUpcomingTasks(tasksData.slice(0, 5));
-      setQuotes(quotesData.slice(0, 5));
-      setTimeLogs(myTimeLogs || []);
+      setRecentProjects(validProjects.slice(0, 5));
+      setUpcomingTasks(validTasks.slice(0, 5));
+      setQuotes(validQuotes.slice(0, 5));
+      setTimeLogs(validTimeLogs);
       setUpcomingMeetings(futureMeetings.slice(0, 10));
     } catch (error) {
       console.error('Error loading dashboard data:', error);

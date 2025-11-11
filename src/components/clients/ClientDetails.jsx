@@ -59,12 +59,17 @@ export default function ClientDetails({ client, onBack, onEdit }) {
         base44.entities.TimeLog.filter({ client_id: client.id }, '-log_date', 50).catch(() => [])
       ]);
 
-      setProjects(projectsData);
-      setQuotes(quotesData);
-      setInvoices(invoicesData);
-      setTimeLogs(timeLogsData);
+      // ✅ הגנה על כל התוצאות
+      setProjects(Array.isArray(projectsData) ? projectsData : []);
+      setQuotes(Array.isArray(quotesData) ? quotesData : []);
+      setInvoices(Array.isArray(invoicesData) ? invoicesData : []);
+      setTimeLogs(Array.isArray(timeLogsData) ? timeLogsData : []);
     } catch (error) {
       console.error("Error loading client data:", error);
+      setProjects([]);
+      setQuotes([]);
+      setInvoices([]);
+      setTimeLogs([]);
     } finally {
       setIsLoading(false);
     }
@@ -75,13 +80,13 @@ export default function ClientDetails({ client, onBack, onEdit }) {
   }, [loadClientData]);
 
   const totalRevenue = invoices
-    .filter(inv => inv.status === 'paid')
-    .reduce((sum, inv) => sum + (inv.amount || 0), 0);
+    .filter(inv => inv?.status === 'paid')
+    .reduce((sum, inv) => sum + (inv?.amount || 0), 0);
 
   // totalQuoted is declared in the outline but not used in the UI for display
   // const totalQuoted = quotes.reduce((sum, q) => sum + (q.amount || 0), 0);
 
-  const totalHours = timeLogs.reduce((sum, log) => sum + (log.duration_seconds || 0) / 3600, 0);
+  const totalHours = timeLogs.reduce((sum, log) => sum + (log?.duration_seconds || 0) / 3600, 0);
 
   return (
     <div className="p-6 lg:p-8 min-h-screen" style={{ backgroundColor: 'var(--bg-cream, #FCF6E3)' }} dir="rtl">
@@ -325,7 +330,11 @@ export default function ClientDetails({ client, onBack, onEdit }) {
 
           {/* Time Tab */}
           <TabsContent value="time" className="mt-6">
-            <TimeLogView clientId={client.id} clientName={client.name} />
+            <TimeLogView 
+              client={client} 
+              timeLogs={timeLogs}
+              onTimeLogUpdate={loadClientData}
+            />
           </TabsContent>
 
           {/* Files Tab */}
