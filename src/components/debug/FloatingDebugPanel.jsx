@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -49,21 +48,29 @@ export default function FloatingDebugPanel() {
 
   const { me, isAdmin, isSuperAdmin, isManagerPlus, myAccessRule, loading } = useAccessControl();
 
-  // האזנה לשינויים בהגדרות
-  useEffect(() => {
-    const handleSettingsChange = (e) => {
-      console.log('🔧 [DEBUG] Settings changed:', e.detail);
-      setSettings(e.detail);
-    };
+  // האזנה לשינויים בהגדרות - FIX: use useCallback
+  const handleSettingsChange = useCallback((e) => {
+    console.log('🔧 [DEBUG] Settings changed:', e.detail);
+    setSettings(e.detail);
+  }, []);
 
+  useEffect(() => {
     window.addEventListener('debug-settings-changed', handleSettingsChange);
     
     return () => {
       window.removeEventListener('debug-settings-changed', handleSettingsChange);
     };
-  }, []); // Empty dependency array means this runs once on mount and cleans up on unmount
+  }, [handleSettingsChange]);
 
-  // לכידת console.log
+  // לכידת console.log - FIX: use useCallback
+  const addLog = useCallback((level, message) => {
+    setLogs(prev => [...prev.slice(-100), {
+      time: new Date().toLocaleTimeString('he-IL'),
+      level,
+      message
+    }]);
+  }, []);
+
   useEffect(() => {
     const originalLog = console.log;
     const originalError = console.error;
@@ -82,31 +89,30 @@ export default function FloatingDebugPanel() {
         return String(arg);
       }).join(' ');
       
-      setLogs(prev => [...prev.slice(-100), {
-        time: new Date().toLocaleTimeString('he-IL'),
-        level: 'log',
-        message
-      }]);
+      // FIX: Schedule state update
+      setTimeout(() => {
+        addLog('log', message);
+      }, 0);
     };
 
     console.error = (...args) => {
       originalError(...args);
       const message = args.map(arg => String(arg)).join(' ');
-      setLogs(prev => [...prev.slice(-100), {
-        time: new Date().toLocaleTimeString('he-IL'),
-        level: 'error',
-        message
-      }]);
+      
+      // FIX: Schedule state update
+      setTimeout(() => {
+        addLog('error', message);
+      }, 0);
     };
 
     console.warn = (...args) => {
       originalWarn(...args);
       const message = args.map(arg => String(arg)).join(' ');
-      setLogs(prev => [...prev.slice(-100), {
-        time: new Date().toLocaleTimeString('he-IL'),
-        level: 'warn',
-        message
-      }]);
+      
+      // FIX: Schedule state update
+      setTimeout(() => {
+        addLog('warn', message);
+      }, 0);
     };
 
     return () => {
@@ -114,10 +120,10 @@ export default function FloatingDebugPanel() {
       console.error = originalError;
       console.warn = originalWarn;
     };
-  }, []);
+  }, [addLog]);
 
   // טען נתוני גישה
-  const loadAccessData = async () => {
+  const loadAccessData = useCallback(async () => {
     try {
       const [clients, projects, accessRules] = await Promise.all([
         Client.list(),
@@ -149,13 +155,13 @@ export default function FloatingDebugPanel() {
     } catch (error) {
       console.error('Error loading access data:', error);
     }
-  };
+  }, [me]);
 
   useEffect(() => {
     if (me && isOpen) {
       loadAccessData();
     }
-  }, [me, isOpen]);
+  }, [me, isOpen, loadAccessData]);
 
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text).then(() => {
