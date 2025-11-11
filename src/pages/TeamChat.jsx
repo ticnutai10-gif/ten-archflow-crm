@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
@@ -96,7 +97,11 @@ export default function TeamChatPage() {
       }
       // Cleanup media recorder
       if (mediaRecorder) {
-        mediaRecorder.stream.getTracks().forEach(track => track.stop());
+        try {
+          mediaRecorder.stream.getTracks().forEach(track => track.stop());
+        } catch (e) {
+          console.warn('MediaRecorder cleanup error:', e);
+        }
       }
     };
   }, []);
@@ -139,9 +144,9 @@ export default function TeamChatPage() {
       
       if (mountedRef.current) {
         setUser(userData);
-        setClients(clientsData);
-        setProjects(projectsData);
-        setAllUsers(usersData);
+        setClients(clientsData || []);
+        setProjects(projectsData || []);
+        setAllUsers(usersData || []);
         await loadRooms(userData.email);
       }
     } catch (error) {
@@ -163,8 +168,8 @@ export default function TeamChatPage() {
       );
       
       if (mountedRef.current) {
-        setRooms(allRooms);
-        if (allRooms.length > 0 && !currentRoom) {
+        setRooms(allRooms || []);
+        if (allRooms && allRooms.length > 0 && !currentRoom) {
           setCurrentRoom(allRooms[0]);
         }
       }
@@ -187,11 +192,11 @@ export default function TeamChatPage() {
       );
       
       if (mountedRef.current) {
-        setMessages(msgs);
+        setMessages(msgs || []);
         
         // Mark messages as read
-        const unreadMessages = msgs.filter(
-          m => !m.read_by?.includes(user.email) && m.sender_email !== user.email
+        const unreadMessages = (msgs || []).filter(
+          m => !m.read_by?.includes(user?.email) && m.sender_email !== user?.email
         );
         
         for (const msg of unreadMessages) {
@@ -227,13 +232,15 @@ export default function TeamChatPage() {
       };
 
       if (newRoomForm.type === 'client' && newRoomForm.client_id) {
+        const client = clients.find(c => c.id === newRoomForm.client_id);
         roomData.client_id = newRoomForm.client_id;
-        roomData.client_name = clients.find(c => c.id === newRoomForm.client_id)?.name;
+        roomData.client_name = client?.name || '';
       }
 
       if (newRoomForm.type === 'project' && newRoomForm.project_id) {
+        const project = projects.find(p => p.id === newRoomForm.project_id);
         roomData.project_id = newRoomForm.project_id;
-        roomData.project_name = projects.find(p => p.id === newRoomForm.project_id)?.name;
+        roomData.project_name = project?.name || '';
       }
 
       const newRoom = await base44.entities.ChatRoom.create(roomData);
@@ -260,8 +267,8 @@ export default function TeamChatPage() {
 
   const openEditRoomDialog = (room) => {
     setEditingRoom(room);
-    setEditRoomName(room.name || '');
-    setEditRoomTopic(room.topic || '');
+    setEditRoomName(room?.name || '');
+    setEditRoomTopic(room?.topic || '');
     setEditRoomDialogOpen(true);
   };
 
@@ -394,7 +401,7 @@ export default function TeamChatPage() {
         sender_email: user.email,
         sender_name: user.full_name || user.email,
         content: text,
-        message_type: attachedFiles.length > 0 ? 'file' : 'text',
+        message_type: filesToSend.length > 0 ? 'file' : 'text',
         read_by: [user.email],
         attachments: filesToSend.length > 0 ? filesToSend : undefined
       };
@@ -450,7 +457,7 @@ export default function TeamChatPage() {
   };
 
   const selectAllParticipants = () => {
-    const allEmails = allUsers.filter(u => u.email !== user.email).map(u => u.email);
+    const allEmails = allUsers.filter(u => u.email !== user?.email).map(u => u.email);
     setNewRoomForm(prev => ({
       ...prev,
       participants: prev.participants.length === allEmails.length ? [] : allEmails
@@ -580,7 +587,7 @@ export default function TeamChatPage() {
                           <h4 className={`text-sm font-semibold truncate ${
                             isActive ? "text-blue-900" : "text-slate-900"
                           }`}>
-                            {room.name}
+                            {room.name || 'ללא שם'}
                           </h4>
                           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                             <Badge variant="outline" className="text-xs">
@@ -656,7 +663,7 @@ export default function TeamChatPage() {
                 <div>
                   <h1 className="text-xl font-bold flex items-center gap-2">
                     {getRoomIcon(currentRoom.type)}
-                    {currentRoom.name}
+                    {currentRoom.name || 'ללא שם'}
                   </h1>
                   <div className="flex items-center gap-2 mt-1 flex-wrap">
                     <Badge variant="outline" className="text-xs">
@@ -719,14 +726,14 @@ export default function TeamChatPage() {
                         <div className={`flex gap-3 ${isOwn ? 'justify-end' : 'justify-start'}`}>
                           {!isOwn && (
                             <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold flex-shrink-0">
-                              {msg.sender_name?.substring(0, 1).toUpperCase()}
+                              {(msg.sender_name || 'U').substring(0, 1).toUpperCase()}
                             </div>
                           )}
                           
                           <div className={`max-w-[70%] ${isOwn ? 'items-end' : 'items-start'} flex flex-col`}>
                             {!isOwn && (
                               <span className="text-xs font-semibold text-slate-700 mb-1">
-                                {msg.sender_name}
+                                {msg.sender_name || 'משתמש'}
                               </span>
                             )}
                             
@@ -789,7 +796,7 @@ export default function TeamChatPage() {
 
                           {isOwn && (
                             <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold flex-shrink-0">
-                              {user.full_name?.substring(0, 1).toUpperCase() || 'א'}
+                              {(user.full_name || user.email || 'U').substring(0, 1).toUpperCase()}
                             </div>
                           )}
                         </div>
@@ -969,7 +976,7 @@ export default function TeamChatPage() {
                     setNewRoomForm({ 
                       ...newRoomForm, 
                       client_id: value,
-                      client_name: client?.name 
+                      client_name: client?.name || ''
                     });
                   }}
                 >
@@ -979,7 +986,7 @@ export default function TeamChatPage() {
                   <SelectContent>
                     {clients.map(client => (
                       <SelectItem key={client.id} value={client.id}>
-                        {client.name}
+                        {client.name || 'ללא שם'}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -997,7 +1004,7 @@ export default function TeamChatPage() {
                     setNewRoomForm({ 
                       ...newRoomForm, 
                       project_id: value,
-                      project_name: project?.name 
+                      project_name: project?.name || ''
                     });
                   }}
                 >
@@ -1007,7 +1014,7 @@ export default function TeamChatPage() {
                   <SelectContent>
                     {projects.map(project => (
                       <SelectItem key={project.id} value={project.id}>
-                        {project.name}
+                        {project.name || 'ללא שם'}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -1037,7 +1044,7 @@ export default function TeamChatPage() {
                   onClick={selectAllParticipants}
                   className="text-xs"
                 >
-                  {newRoomForm.participants.length === allUsers.filter(u => u.email !== user.email).length 
+                  {newRoomForm.participants.length === allUsers.filter(u => u.email !== user?.email).length 
                     ? 'בטל הכל' 
                     : 'בחר הכל'}
                 </Button>
@@ -1046,7 +1053,7 @@ export default function TeamChatPage() {
               <ScrollArea className="max-h-60 pr-3">
                 <div className="space-y-2">
                   {allUsers
-                    .filter(u => u.email !== user.email)
+                    .filter(u => u.email !== user?.email)
                     .map(u => (
                       <div
                         key={u.id}
