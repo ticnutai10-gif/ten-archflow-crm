@@ -8,6 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   MessageCircleMore,
   Plus,
@@ -25,7 +26,8 @@ import {
   Check,
   CheckCheck,
   Pin,
-  Filter
+  Filter,
+  UserPlus
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -130,7 +132,8 @@ export default function TeamChatPage() {
           active: true,
           participants: { $in: [userEmail] }
         },
-        '-last_message_at'
+        '-last_message_at',
+        100
       );
       
       if (mountedRef.current) {
@@ -182,13 +185,31 @@ export default function TeamChatPage() {
       return;
     }
 
+    if (newRoomForm.participants.length === 0) {
+      toast.error('נא לבחור לפחות משתתף אחד');
+      return;
+    }
+
     try {
       const roomData = {
-        ...newRoomForm,
-        participants: [...newRoomForm.participants, user.email],
+        name: newRoomForm.name.trim(),
+        type: newRoomForm.type,
+        participants: [...new Set([...newRoomForm.participants, user.email])], // הוסף את המשתמש הנוכחי
         active: true,
-        archived: false
+        archived: false,
+        topic: newRoomForm.topic.trim() || undefined
       };
+
+      // הוסף שדות נוספים לפי סוג החדר
+      if (newRoomForm.type === 'client' && newRoomForm.client_id) {
+        roomData.client_id = newRoomForm.client_id;
+        roomData.client_name = clients.find(c => c.id === newRoomForm.client_id)?.name;
+      }
+
+      if (newRoomForm.type === 'project' && newRoomForm.project_id) {
+        roomData.project_id = newRoomForm.project_id;
+        roomData.project_name = projects.find(p => p.id === newRoomForm.project_id)?.name;
+      }
 
       const newRoom = await base44.entities.ChatRoom.create(roomData);
       
@@ -271,6 +292,23 @@ export default function TeamChatPage() {
     }
   };
 
+  const toggleParticipant = (email) => {
+    setNewRoomForm(prev => ({
+      ...prev,
+      participants: prev.participants.includes(email)
+        ? prev.participants.filter(p => p !== email)
+        : [...prev.participants, email]
+    }));
+  };
+
+  const selectAllParticipants = () => {
+    const allEmails = allUsers.filter(u => u.email !== user.email).map(u => u.email);
+    setNewRoomForm(prev => ({
+      ...prev,
+      participants: prev.participants.length === allEmails.length ? [] : allEmails
+    }));
+  };
+
   const getRoomIcon = (type) => {
     switch (type) {
       case 'client': return <Users className="w-4 h-4" />;
@@ -292,7 +330,8 @@ export default function TeamChatPage() {
   const filteredRooms = rooms.filter(room => {
     const matchesType = filterType === 'all' || room.type === filterType;
     const matchesSearch = room.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         room.topic?.toLowerCase().includes(searchTerm.toLowerCase());
+                         room.topic?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         room.client_name?.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesType && matchesSearch;
   });
 
@@ -395,10 +434,15 @@ export default function TeamChatPage() {
                           }`}>
                             {room.name}
                           </h4>
-                          <div className="flex items-center gap-2 mt-0.5">
+                          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                             <Badge variant="outline" className="text-xs">
                               {getRoomTypeLabel(room.type)}
                             </Badge>
+                            {room.client_name && (
+                              <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
+                                {room.client_name}
+                              </Badge>
+                            )}
                             {unreadCount > 0 && (
                               <Badge className="bg-red-500 text-white text-xs">
                                 {unreadCount}
@@ -408,6 +452,12 @@ export default function TeamChatPage() {
                           {room.last_message_preview && (
                             <p className="text-xs text-slate-500 truncate mt-1">
                               {room.last_message_preview}
+                            </p>
+                          )}
+                          {room.participants && (
+                            <p className="text-xs text-slate-400 mt-1">
+                              <Users className="w-3 h-3 inline ml-1" />
+                              {room.participants.length} משתתפים
                             </p>
                           )}
                         </div>
@@ -445,12 +495,18 @@ export default function TeamChatPage() {
                     {getRoomIcon(currentRoom.type)}
                     {currentRoom.name}
                   </h1>
-                  <div className="flex items-center gap-2 mt-1">
+                  <div className="flex items-center gap-2 mt-1 flex-wrap">
                     <Badge variant="outline" className="text-xs">
                       {getRoomTypeLabel(currentRoom.type)}
                     </Badge>
+                    {currentRoom.client_name && (
+                      <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
+                        לקוח: {currentRoom.client_name}
+                      </Badge>
+                    )}
                     {currentRoom.participants && (
-                      <span className="text-xs text-slate-500">
+                      <span className="text-xs text-slate-500 flex items-center gap-1">
+                        <Users className="w-3 h-3" />
                         {currentRoom.participants.length} משתתפים
                       </span>
                     )}
@@ -600,9 +656,9 @@ export default function TeamChatPage() {
 
       {/* New Room Dialog */}
       <Dialog open={newRoomDialogOpen} onOpenChange={setNewRoomDialogOpen}>
-        <DialogContent className="max-w-lg" dir="rtl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" dir="rtl">
           <DialogHeader>
-            <DialogTitle>יצירת חדר צ'אט חדש</DialogTitle>
+            <DialogTitle className="text-xl">יצירת חדר צ'אט חדש</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
@@ -634,8 +690,8 @@ export default function TeamChatPage() {
             </div>
 
             {newRoomForm.type === 'client' && (
-              <div className="space-y-2">
-                <label className="text-sm font-medium">בחר לקוח</label>
+              <div className="space-y-2 p-3 bg-green-50 rounded-lg border border-green-200">
+                <label className="text-sm font-medium text-green-900">בחר לקוח *</label>
                 <Select
                   value={newRoomForm.client_id}
                   onValueChange={(value) => {
@@ -648,7 +704,7 @@ export default function TeamChatPage() {
                   }}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="בחר לקוח" />
+                    <SelectValue placeholder="בחר לקוח מהרשימה" />
                   </SelectTrigger>
                   <SelectContent>
                     {clients.map(client => (
@@ -698,52 +754,61 @@ export default function TeamChatPage() {
               />
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">משתתפים נוספים</label>
-              <Select
-                value=""
-                onValueChange={(value) => {
-                  if (!newRoomForm.participants.includes(value)) {
-                    setNewRoomForm({
-                      ...newRoomForm,
-                      participants: [...newRoomForm.participants, value]
-                    });
-                  }
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="הוסף משתתפים" />
-                </SelectTrigger>
-                <SelectContent>
-                  {allUsers
-                    .filter(u => u.email !== user.email && !newRoomForm.participants.includes(u.email))
-                    .map(u => (
-                      <SelectItem key={u.id} value={u.email}>
-                        {u.full_name || u.email}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-
-              <div className="flex flex-wrap gap-2 mt-2">
-                {newRoomForm.participants.map(email => {
-                  const participant = allUsers.find(u => u.email === email);
-                  return (
-                    <Badge key={email} variant="secondary" className="gap-1">
-                      {participant?.full_name || email}
-                      <button
-                        onClick={() => setNewRoomForm({
-                          ...newRoomForm,
-                          participants: newRoomForm.participants.filter(p => p !== email)
-                        })}
-                        className="ml-1 hover:text-red-600"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </Badge>
-                  );
-                })}
+            {/* בחירת משתתפים - חדש ומשופר */}
+            <div className="space-y-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-blue-900 flex items-center gap-2">
+                  <UserPlus className="w-4 h-4" />
+                  בחר משתתפים * ({newRoomForm.participants.length} נבחרו)
+                </label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={selectAllParticipants}
+                  className="text-xs"
+                >
+                  {newRoomForm.participants.length === allUsers.filter(u => u.email !== user.email).length 
+                    ? 'בטל הכל' 
+                    : 'בחר הכל'}
+                </Button>
               </div>
+
+              <ScrollArea className="max-h-60 pr-3">
+                <div className="space-y-2">
+                  {allUsers
+                    .filter(u => u.email !== user.email)
+                    .map(u => (
+                      <div
+                        key={u.id}
+                        className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                          newRoomForm.participants.includes(u.email)
+                            ? 'bg-blue-100 border-blue-400'
+                            : 'bg-white border-slate-200 hover:border-blue-300'
+                        }`}
+                        onClick={() => toggleParticipant(u.email)}
+                      >
+                        <Checkbox
+                          checked={newRoomForm.participants.includes(u.email)}
+                          onCheckedChange={() => toggleParticipant(u.email)}
+                        />
+                        <div className="flex-1">
+                          <div className="font-medium text-sm">{u.full_name || u.email}</div>
+                          <div className="text-xs text-slate-500">{u.email}</div>
+                        </div>
+                        {newRoomForm.participants.includes(u.email) && (
+                          <Check className="w-5 h-5 text-blue-600" />
+                        )}
+                      </div>
+                    ))}
+                </div>
+              </ScrollArea>
+
+              {newRoomForm.participants.length === 0 && (
+                <div className="text-xs text-amber-600 bg-amber-50 p-2 rounded border border-amber-200">
+                  יש לבחור לפחות משתתף אחד
+                </div>
+              )}
             </div>
           </div>
 
@@ -751,7 +816,11 @@ export default function TeamChatPage() {
             <Button variant="outline" onClick={() => setNewRoomDialogOpen(false)}>
               ביטול
             </Button>
-            <Button onClick={handleCreateRoom} className="bg-blue-600 hover:bg-blue-700">
+            <Button 
+              onClick={handleCreateRoom} 
+              className="bg-blue-600 hover:bg-blue-700"
+              disabled={!newRoomForm.name.trim() || newRoomForm.participants.length === 0}
+            >
               <Plus className="w-4 h-4 ml-2" />
               צור חדר
             </Button>
