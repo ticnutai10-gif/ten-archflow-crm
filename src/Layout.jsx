@@ -1,3 +1,4 @@
+
 import React, { Suspense, lazy } from "react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -14,7 +15,6 @@ import { base44 } from "@/api/base44Client";
 // 🚀 LAZY LOADING - רכיבים כבדים נטענים רק כשצריך
 const FloatingTimer = lazy(() => import("@/components/timer/FloatingTimer"));
 const ReminderPopup = lazy(() => import("@/components/reminders/ReminderPopup"));
-const FloatingDebugPanel = lazy(() => import("@/components/debug/FloatingDebugPanel"));
 const FloatingChatButton = lazy(() => import("@/components/chat/FloatingChatButton"));
 
 export default function Layout({ children, currentPageName }) {
@@ -29,7 +29,7 @@ export default function Layout({ children, currentPageName }) {
     }
   });
   const [hovered, setHovered] = React.useState(false);
-  const [userSectionHovered, setUserSectionHovered] = React.useState(false); // 🆕 מצב hover על אזור המשתמש
+  const [userSectionHovered, setUserSectionHovered] = React.useState(false); // מצב hover על אזור המשתמש
   const loadedRef = React.useRef(false);
 
   const accentColor = "#2C3A50";
@@ -158,7 +158,7 @@ export default function Layout({ children, currentPageName }) {
   const menuItems = [
     { name: "Dashboard", icon: Home, path: "Dashboard" },
     { name: "צ'אט AI חכם", icon: Brain, path: "AIChat" },
-    { name: "צ'אט צוות", icon: MessageCircleMore, path: "TeamChat" }, // 🆕 צ'אט צוות
+    { name: "צ'אט צוות", icon: MessageCircleMore, path: "TeamChat" }, // צ'אט צוות
     { name: "לקוחות", icon: Users, path: "Clients" },
     { name: "פרויקטים", icon: Briefcase, path: "Projects" },
     { name: "הצעות מחיר", icon: Calculator, path: "Quotes" },
@@ -184,8 +184,6 @@ export default function Layout({ children, currentPageName }) {
     if (!user) return null;
     return user.full_name || user.email?.split('@')[0] || 'משתמש';
   };
-
-  console.log('🔄 [LAYOUT] Render - Current backgroundColor:', document.body.style.backgroundColor);
 
   return (
     <SidebarProvider>
@@ -356,7 +354,7 @@ export default function Layout({ children, currentPageName }) {
                 </div>
               </div>
 
-              {/* 🆕 User section עם hover */}
+              {/* User section עם hover */}
               {user && (
                 <div 
                   className="px-3 py-3 border-b-2 bg-gradient-to-l from-slate-50 to-white relative"
@@ -383,7 +381,7 @@ export default function Layout({ children, currentPageName }) {
                       </div>
                     </div>
 
-                    {/* 🆕 Action Buttons - מופיעים רק ב-hover */}
+                    {/* Action Buttons - מופיעים רק ב-hover */}
                     <div className={`flex gap-2 flex-shrink-0 transition-all duration-200 ${
                       userSectionHovered ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4 pointer-events-none'
                     }`}>
@@ -515,7 +513,6 @@ export default function Layout({ children, currentPageName }) {
         <Suspense fallback={null}>
           <FloatingTimer />
           <ReminderPopup />
-          <FloatingDebugPanel />
           <FloatingChatButton />
         </Suspense>
       </div>
