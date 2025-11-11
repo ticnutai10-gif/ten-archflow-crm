@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -18,8 +18,13 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { useAccessControl } from '@/components/access/AccessValidator';
-import { Client, Project, AccessControl } from '@/entities/all';
+import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
+
+const DEFAULT_SETTINGS = {
+  showDebugButton: true,
+  showConsoleButton: true
+};
 
 export default function FloatingDebugPanel() {
   const [isOpen, setIsOpen] = useState(false);
@@ -29,106 +34,39 @@ export default function FloatingDebugPanel() {
   const [clientsData, setClientsData] = useState(null);
   const [projectsData, setProjectsData] = useState(null);
   
-  // הגדרות תצוגה
   const [settings, setSettings] = useState(() => {
     try {
       const saved = localStorage.getItem('debug-settings');
-      return saved ? JSON.parse(saved) : {
-        showDebugButton: true,
-        showConsoleButton: true
-      };
+      return saved ? JSON.parse(saved) : DEFAULT_SETTINGS;
     } catch {
-      console.error("Failed to parse debug settings from localStorage, using defaults.");
-      return {
-        showDebugButton: true,
-        showConsoleButton: true
-      };
+      console.error("Failed to parse debug settings");
+      return DEFAULT_SETTINGS;
     }
   });
 
   const { me, isAdmin, isSuperAdmin, isManagerPlus, myAccessRule, loading } = useAccessControl();
 
-  // האזנה לשינויים בהגדרות - FIX: use useCallback
   const handleSettingsChange = useCallback((e) => {
-    console.log('🔧 [DEBUG] Settings changed:', e.detail);
     setSettings(e.detail);
   }, []);
 
-  useEffect(() => {
-    window.addEventListener('debug-settings-changed', handleSettingsChange);
-    
-    return () => {
-      window.removeEventListener('debug-settings-changed', handleSettingsChange);
-    };
-  }, [handleSettingsChange]);
-
-  // לכידת console.log - FIX: use useCallback
   const addLog = useCallback((level, message) => {
-    setLogs(prev => [...prev.slice(-100), {
-      time: new Date().toLocaleTimeString('he-IL'),
-      level,
-      message
-    }]);
+    setLogs(prev => {
+      const newLog = {
+        time: new Date().toLocaleTimeString('he-IL'),
+        level,
+        message
+      };
+      return [...prev.slice(-100), newLog];
+    });
   }, []);
 
-  useEffect(() => {
-    const originalLog = console.log;
-    const originalError = console.error;
-    const originalWarn = console.warn;
-
-    console.log = (...args) => {
-      originalLog(...args);
-      const message = args.map(arg => {
-        if (typeof arg === 'object') {
-          try {
-            return JSON.stringify(arg, null, 2);
-          } catch {
-            return String(arg);
-          }
-        }
-        return String(arg);
-      }).join(' ');
-      
-      // FIX: Schedule state update
-      setTimeout(() => {
-        addLog('log', message);
-      }, 0);
-    };
-
-    console.error = (...args) => {
-      originalError(...args);
-      const message = args.map(arg => String(arg)).join(' ');
-      
-      // FIX: Schedule state update
-      setTimeout(() => {
-        addLog('error', message);
-      }, 0);
-    };
-
-    console.warn = (...args) => {
-      originalWarn(...args);
-      const message = args.map(arg => String(arg)).join(' ');
-      
-      // FIX: Schedule state update
-      setTimeout(() => {
-        addLog('warn', message);
-      }, 0);
-    };
-
-    return () => {
-      console.log = originalLog;
-      console.error = originalError;
-      console.warn = originalWarn;
-    };
-  }, [addLog]);
-
-  // טען נתוני גישה
   const loadAccessData = useCallback(async () => {
     try {
       const [clients, projects, accessRules] = await Promise.all([
-        Client.list(),
-        Project.list(),
-        AccessControl.list()
+        base44.entities.Client.list().catch(() => []),
+        base44.entities.Project.list().catch(() => []),
+        base44.entities.AccessControl.list().catch(() => [])
       ]);
 
       setClientsData({
@@ -157,19 +95,15 @@ export default function FloatingDebugPanel() {
     }
   }, [me]);
 
-  useEffect(() => {
-    if (me && isOpen) {
-      loadAccessData();
-    }
-  }, [me, isOpen, loadAccessData]);
-
-  const copyToClipboard = (text) => {
+  const copyToClipboard = useCallback((text) => {
     navigator.clipboard.writeText(text).then(() => {
       toast.success('הועתק ללוח');
+    }).catch(() => {
+      toast.error('שגיאה בהעתקה');
     });
-  };
+  }, []);
 
-  const copyAllDebugInfo = () => {
+  const copyAllDebugInfo = useCallback(() => {
     const debugInfo = {
       user: me,
       isAdmin,
@@ -183,26 +117,85 @@ export default function FloatingDebugPanel() {
     };
     
     copyToClipboard(JSON.stringify(debugInfo, null, 2));
-  };
+  }, [me, isAdmin, isSuperAdmin, isManagerPlus, myAccessRule, clientsData, projectsData, accessData, logs, copyToClipboard]);
 
-  const copyConsole = () => {
+  const copyConsole = useCallback(() => {
     const consoleText = logs.map(log => 
       `[${log.time}] [${log.level.toUpperCase()}] ${log.message}`
     ).join('\n');
     
     copyToClipboard(consoleText);
-  };
+  }, [logs, copyToClipboard]);
 
-  // אם שני הכפתורים מוסתרים, לא להציג כלום
-  if (!settings.showDebugButton && !settings.showConsoleButton) {
+  useEffect(() => {
+    window.addEventListener('debug-settings-changed', handleSettingsChange);
+    return () => window.removeEventListener('debug-settings-changed', handleSettingsChange);
+  }, [handleSettingsChange]);
+
+  useEffect(() => {
+    const originalLog = console.log;
+    const originalError = console.error;
+    const originalWarn = console.warn;
+
+    console.log = (...args) => {
+      originalLog(...args);
+      const message = args.map(arg => {
+        if (typeof arg === 'object') {
+          try {
+            return JSON.stringify(arg, null, 2);
+          } catch {
+            return String(arg);
+          }
+        }
+        return String(arg);
+      }).join(' ');
+      
+      setTimeout(() => addLog('log', message), 0);
+    };
+
+    console.error = (...args) => {
+      originalError(...args);
+      const message = args.map(arg => String(arg)).join(' ');
+      setTimeout(() => addLog('error', message), 0);
+    };
+
+    console.warn = (...args) => {
+      originalWarn(...args);
+      const message = args.map(arg => String(arg)).join(' ');
+      setTimeout(() => addLog('warn', message), 0);
+    };
+
+    return () => {
+      console.log = originalLog;
+      console.error = originalError;
+      console.warn = originalWarn;
+    };
+  }, [addLog]);
+
+  useEffect(() => {
+    if (me && isOpen) {
+      loadAccessData();
+    }
+  }, [me, isOpen, loadAccessData]);
+
+  const shouldShowButtons = useMemo(() => {
+    return settings.showDebugButton || settings.showConsoleButton;
+  }, [settings]);
+
+  const assignedClientsCount = useMemo(() => {
+    return myAccessRule?.assigned_clients?.length || 0;
+  }, [myAccessRule]);
+
+  const assignedProjectsCount = useMemo(() => {
+    return myAccessRule?.assigned_projects?.length || 0;
+  }, [myAccessRule]);
+
+  if (!shouldShowButtons || !me) {
     return null;
   }
 
-  if (!me) return null;
-
   return (
     <>
-      {/* כפתורים צפים */}
       <div className="fixed bottom-6 left-6 z-[9999] flex flex-col gap-2">
         {settings.showDebugButton && (
           <Button
@@ -225,7 +218,6 @@ export default function FloatingDebugPanel() {
         )}
       </div>
 
-      {/* פאנל דיבאג */}
       {isOpen && (
         <div className="fixed bottom-24 left-6 z-[9999] w-[500px]" dir="rtl">
           <Card className="shadow-2xl border-2 border-purple-500">
@@ -258,7 +250,6 @@ export default function FloatingDebugPanel() {
             <CardContent className="p-4">
               <ScrollArea className="h-[500px]">
                 <div className="space-y-4">
-                  {/* מידע משתמש */}
                   <div className="bg-slate-50 rounded-lg p-3">
                     <div className="flex items-center gap-2 mb-2">
                       <Shield className="w-4 h-4 text-blue-600" />
@@ -280,7 +271,6 @@ export default function FloatingDebugPanel() {
                     </div>
                   </div>
 
-                  {/* הרשאות */}
                   <div className="bg-blue-50 rounded-lg p-3">
                     <div className="flex items-center gap-2 mb-2">
                       <CheckCircle className="w-4 h-4 text-blue-600" />
@@ -314,7 +304,6 @@ export default function FloatingDebugPanel() {
                     </div>
                   </div>
 
-                  {/* רשומת AccessControl */}
                   <div className="bg-amber-50 rounded-lg p-3">
                     <div className="flex items-center gap-2 mb-2">
                       <AlertTriangle className="w-4 h-4 text-amber-600" />
@@ -336,22 +325,18 @@ export default function FloatingDebugPanel() {
                         </div>
                         <div className="flex justify-between">
                           <span className="text-slate-600">לקוחות משויכים:</span>
-                          <Badge variant="outline">
-                            {myAccessRule.assigned_clients?.length || 0}
-                          </Badge>
+                          <Badge variant="outline">{assignedClientsCount}</Badge>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-slate-600">פרויקטים משויכים:</span>
-                          <Badge variant="outline">
-                            {myAccessRule.assigned_projects?.length || 0}
-                          </Badge>
+                          <Badge variant="outline">{assignedProjectsCount}</Badge>
                         </div>
                         
-                        {myAccessRule.assigned_clients?.length > 0 && (
+                        {assignedClientsCount > 0 && (
                           <div className="mt-2">
                             <div className="text-xs text-slate-600 mb-1">רשימת לקוחות:</div>
                             <div className="bg-white rounded p-2 max-h-32 overflow-y-auto">
-                              {myAccessRule.assigned_clients.map(clientId => {
+                              {(myAccessRule.assigned_clients || []).map(clientId => {
                                 const client = accessData?.clients?.find(c => c.id === clientId);
                                 return (
                                   <div key={clientId} className="text-xs flex justify-between items-center py-1">
@@ -371,7 +356,6 @@ export default function FloatingDebugPanel() {
                     )}
                   </div>
 
-                  {/* סטטיסטיקות */}
                   <div className="grid grid-cols-2 gap-2">
                     <div className="bg-green-50 rounded-lg p-3">
                       <div className="flex items-center gap-2 mb-1">
@@ -396,7 +380,6 @@ export default function FloatingDebugPanel() {
                     </div>
                   </div>
 
-                  {/* המלצות */}
                   {myAccessRule && !myAccessRule.active && (
                     <div className="bg-red-50 border border-red-200 rounded-lg p-3">
                       <div className="flex items-center gap-2 text-red-700">
@@ -409,7 +392,7 @@ export default function FloatingDebugPanel() {
                     </div>
                   )}
 
-                  {myAccessRule?.role === 'staff' && (!myAccessRule.assigned_clients || myAccessRule.assigned_clients.length === 0) && (
+                  {myAccessRule?.role === 'staff' && assignedClientsCount === 0 && (
                     <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
                       <div className="flex items-center gap-2 text-amber-700">
                         <AlertTriangle className="w-4 h-4" />
@@ -427,7 +410,6 @@ export default function FloatingDebugPanel() {
         </div>
       )}
 
-      {/* קונסול */}
       {consoleOpen && (
         <div className="fixed bottom-24 left-6 z-[9999] w-[600px]" dir="ltr">
           <Card className="shadow-2xl border-2 border-slate-500">
