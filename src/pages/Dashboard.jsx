@@ -177,9 +177,16 @@ export default function Dashboard() {
   };
 
   const loadDashboardData = useCallback(async () => {
+    console.log('');
+    console.log('📊 ========================================');
+    console.log('📊 [DASHBOARD] LOADING DATA');
+    console.log('📊 ========================================');
+    console.log('');
+    
     setLoading(true);
     try {
       const currentUser = await base44.auth.me();
+      console.log('👤 [DASHBOARD] Current user:', currentUser.email);
 
       let canSeeAllTimeLogs = currentUser?.role === 'admin';
       if (!canSeeAllTimeLogs && currentUser?.email) {
@@ -187,6 +194,8 @@ export default function Dashboard() {
         canSeeAllTimeLogs = !!rows?.[0] && rows[0].role === 'manager_plus';
       }
 
+      console.log('🔄 [DASHBOARD] Fetching all entities...');
+      
       const timeLogsPromise = canSeeAllTimeLogs ?
         base44.entities.TimeLog.filter({}, '-log_date', 200) :
         base44.entities.TimeLog.filter({ created_by: currentUser.email }, '-log_date', 100);
@@ -204,28 +213,57 @@ export default function Dashboard() {
         }
       });
 
+      // 🔥 FIX: טעינה ללא הגבלה - כדי לקבל את כל הנתונים!
       const [clientsData, projectsData, quotesData, tasksData, myTimeLogs] = await Promise.all([
-        base44.entities.Client.list('-created_date', 100),
-        base44.entities.Project.list('-created_date', 100),
+        base44.entities.Client.list('-created_date'), // ✅ ללא limit
+        base44.entities.Project.list('-created_date'), // ✅ ללא limit
         base44.entities.Quote.list('-created_date', 50),
         base44.entities.Task.filter({ status: { $ne: 'הושלמה' } }, '-due_date', 100),
         timeLogsPromise
       ]);
 
-      setStats({
-        clients: clientsData.length,
-        projects: projectsData.filter((p) => p.status !== 'הושלם').length,
-        quotes: quotesData.filter((q) => q.status === 'בהמתנה').length,
-        tasks: tasksData.length
-      });
+      console.log('');
+      console.log('✅ [DASHBOARD] DATA LOADED:');
+      console.log('   👥 Total Clients:', clientsData.length);
+      console.log('   💼 Total Projects:', projectsData.length);
+      console.log('   📋 Total Quotes:', quotesData.length);
+      console.log('   ✅ Open Tasks:', tasksData.length);
+      console.log('   ⏱️  Time Logs:', myTimeLogs?.length || 0);
+      console.log('   📅 Upcoming Meetings:', futureMeetings.length);
+      console.log('');
 
+      const activeProjects = projectsData.filter((p) => p.status !== 'הושלם');
+      const pendingQuotes = quotesData.filter((q) => q.status === 'בהמתנה');
+
+      console.log('📊 [DASHBOARD] STATS CALCULATED:');
+      console.log('   👥 Clients:', clientsData.length);
+      console.log('   💼 Active Projects:', activeProjects.length);
+      console.log('   ⏳ Pending Quotes:', pendingQuotes.length);
+      console.log('   📝 Open Tasks:', tasksData.length);
+      console.log('');
+
+      const newStats = {
+        clients: clientsData.length,
+        projects: activeProjects.length,
+        quotes: pendingQuotes.length,
+        tasks: tasksData.length
+      };
+
+      console.log('✅ [DASHBOARD] Setting stats to state:', newStats);
+
+      setStats(newStats);
       setRecentProjects(projectsData.slice(0, 5));
       setUpcomingTasks(tasksData.slice(0, 5));
       setQuotes(quotesData.slice(0, 5));
       setTimeLogs(myTimeLogs || []);
       setUpcomingMeetings(futureMeetings.slice(0, 10));
+
+      console.log('✅ [DASHBOARD] All state updated successfully!');
+      console.log('📊 ========================================');
+      console.log('');
+
     } catch (error) {
-      console.error('Error loading dashboard data:', error);
+      console.error('❌ [DASHBOARD] Error loading data:', error);
     }
     setLoading(false);
   }, []);
@@ -283,6 +321,8 @@ export default function Dashboard() {
 
   const currentViewOption = viewModeOptions.find(opt => opt.value === viewMode) || viewModeOptions[2];
   const CurrentViewIcon = currentViewOption.icon;
+
+  console.log('🎨 [DASHBOARD] Rendering with stats:', stats);
 
   return (
     <div className="p-6 min-h-screen" dir="rtl" style={{ backgroundColor: '#FCF6E3' }}>
@@ -394,6 +434,9 @@ export default function Dashboard() {
                 <div className={`font-bold text-center mb-2 ${compactHeaders ? 'text-3xl' : 'text-4xl'}`}>
                   {stats.clients}
                 </div>
+                <div className="text-xs text-center text-slate-500 mb-2">
+                  (סה"כ במערכת)
+                </div>
                 <Link to={createPageUrl("Clients")} className="block">
                   <Button variant="link" className="w-full text-xs text-blue-600">
                     → כל הלקוחות
@@ -411,6 +454,9 @@ export default function Dashboard() {
               <CardContent className={compactHeaders ? "pt-2" : ""}>
                 <div className={`font-bold text-center mb-2 ${compactHeaders ? 'text-3xl' : 'text-4xl'}`}>
                   {stats.projects}
+                </div>
+                <div className="text-xs text-center text-slate-500 mb-2">
+                  (סה"כ במערכת)
                 </div>
                 <Link to={createPageUrl("Projects")} className="block">
                   <Button variant="link" className="w-full text-xs text-blue-600">
@@ -430,6 +476,9 @@ export default function Dashboard() {
                 <div className={`font-bold text-center mb-2 ${compactHeaders ? 'text-3xl' : 'text-4xl'}`}>
                   {stats.quotes}
                 </div>
+                <div className="text-xs text-center text-slate-500 mb-2">
+                  (סה"כ במערכת)
+                </div>
                 <Link to={createPageUrl("Quotes")} className="block">
                   <Button variant="link" className="w-full text-xs text-blue-600">
                     → כל ההצעות
@@ -447,6 +496,9 @@ export default function Dashboard() {
               <CardContent className={compactHeaders ? "pt-2" : ""}>
                 <div className={`font-bold text-center mb-2 ${compactHeaders ? 'text-3xl' : 'text-4xl'}`}>
                   {stats.tasks}
+                </div>
+                <div className="text-xs text-center text-slate-500 mb-2">
+                  (סה"כ במערכת)
                 </div>
                 <Link to={createPageUrl("Tasks")} className="block">
                   <Button variant="link" className="w-full text-xs text-blue-600">

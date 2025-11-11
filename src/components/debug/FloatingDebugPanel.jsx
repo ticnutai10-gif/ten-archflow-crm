@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -120,21 +121,42 @@ export default function FloatingDebugPanel() {
     if (!me) return;
     
     try {
+      console.log('');
+      console.log('🐛 ========================================');
+      console.log('🐛 [DEBUG PANEL] LOADING DATA');
+      console.log('🐛 ========================================');
+      console.log('');
+      
+      // 🔥 FIX: טעינה ללא limit כדי לקבל את כל הנתונים!
       const [clients, projects, accessRules] = await Promise.all([
-        Client.list(),
-        Project.list(),
+        Client.list(), // ✅ ללא limit
+        Project.list(), // ✅ ללא limit
         AccessControl.list()
       ]);
 
-      setClientsData({
+      console.log('✅ [DEBUG PANEL] RAW DATA LOADED:');
+      console.log('   👥 Total Clients:', clients.length);
+      console.log('   💼 Total Projects:', projects.length);
+      console.log('   🔐 Access Rules:', accessRules.length);
+      console.log('');
+
+      const clientsDataObj = {
         total: clients.length,
         list: clients.map(c => ({ id: c.id, name: c.name }))
-      });
+      };
 
-      setProjectsData({
+      const projectsDataObj = {
         total: projects.length,
         list: projects.map(p => ({ id: p.id, name: p.name, client_id: p.client_id }))
-      });
+      };
+
+      console.log('📊 [DEBUG PANEL] SETTING STATE:');
+      console.log('   👥 Clients data:', clientsDataObj.total);
+      console.log('   💼 Projects data:', projectsDataObj.total);
+      console.log('');
+
+      setClientsData(clientsDataObj);
+      setProjectsData(projectsDataObj);
 
       const myRule = accessRules.find(r => 
         r.email?.toLowerCase() === me?.email?.toLowerCase()
@@ -147,10 +169,14 @@ export default function FloatingDebugPanel() {
         projects
       });
 
+      console.log('✅ [DEBUG PANEL] State updated successfully!');
+      console.log('🐛 ========================================');
+      console.log('');
+
     } catch (error) {
-      console.error('Error loading access data:', error);
+      console.error('❌ [DEBUG PANEL] Error loading access data:', error);
     }
-  }, [me]); // ✅ Only depends on me
+  }, [me]);
 
   useEffect(() => {
     if (me && isOpen) {
@@ -194,6 +220,11 @@ export default function FloatingDebugPanel() {
   }
 
   if (!me) return null;
+
+  console.log('🎨 [DEBUG PANEL] Rendering with data:', {
+    clients: clientsData?.total,
+    projects: projectsData?.total
+  });
 
   return (
     <>
@@ -366,7 +397,7 @@ export default function FloatingDebugPanel() {
                     )}
                   </div>
 
-                  {/* סטטיסטיקות */}
+                  {/* 🔥 FIX: סטטיסטיקות עם לוגים מפורטים */}
                   <div className="grid grid-cols-2 gap-2">
                     <div className="bg-green-50 rounded-lg p-3">
                       <div className="flex items-center gap-2 mb-1">
@@ -377,6 +408,11 @@ export default function FloatingDebugPanel() {
                         {clientsData?.total || 0}
                       </div>
                       <div className="text-[10px] text-slate-600">סה"כ במערכת</div>
+                      {clientsData && (
+                        <div className="text-[10px] text-green-700 mt-1">
+                          ✅ טעון מהשרת
+                        </div>
+                      )}
                     </div>
 
                     <div className="bg-blue-50 rounded-lg p-3">
@@ -388,6 +424,11 @@ export default function FloatingDebugPanel() {
                         {projectsData?.total || 0}
                       </div>
                       <div className="text-[10px] text-slate-600">סה"כ במערכת</div>
+                      {projectsData && (
+                        <div className="text-[10px] text-blue-700 mt-1">
+                          ✅ טעון מהשרת
+                        </div>
+                      )}
                     </div>
                   </div>
 

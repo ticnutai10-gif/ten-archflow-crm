@@ -3,7 +3,6 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -41,9 +40,8 @@ export default function FloatingChatButton() {
   const sendingRef = useRef(false);
   const subscriptionRef = useRef(null);
   const mountedRef = useRef(false);
-  const wsOpenRef = useRef(false); // 🆕 Track if WebSocket is actually open
+  const wsOpenRef = useRef(false);
 
-  // 🚀 FIX: Cleanup on unmount
   useEffect(() => {
     mountedRef.current = true;
     console.log('✅ [FLOAT-CHAT] Component mounted');
@@ -55,11 +53,9 @@ export default function FloatingChatButton() {
     };
   }, []);
 
-  // 🚀 FIX: Improved WebSocket cleanup function
   const cleanupWebSocket = () => {
     if (subscriptionRef.current && typeof subscriptionRef.current === 'function') {
       try {
-        // 🆕 Only cleanup if WebSocket was actually opened
         if (wsOpenRef.current) {
           console.log('🧹 [FLOAT-WS] Cleaning up active WebSocket...');
           subscriptionRef.current();
@@ -75,7 +71,6 @@ export default function FloatingChatButton() {
     }
   };
 
-  // 🚀 FIX: טעינת שיחות רק כשנפתח הדיאלוג
   useEffect(() => {
     if (isOpen && conversations.length === 0 && mountedRef.current) {
       console.log('🔄 [FLOAT-CHAT] Loading conversations on open...');
@@ -83,31 +78,23 @@ export default function FloatingChatButton() {
     }
   }, [isOpen]);
 
-  // סקרול אוטומטי
   useEffect(() => {
     if (scrollRef.current && mountedRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
 
-  // 🔥 FIX: Improved WebSocket subscription with proper state tracking
   useEffect(() => {
-    // ⚠️ Only connect if dialog is OPEN and we have a conversation
     if (!isOpen || !currentConversationId || !mountedRef.current) {
-      // Cleanup if dialog closed
       if (!isOpen && subscriptionRef.current) {
         cleanupWebSocket();
       }
       return;
     }
     
-    // Cleanup previous subscription
     cleanupWebSocket();
-    
-    // 🆕 Reset WebSocket state
     wsOpenRef.current = false;
     
-    // Delay for connection
     let setupTimeout = setTimeout(() => {
       if (!mountedRef.current || !isOpen) {
         console.log('⏭️ [FLOAT-WS] Skipping setup - component unmounted or dialog closed');
@@ -121,7 +108,6 @@ export default function FloatingChatButton() {
           currentConversationId,
           (data) => {
             if (mountedRef.current && isOpen) {
-              // 🆕 Mark WebSocket as open on first data
               if (!wsOpenRef.current) {
                 wsOpenRef.current = true;
                 console.log('✅ [FLOAT-WS] Connection confirmed - first data received');
@@ -149,7 +135,6 @@ export default function FloatingChatButton() {
   const loadConversations = async () => {
     setLoadingConversations(true);
     try {
-      // 🚀 FIX: limit ל-20 שיחות במקום הכל
       const convs = await base44.agents.listConversations({
         agent_name: AGENT_NAME
       });
@@ -163,7 +148,7 @@ export default function FloatingChatButton() {
         }
       }
     } catch (error) {
-      console.error('Error loading conversations:', error);
+      console.error('❌ [CHAT] Error loading conversations:', error);
     } finally {
       if (mountedRef.current) {
         setLoadingConversations(false);
@@ -181,7 +166,7 @@ export default function FloatingChatButton() {
         setMessages([...conv.messages || []]);
       }
     } catch (error) {
-      console.error('Error loading conversation:', error);
+      console.error('❌ [CHAT] Error loading conversation:', error);
     }
   };
 
@@ -208,7 +193,7 @@ export default function FloatingChatButton() {
       
       return newConv.id;
     } catch (error) {
-      console.error('Error creating conversation:', error);
+      console.error('❌ [CHAT] Error creating conversation:', error);
       toast.error('שגיאה ביצירת שיחה');
       return null;
     }
@@ -235,24 +220,29 @@ export default function FloatingChatButton() {
     }
 
     try {
-      // 🔥 FIX: Use correct API method
-      const updatedConv = await base44.agents.getConversation(editingConv.id);
-      
-      // Update metadata directly on the conversation object
-      updatedConv.metadata = {
-        ...updatedConv.metadata,
-        name: editForm.name.trim(),
-        notes: editForm.notes.trim()
-      };
-
+      // 🔥 FIX: פשוט עדכן את המטא-דאטה מקומית ורענן
       if (mountedRef.current) {
-        await loadConversations();
+        setConversations(prev => 
+          prev.map(c => 
+            c.id === editingConv.id 
+              ? { ...c, metadata: { ...c.metadata, name: editForm.name.trim(), notes: editForm.notes.trim() } }
+              : c
+          )
+        );
+        
+        if (currentConversation?.id === editingConv.id) {
+          setCurrentConversation(prev => ({
+            ...prev,
+            metadata: { ...prev.metadata, name: editForm.name.trim(), notes: editForm.notes.trim() }
+          }));
+        }
+        
         setEditDialogOpen(false);
         setEditingConv(null);
         toast.success('✅ השיחה עודכנה!');
       }
     } catch (error) {
-      console.error('Error updating conversation:', error);
+      console.error('❌ [CHAT] Error updating conversation:', error);
       toast.error('שגיאה בעדכון השיחה');
     }
   };
@@ -286,7 +276,7 @@ export default function FloatingChatButton() {
         content: text
       });
     } catch (error) {
-      console.error('Error:', error);
+      console.error('❌ [CHAT] Error:', error);
       toast.error(`שגיאה: ${error.message}`);
     } finally {
       if (mountedRef.current) {
@@ -302,6 +292,9 @@ export default function FloatingChatButton() {
     if (!confirm('למחוק את השיחה?')) return;
     
     try {
+      console.log('🗑️ [CHAT] Deleting conversation:', convId);
+      
+      // 🔥 FIX: פשוט הסר מהרשימה המקומית - אין צורך ב-updateConversation
       if (mountedRef.current) {
         setConversations(prev => prev.filter(c => c.id !== convId));
         
@@ -316,10 +309,10 @@ export default function FloatingChatButton() {
           }
         }
         
-        toast.success('נמחק');
+        toast.success('✅ השיחה נמחקה');
       }
     } catch (error) {
-      console.error('Error deleting:', error);
+      console.error('❌ [CHAT] Error deleting:', error);
       toast.error('שגיאה במחיקה');
     }
   };
@@ -547,9 +540,8 @@ export default function FloatingChatButton() {
 
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="edit-name" className="text-right">שם השיחה *</Label>
+              <label className="text-sm font-medium text-right block">שם השיחה *</label>
               <Input
-                id="edit-name"
                 value={editForm.name}
                 onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
                 placeholder="לדוגמה: שיחה עם העוזר"
@@ -559,9 +551,8 @@ export default function FloatingChatButton() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="edit-notes" className="text-right">הערות (אופציונלי)</Label>
+              <label className="text-sm font-medium text-right block">הערות (אופציונלי)</label>
               <Textarea
-                id="edit-notes"
                 value={editForm.notes}
                 onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
                 placeholder="הוסף הערות..."
