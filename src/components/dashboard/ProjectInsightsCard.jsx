@@ -22,6 +22,7 @@ import { Link } from "react-router-dom";
 export default function ProjectInsightsCard() {
   const [insights, setInsights] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [selectedTab, setSelectedTab] = useState('overview');
 
   useEffect(() => {
@@ -30,11 +31,19 @@ export default function ProjectInsightsCard() {
 
   const loadInsights = async () => {
     setLoading(true);
+    setError(null);
     try {
       const response = await base44.functions.invoke('projectInsights');
-      setInsights(response.data.insights);
+      console.log('✅ [INSIGHTS CARD] Response:', response.data);
+      
+      if (response.data && response.data.insights) {
+        setInsights(response.data.insights);
+      } else {
+        setError('לא התקבלו תובנות');
+      }
     } catch (error) {
-      console.error('Error loading project insights:', error);
+      console.error('❌ [INSIGHTS CARD] Error:', error);
+      setError(error.message || 'שגיאה בטעינת תובנות');
     }
     setLoading(false);
   };
@@ -55,7 +64,27 @@ export default function ProjectInsightsCard() {
     );
   }
 
-  if (!insights || insights.active === 0) {
+  if (error) {
+    return (
+      <Card className="bg-white shadow-lg border-0">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Target className="w-5 h-5 text-blue-600" />
+            ניתוח פרויקטים חכם
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="text-center py-8">
+          <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-3" />
+          <p className="text-slate-600 mb-4">{error}</p>
+          <Button variant="outline" onClick={loadInsights}>
+            נסה שוב
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!insights || !insights.summary || insights.active === 0) {
     return (
       <Card className="bg-white shadow-lg border-0">
         <CardHeader>
@@ -76,11 +105,21 @@ export default function ProjectInsightsCard() {
     );
   }
 
-  const { summary, projects } = insights;
-  const highRiskProjects = projects.filter(p => p.risk.riskLevel === 'high').slice(0, 3);
+  const { summary, projects = [] } = insights;
+  
+  // בדיקות בטיחות לפני גישה לנתונים
+  const highRiskProjects = projects
+    .filter(p => p && p.risk && p.risk.riskLevel === 'high')
+    .slice(0, 3);
+    
   const topRecommendations = projects
-    .flatMap(p => p.recommendations.map(r => ({ ...r, project: p.projectName, client: p.clientName })))
-    .filter(r => r.priority === 'high')
+    .filter(p => p && p.recommendations && Array.isArray(p.recommendations))
+    .flatMap(p => p.recommendations.map(r => ({ 
+      ...r, 
+      project: p.projectName || 'פרויקט', 
+      client: p.clientName || 'לקוח' 
+    })))
+    .filter(r => r && r.priority === 'high')
     .slice(0, 5);
 
   return (
@@ -93,12 +132,12 @@ export default function ProjectInsightsCard() {
           </CardTitle>
           <Badge 
             className={`text-white ${
-              summary.healthScore >= 80 ? 'bg-green-600' :
-              summary.healthScore >= 60 ? 'bg-yellow-600' :
+              (summary.healthScore || 0) >= 80 ? 'bg-green-600' :
+              (summary.healthScore || 0) >= 60 ? 'bg-yellow-600' :
               'bg-red-600'
             }`}
           >
-            ציון בריאות: {summary.healthScore}/100
+            ציון בריאות: {summary.healthScore || 0}/100
           </Badge>
         </div>
       </CardHeader>
@@ -117,7 +156,7 @@ export default function ProjectInsightsCard() {
               <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4 text-center">
                 <AlertTriangle className="w-8 h-8 text-red-600 mx-auto mb-2" />
                 <div className="text-2xl font-bold text-red-900">
-                  {summary.distribution.highRisk}
+                  {summary?.distribution?.highRisk || 0}
                 </div>
                 <div className="text-xs text-red-700">סיכון גבוה</div>
               </div>
@@ -125,7 +164,7 @@ export default function ProjectInsightsCard() {
               <div className="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-4 text-center">
                 <Clock className="w-8 h-8 text-yellow-600 mx-auto mb-2" />
                 <div className="text-2xl font-bold text-yellow-900">
-                  {summary.distribution.mediumRisk}
+                  {summary?.distribution?.mediumRisk || 0}
                 </div>
                 <div className="text-xs text-yellow-700">סיכון בינוני</div>
               </div>
@@ -133,7 +172,7 @@ export default function ProjectInsightsCard() {
               <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4 text-center">
                 <CheckCircle className="w-8 h-8 text-green-600 mx-auto mb-2" />
                 <div className="text-2xl font-bold text-green-900">
-                  {summary.distribution.onTrack}
+                  {summary?.distribution?.onTrack || 0}
                 </div>
                 <div className="text-xs text-green-700">במסלול</div>
               </div>
@@ -143,16 +182,16 @@ export default function ProjectInsightsCard() {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-slate-600">אחוז השלמה ממוצע</span>
-                <span className="text-sm font-bold text-slate-900">{summary.avgCompletionRate}%</span>
+                <span className="text-sm font-bold text-slate-900">{summary?.avgCompletionRate || 0}%</span>
               </div>
-              <Progress value={summary.avgCompletionRate} className="h-2" />
+              <Progress value={summary?.avgCompletionRate || 0} className="h-2" />
 
               <div className="flex items-center justify-between text-sm">
                 <span className="text-slate-600">
                   <Lightbulb className="w-4 h-4 inline ml-1 text-yellow-600" />
                   המלצות פעולה
                 </span>
-                <span className="font-bold text-blue-600">{summary.totalRecommendations}</span>
+                <span className="font-bold text-blue-600">{summary?.totalRecommendations || 0}</span>
               </div>
             </div>
 
@@ -184,17 +223,17 @@ export default function ProjectInsightsCard() {
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex-1">
                         <h4 className="font-semibold text-red-900 text-sm">
-                          {project.projectName}
+                          {project.projectName || 'פרויקט'}
                         </h4>
-                        <p className="text-xs text-red-700">{project.clientName}</p>
+                        <p className="text-xs text-red-700">{project.clientName || 'לקוח'}</p>
                       </div>
                       <Badge variant="destructive" className="text-xs">
-                        {project.risk.riskScore}/100
+                        {project.risk?.riskScore || 0}/100
                       </Badge>
                     </div>
 
                     <div className="space-y-1">
-                      {project.risk.riskFactors.slice(0, 2).map((factor, i) => (
+                      {(project.risk?.riskFactors || []).slice(0, 2).map((factor, i) => (
                         <div key={i} className="flex items-start gap-2">
                           <AlertTriangle className="w-3 h-3 text-red-600 mt-0.5 flex-shrink-0" />
                           <span className="text-xs text-red-800">{factor}</span>
@@ -202,7 +241,7 @@ export default function ProjectInsightsCard() {
                       ))}
                     </div>
 
-                    {project.metrics.completionRate !== undefined && (
+                    {project.metrics?.completionRate !== undefined && (
                       <div className="mt-3">
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-xs text-red-700">אחוז השלמה</span>
@@ -216,7 +255,7 @@ export default function ProjectInsightsCard() {
                   </div>
                 ))}
 
-                {summary.distribution.highRisk > 3 && (
+                {(summary?.distribution?.highRisk || 0) > 3 && (
                   <div className="text-center pt-2">
                     <Link to={createPageUrl('Projects')}>
                       <Button variant="outline" size="sm">
@@ -249,17 +288,17 @@ export default function ProjectInsightsCard() {
                       </div>
                       <div className="flex-1">
                         <h4 className="font-semibold text-blue-900 text-sm mb-1">
-                          {rec.title}
+                          {rec.title || 'המלצה'}
                         </h4>
                         <p className="text-xs text-slate-600 mb-2">
                           {rec.project} • {rec.client}
                         </p>
                         <p className="text-xs text-blue-800 mb-2">
-                          {rec.description}
+                          {rec.description || ''}
                         </p>
                         <div className="flex items-center gap-1 text-xs text-blue-700">
                           <TrendingUp className="w-3 h-3" />
-                          {rec.action}
+                          {rec.action || ''}
                         </div>
                       </div>
                     </div>
