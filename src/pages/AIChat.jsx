@@ -1,256 +1,194 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Send,
-  Sparkles,
-  Trash2,
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { 
+  MessageCircle, 
   Plus,
-  Brain,
-  MessageSquare,
+  Send,
   Loader2,
-  AlertCircle,
+  Trash2,
+  Brain,
+  Sparkles,
   TrendingUp,
-  Users,
-  Briefcase,
-  CheckSquare,
-  Clock,
-  Database,
+  AlertTriangle,
+  X,
   Edit2,
   Save,
-  X,
-  Zap,
-  Calendar,
-  Mail,
-  UserPlus,
-  MessageCircle,
-  ExternalLink,
   Copy,
-  Check,
-  Target,
-  Activity
+  CheckCircle,
+  Clock,
+  Users,
+  Briefcase
 } from "lucide-react";
 import { toast } from "sonner";
-import MessageBubble from "@/components/chat/MessageBubble";
-import QuickActions from "@/components/chat/QuickActions";
+import MessageBubble from "../components/chat/MessageBubble";
+import QuickActions from "../components/chat/QuickActions";
 
 const AGENT_NAME = "business_assistant";
 
 export default function AIChatPage() {
   const [conversations, setConversations] = useState([]);
-  const [currentConversationId, setCurrentConversationId] = useState(null);
-  const [currentConversation, setCurrentConversation] = useState(null);
+  const [currentConvId, setCurrentConvId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [loadingConversations, setLoadingConversations] = useState(true);
-  const [loadingInsights, setLoadingInsights] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [loadingConvs, setLoadingConvs] = useState(true);
   const [businessInsights, setBusinessInsights] = useState(null);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [whatsappDialogOpen, setWhatsappDialogOpen] = useState(false);
-  const [editingConv, setEditingConv] = useState(null);
-  const [editForm, setEditForm] = useState({ name: '', notes: '' });
   const [whatsappUrl, setWhatsappUrl] = useState('');
+  const [showWhatsAppDialog, setShowWhatsAppDialog] = useState(false);
   const [copiedUrl, setCopiedUrl] = useState(false);
+  
+  // Edit dialog
+  const [editOpen, setEditOpen] = useState(false);
+  const [editingConv, setEditingConv] = useState(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editNotes, setEditNotes] = useState("");
+  
   const scrollRef = useRef(null);
-  const sendingRef = useRef(false);
-  const subscriptionRef = useRef(null);
-  const mountedRef = useRef(false); // Changed from null to false
+  const unsubscribeRef = useRef(null);
+  const mountedRef = useRef(true);
 
-  // טעינה ראשונית
+  // Initial setup and cleanup
   useEffect(() => {
-    mountedRef.current = true;
-    loadConversations();
-    generateWhatsAppUrl();
-    loadBusinessInsights();
-
+    loadInitialData();
+    
     return () => {
       mountedRef.current = false;
-      // ניקוי WebSocket בעת unmount של העמוד
-      if (subscriptionRef.current && typeof subscriptionRef.current === 'function') {
+      if (unsubscribeRef.current) {
         try {
-          subscriptionRef.current();
-        } catch (error) {
-          // Silent cleanup
+          unsubscribeRef.current();
+        } catch (e) {
+          console.warn('Cleanup warning:', e);
         }
-        subscriptionRef.current = null;
+        unsubscribeRef.current = null;
       }
     };
   }, []);
 
-  // סקרול אוטומטי
+  // Auto-scroll to bottom when messages change
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
 
-  // טעינת תובנות עסקיות
-  const loadBusinessInsights = async () => {
-    setLoadingInsights(true);
-    try {
-      const response = await base44.functions.invoke('businessInsights');
-      if (mountedRef.current) {
-        setBusinessInsights(response.data.insights);
-        console.log('✅ [INSIGHTS] Loaded:', response.data.insights);
-      }
-    } catch (error) {
-      console.error('❌ [INSIGHTS] Error:', error);
-    } finally {
-      if (mountedRef.current) {
-        setLoadingInsights(false);
-      }
-    }
-  };
+  // Load business insights
+  useEffect(() => {
+    loadBusinessInsights();
+  }, []);
 
-  // יצירת URL ל-WhatsApp
-  const generateWhatsAppUrl = () => {
-    try {
-      const url = base44.agents.getWhatsAppConnectURL(AGENT_NAME);
-      if (mountedRef.current) {
-        setWhatsappUrl(url);
-      }
-    } catch (error) {
-      console.error('❌ [WHATSAPP] Error generating URL:', error);
-    }
-  };
+  // Load WhatsApp URL
+  useEffect(() => {
+    const url = base44.agents.getWhatsAppConnectURL(AGENT_NAME);
+    setWhatsappUrl(url);
+  }, []);
 
-  // העתקת URL
   const copyWhatsAppUrl = () => {
     navigator.clipboard.writeText(whatsappUrl);
     setCopiedUrl(true);
     toast.success('✅ הקישור הועתק!');
-    setTimeout(() => {
-      if (mountedRef.current) {
-        setCopiedUrl(false);
-      }
-    }, 2000);
+    setTimeout(() => setCopiedUrl(false), 2000);
   };
 
-  // טעינת שיחות מה-API
-  const loadConversations = async () => {
-    setLoadingConversations(true);
+  const loadBusinessInsights = async () => {
+    try {
+      const result = await base44.functions.invoke('businessInsights');
+      if (result?.data) {
+        setBusinessInsights(result.data);
+      }
+    } catch (error) {
+      console.error('Error loading business insights:', error);
+    }
+  };
+
+  const loadInitialData = async () => {
     try {
       const convs = await base44.agents.listConversations({
         agent_name: AGENT_NAME
       });
-
-      if (mountedRef.current) {
-        setConversations(convs);
-
-        if (convs.length > 0 && !currentConversationId) {
-          const firstConv = convs[0];
-          await loadConversation(firstConv.id);
-        }
+      
+      if (!mountedRef.current) return;
+      
+      setConversations(convs || []);
+      
+      if (convs && convs.length > 0) {
+        loadConversation(convs[0].id);
       }
     } catch (error) {
-      console.error('❌ [CHAT] Error loading conversations:', error);
+      console.error('Error loading conversations:', error);
       toast.error('שגיאה בטעינת שיחות');
     } finally {
       if (mountedRef.current) {
-        setLoadingConversations(false);
+        setLoadingConvs(false);
       }
     }
   };
 
-  // טעינת שיחה ספציפית
   const loadConversation = async (convId) => {
     try {
+      setCurrentConvId(convId);
+      
       const conv = await base44.agents.getConversation(convId);
-
-      if (conv && mountedRef.current) {
-        setCurrentConversationId(convId);
-        setCurrentConversation(conv);
-        setMessages([...conv.messages || []]);
-
-        setTimeout(() => {
-          if (scrollRef.current && mountedRef.current) {
-            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-          }
-        }, 50);
-
-        toast.success(`נטענה: ${conv.metadata?.name || 'שיחה'}`);
+      
+      if (mountedRef.current) {
+        setMessages(conv?.messages || []);
       }
     } catch (error) {
-      console.error('❌ [CHAT] Error loading conversation:', error);
-      toast.error('השיחה לא נמצאה');
+      console.error('Error loading conversation:', error);
     }
   };
 
-  // מנוי לעדכונים - FIX סופי!
+  // Subscribe to current conversation for real-time updates
   useEffect(() => {
-    if (!currentConversationId || !mountedRef.current) {
+    if (!currentConvId) {
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
       return;
     }
 
-    // ניקוי מנוי קודם
-    if (subscriptionRef.current && typeof subscriptionRef.current === 'function') {
-      try {
-        subscriptionRef.current();
-      } catch (error) {
-        // Silent
-      }
-      subscriptionRef.current = null;
+    // Cleanup previous subscription
+    if (unsubscribeRef.current) {
+      unsubscribeRef.current();
+      unsubscribeRef.current = null;
     }
 
-    // Delay להתחברות
-    const setupTimeout = setTimeout(() => {
-      if (!mountedRef.current) return;
-
-      try {
-        const unsubscribe = base44.agents.subscribeToConversation(
-          currentConversationId,
-          (data) => {
-            if (mountedRef.current) {
-              setMessages([...data.messages || []]);
-            }
+    // Subscribe to updates
+    try {
+      const unsub = base44.agents.subscribeToConversation(
+        currentConvId,
+        (data) => {
+          if (mountedRef.current) {
+            setMessages(data.messages || []);
           }
-        );
-
-        subscriptionRef.current = unsubscribe;
-      } catch (error) {
-        console.error('❌ [WEBSOCKET] Error:', error.message);
-        subscriptionRef.current = null;
-      }
-    }, 150); // Changed from 100ms to 150ms
+        }
+      );
+      unsubscribeRef.current = unsub;
+    } catch (error) {
+      console.error('Subscribe error:', error);
+    }
 
     return () => {
-      clearTimeout(setupTimeout);
-
-      // Clean up previous subscription reference if it exists
-      if (subscriptionRef.current && typeof subscriptionRef.current === 'function') {
-        const cleanupTimeout = setTimeout(() => {
-          try {
-            if (subscriptionRef.current && typeof subscriptionRef.current === 'function') {
-              subscriptionRef.current();
-            }
-          } catch (error) {
-            // Silent
-          } finally {
-            subscriptionRef.current = null;
-          }
-        }, 50); // Small delay for cleanup
-
-        return () => clearTimeout(cleanupTimeout); // Return cleanup for this specific timeout
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
       }
     };
-  }, [currentConversationId]);
+  }, [currentConvId]);
 
-  // יצירת שיחה חדשה
-  const handleNewConversation = async () => {
+  const createNewConversation = async () => {
     try {
       const newConv = await base44.agents.createConversation({
         agent_name: AGENT_NAME,
         metadata: {
-          name: `שיחה חדשה - ${new Date().toLocaleString('he-IL', {
+          title: `שיחה - ${new Date().toLocaleString('he-IL', {
             day: '2-digit',
             month: '2-digit',
             hour: '2-digit',
@@ -259,287 +197,232 @@ export default function AIChatPage() {
           notes: ''
         }
       });
-
-      if (mountedRef.current) {
-        await loadConversations();
-        await loadConversation(newConv.id);
-        toast.success('🎉 שיחה חדשה נוצרה!');
-      }
-
+      
+      if (!mountedRef.current) return;
+      
+      await loadInitialData();
+      setCurrentConvId(newConv.id);
+      setMessages([]);
+      toast.success('🎉 שיחה חדשה נוצרה!');
+      
       return newConv.id;
     } catch (error) {
-      console.error('❌ [CHAT] Error creating conversation:', error);
+      console.error('Error creating conversation:', error);
       toast.error('שגיאה ביצירת שיחה');
       return null;
     }
   };
 
-  // עריכת כותרת והערות
-  const handleEditConversation = (conv, e) => {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-
+  const openEditDialog = (conv) => {
     setEditingConv(conv);
-    setEditForm({
-      name: conv.metadata?.name || '',
-      notes: conv.metadata?.notes || ''
-    });
-    setEditDialogOpen(true);
+    setEditTitle(conv?.metadata?.title || '');
+    setEditNotes(conv?.metadata?.notes || '');
+    setEditOpen(true);
   };
 
-  const handleSaveEdit = async () => {
-    if (!editingConv || !editForm.name.trim()) {
-      toast.error('נא להזין שם לשיחה');
+  const handleEditConversation = async () => {
+    if (!editTitle.trim()) {
+      toast.error('נא להזין כותרת לשיחה');
       return;
     }
 
     try {
       await base44.agents.updateConversation(editingConv.id, {
         metadata: {
-          ...editingConv.metadata,
-          name: editForm.name.trim(),
-          notes: editForm.notes.trim()
+          title: editTitle.trim(),
+          notes: editNotes.trim()
         }
       });
 
       if (mountedRef.current) {
-        await loadConversations();
-        setEditDialogOpen(false);
+        await loadInitialData();
+        setEditOpen(false);
         setEditingConv(null);
         toast.success('✅ השיחה עודכנה!');
       }
     } catch (error) {
-      console.error('❌ [CHAT] Error updating conversation:', error);
+      console.error('Error updating conversation:', error);
       toast.error('שגיאה בעדכון השיחה');
     }
   };
 
-  // שליחת הודעה
-  const handleSendMessage = async (messageText = null) => {
+  const sendMessage = async (messageText) => {
     const text = messageText || inputMessage.trim();
+    
+    if (!text || sending) return;
 
-    if (!text || loading || sendingRef.current) {
-      return;
-    }
-
-    sendingRef.current = true;
-
-    let convId = currentConversationId;
-    let conv = currentConversation;
-
+    let convId = currentConvId;
+    
+    // Create new conversation if needed
     if (!convId) {
-      convId = await handleNewConversation();
-      if (!convId) {
-        sendingRef.current = false;
-        return;
-      }
-      await new Promise(resolve => setTimeout(resolve, 500));
-      conv = await base44.agents.getConversation(convId);
+      convId = await createNewConversation();
+      if (!convId) return;
+      
+      // Wait a bit for the conversation to be ready
+      await new Promise(resolve => setTimeout(resolve, 300));
     }
 
     setInputMessage("");
-    setLoading(true);
+    setSending(true);
 
     try {
+      const conv = await base44.agents.getConversation(convId);
+      
       await base44.agents.addMessage(conv, {
         role: "user",
         content: text
       });
-
+      
     } catch (error) {
-      console.error('❌ [AGENT] Error:', error);
-      toast.error(`שגיאה: ${error.message}`);
+      console.error('Error sending message:', error);
+      toast.error('שגיאה בשליחת הודעה');
     } finally {
       if (mountedRef.current) {
-        setLoading(false);
-        sendingRef.current = false;
+        setSending(false);
       }
     }
   };
 
-  // מחיקת שיחה
-  const handleDeleteConversation = async (convId, e) => {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-
-    if (!confirm('❓ למחוק את השיחה? לא ניתן לשחזר!')) {
-      return;
-    }
+  const deleteConversation = async (convId) => {
+    if (!confirm('למחוק את השיחה? לא ניתן לשחזר!')) return;
 
     try {
-      const conv = conversations.find(c => c.id === convId);
-      if (conv) {
-        await base44.agents.updateConversation(convId, {
-          metadata: {
-            ...conv.metadata,
-            deleted: true
-          }
-        });
-      }
+      await base44.agents.updateConversation(convId, {
+        deleted: true
+      });
 
       if (mountedRef.current) {
-        await loadConversations();
-
-        if (currentConversationId === convId) {
-          const remaining = conversations.filter(c => c.id !== convId && !c.metadata?.deleted);
+        await loadInitialData();
+        
+        if (currentConvId === convId) {
+          const remaining = conversations.filter(c => c.id !== convId);
           if (remaining.length > 0) {
-            await loadConversation(remaining[0].id);
+            loadConversation(remaining[0].id);
           } else {
-            setCurrentConversationId(null);
-            setCurrentConversation(null);
+            setCurrentConvId(null);
             setMessages([]);
           }
         }
-
-        toast.success('🗑️ השיחה נמחקה');
+        
+        toast.success('✅ השיחה נמחקה');
       }
     } catch (error) {
-      console.error('❌ [CHAT] Error deleting:', error);
-      toast.error('שגיאה במחיקה');
+      console.error('Error deleting conversation:', error);
+      toast.error('שגיאה במחיקת השיחה');
     }
   };
 
-  const quickActionQuestions = [
-    {
-      icon: UserPlus,
-      label: "הוסף לקוח",
-      question: "תוסיף לקוח חדש בשם משה כהן, מייל: moshe@example.com, טלפון: 050-1234567",
-      color: "green"
-    },
-    {
-      icon: Calendar,
-      label: "קבע פגישה",
-      question: "תקבע לי פגישה עם לקוח מחר בשעה 10:00 בבוקר",
-      color: "blue"
-    },
-    {
-      icon: CheckSquare,
-      label: "צור משימה",
-      question: "תיצור משימה חדשה בשם 'בדיקת תוכניות' עם עדיפות גבוהה",
-      color: "purple"
-    },
-    {
-      icon: Mail,
-      label: "שלח מייל",
-      question: "תשלח מייל ללקוח ותעדכן אותו על התקדמות הפרויקט",
-      color: "orange"
-    },
-    {
-      icon: TrendingUp,
-      label: "סיכום היום",
-      question: "תן לי סיכום מפורט של כל הפעילות שהייתה היום",
-      color: "red"
-    }
+  const quickActions = [
+    { icon: Users, label: "מה מצב הלקוחות שלי?", question: "תן לי סיכום של הלקוחות האחרונים שנוספו למערכת, כולל סטטוס ופרטי קשר", color: "blue" },
+    { icon: Briefcase, label: "סיכום פרויקטים פעילים", question: "תן לי סיכום של כל הפרויקטים הפעילים כרגע, עם אחוזי התקדמות ומועדים", color: "purple" },
+    { icon: Clock, label: "משימות להיום", question: "מה המשימות שעליי לבצע היום? תן לי רשימה ממוינת לפי עדיפות", color: "green" },
+    { icon: AlertTriangle, label: "התראות חשובות", question: "האם יש משימות או פגישות דחופות שאני צריך לדעת עליהן?", color: "red" }
   ];
 
-  if (loadingConversations) {
-    return (
-      <div className="flex items-center justify-center min-h-screen" dir="rtl">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
-          <p className="text-slate-600">טוען את העוזר החכם...</p>
-        </div>
-      </div>
-    );
-  }
-
-  const activeConversations = conversations.filter(c => !c.metadata?.deleted);
-
   return (
-    <div className="flex h-screen bg-gradient-to-br from-slate-50 to-slate-100" dir="rtl">
-      {/* Sidebar */}
+    <div className="flex h-screen bg-gradient-to-br from-blue-50 to-purple-50" dir="rtl">
+      {/* Sidebar - Conversations */}
       <div className="w-80 bg-white border-l border-slate-200 flex flex-col shadow-lg">
-        <div className="p-4 border-b border-slate-200 space-y-2">
-          <Button
-            onClick={handleNewConversation}
-            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-md"
-          >
-            <Plus className="w-5 h-5 ml-2" />
-            שיחה חדשה
-          </Button>
+        <div className="p-4 border-b border-slate-200 space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold flex items-center gap-2">
+              <Brain className="w-6 h-6 text-blue-600" />
+              יועץ עסקי AI
+            </h2>
+            <Button
+              onClick={createNewConversation}
+              size="sm"
+              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+            >
+              <Plus className="w-4 h-4 ml-1" />
+              חדש
+            </Button>
+          </div>
 
           <Button
-            onClick={() => setWhatsappDialogOpen(true)}
+            onClick={() => setShowWhatsAppDialog(true)}
             variant="outline"
-            className="w-full border-2 border-green-500 text-green-700 hover:bg-green-50"
+            className="w-full gap-2 border-green-200 text-green-700 hover:bg-green-50"
+            size="sm"
           >
-            <MessageCircle className="w-5 h-5 ml-2" />
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.890-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488" />
+            </svg>
             חבר ל-WhatsApp
           </Button>
         </div>
 
         <ScrollArea className="flex-1">
-          <div className="p-2 space-y-2">
-            {activeConversations.length === 0 ? (
-              <div className="text-center py-12 px-4">
-                <MessageSquare className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                <p className="text-sm text-slate-600">אין שיחות עדיין</p>
-                <p className="text-xs text-slate-400 mt-1">לחץ על "שיחה חדשה"</p>
+          <div className="p-2 space-y-1">
+            {loadingConvs ? (
+              <div className="text-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin mx-auto text-blue-600" />
+              </div>
+            ) : conversations.length === 0 ? (
+              <div className="text-center py-8 px-3">
+                <p className="text-sm text-slate-600">אין שיחות</p>
+                <Button
+                  onClick={createNewConversation}
+                  size="sm"
+                  variant="outline"
+                  className="mt-3"
+                >
+                  <Plus className="w-4 h-4 ml-1" />
+                  צור ראשונה
+                </Button>
               </div>
             ) : (
-              activeConversations.map((conv) => {
-                const isActive = currentConversationId === conv.id;
-                const messageCount = conv.messages?.length || 0;
-                const convName = conv.metadata?.name || 'שיחה';
-                const convNotes = conv.metadata?.notes || '';
+              conversations.map((conv) => {
+                const isActive = currentConvId === conv.id;
+                const convTitle = conv?.metadata?.title || 'שיחה';
 
                 return (
                   <div
                     key={conv.id}
-                    className={`group relative p-3 rounded-lg cursor-pointer transition-all ${
-                      isActive
-                        ? "bg-gradient-to-br from-blue-50 to-purple-50 border-2 border-blue-400 shadow-md"
-                        : "hover:bg-slate-50 border-2 border-transparent hover:border-slate-200"
+                    className={`group p-3 rounded-lg cursor-pointer transition-all ${
+                      isActive 
+                        ? "bg-blue-100 border-2 border-blue-400" 
+                        : "hover:bg-slate-50 border-2 border-transparent"
                     }`}
                     onClick={() => loadConversation(conv.id)}
                   >
-                    <div className="flex justify-between gap-2">
+                    <div className="flex justify-between items-start gap-2">
                       <div className="flex-1 min-w-0">
                         <h4 className={`text-sm font-semibold truncate ${
                           isActive ? "text-blue-900" : "text-slate-900"
                         }`}>
-                          {convName}
+                          {convTitle}
                         </h4>
-                        <div className="flex items-center gap-2 mt-1">
-                          <p className="text-xs text-slate-400">
-                            {new Date(conv.created_date).toLocaleDateString('he-IL')}
-                          </p>
-                          {messageCount > 0 && (
-                            <Badge variant="secondary" className="text-xs">
-                              {messageCount}
-                            </Badge>
-                          )}
-                        </div>
-                        {convNotes && (
-                          <p className="text-xs text-slate-500 mt-1 truncate">
-                            💬 {convNotes}
-                          </p>
-                        )}
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          {conv?.created_date ? new Date(conv.created_date).toLocaleDateString('he-IL') : ''}
+                        </p>
                       </div>
-
-                      <div className="flex gap-1 flex-shrink-0">
+                      
+                      <div className="flex gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7 hover:bg-blue-100 transition-all"
-                          onClick={(e) => handleEditConversation(conv, e)}
-                          title="ערוך שיחה"
+                          className="h-6 w-6"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openEditDialog(conv);
+                          }}
+                          title="ערוך"
                         >
-                          <Edit2 className="w-3.5 h-3.5 text-blue-600" />
+                          <Edit2 className="w-3 h-3 text-blue-600" />
                         </Button>
-
+                        
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7 hover:bg-red-100 transition-all"
-                          onClick={(e) => handleDeleteConversation(conv.id, e)}
-                          title="מחק שיחה"
+                          className="h-6 w-6"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteConversation(conv.id);
+                          }}
+                          title="מחק"
                         >
-                          <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                          <Trash2 className="w-3 h-3 text-red-500" />
                         </Button>
                       </div>
                     </div>
@@ -549,144 +432,84 @@ export default function AIChatPage() {
             )}
           </div>
         </ScrollArea>
-
-        <div className="p-4 border-t bg-slate-50">
-          <div className="text-xs text-slate-600 text-center">
-            <span className="font-semibold">{activeConversations.length}</span> שיחות שמורות
-          </div>
-        </div>
       </div>
 
-      {/* Main Chat */}
+      {/* Main Chat Area */}
       <div className="flex-1 flex flex-col">
         {/* Header */}
         <div className="bg-white border-b px-6 py-4 shadow-sm">
-          <div className="flex justify-between items-center">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl shadow-lg">
+              <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg">
                 <Brain className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold">יועץ עסקי AI פרואקטיבי</h1>
-                <p className="text-sm text-slate-600 flex items-center gap-1">
-                  <Target className="w-3 h-3" />
-                  ניתוח תובנות, זיהוי סיכונים והזדמנויות
-                </p>
+                <h1 className="text-xl font-bold">יועץ עסקי AI פרואקטיבי</h1>
+                <p className="text-sm text-slate-600">שאל שאלות, קבל המלצות, צור משימות ועוד</p>
               </div>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                onClick={loadBusinessInsights}
-                disabled={loadingInsights}
-                variant="outline"
-                className="gap-2"
-              >
-                {loadingInsights ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Activity className="w-4 h-4" />
-                )}
-                רענן תובנות
-              </Button>
-              <Badge className="bg-gradient-to-r from-green-500 to-green-600 text-white shadow-md">
-                <MessageCircle className="w-3 h-3 ml-1" />
-                WhatsApp זמין
-              </Badge>
-              <Badge className="bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-md">
-                <Sparkles className="w-3 h-3 ml-1" />
-                AI מתקדם
-              </Badge>
             </div>
           </div>
         </div>
 
-        {/* Messages */}
+        {/* Messages Area */}
         <ScrollArea className="flex-1 p-6" ref={scrollRef}>
           {messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center">
-              <div className="p-6 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full mb-6 shadow-lg">
-                <Brain className="w-16 h-16 text-blue-600" />
-              </div>
-              <h2 className="text-2xl font-bold mb-2">שלום! אני היועץ העסקי החכם שלך 🧠</h2>
-              <p className="text-slate-600 mb-2 max-w-md">
-                אני מנתח באופן פרואקטיבי את העסק שלך ומזהה הזדמנויות וסיכונים
-              </p>
-              <p className="text-xs text-slate-500 mb-4">
-                ✅ ניתוח לקוחות | ✅ זיהוי סיכונים | ✅ הזדמנויות עסקיות | ✅ המלצות חכמות
-              </p>
-
-              {businessInsights && (
-                <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-200 rounded-lg p-4 mb-6 max-w-lg">
-                  <div className="flex items-start gap-3">
-                    <Target className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                    <div className="text-right text-sm">
-                      <div className="font-bold text-blue-900 mb-2">🎯 תובנות עכשיו:</div>
-                      {businessInsights.summary?.risks?.length > 0 && (
-                        <div className="text-red-700 mb-1">
-                          ⚠️ {businessInsights.summary.risks.length} סיכונים דורשים תשומת לב
-                        </div>
-                      )}
-                      {businessInsights.opportunities?.length > 0 && (
-                        <div className="text-green-700 mb-1">
-                          💡 {businessInsights.opportunities.length} הזדמנויות עסקיות זוהו
-                        </div>
-                      )}
-                      <div className="text-blue-700">
-                        📊 ציון בריאות עסקי: {businessInsights.summary?.score}/100
-                      </div>
-                    </div>
-                  </div>
+            <div className="max-w-4xl mx-auto">
+              <div className="text-center mb-8">
+                <div className="inline-block p-4 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full mb-4">
+                  <Brain className="w-16 h-16 text-blue-600" />
                 </div>
-              )}
+                <h2 className="text-2xl font-bold mb-2">שלום! אני היועץ העסקי שלך 👋</h2>
+                <p className="text-slate-600 mb-6">
+                  אני כאן לעזור לך לנהל את העסק בצורה יעילה יותר. שאל אותי כל שאלה או בחר פעולה מהירה:
+                </p>
+              </div>
 
-              <QuickActions
-                actions={quickActionQuestions}
-                onActionClick={handleSendMessage}
+              <QuickActions 
+                actions={quickActions}
                 insights={businessInsights}
+                onActionClick={(question) => sendMessage(question)}
               />
             </div>
           ) : (
-            <div className="max-w-4xl mx-auto space-y-4">
+            <div className="space-y-4 max-w-4xl mx-auto">
               {messages.map((msg, i) => (
-                <MessageBubble key={`${i}-${msg.timestamp || i}`} message={msg} />
+                <MessageBubble key={`msg-${i}-${msg.timestamp || Date.now()}`} message={msg} />
               ))}
-
-              {loading && (
-                <div className="flex gap-3 p-4 bg-white rounded-lg shadow-sm border-2 border-blue-200">
+              
+              {sending && (
+                <div className="flex gap-2 p-4 bg-blue-50 rounded-lg border border-blue-200">
                   <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
-                  <div>
-                    <div className="font-medium text-blue-900">היועץ מנתח...</div>
-                    <div className="text-xs text-blue-600">בודק נתונים ומפיק תובנות</div>
-                  </div>
+                  <span className="text-sm text-blue-900">הסוכן חושב ומנתח...</span>
                 </div>
               )}
             </div>
           )}
         </ScrollArea>
 
-        {/* Input */}
-        <div className="bg-white border-t px-6 py-4 shadow-inner">
+        {/* Input Area */}
+        <div className="p-6 border-t bg-white">
           <div className="max-w-4xl mx-auto flex gap-3">
             <Input
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
-              onKeyPress={(e) => {
+              onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
-                  handleSendMessage();
+                  sendMessage();
                 }
               }}
-              placeholder='שאל שאלה או נסה: "מה המצב?", "תן לי תובנות", "אילו לקוחות בסיכון?"'
-              className="flex-1 text-lg py-6 shadow-sm"
-              disabled={loading}
+              placeholder="שאל שאלה או בקש לבצע פעולה..."
+              disabled={sending}
+              className="flex-1"
               dir="rtl"
             />
             <Button
-              onClick={() => handleSendMessage()}
-              disabled={!inputMessage.trim() || loading}
-              className="px-8 py-6 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-md"
+              onClick={() => sendMessage()}
+              disabled={!inputMessage.trim() || sending}
+              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
             >
-              {loading ? (
+              {sending ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
               ) : (
                 <>
@@ -696,19 +519,14 @@ export default function AIChatPage() {
               )}
             </Button>
           </div>
-
-          <div className="mt-3 flex items-center justify-center gap-2 text-xs text-slate-500">
-            <Sparkles className="w-3 h-3" />
-            <span>יועץ AI פרואקטיבי - תובנות אוטומטיות וניתוח חכם</span>
-          </div>
         </div>
       </div>
 
       {/* Edit Dialog */}
-      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="max-w-md" dir="rtl">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+            <DialogTitle className="text-xl flex items-center gap-2">
               <Edit2 className="w-5 h-5 text-blue-600" />
               עריכת שיחה
             </DialogTitle>
@@ -716,124 +534,103 @@ export default function AIChatPage() {
 
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="name">שם השיחה *</Label>
+              <label className="text-sm font-medium">כותרת *</label>
               <Input
-                id="name"
-                value={editForm.name}
-                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                placeholder="לדוגמה: שיחה עם העוזר על לקוחות"
-                className="text-right"
-                dir="rtl"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                placeholder="כותרת השיחה"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="notes">הערות (אופציונלי)</Label>
+              <label className="text-sm font-medium">הערות (אופציונלי)</label>
               <Textarea
-                id="notes"
-                value={editForm.notes}
-                onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
-                placeholder="הוסף הערות או תזכורות..."
-                className="text-right h-24"
-                dir="rtl"
+                value={editNotes}
+                onChange={(e) => setEditNotes(e.target.value)}
+                placeholder="הערות..."
+                className="h-24"
               />
             </div>
           </div>
 
-          <DialogFooter dir="rtl">
-            <div className="flex gap-2 justify-start w-full">
-              <Button
-                onClick={handleSaveEdit}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                <Save className="w-4 h-4 ml-2" />
-                שמור
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => setEditDialogOpen(false)}
-              >
-                <X className="w-4 h-4 ml-2" />
-                ביטול
-              </Button>
-            </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)}>
+              ביטול
+            </Button>
+            <Button 
+              onClick={handleEditConversation} 
+              className="bg-blue-600 hover:bg-blue-700"
+              disabled={!editTitle.trim()}
+            >
+              <Save className="w-4 h-4 ml-2" />
+              שמור
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* WhatsApp Dialog */}
-      <Dialog open={whatsappDialogOpen} onOpenChange={setWhatsappDialogOpen}>
+      <Dialog open={showWhatsAppDialog} onOpenChange={setShowWhatsAppDialog}>
         <DialogContent className="max-w-lg" dir="rtl">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <MessageCircle className="w-6 h-6 text-green-600" />
+            <DialogTitle className="text-xl flex items-center gap-2">
+              <svg className="w-6 h-6 text-green-600" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.890-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488" />
+              </svg>
               חיבור ל-WhatsApp
             </DialogTitle>
-            <DialogDescription className="text-right">
-              קבל את היועץ החכם גם ב-WhatsApp! תובנות, התראות והמלצות ישירות לנייד 📱
-            </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4">
-              <h3 className="font-bold text-green-900 mb-2">✨ מה אפשר לעשות ב-WhatsApp?</h3>
-              <ul className="text-sm text-green-800 space-y-1">
-                <li>✅ לקבל תובנות עסקיות פרואקטיביות</li>
-                <li>✅ התראות על סיכונים והזדמנויות</li>
-                <li>✅ ניתוח לקוחות ופרויקטים</li>
-                <li>✅ ניהול משימות ופגישות</li>
-                <li>✅ המלצות חכמות מבוססות נתונים</li>
-              </ul>
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <h3 className="font-semibold text-green-900 mb-2">✨ אפשר לי גישה מ-WhatsApp!</h3>
+              <p className="text-sm text-green-800">
+                חבר את היועץ ל-WhatsApp ותוכל לשלוח שאלות ולקבל עזרה ישירות מהנייד שלך.
+              </p>
             </div>
 
             <div className="space-y-2">
-              <Label className="font-bold">📱 שלב 1: העתק את הקישור</Label>
+              <label className="text-sm font-medium">קישור חיבור:</label>
               <div className="flex gap-2">
                 <Input
                   value={whatsappUrl}
                   readOnly
-                  className="text-left flex-1"
+                  className="flex-1 font-mono text-xs"
                   dir="ltr"
                 />
                 <Button
                   onClick={copyWhatsAppUrl}
                   variant="outline"
-                  className="flex-shrink-0"
+                  size="icon"
                 >
                   {copiedUrl ? (
-                    <>
-                      <Check className="w-4 h-4 ml-1 text-green-600" />
-                      הועתק
-                    </>
+                    <CheckCircle className="w-4 h-4 text-green-600" />
                   ) : (
-                    <>
-                      <Copy className="w-4 h-4 ml-1" />
-                      העתק
-                    </>
+                    <Copy className="w-4 h-4" />
                   )}
                 </Button>
               </div>
+              <p className="text-xs text-slate-500">
+                העתק את הקישור ושלח אותו לעצמך ב-WhatsApp, ואז לחץ עליו מהנייד
+              </p>
             </div>
 
-            <div className="space-y-2">
-              <Label className="font-bold">📱 שלב 2: פתח ב-WhatsApp</Label>
-              <Button
-                onClick={() => window.open(whatsappUrl, '_blank')}
-                className="w-full bg-green-600 hover:bg-green-700 text-white"
-              >
-                <ExternalLink className="w-4 h-4 ml-2" />
-                פתח ב-WhatsApp
-              </Button>
-            </div>
-
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-900">
-              <strong>💡 טיפ:</strong> שמור את השיחה בהודעות שמורות לגישה מהירה!
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <p className="text-xs text-blue-800">
+                💡 <strong>טיפ:</strong> שמור את הקישור בהודעה שמורה ב-WhatsApp כדי לגשת אליו בקלות בעתיד
+              </p>
             </div>
           </div>
 
-          <DialogFooter dir="rtl">
-            <Button variant="outline" onClick={() => setWhatsappDialogOpen(false)}>
-              סגור
+          <DialogFooter>
+            <Button
+              onClick={() => {
+                window.open(whatsappUrl, '_blank');
+                setShowWhatsAppDialog(false);
+              }}
+              className="w-full bg-green-600 hover:bg-green-700"
+            >
+              פתח ב-WhatsApp
             </Button>
           </DialogFooter>
         </DialogContent>

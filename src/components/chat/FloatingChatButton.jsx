@@ -227,8 +227,8 @@ export default function FloatingChatButton() {
   const openEditDialog = (conv, e) => {
     e.stopPropagation();
     setEditingConv(conv);
-    setEditName(conv.metadata?.name || '');
-    setEditNotes(conv.metadata?.notes || '');
+    setEditName(conv?.metadata?.name || '');
+    setEditNotes(conv?.metadata?.notes || '');
     setEditOpen(true);
   };
 
@@ -309,7 +309,7 @@ export default function FloatingChatButton() {
                   ) : (
                     conversations.map((conv) => {
                       const isActive = currentConvId === conv.id;
-                      const convName = conv.metadata?.name || 'שיחה';
+                      const convName = conv?.metadata?.name || 'שיחה';
 
                       return (
                         <div
@@ -329,7 +329,7 @@ export default function FloatingChatButton() {
                                 {convName}
                               </h4>
                               <p className="text-[10px] text-slate-400 mt-0.5">
-                                {new Date(conv.created_date).toLocaleDateString('he-IL')}
+                                {conv?.created_date ? new Date(conv.created_date).toLocaleDateString('he-IL') : ''}
                               </p>
                             </div>
                             
