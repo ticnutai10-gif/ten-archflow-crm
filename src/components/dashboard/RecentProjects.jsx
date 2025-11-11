@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -22,6 +22,33 @@ export default function RecentProjects({ projects = [], isLoading, onUpdate }) {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
 
+  useEffect(() => {
+    console.log('🔍 [RecentProjects] Received projects:', {
+      projectsCount: projects?.length,
+      projectsType: typeof projects,
+      isArray: Array.isArray(projects),
+      firstProject: projects?.[0],
+      allProjects: projects
+    });
+
+    if (projects && Array.isArray(projects)) {
+      projects.forEach((project, index) => {
+        if (!project) {
+          console.error(`❌ [RecentProjects] Project at index ${index} is null/undefined!`);
+        } else if (typeof project !== 'object') {
+          console.error(`❌ [RecentProjects] Project at index ${index} is not an object:`, project);
+        } else {
+          console.log(`✅ [RecentProjects] Project ${index}:`, {
+            id: project.id,
+            name: project.name,
+            hasName: 'name' in project,
+            keys: Object.keys(project)
+          });
+        }
+      });
+    }
+  }, [projects]);
+
   const toggleSelect = (id) => {
     setSelectedIds(prev => 
       prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
@@ -32,35 +59,49 @@ export default function RecentProjects({ projects = [], isLoading, onUpdate }) {
     if (selectedIds.length === 0) return;
     if (!confirm(`למחוק ${selectedIds.length} פרויקטים?`)) return;
     
-    await Promise.all(selectedIds.map(id => base44.entities.Project.delete(id)));
-    setSelectedIds([]);
-    setSelectionMode(false);
-    onUpdate?.();
+    try {
+      await Promise.all(selectedIds.map(id => base44.entities.Project.delete(id)));
+      setSelectedIds([]);
+      setSelectionMode(false);
+      onUpdate?.();
+    } catch (error) {
+      console.error('❌ [RecentProjects] Error deleting projects:', error);
+    }
   };
 
   const handleBulkCopy = async () => {
     if (selectedIds.length === 0) return;
     
-    const toCopy = projects.filter(p => selectedIds.includes(p.id));
-    for (const project of toCopy) {
-      const { id, created_date, updated_date, created_by, ...rest } = project;
-      await base44.entities.Project.create({ ...rest, name: `${project.name || 'פרויקט'} (העתק)` });
+    try {
+      const toCopy = projects.filter(p => p && selectedIds.includes(p.id));
+      for (const project of toCopy) {
+        if (!project) continue;
+        const { id, created_date, updated_date, created_by, ...rest } = project;
+        await base44.entities.Project.create({ 
+          ...rest, 
+          name: `${project.name || 'פרויקט'} (העתק)` 
+        });
+      }
+      setSelectedIds([]);
+      setSelectionMode(false);
+      onUpdate?.();
+    } catch (error) {
+      console.error('❌ [RecentProjects] Error copying projects:', error);
     }
-    setSelectedIds([]);
-    setSelectionMode(false);
-    onUpdate?.();
   };
 
   const formatDate = (dateString) => {
     if (!dateString) return 'לא הוגדר';
     try {
       return format(new Date(dateString), 'dd/MM/yyyy', { locale: he });
-    } catch {
+    } catch (error) {
+      console.error('❌ [RecentProjects] Error formatting date:', error, dateString);
       return 'תאריך לא תקין';
     }
   };
 
   if (isLoading) {
+    console.log('⏳ [RecentProjects] Loading...');
     return (
       <div className="p-4 space-y-3">
         {[1, 2, 3].map(i => (
@@ -71,6 +112,7 @@ export default function RecentProjects({ projects = [], isLoading, onUpdate }) {
   }
 
   if (!projects || projects.length === 0) {
+    console.log('📭 [RecentProjects] No projects to display');
     return (
       <div className="p-8 text-center text-slate-500">
         <p className="mb-4">אין פרויקטים אחרונים</p>
@@ -80,6 +122,9 @@ export default function RecentProjects({ projects = [], isLoading, onUpdate }) {
       </div>
     );
   }
+
+  const validProjects = projects.filter(p => p && typeof p === 'object');
+  console.log('📊 [RecentProjects] Valid projects:', validProjects.length, 'out of', projects.length);
 
   return (
     <div>
@@ -100,27 +145,51 @@ export default function RecentProjects({ projects = [], isLoading, onUpdate }) {
       )}
 
       <div className="p-4 space-y-3 max-h-96 overflow-y-auto">
-        {projects.map((project) => {
-          if (!project || typeof project !== 'object') return null;
+        {validProjects.map((project, index) => {
+          if (!project || typeof project !== 'object') {
+            console.error(`❌ [RecentProjects] Skipping invalid project at index ${index}:`, project);
+            return null;
+          }
           
-          const projectName = project.name || 'פרויקט ללא שם';
-          const clientName = project.client_name || 'לקוח לא ידוע';
-          const projectStatus = project.status || 'הצעת מחיר';
+          let projectName = 'פרויקט ללא שם';
+          let clientName = 'לקוח לא ידוע';
+          let projectStatus = 'הצעת מחיר';
+          let progress = 0;
+
+          try {
+            projectName = project.name || project.project_name || 'פרויקט ללא שם';
+            clientName = project.client_name || 'לקוח לא ידוע';
+            projectStatus = project.status || 'הצעת מחיר';
+            progress = Math.min(100, Math.max(0, project.progress || 0));
+
+            console.log(`✅ [RecentProjects] Rendering project ${index}:`, {
+              id: project.id,
+              projectName,
+              clientName,
+              projectStatus
+            });
+          } catch (error) {
+            console.error(`❌ [RecentProjects] Error processing project ${index}:`, error, project);
+            return null;
+          }
+
           const statusColor = STATUS_COLORS[projectStatus] || STATUS_COLORS["הצעת מחיר"];
-          const progress = Math.min(100, Math.max(0, project.progress || 0));
 
           return (
             <div
-              key={project.id}
+              key={project.id || index}
               className={`p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-all cursor-pointer ${
                 selectedIds.includes(project.id) ? 'ring-2 ring-blue-500' : ''
               }`}
-              onClick={() => selectionMode && toggleSelect(project.id)}
+              onClick={() => selectionMode && project.id && toggleSelect(project.id)}
             >
               <div className="flex items-start gap-3">
                 {selectionMode && (
                   <button
-                    onClick={(e) => { e.stopPropagation(); toggleSelect(project.id); }}
+                    onClick={(e) => { 
+                      e.stopPropagation(); 
+                      if (project.id) toggleSelect(project.id); 
+                    }}
                     className="flex-shrink-0 mt-1"
                   >
                     {selectedIds.includes(project.id) ? (
@@ -175,7 +244,7 @@ export default function RecentProjects({ projects = [], isLoading, onUpdate }) {
                       variant="ghost"
                       size="icon"
                       className="h-7 w-7"
-                      onClick={(e) => { e.stopPropagation(); /* onEdit */ }}
+                      onClick={(e) => { e.stopPropagation(); }}
                       title="ערוך"
                     >
                       <Edit className="w-3 h-3" />

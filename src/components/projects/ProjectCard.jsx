@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,21 +31,58 @@ export default function ProjectCard({
   onCopy,
   onDelete
 }) {
-  if (!project || typeof project !== 'object') {
+  useEffect(() => {
+    console.log('🔍 [ProjectCard] Received props:', {
+      project,
+      projectType: typeof project,
+      projectKeys: project ? Object.keys(project) : 'null',
+      hasName: project?.name !== undefined,
+      nameValue: project?.name,
+      nameType: typeof project?.name
+    });
+  }, [project]);
+
+  if (!project) {
+    console.error('❌ [ProjectCard] Project is null/undefined!');
     return null;
   }
 
-  const projectName = project.name || 'פרויקט ללא שם';
-  const clientName = project.client_name || 'לקוח לא ידוע';
-  const projectStatus = project.status || 'הצעת מחיר';
+  if (typeof project !== 'object') {
+    console.error('❌ [ProjectCard] Project is not an object:', project);
+    return null;
+  }
+
+  let projectName = 'פרויקט ללא שם';
+  let clientName = 'לקוח לא ידוע';
+  let projectStatus = 'הצעת מחיר';
+  let progress = 0;
+
+  try {
+    projectName = project.name || project.project_name || 'פרויקט ללא שם';
+    clientName = project.client_name || 'לקוח לא ידוע';
+    projectStatus = project.status || 'הצעת מחיר';
+    progress = Math.min(100, Math.max(0, project.progress || 0));
+
+    console.log('✅ [ProjectCard] Processed values:', {
+      id: project.id,
+      projectName,
+      clientName,
+      projectStatus,
+      progress
+    });
+  } catch (error) {
+    console.error('❌ [ProjectCard] Error processing project:', error, project);
+    return null;
+  }
+
   const statusColor = STATUS_COLORS[projectStatus] || STATUS_COLORS["הצעת מחיר"];
-  const progress = Math.min(100, Math.max(0, project.progress || 0));
 
   const formatDate = (dateString) => {
     if (!dateString) return null;
     try {
       return format(new Date(dateString), 'dd/MM/yyyy', { locale: he });
-    } catch {
+    } catch (error) {
+      console.error('❌ [ProjectCard] Error formatting date:', error, dateString);
       return null;
     }
   };

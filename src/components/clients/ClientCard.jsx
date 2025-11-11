@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,9 +29,45 @@ export default function ClientCard({
   isDraggable = false,
   dragHandleProps = {}
 }) {
-  if (!client || typeof client !== 'object') {
+  useEffect(() => {
+    console.log('🔍 [ClientCard] Received props:', {
+      client,
+      clientType: typeof client,
+      clientKeys: client ? Object.keys(client) : 'null',
+      hasName: client?.name !== undefined,
+      nameValue: client?.name,
+      nameType: typeof client?.name
+    });
+  }, [client]);
+
+  if (!client) {
+    console.error('❌ [ClientCard] Client is null/undefined!');
     return null;
   }
+
+  if (typeof client !== 'object') {
+    console.error('❌ [ClientCard] Client is not an object:', client);
+    return null;
+  }
+
+  let clientName = 'לקוח ללא שם';
+  let clientStatus = 'פוטנציאלי';
+  
+  try {
+    clientName = client.name || client.client_name || 'לקוח ללא שם';
+    clientStatus = client.status || 'פוטנציאלי';
+    
+    console.log('✅ [ClientCard] Processed values:', {
+      id: client.id,
+      clientName,
+      clientStatus
+    });
+  } catch (error) {
+    console.error('❌ [ClientCard] Error processing client:', error, client);
+    return null;
+  }
+
+  const statusColor = STATUS_COLORS[clientStatus] || STATUS_COLORS["פוטנציאלי"];
 
   const handleCardClick = (e) => {
     if (selectionMode) {
@@ -48,10 +84,6 @@ export default function ClientCard({
       onEnterSelectionMode();
     }
   };
-
-  const clientName = client.name || 'לקוח ללא שם';
-  const clientStatus = client.status || 'פוטנציאלי';
-  const statusColor = STATUS_COLORS[clientStatus] || STATUS_COLORS["פוטנציאלי"];
 
   return (
     <Card
