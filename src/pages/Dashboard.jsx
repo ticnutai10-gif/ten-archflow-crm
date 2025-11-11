@@ -11,10 +11,6 @@ import {
   DropdownMenuLabel
 } from "@/components/ui/dropdown-menu";
 import {
-  Users,
-  FolderOpen,
-  FileText,
-  CheckSquare,
   Settings,
   LayoutGrid,
   LayoutList,
@@ -39,6 +35,31 @@ import DashboardSettings from "../components/dashboard/DashboardSettings";
 import UpcomingMeetings from "../components/dashboard/UpcomingMeetings";
 import ProjectInsightsCard from "../components/dashboard/ProjectInsightsCard";
 
+const VIEW_MODE_OPTIONS = [
+  { value: 'list', label: 'שורות', icon: LayoutList },
+  { value: 'grid-small', label: 'רשת קטנה (4 עמודות)', icon: Grid3x3 },
+  { value: 'grid-medium', label: 'רשת בינונית (3 עמודות)', icon: LayoutGrid },
+  { value: 'grid-large', label: 'רשת גדולה (2 עמודות)', icon: Grid2x2 },
+  { value: 'vertical', label: 'אנכי (עמודה אחת)', icon: AlignLeft },
+];
+
+const getGridClass = (viewMode) => {
+  switch (viewMode) {
+    case 'list':
+      return 'grid grid-cols-1 gap-4';
+    case 'grid-small':
+      return 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4';
+    case 'grid-medium':
+      return 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6';
+    case 'grid-large':
+      return 'grid grid-cols-1 md:grid-cols-2 gap-6';
+    case 'vertical':
+      return 'flex flex-col gap-4 max-w-2xl mx-auto';
+    default:
+      return 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6';
+  }
+};
+
 export default function Dashboard() {
   const [stats, setStats] = useState({
     clients: 0,
@@ -54,7 +75,6 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [showDashboardSettings, setShowDashboardSettings] = useState(false);
 
-  // View mode state
   const [viewMode, setViewMode] = useState(() => {
     try {
       return localStorage.getItem('dashboard-view-mode') || 'grid-medium';
@@ -71,7 +91,6 @@ export default function Dashboard() {
     }
   });
 
-  // Expanded/collapsed state for each card - default all CLOSED
   const [expandedCards, setExpandedCards] = useState(() => {
     try {
       const saved = localStorage.getItem('dashboard-expanded-cards');
@@ -93,41 +112,6 @@ export default function Dashboard() {
     }
   });
 
-  // Save expanded state to localStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem('dashboard-expanded-cards', JSON.stringify(expandedCards));
-    } catch (e) {
-      console.error('Error saving expanded cards:', e);
-    }
-  }, [expandedCards]);
-
-  // Toggle card expansion
-  const toggleCard = (cardName) => {
-    setExpandedCards(prev => ({
-      ...prev,
-      [cardName]: !prev[cardName]
-    }));
-  };
-
-  // Save view mode to localStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem('dashboard-view-mode', viewMode);
-    } catch (e) {
-      console.error('Error saving view mode:', e);
-    }
-  }, [viewMode]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('dashboard-compact-headers', compactHeaders.toString());
-    } catch (e) {
-      console.error('Error saving compact headers:', e);
-    }
-  }, [compactHeaders]);
-
-  // Dashboard settings state
   const [dashboardSettings, setDashboardSettings] = useState(() => {
     try {
       const raw = localStorage.getItem("app-preferences");
@@ -155,8 +139,38 @@ export default function Dashboard() {
     }
   });
 
-  // Update dashboard settings and save to localStorage
-  const updateDashboardSettings = (newSettings) => {
+  useEffect(() => {
+    try {
+      localStorage.setItem('dashboard-expanded-cards', JSON.stringify(expandedCards));
+    } catch (e) {
+      console.error('Error saving expanded cards:', e);
+    }
+  }, [expandedCards]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('dashboard-view-mode', viewMode);
+    } catch (e) {
+      console.error('Error saving view mode:', e);
+    }
+  }, [viewMode]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('dashboard-compact-headers', compactHeaders.toString());
+    } catch (e) {
+      console.error('Error saving compact headers:', e);
+    }
+  }, [compactHeaders]);
+
+  const toggleCard = useCallback((cardName) => {
+    setExpandedCards(prev => ({
+      ...prev,
+      [cardName]: !prev[cardName]
+    }));
+  }, []);
+
+  const updateDashboardSettings = useCallback((newSettings) => {
     setDashboardSettings((prev) => {
       const updated = { ...prev, ...newSettings };
       try {
@@ -173,7 +187,7 @@ export default function Dashboard() {
       }
       return updated;
     });
-  };
+  }, []);
 
   const loadDashboardData = useCallback(async () => {
     setLoading(true);
@@ -231,7 +245,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     loadDashboardData();
-    const onTimelogCreated = (e) => { loadDashboardData(); };
+    const onTimelogCreated = () => { loadDashboardData(); };
     window.addEventListener('timelog:created', onTimelogCreated);
     return () => { window.removeEventListener('timelog:created', onTimelogCreated); };
   }, [loadDashboardData]);
@@ -254,33 +268,7 @@ export default function Dashboard() {
     return () => window.removeEventListener("preferences:changed", onPrefsChanged);
   }, []);
 
-  // Get grid class based on view mode
-  const getGridClass = () => {
-    switch (viewMode) {
-      case 'list':
-        return 'grid grid-cols-1 gap-4';
-      case 'grid-small':
-        return 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4';
-      case 'grid-medium':
-        return 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6';
-      case 'grid-large':
-        return 'grid grid-cols-1 md:grid-cols-2 gap-6';
-      case 'vertical':
-        return 'flex flex-col gap-4 max-w-2xl mx-auto';
-      default:
-        return 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6';
-    }
-  };
-
-  const viewModeOptions = [
-    { value: 'list', label: 'שורות', icon: LayoutList },
-    { value: 'grid-small', label: 'רשת קטנה (4 עמודות)', icon: Grid3x3 },
-    { value: 'grid-medium', label: 'רשת בינונית (3 עמודות)', icon: LayoutGrid },
-    { value: 'grid-large', label: 'רשת גדולה (2 עמודות)', icon: Grid2x2 },
-    { value: 'vertical', label: 'אנכי (עמודה אחת)', icon: AlignLeft },
-  ];
-
-  const currentViewOption = viewModeOptions.find(opt => opt.value === viewMode) || viewModeOptions[2];
+  const currentViewOption = VIEW_MODE_OPTIONS.find(opt => opt.value === viewMode) || VIEW_MODE_OPTIONS[2];
   const CurrentViewIcon = currentViewOption.icon;
 
   return (
@@ -293,7 +281,6 @@ export default function Dashboard() {
       />
 
       <div className="max-w-7xl mx-auto" dir="rtl">
-        {/* Header */}
         <div className="mb-8" dir="rtl">
           <div className="px-8 py-6 rounded-2xl shadow-md" style={{ backgroundColor: '#2C3E50' }} dir="rtl">
             <div className="flex justify-between items-center" dir="rtl">
@@ -308,7 +295,6 @@ export default function Dashboard() {
               <div className="flex gap-3" dir="rtl">
                 <ReminderManager />
                 
-                {/* View Mode Selector */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button 
@@ -323,7 +309,7 @@ export default function Dashboard() {
                   <DropdownMenuContent align="end" className="w-64" dir="rtl">
                     <DropdownMenuLabel className="text-right">מצב תצוגה</DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    {viewModeOptions.map((option) => {
+                    {VIEW_MODE_OPTIONS.map((option) => {
                       const OptionIcon = option.icon;
                       return (
                         <DropdownMenuItem
@@ -375,12 +361,10 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* AI Project Insights - NEW! */}
         <div className="mb-8">
           <ProjectInsightsCard />
         </div>
 
-        {/* Stats Grid */}
         {dashboardSettings.showStats && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8" dir="rtl">
             <Card className="bg-white shadow-md hover:shadow-lg transition-shadow">
@@ -457,12 +441,11 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Activity Grid */}
         <div dir="rtl">
           {!compactHeaders && (
             <h2 className="text-xl font-bold text-slate-800 mb-4 text-right">פעילויות אחרונות</h2>
           )}
-          <div className={getGridClass()} dir="rtl">
+          <div className={getGridClass(viewMode)} dir="rtl">
             {dashboardSettings.showRecentProjects && (
               <Card className="bg-white shadow-md">
                 <CardHeader 
