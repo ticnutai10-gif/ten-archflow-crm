@@ -6,7 +6,6 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -608,7 +607,7 @@ export default function TeamChatPage() {
 
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>שם החדר *</Label>
+              <label className="text-sm font-medium">שם החדר *</label>
               <Input
                 value={newRoomForm.name}
                 onChange={(e) => setNewRoomForm({ ...newRoomForm, name: e.target.value })}
@@ -617,7 +616,7 @@ export default function TeamChatPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>סוג החדר</Label>
+              <label className="text-sm font-medium">סוג החדר</label>
               <Select
                 value={newRoomForm.type}
                 onValueChange={(value) => setNewRoomForm({ ...newRoomForm, type: value })}
@@ -636,7 +635,7 @@ export default function TeamChatPage() {
 
             {newRoomForm.type === 'client' && (
               <div className="space-y-2">
-                <Label>בחר לקוח</Label>
+                <label className="text-sm font-medium">בחר לקוח</label>
                 <Select
                   value={newRoomForm.client_id}
                   onValueChange={(value) => {
@@ -664,7 +663,7 @@ export default function TeamChatPage() {
 
             {newRoomForm.type === 'project' && (
               <div className="space-y-2">
-                <Label>בחר פרויקט</Label>
+                <label className="text-sm font-medium">בחר פרויקט</label>
                 <Select
                   value={newRoomForm.project_id}
                   onValueChange={(value) => {
@@ -691,7 +690,7 @@ export default function TeamChatPage() {
             )}
 
             <div className="space-y-2">
-              <Label>נושא (אופציונלי)</Label>
+              <label className="text-sm font-medium">נושא (אופציונלי)</label>
               <Input
                 value={newRoomForm.topic}
                 onChange={(e) => setNewRoomForm({ ...newRoomForm, topic: e.target.value })}
@@ -700,7 +699,7 @@ export default function TeamChatPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>משתתפים נוספים</Label>
+              <label className="text-sm font-medium">משתתפים נוספים</label>
               <Select
                 value=""
                 onValueChange={(value) => {
