@@ -17,8 +17,21 @@ function formatDuration(seconds) {
   return `${hours}:${minutes.toString().padStart(2, '0')} שעות`;
 }
 
-export default function TimeLogView({ client = {}, timeLogs: initialTimeLogs = [], onTimeLogUpdate }) {
-  const [timeLogs, setTimeLogs] = useState(initialTimeLogs || []);
+export default function TimeLogView({ client, timeLogs: initialTimeLogs, onTimeLogUpdate }) {
+  // ✅ הגנה מלאה על props
+  console.log('🕒 [TimeLogView] Component mounted/updated with:', {
+    client,
+    clientType: typeof client,
+    clientIsValid: client && typeof client === 'object',
+    clientName: client?.name,
+    initialTimeLogs,
+    initialTimeLogsType: typeof initialTimeLogs,
+    initialTimeLogsIsArray: Array.isArray(initialTimeLogs),
+    initialTimeLogsCount: initialTimeLogs?.length
+  });
+
+  // ✅ ברירת מחדל בטוחה
+  const [timeLogs, setTimeLogs] = useState([]);
   const [editingLog, setEditingLog] = useState(null);
   const [deleteLogId, setDeleteLogId] = useState(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -26,18 +39,25 @@ export default function TimeLogView({ client = {}, timeLogs: initialTimeLogs = [
   const [editData, setEditData] = useState({ title: '', notes: '', duration_seconds: 0, log_date: '' });
   const [canEdit, setCanEdit] = useState(false);
 
+  // ✅ עדכון timeLogs עם הגנה מלאה
   useEffect(() => {
-    console.log('🕒 [TimeLogView] Component mounted with:', {
-      client,
-      clientType: typeof client,
-      clientName: client?.name,
-      hasName: 'name' in (client || {}),
-      timeLogsCount: initialTimeLogs?.length || 0
-    });
-  }, [client, initialTimeLogs]);
+    if (!initialTimeLogs) {
+      console.warn('⚠️ [TimeLogView] initialTimeLogs is null/undefined, using empty array');
+      setTimeLogs([]);
+      return;
+    }
 
-  useEffect(() => {
-    setTimeLogs(initialTimeLogs || []);
+    if (!Array.isArray(initialTimeLogs)) {
+      console.error('❌ [TimeLogView] initialTimeLogs is not an array!', {
+        type: typeof initialTimeLogs,
+        value: initialTimeLogs
+      });
+      setTimeLogs([]);
+      return;
+    }
+
+    console.log('✅ [TimeLogView] Setting timeLogs from props:', initialTimeLogs.length);
+    setTimeLogs(initialTimeLogs);
   }, [initialTimeLogs]);
 
   useEffect(() => {
@@ -59,7 +79,9 @@ export default function TimeLogView({ client = {}, timeLogs: initialTimeLogs = [
           active: true 
         }).catch(() => []);
         
-        setCanEdit(!!rows?.[0] && rows[0].role === "manager_plus");
+        // ✅ הגנה על תוצאות
+        const validRows = Array.isArray(rows) ? rows : [];
+        setCanEdit(!!validRows?.[0] && validRows[0].role === "manager_plus");
       } catch (e) {
         console.error('❌ [TimeLogView] Error checking permissions:', e);
         setCanEdit(false);
@@ -106,8 +128,6 @@ export default function TimeLogView({ client = {}, timeLogs: initialTimeLogs = [
     }
   };
 
-  const totalTime = timeLogs.reduce((sum, log) => sum + (log?.duration_seconds || 0), 0);
-
   const formatTime = (dateString) => {
     if (!dateString) return null;
     try {
@@ -120,23 +140,39 @@ export default function TimeLogView({ client = {}, timeLogs: initialTimeLogs = [
     }
   };
 
-  // ✅ הגנה מלאה על client
+  // ✅ הגנה מלאה על client prop
   if (!client || typeof client !== 'object') {
-    console.error('❌ [TimeLogView] Invalid client prop:', client);
+    console.error('❌ [TimeLogView] Invalid client prop:', {
+      client,
+      type: typeof client
+    });
     return (
       <div className="p-8 text-center" dir="rtl">
-        <p className="text-red-600">שגיאה: נתוני לקוח לא תקינים</p>
+        <Card>
+          <CardContent className="p-6">
+            <Clock className="w-12 h-12 mx-auto mb-3 text-red-300" />
+            <p className="text-red-600">שגיאה: נתוני לקוח לא תקינים</p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
+  // ✅ ברירת מחדל בטוחה לשם הלקוח
   const clientName = client.name || client.client_name || 'לקוח לא ידוע';
-  const validTimeLogs = (timeLogs || []).filter(log => log && typeof log === 'object');
+
+  // ✅ הגנה מלאה על timeLogs array
+  const validTimeLogs = Array.isArray(timeLogs) 
+    ? timeLogs.filter(log => log && typeof log === 'object')
+    : [];
+
+  const totalTime = validTimeLogs.reduce((sum, log) => sum + (log?.duration_seconds || 0), 0);
 
   console.log('✅ [TimeLogView] Rendering with:', {
     clientName,
     validTimeLogsCount: validTimeLogs.length,
-    totalTime
+    totalTime,
+    canEdit
   });
 
   return (
@@ -161,7 +197,7 @@ export default function TimeLogView({ client = {}, timeLogs: initialTimeLogs = [
             <div className="space-y-3">
               {validTimeLogs.map((log) => {
                 if (!log || typeof log !== 'object') {
-                  console.error('❌ [TimeLogView] Invalid log:', log);
+                  console.error('❌ [TimeLogView] Invalid log in render:', log);
                   return null;
                 }
 
