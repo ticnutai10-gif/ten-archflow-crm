@@ -1,7 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
-import { TimeLog, User } from '@/entities/all';
-import { AccessControl } from "@/entities/AccessControl";
+import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -19,7 +17,7 @@ function formatDuration(seconds) {
   return `${hours}:${minutes.toString().padStart(2, '0')} שעות`;
 }
 
-export default function TimeLogView({ client, timeLogs: initialTimeLogs, onTimeLogUpdate }) {
+export default function TimeLogView({ client = {}, timeLogs: initialTimeLogs = [], onTimeLogUpdate }) {
   const [timeLogs, setTimeLogs] = useState(initialTimeLogs || []);
   const [editingLog, setEditingLog] = useState(null);
   const [deleteLogId, setDeleteLogId] = useState(null);
@@ -29,13 +27,23 @@ export default function TimeLogView({ client, timeLogs: initialTimeLogs, onTimeL
   const [canEdit, setCanEdit] = useState(false);
 
   useEffect(() => {
+    console.log('🕒 [TimeLogView] Component mounted with:', {
+      client,
+      clientType: typeof client,
+      clientName: client?.name,
+      hasName: 'name' in (client || {}),
+      timeLogsCount: initialTimeLogs?.length || 0
+    });
+  }, [client, initialTimeLogs]);
+
+  useEffect(() => {
     setTimeLogs(initialTimeLogs || []);
   }, [initialTimeLogs]);
 
   useEffect(() => {
-    (async () => {
+    const checkPermissions = async () => {
       try {
-        const user = await User.me();
+        const user = await base44.auth.me();
         if (!user) {
           setCanEdit(false);
           return;
@@ -46,12 +54,19 @@ export default function TimeLogView({ client, timeLogs: initialTimeLogs, onTimeL
           return;
         }
 
-        const rows = await AccessControl.filter({ email: user.email, active: true }).catch(() => []);
+        const rows = await base44.entities.AccessControl.filter({ 
+          email: user.email, 
+          active: true 
+        }).catch(() => []);
+        
         setCanEdit(!!rows?.[0] && rows[0].role === "manager_plus");
       } catch (e) {
+        console.error('❌ [TimeLogView] Error checking permissions:', e);
         setCanEdit(false);
       }
-    })();
+    };
+
+    checkPermissions();
   }, []);
 
   const handleEdit = (log) => {
@@ -68,7 +83,7 @@ export default function TimeLogView({ client, timeLogs: initialTimeLogs, onTimeL
   const handleSaveEdit = async () => {
     if (!editingLog) return;
     try {
-      await TimeLog.update(editingLog.id, editData);
+      await base44.entities.TimeLog.update(editingLog.id, editData);
       setEditDialogOpen(false);
       setEditingLog(null);
       if (onTimeLogUpdate) await onTimeLogUpdate();
@@ -81,7 +96,7 @@ export default function TimeLogView({ client, timeLogs: initialTimeLogs, onTimeL
   const handleDelete = async () => {
     if (!deleteLogId) return;
     try {
-      await TimeLog.delete(deleteLogId);
+      await base44.entities.TimeLog.delete(deleteLogId);
       setDeleteDialogOpen(false);
       setDeleteLogId(null);
       if (onTimeLogUpdate) await onTimeLogUpdate();
@@ -91,9 +106,8 @@ export default function TimeLogView({ client, timeLogs: initialTimeLogs, onTimeL
     }
   };
 
-  const totalTime = timeLogs.reduce((sum, log) => sum + (log.duration_seconds || 0), 0);
+  const totalTime = timeLogs.reduce((sum, log) => sum + (log?.duration_seconds || 0), 0);
 
-  // פונקציה לפורמט שעה בטוח
   const formatTime = (dateString) => {
     if (!dateString) return null;
     try {
@@ -106,12 +120,31 @@ export default function TimeLogView({ client, timeLogs: initialTimeLogs, onTimeL
     }
   };
 
+  // ✅ הגנה מלאה על client
+  if (!client || typeof client !== 'object') {
+    console.error('❌ [TimeLogView] Invalid client prop:', client);
+    return (
+      <div className="p-8 text-center" dir="rtl">
+        <p className="text-red-600">שגיאה: נתוני לקוח לא תקינים</p>
+      </div>
+    );
+  }
+
+  const clientName = client.name || client.client_name || 'לקוח לא ידוע';
+  const validTimeLogs = (timeLogs || []).filter(log => log && typeof log === 'object');
+
+  console.log('✅ [TimeLogView] Rendering with:', {
+    clientName,
+    validTimeLogsCount: validTimeLogs.length,
+    totalTime
+  });
+
   return (
     <div className="space-y-4" dir="rtl">
       <Card>
         <CardHeader>
           <div className="flex justify-between items-center">
-            <CardTitle>יומן זמן עבור {client.name}</CardTitle>
+            <CardTitle>יומן זמן עבור {clientName}</CardTitle>
             <Badge variant="outline" className="text-lg px-4 py-2">
               <Clock className="w-4 h-4 ml-2" />
               סה״כ: {formatDuration(totalTime)}
@@ -119,15 +152,25 @@ export default function TimeLogView({ client, timeLogs: initialTimeLogs, onTimeL
           </div>
         </CardHeader>
         <CardContent>
-          {timeLogs.length === 0 ? (
+          {validTimeLogs.length === 0 ? (
             <div className="text-center py-8 text-slate-500">
               <Clock className="w-12 h-12 mx-auto mb-3 text-slate-300" />
               <p>אין רישומי זמן עדיין</p>
             </div>
           ) : (
             <div className="space-y-3">
-              {timeLogs.map((log) => {
+              {validTimeLogs.map((log) => {
+                if (!log || typeof log !== 'object') {
+                  console.error('❌ [TimeLogView] Invalid log:', log);
+                  return null;
+                }
+
                 const timeStr = formatTime(log.created_date);
+                const durationSeconds = log.duration_seconds || 0;
+                const logDate = log.log_date;
+                const title = log.title || '';
+                const notes = log.notes || '';
+                const createdBy = log.created_by || '';
                 
                 return (
                   <Card key={log.id} className="border-l-4 border-blue-500 hover:shadow-md transition-shadow">
@@ -136,11 +179,11 @@ export default function TimeLogView({ client, timeLogs: initialTimeLogs, onTimeL
                         <div className="flex-1">
                           <div className="flex items-center gap-3 mb-2 flex-wrap">
                             <Badge variant="outline" className="bg-blue-50 text-blue-700">
-                              {formatDuration(log.duration_seconds)}
+                              {formatDuration(durationSeconds)}
                             </Badge>
                             <div className="flex items-center gap-2 text-sm text-slate-500">
                               <Calendar className="w-4 h-4" />
-                              {log.log_date ? format(parseISO(log.log_date), 'dd/MM/yyyy', { locale: he }) : 'לא צוין'}
+                              {logDate ? format(parseISO(logDate), 'dd/MM/yyyy', { locale: he }) : 'לא צוין'}
                             </div>
                             {timeStr && (
                               <div className="flex items-center gap-2 text-sm text-slate-500">
@@ -149,16 +192,16 @@ export default function TimeLogView({ client, timeLogs: initialTimeLogs, onTimeL
                               </div>
                             )}
                           </div>
-                          {log.title && (
-                            <h4 className="font-semibold text-slate-900 mb-1">{log.title}</h4>
+                          {title && (
+                            <h4 className="font-semibold text-slate-900 mb-1">{title}</h4>
                           )}
-                          {log.notes && (
-                            <p className="text-sm text-slate-600 whitespace-pre-wrap">{log.notes}</p>
+                          {notes && (
+                            <p className="text-sm text-slate-600 whitespace-pre-wrap">{notes}</p>
                           )}
-                          {log.created_by && (
+                          {createdBy && (
                             <div className="flex items-center gap-2 text-xs text-slate-500 mt-2">
                               <UserIcon className="w-3 h-3" />
-                              {log.created_by}
+                              {createdBy}
                             </div>
                           )}
                         </div>
