@@ -27,19 +27,16 @@ export default function FloatingDebugPanel() {
   const [clientsData, setClientsData] = useState(null);
   const [projectsData, setProjectsData] = useState(null);
   
-  // הגדרות תצוגה - נטען רק אחרי mount
+  // הגדרות תצוגה - ברירת מחדל true
   const [settings, setSettings] = useState({
     showDebugButton: true,
     showConsoleButton: true
   });
-  
-  const [mounted, setMounted] = useState(false);
 
   const { me, isAdmin, isSuperAdmin, isManagerPlus, myAccessRule, loading } = useAccessControl();
 
   // Load settings after mount
   useEffect(() => {
-    setMounted(true);
     try {
       const saved = localStorage.getItem('debug-settings');
       if (saved) {
@@ -53,8 +50,6 @@ export default function FloatingDebugPanel() {
 
   // Listen for settings changes
   useEffect(() => {
-    if (!mounted) return;
-    
     const handleSettingsChange = (e) => {
       if (e.detail) {
         setSettings(e.detail);
@@ -66,7 +61,7 @@ export default function FloatingDebugPanel() {
     return () => {
       window.removeEventListener('debug-settings-changed', handleSettingsChange);
     };
-  }, [mounted]);
+  }, []);
 
   // Console logging
   useEffect(() => {
@@ -195,15 +190,12 @@ export default function FloatingDebugPanel() {
     copyToClipboard(consoleText);
   };
 
-  // Don't render until mounted and settings loaded
-  if (!mounted) return null;
+  if (!me) return null;
 
   // אם שני הכפתורים מוסתרים, לא להציג כלום
   if (!settings.showDebugButton && !settings.showConsoleButton) {
     return null;
   }
-
-  if (!me) return null;
 
   return (
     <>
