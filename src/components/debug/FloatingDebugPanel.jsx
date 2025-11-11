@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -7,6 +8,8 @@ import {
   Bug, 
   Copy, 
   X, 
+  ChevronDown, 
+  ChevronUp, 
   Terminal,
   Shield,
   Users,
@@ -27,33 +30,30 @@ export default function FloatingDebugPanel() {
   const [clientsData, setClientsData] = useState(null);
   const [projectsData, setProjectsData] = useState(null);
   
-  // הגדרות תצוגה - ברירת מחדל true
-  const [settings, setSettings] = useState({
-    showDebugButton: true,
-    showConsoleButton: true
+  // הגדרות תצוגה
+  const [settings, setSettings] = useState(() => {
+    try {
+      const saved = localStorage.getItem('debug-settings');
+      return saved ? JSON.parse(saved) : {
+        showDebugButton: true,
+        showConsoleButton: true
+      };
+    } catch {
+      console.error("Failed to parse debug settings from localStorage, using defaults.");
+      return {
+        showDebugButton: true,
+        showConsoleButton: true
+      };
+    }
   });
 
   const { me, isAdmin, isSuperAdmin, isManagerPlus, myAccessRule, loading } = useAccessControl();
 
-  // Load settings after mount
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('debug-settings');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        setSettings(parsed);
-      }
-    } catch (e) {
-      console.error("Failed to parse debug settings:", e);
-    }
-  }, []);
-
-  // Listen for settings changes
+  // האזנה לשינויים בהגדרות
   useEffect(() => {
     const handleSettingsChange = (e) => {
-      if (e.detail) {
-        setSettings(e.detail);
-      }
+      console.log('🔧 [DEBUG] Settings changed:', e.detail);
+      setSettings(e.detail);
     };
 
     window.addEventListener('debug-settings-changed', handleSettingsChange);
@@ -61,9 +61,9 @@ export default function FloatingDebugPanel() {
     return () => {
       window.removeEventListener('debug-settings-changed', handleSettingsChange);
     };
-  }, []);
+  }, []); // Empty dependency array means this runs once on mount and cleans up on unmount
 
-  // Console logging
+  // לכידת console.log
   useEffect(() => {
     const originalLog = console.log;
     const originalError = console.error;
@@ -116,9 +116,8 @@ export default function FloatingDebugPanel() {
     };
   }, []);
 
-  const loadAccessData = useCallback(async () => {
-    if (!me) return;
-    
+  // טען נתוני גישה
+  const loadAccessData = async () => {
     try {
       const [clients, projects, accessRules] = await Promise.all([
         Client.list(),
@@ -126,18 +125,15 @@ export default function FloatingDebugPanel() {
         AccessControl.list()
       ]);
 
-      const clientsDataObj = {
+      setClientsData({
         total: clients.length,
         list: clients.map(c => ({ id: c.id, name: c.name }))
-      };
+      });
 
-      const projectsDataObj = {
+      setProjectsData({
         total: projects.length,
         list: projects.map(p => ({ id: p.id, name: p.name, client_id: p.client_id }))
-      };
-
-      setClientsData(clientsDataObj);
-      setProjectsData(projectsDataObj);
+      });
 
       const myRule = accessRules.find(r => 
         r.email?.toLowerCase() === me?.email?.toLowerCase()
@@ -149,16 +145,17 @@ export default function FloatingDebugPanel() {
         clients,
         projects
       });
+
     } catch (error) {
-      console.error('❌ [DEBUG PANEL] Error loading access data:', error);
+      console.error('Error loading access data:', error);
     }
-  }, [me]);
+  };
 
   useEffect(() => {
     if (me && isOpen) {
       loadAccessData();
     }
-  }, [me, isOpen, loadAccessData]);
+  }, [me, isOpen]);
 
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text).then(() => {
@@ -190,12 +187,12 @@ export default function FloatingDebugPanel() {
     copyToClipboard(consoleText);
   };
 
-  if (!me) return null;
-
   // אם שני הכפתורים מוסתרים, לא להציג כלום
   if (!settings.showDebugButton && !settings.showConsoleButton) {
     return null;
   }
+
+  if (!me) return null;
 
   return (
     <>
@@ -379,11 +376,6 @@ export default function FloatingDebugPanel() {
                         {clientsData?.total || 0}
                       </div>
                       <div className="text-[10px] text-slate-600">סה"כ במערכת</div>
-                      {clientsData && (
-                        <div className="text-[10px] text-green-700 mt-1">
-                          ✅ טעון מהשרת
-                        </div>
-                      )}
                     </div>
 
                     <div className="bg-blue-50 rounded-lg p-3">
@@ -395,11 +387,6 @@ export default function FloatingDebugPanel() {
                         {projectsData?.total || 0}
                       </div>
                       <div className="text-[10px] text-slate-600">סה"כ במערכת</div>
-                      {projectsData && (
-                        <div className="text-[10px] text-blue-700 mt-1">
-                          ✅ טעון מהשרת
-                        </div>
-                      )}
                     </div>
                   </div>
 

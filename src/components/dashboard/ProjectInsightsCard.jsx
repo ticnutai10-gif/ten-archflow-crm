@@ -13,8 +13,7 @@ import {
   Lightbulb,
   Activity,
   Target,
-  Loader2,
-  RefreshCw
+  Loader2
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { createPageUrl } from "@/utils";
@@ -24,72 +23,20 @@ export default function ProjectInsightsCard() {
   const [insights, setInsights] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedTab, setSelectedTab] = useState('overview');
-  const [error, setError] = useState(null);
 
   useEffect(() => {
     loadInsights();
   }, []);
 
   const loadInsights = async () => {
-    console.log('');
-    console.log('🎨 ========================================');
-    console.log('🎨 [ProjectInsightsCard] LOADING INSIGHTS');
-    console.log('🎨 ========================================');
-    console.log('');
-    
     setLoading(true);
-    setError(null);
-    
     try {
-      console.log('🔄 [ProjectInsightsCard] Calling backend function...');
       const response = await base44.functions.invoke('projectInsights');
-      
-      console.log('✅ [ProjectInsightsCard] Response received!');
-      console.log('📦 [ProjectInsightsCard] Full response:', JSON.stringify(response.data, null, 2));
-      
-      if (!response.data || !response.data.insights) {
-        console.error('❌ [ProjectInsightsCard] Invalid response structure!');
-        console.error('   Response data:', response.data);
-        throw new Error('Invalid response from backend');
-      }
-      
-      const receivedInsights = response.data.insights;
-      
-      console.log('');
-      console.log('📊 [ProjectInsightsCard] INSIGHTS RECEIVED:');
-      console.log('   📈 Total Projects:', receivedInsights.total);
-      console.log('   ✨ Active Projects:', receivedInsights.active);
-      console.log('   ⚠️  At Risk Projects:', receivedInsights.atRisk);
-      console.log('   📋 Projects with Analysis:', receivedInsights.projects?.length || 0);
-      console.log('');
-      
-      if (receivedInsights.summary) {
-        console.log('📊 [ProjectInsightsCard] SUMMARY DATA:');
-        console.log('   💯 Health Score:', receivedInsights.summary.healthScore);
-        console.log('   🔴 High Risk:', receivedInsights.summary.distribution?.highRisk || 0);
-        console.log('   🟡 Medium Risk:', receivedInsights.summary.distribution?.mediumRisk || 0);
-        console.log('   🟢 On Track:', receivedInsights.summary.distribution?.onTrack || 0);
-        console.log('   📊 Avg Completion:', receivedInsights.summary.avgCompletionRate + '%');
-        console.log('   💡 Recommendations:', receivedInsights.summary.totalRecommendations);
-        console.log('');
-      }
-      
-      setInsights(receivedInsights);
-      
-      console.log('✅ [ProjectInsightsCard] State updated successfully!');
-      console.log('🎨 ========================================');
-      console.log('');
-      
+      setInsights(response.data.insights);
     } catch (error) {
-      console.error('');
-      console.error('❌ [ProjectInsightsCard] ERROR LOADING INSIGHTS:');
-      console.error('   Message:', error.message);
-      console.error('   Stack:', error.stack);
-      console.error('');
-      setError(error.message);
-    } finally {
-      setLoading(false);
+      console.error('Error loading project insights:', error);
     }
+    setLoading(false);
   };
 
   if (loading) {
@@ -102,38 +49,13 @@ export default function ProjectInsightsCard() {
           </CardTitle>
         </CardHeader>
         <CardContent className="flex items-center justify-center py-12">
-          <div className="text-center">
-            <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-3" />
-            <p className="text-sm text-slate-600">מנתח פרויקטים...</p>
-          </div>
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
         </CardContent>
       </Card>
     );
   }
 
-  if (error) {
-    return (
-      <Card className="bg-white shadow-lg border-0">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Target className="w-5 h-5 text-red-600" />
-            ניתוח פרויקטים חכם
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="text-center py-8">
-          <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-3" />
-          <p className="text-red-600 mb-4">שגיאה בטעינת ניתוח: {error}</p>
-          <Button onClick={loadInsights} variant="outline">
-            <RefreshCw className="w-4 h-4 ml-2" />
-            נסה שוב
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (!insights) {
-    console.warn('⚠️ [ProjectInsightsCard] No insights data available');
+  if (!insights || insights.active === 0) {
     return (
       <Card className="bg-white shadow-lg border-0">
         <CardHeader>
@@ -143,33 +65,7 @@ export default function ProjectInsightsCard() {
           </CardTitle>
         </CardHeader>
         <CardContent className="text-center py-8">
-          <p className="text-slate-600 mb-4">אין נתונים זמינים</p>
-          <Button onClick={loadInsights} variant="outline">
-            <RefreshCw className="w-4 h-4 ml-2" />
-            טען מחדש
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (insights.active === 0) {
-    console.log('ℹ️ [ProjectInsightsCard] No active projects found');
-    console.log('   Total projects in system:', insights.total);
-    
-    return (
-      <Card className="bg-white shadow-lg border-0">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Target className="w-5 h-5 text-blue-600" />
-            ניתוח פרויקטים חכם
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="text-center py-8">
-          <p className="text-slate-600 mb-2">אין פרויקטים פעילים לניתוח</p>
-          <p className="text-sm text-slate-500 mb-4">
-            ({insights.total} פרויקטים במערכת, אך אף אחד לא במצב פעיל)
-          </p>
+          <p className="text-slate-600 mb-4">אין פרויקטים פעילים לניתוח</p>
           <Link to={createPageUrl('Projects')}>
             <Button variant="outline">
               עבור לפרויקטים
@@ -180,29 +76,12 @@ export default function ProjectInsightsCard() {
     );
   }
 
-  console.log('🎨 [ProjectInsightsCard] Rendering with insights:', {
-    active: insights.active,
-    total: insights.total,
-    atRisk: insights.atRisk,
-    projectsCount: insights.projects?.length || 0
-  });
-
   const { summary, projects } = insights;
-  
-  if (!summary || !projects) {
-    console.error('❌ [ProjectInsightsCard] Missing summary or projects data!');
-    return null;
-  }
-  
   const highRiskProjects = projects.filter(p => p.risk.riskLevel === 'high').slice(0, 3);
   const topRecommendations = projects
     .flatMap(p => p.recommendations.map(r => ({ ...r, project: p.projectName, client: p.clientName })))
     .filter(r => r.priority === 'high')
     .slice(0, 5);
-
-  console.log('📊 [ProjectInsightsCard] Display data:');
-  console.log('   High risk to show:', highRiskProjects.length);
-  console.log('   Top recommendations:', topRecommendations.length);
 
   return (
     <Card className="bg-white shadow-lg border-0">
@@ -222,9 +101,6 @@ export default function ProjectInsightsCard() {
             ציון בריאות: {summary.healthScore}/100
           </Badge>
         </div>
-        <p className="text-xs text-slate-500 mt-1">
-          מציג {insights.active} מתוך {insights.total} פרויקטים במערכת
-        </p>
       </CardHeader>
       <CardContent>
         <Tabs value={selectedTab} onValueChange={setSelectedTab} dir="rtl">

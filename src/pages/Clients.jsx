@@ -192,8 +192,7 @@ export default function ClientsPage() {
     setIsLoading(true);
     try {
       console.log('📊 [CLIENTS PAGE] Loading clients...');
-      // 🚀 FIX: הוספת limit 500 במקום טעינה ללא הגבלה
-      const clientsData = await base44.entities.Client.list('-created_date', 500);
+      const clientsData = await base44.entities.Client.list('-created_date');
       console.log('📊 [CLIENTS PAGE] Loaded from server:', clientsData.length);
 
       // ✅ סינון לפי הרשאות
@@ -206,14 +205,33 @@ export default function ClientsPage() {
         isAdmin
       });
 
-      // 🚀 FIX: פישוט הניקוי - ללא deduplication מורכב
-      const cleanedClients = filteredData.map((client) => ({
-        ...client,
-        name: (client.name || '').trim() || 'לקוח ללא שם'
-      }));
+      // Clean and deduplicate clients
+      const cleanedClients = filteredData.map((client) => {
+        const cleanedName = (client.name || '').replace(/[^\p{L}\p{N}\s\-.']/gu, '').trim() || 'לקוח ללא שם';
+        return {
+          ...client,
+          // Remove special characters, trim, and default to 'לקוח ללא שם'
+          name: cleanedName,
+          // Ensure name_clean exists
+          name_clean: client.name_clean || cleanedName
+        };
+      });
 
-      console.log('✅ [CLIENTS] Loaded and cleaned:', cleanedClients.length, 'clients');
-      setClients(cleanedClients);
+      // Remove exact duplicates (same name and phone/email)
+      const uniqueClients = [];
+      const seen = new Set();
+
+      for (const client of cleanedClients) {
+        // Create a unique key using cleaned name, phone, and email
+        const key = `${client.name}_${client.phone || ''}_${client.email || ''}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          uniqueClients.push(client);
+        }
+      }
+
+      console.log('✅ [CLIENTS] Loaded and cleaned:', uniqueClients.length, 'clients');
+      setClients(uniqueClients);
     } catch (error) {
       console.error('❌ [CLIENTS] Error loading clients:', error);
       toast.error('שגיאה בטעינת לקוחות');
@@ -291,7 +309,7 @@ export default function ClientsPage() {
         client.budget_range || '',
         format(new Date(client.created_date), 'dd/MM/yyyy')].
         map((field) => `"${String(field || '').replace(/"/g, '""')}"`).join(','))].
-        join('\n');
+      join('\n');
 
     const blob = new Blob(['\uFEFF' + csvData], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');

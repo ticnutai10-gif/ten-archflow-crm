@@ -1,4 +1,5 @@
-import React, { Suspense, lazy } from "react";
+
+import React from "react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import {
@@ -6,15 +7,14 @@ import {
   BarChart3, Archive, FolderOpen, MessageSquare,
   Calculator, Pin, PinOff, ChevronRight, Home,
   Briefcase, CheckSquare2, Timer, Receipt, Menu,
-  Calendar, Mail, Brain, LogOut, UserCog, MessageCircleMore
+  Calendar, Mail, Brain
 } from "lucide-react";
 import { SidebarProvider } from "@/components/ui/sidebar";
+import FloatingTimer from "@/components/timer/FloatingTimer";
+import ReminderPopup from "@/components/reminders/ReminderPopup";
+import FloatingDebugPanel from "@/components/debug/FloatingDebugPanel";
+import FloatingChatButton from "@/components/chat/FloatingChatButton";
 import { base44 } from "@/api/base44Client";
-
-// 🚀 LAZY LOADING - רכיבים כבדים נטענים רק כשצריך
-const FloatingTimer = lazy(() => import("@/components/timer/FloatingTimer"));
-const ReminderPopup = lazy(() => import("@/components/reminders/ReminderPopup"));
-const FloatingChatButton = lazy(() => import("@/components/chat/FloatingChatButton"));
 
 export default function Layout({ children, currentPageName }) {
   const [user, setUser] = React.useState(null);
@@ -28,8 +28,7 @@ export default function Layout({ children, currentPageName }) {
     }
   });
   const [hovered, setHovered] = React.useState(false);
-  const [userSectionHovered, setUserSectionHovered] = React.useState(false);
-  const loadedRef = React.useRef(false);
+  const loadedRef = React.useRef(false); // To ensure initial theme load runs only once
 
   const accentColor = "#2C3A50";
   const iconColor = "#2C3A50";
@@ -42,6 +41,7 @@ export default function Layout({ children, currentPageName }) {
     }
   }, [pinned]);
 
+  // דיבאג מפורט לאירועי נושא
   React.useEffect(() => {
     console.log('🔧 [LAYOUT] Setting up theme event listener...');
     
@@ -53,6 +53,7 @@ export default function Layout({ children, currentPageName }) {
         currentCSSVar: getComputedStyle(document.documentElement).getPropertyValue('--bg-cream')
       });
       
+      // רק trigger resize
       const event = new Event('resize');
       window.dispatchEvent(event);
       
@@ -68,35 +69,37 @@ export default function Layout({ children, currentPageName }) {
     };
   }, []);
 
+  // טעינת נושא ראשונית - רק פעם אחת!
   React.useEffect(() => {
     if (loadedRef.current) {
-      console.log('⏭️ [LAYOUT] Already loaded, skipping...');
+      console.log('⏭️ [LAYOUT] Theme already loaded, skipping...');
       return;
     }
     
     loadedRef.current = true;
-    console.log('🎨 [LAYOUT] 🚀 INITIAL LOAD - START');
+    console.log('🎨 [LAYOUT] 🚀 INITIAL THEME LOAD - START');
     
-    const loadUserAndTheme = async () => {
+    const loadTheme = async () => {
       try {
-        console.log('🎨 [LAYOUT] Loading user and theme...');
+        console.log('🎨 [LAYOUT] Step 1: Loading user data...');
         
         let userData;
         try {
           userData = await base44.auth.me();
-          console.log('✅ [LAYOUT] User loaded:', {
-            email: userData?.email,
-            theme: userData?.theme
+          console.log('🎨 [LAYOUT] Step 2: User loaded:', {
+            email: userData.email,
+            theme: userData.theme
           });
-          setUser(userData);
         } catch (error) {
-          console.warn('⚠️ [LAYOUT] Failed to load user:', error);
+          console.warn('⚠️ [LAYOUT] Failed to load user, using defaults:', error);
           userData = {};
-          setUser(null);
         }
         
         const localTheme = localStorage.getItem('app-theme');
-        const themeId = userData?.theme || localTheme || 'cream';
+        console.log('🎨 [LAYOUT] Step 3: localStorage theme:', localTheme);
+        
+        const themeId = userData.theme || localTheme || 'cream';
+        console.log('🎨 [LAYOUT] Step 4: Selected theme:', themeId);
         
         const themes = {
           cream: { bg: '#FCF6E3', text: '#1e293b' },
@@ -108,20 +111,55 @@ export default function Layout({ children, currentPageName }) {
         };
         
         const theme = themes[themeId] || themes.cream;
+        console.log('🎨 [LAYOUT] Step 5: Theme config:', theme);
+        
+        // בדיקת מצב נוכחי
+        const currentBg = document.body.style.backgroundColor;
+        const currentVar = getComputedStyle(document.documentElement).getPropertyValue('--bg-cream');
+        
+        console.log('🎨 [LAYOUT] Step 6: Current state:', {
+          bodyBg: currentBg,
+          cssVar: currentVar
+        });
+        
+        // החלה תמיד בטעינה ראשונית
+        console.log('🎨 [LAYOUT] Step 7: Applying theme to DOM...');
         
         document.body.style.backgroundColor = theme.bg;
         document.body.style.color = theme.text;
         document.documentElement.style.setProperty('--bg-cream', theme.bg);
         document.documentElement.style.setProperty('--text-color', theme.text);
         
-        console.log('✅ [LAYOUT] User & Theme loaded in single call');
+        console.log('🎨 [LAYOUT] Step 8: Theme applied!', {
+          bodyBg: document.body.style.backgroundColor,
+          bodyColor: document.body.style.color,
+          cssVarBg: getComputedStyle(document.documentElement).getPropertyValue('--bg-cream'),
+          cssVarText: getComputedStyle(document.documentElement).getPropertyValue('--text-color')
+        });
+        
+        console.log('🎨 [LAYOUT] ✅ INITIAL THEME LOAD - COMPLETE');
         
       } catch (e) {
-        console.error('❌ [LAYOUT] Error loading:', e);
+        console.error('❌ [LAYOUT] Error loading theme:', e);
       }
     };
 
-    loadUserAndTheme();
+    loadTheme();
+  }, []); // Empty dependency array ensures this runs once on mount
+
+
+  React.useEffect(() => {
+    let mounted = true;
+    base44.auth.me()
+      .then((u) => {
+        if (mounted) setUser(u);
+      })
+      .catch(() => {
+        if (mounted) setUser(null);
+      });
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   React.useEffect(() => {
@@ -156,7 +194,6 @@ export default function Layout({ children, currentPageName }) {
   const menuItems = [
     { name: "Dashboard", icon: Home, path: "Dashboard" },
     { name: "צ'אט AI חכם", icon: Brain, path: "AIChat" },
-    { name: "צ'אט צוות", icon: MessageCircleMore, path: "TeamChat" },
     { name: "לקוחות", icon: Users, path: "Clients" },
     { name: "פרויקטים", icon: Briefcase, path: "Projects" },
     { name: "הצעות מחיר", icon: Calculator, path: "Quotes" },
@@ -179,9 +216,11 @@ export default function Layout({ children, currentPageName }) {
   ];
 
   const getUserDisplayName = () => {
-    if (!user) return 'משתמש';
+    if (!user) return null;
     return user.full_name || user.email?.split('@')[0] || 'משתמש';
   };
+
+  console.log('🔄 [LAYOUT] Render - Current backgroundColor:', document.body.style.backgroundColor);
 
   return (
     <SidebarProvider>
@@ -202,6 +241,7 @@ export default function Layout({ children, currentPageName }) {
             width: 100%;
           }
           
+          /* RTL Global Styles */
           * {
             direction: rtl;
             text-align: right;
@@ -212,11 +252,13 @@ export default function Layout({ children, currentPageName }) {
             direction: rtl !important;
           }
           
+          /* Dropdown menus RTL */
           [role="menu"], [role="listbox"], .dropdown-content {
             text-align: right !important;
             direction: rtl !important;
           }
           
+          /* Tables RTL */
           table {
             direction: rtl;
           }
@@ -225,10 +267,12 @@ export default function Layout({ children, currentPageName }) {
             text-align: right !important;
           }
           
+          /* Cards and content */
           .card, [class*="card"] {
             text-align: right;
           }
           
+          /* Buttons */
           button {
             direction: rtl;
           }
@@ -248,6 +292,7 @@ export default function Layout({ children, currentPageName }) {
             background: transparent;
           }
           
+          /* סגנון גלובלי לכל הטאבים באתר */
           [role="tablist"] button[data-state="active"] {
             background-color: #2C3A50 !important;
             color: white !important;
@@ -266,6 +311,7 @@ export default function Layout({ children, currentPageName }) {
             opacity: 0.9;
           }
           
+          /* טאבים ספציפיים עם data-value */
           [role="tab"][data-state="active"] {
             background-color: #2C3A50 !important;
             color: white !important;
@@ -299,7 +345,7 @@ export default function Layout({ children, currentPageName }) {
           onMouseLeave={handleMouseLeave}
         >
           {(isExpanded || hovered || pinned) && (
-            <div className="h-full bg-white border-l border-slate-200 shadow-lg relative group rounded-r-2xl overflow-hidden flex flex-col">
+            <div className="h-full bg-white border-l border-slate-200 shadow-lg relative group rounded-r-2xl overflow-hidden">
               {/* Header */}
               <div
                 className="relative p-6 min-h-[120px] flex items-center overflow-hidden rounded-tr-2xl rounded-tl-2xl"
@@ -352,89 +398,8 @@ export default function Layout({ children, currentPageName }) {
                 </div>
               </div>
 
-              {/* User section עם hover */}
-              {user && (
-                <div 
-                  className="px-3 py-3 border-b-2 bg-gradient-to-l from-slate-50 to-white relative"
-                  onMouseEnter={() => setUserSectionHovered(true)}
-                  onMouseLeave={() => setUserSectionHovered(false)}
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    {/* User Info */}
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <div 
-                        className="w-10 h-10 rounded-full flex items-center justify-center text-white text-base font-bold flex-shrink-0 shadow-md"
-                        style={{ backgroundColor: accentColor }}
-                      >
-                        {getUserDisplayName().substring(0, 1).toUpperCase()}
-                      </div>
-                      
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-bold text-slate-900 truncate" title={user.full_name || user.email}>
-                          {getUserDisplayName()}
-                        </div>
-                        <div className="text-xs text-slate-500">
-                          {user.role === 'admin' || user.role === 'super_admin' ? '👑 מנהל' : 'משתמש'}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Action Buttons - מופיעים רק ב-hover */}
-                    <div className={`flex gap-2 flex-shrink-0 transition-all duration-200 ${
-                      userSectionHovered ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4 pointer-events-none'
-                    }`}>
-                      {/* Switch User Button */}
-                      <button
-                        onClick={async () => {
-                          if (confirm('האם ברצונך להחליף משתמש? תצטרך להתחבר מחדש.')) {
-                            try {
-                              await base44.auth.logout();
-                              window.location.href = '/';
-                            } catch (e) {
-                              alert('שגיאה בהחלפת משתמש: ' + e.message);
-                              window.location.href = '/';
-                            }
-                          }
-                        }}
-                        className="group relative p-2.5 hover:bg-blue-100 rounded-xl transition-all duration-200 border-2 border-transparent hover:border-blue-300 shadow-sm hover:shadow-md"
-                        title="החלף משתמש"
-                      >
-                        <UserCog className="w-5 h-5 text-blue-600 group-hover:scale-110 transition-transform" />
-                      </button>
-                      
-                      {/* Logout Button */}
-                      <button
-                        onClick={async () => {
-                          if (confirm('האם אתה בטוח שברצונך להתנתק?')) {
-                            try {
-                              await base44.auth.logout();
-                              window.location.href = '/';
-                            } catch (e) {
-                              alert('שגיאה בהתנתקות: ' + e.message);
-                              window.location.href = '/';
-                            }
-                          }
-                        }}
-                        className="group relative p-2.5 hover:bg-red-100 rounded-xl transition-all duration-200 border-2 border-transparent hover:border-red-300 shadow-sm hover:shadow-md"
-                        title="התנתק"
-                      >
-                        <LogOut className="w-5 h-5 text-red-600 group-hover:scale-110 transition-transform" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Email - hover מעליו מפעיל את הכפתורים */}
-                  <div 
-                    className="mt-2 text-xs text-slate-500 truncate cursor-pointer hover:text-slate-700 transition-colors" 
-                    title={user.email}
-                  >
-                    📧 {user.email || ''}
-                  </div>
-                </div>
-              )}
-
               {/* Navigation menu */}
-              <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
+              <nav className="flex-1 p-2 space-y-1 overflow-y-auto max-h-[calc(100vh-200px)]">
                 {menuItems.map((item) => {
                   const isActive = currentPageName === item.path;
                   const Icon = item.icon;
@@ -476,6 +441,86 @@ export default function Layout({ children, currentPageName }) {
           )}
         </div>
 
+        {/* User section */}
+        {(isExpanded || hovered || pinned) && (
+          <div className="order-1 fixed bottom-4 right-4 z-40">
+            <div className="bg-white/90 backdrop-blur-sm border border-slate-200/50 rounded-xl shadow-sm px-3 py-2">
+              {user ? (
+                <div className="flex items-center gap-2">
+                  <div 
+                    className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium"
+                    style={{ backgroundColor: accentColor }}
+                  >
+                    {getUserDisplayName().substring(0, 1).toUpperCase()}
+                  </div>
+                  
+                  <div className="flex-1 min-w-0 max-w-[150px]">
+                    <div className="text-xs text-slate-600 truncate" title={user.email}>
+                      {user.email || 'לא זמין'}
+                    </div>
+                  </div>
+
+                  <div className="flex gap-1">
+                    <button
+                      onClick={async () => {
+                        if (confirm('האם ברצונך להחליף משתמש? תצטרך להתחבר מחדש.')) {
+                          try {
+                            await base44.auth.logout();
+                            window.location.href = '/';
+                          } catch (e) {
+                            alert('שגיאה בהחלפת משתמש: ' + e.message);
+                            window.location.href = '/';
+                          }
+                        }
+                      }}
+                      className="p-1 hover:text-blue-600 transition-colors duration-200"
+                      style={{ color: iconColor }}
+                      title="החלף משתמש"
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                      </svg>
+                    </button>
+                    
+                    <button
+                      onClick={async () => {
+                        if (confirm('האם אתה בטוח שברצונך להתנתק?')) {
+                          try {
+                            await base44.auth.logout();
+                            window.location.href = '/';
+                          } catch (e) {
+                            alert('שגיאה בהתנתקות: ' + e.message);
+                            window.location.href = '/';
+                          }
+                        }
+                      }}
+                      className="p-1 text-slate-400 hover:text-red-600 transition-colors duration-200"
+                      title="התנתק"
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={async () => {
+                    try {
+                      await base44.auth.redirectToLogin();
+                    } catch (e) {
+                      alert('שגיאה בהתחברות: ' + e.message);
+                    }
+                  }}
+                  className="text-xs text-slate-600 hover:text-blue-600 transition-colors duration-200"
+                >
+                  התחבר
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Main content */}
         <div className="order-2 flex-1 transition-all duration-200" style={{ backgroundColor: 'var(--bg-cream)', overflow: 'visible', width: '100%' }} dir="rtl">
           {/* הודעת ברוכים הבאים */}
@@ -507,12 +552,10 @@ export default function Layout({ children, currentPageName }) {
           </div>
         </div>
 
-        {/* 🚀 LAZY LOADED - רכיבים כבדים עם Suspense */}
-        <Suspense fallback={null}>
-          <FloatingTimer />
-          <ReminderPopup />
-          <FloatingChatButton />
-        </Suspense>
+        <FloatingTimer />
+        <ReminderPopup />
+        <FloatingDebugPanel />
+        <FloatingChatButton />
       </div>
     </SidebarProvider>
   );

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,8 +21,7 @@ import {
   Briefcase,
   MessageSquare,
   CheckCircle,
-  Globe,
-  MessageCircleMore
+  Globe
 } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
@@ -33,7 +33,6 @@ import ClientSheets from "./ClientSheets";
 import TimeLogView from "./TimeLogView";
 import ClientTasks from "./ClientTasks";
 import ClientTimeline from "../portal/ClientTimeline";
-import ClientChatRooms from "./ClientChatRooms";
 
 const statusColors = {
   "פוטנציאלי": "bg-amber-100 text-amber-800 border-amber-200",
@@ -78,6 +77,9 @@ export default function ClientDetails({ client, onBack, onEdit }) {
   const totalRevenue = invoices
     .filter(inv => inv.status === 'paid')
     .reduce((sum, inv) => sum + (inv.amount || 0), 0);
+
+  // totalQuoted is declared in the outline but not used in the UI for display
+  // const totalQuoted = quotes.reduce((sum, q) => sum + (q.amount || 0), 0);
 
   const totalHours = timeLogs.reduce((sum, log) => sum + (log.duration_seconds || 0) / 3600, 0);
 
@@ -245,7 +247,7 @@ export default function ClientDetails({ client, onBack, onEdit }) {
 
         {/* Tabs */}
         <Tabs defaultValue="timeline" className="w-full" dir="rtl">
-          <TabsList className="grid w-full grid-cols-8 bg-white shadow-sm">
+          <TabsList className="grid w-full grid-cols-7 bg-white shadow-sm">
             <TabsTrigger value="timeline" className="gap-2">
               <Clock className="w-4 h-4" />
               ציר זמן
@@ -262,10 +264,6 @@ export default function ClientDetails({ client, onBack, onEdit }) {
               <Clock className="w-4 h-4" />
               שעות
             </TabsTrigger>
-            <TabsTrigger value="chat" className="gap-2">
-              <MessageCircleMore className="w-4 h-4" />
-              צ'אטים
-            </TabsTrigger>
             <TabsTrigger value="files" className="gap-2">
               <FolderOpen className="w-4 h-4" />
               קבצים
@@ -280,7 +278,7 @@ export default function ClientDetails({ client, onBack, onEdit }) {
             </TabsTrigger>
           </TabsList>
 
-          {/* Timeline Tab */}
+          {/* Timeline Tab - NEW! */}
           <TabsContent value="timeline" className="mt-6">
             <ClientTimeline clientId={client.id} clientName={client.name} />
           </TabsContent>
@@ -328,11 +326,6 @@ export default function ClientDetails({ client, onBack, onEdit }) {
           {/* Time Tab */}
           <TabsContent value="time" className="mt-6">
             <TimeLogView clientId={client.id} clientName={client.name} />
-          </TabsContent>
-
-          {/* Chat Rooms Tab - NEW! */}
-          <TabsContent value="chat" className="mt-6">
-            <ClientChatRooms clientId={client.id} clientName={client.name} />
           </TabsContent>
 
           {/* Files Tab */}

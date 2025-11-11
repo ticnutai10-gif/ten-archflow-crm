@@ -25,7 +25,6 @@ import SpreadsheetDetails from './pages/SpreadsheetDetails';
 import Tasks from './pages/Tasks';
 import DailyReports from './pages/DailyReports';
 import AIChat from './pages/AIChat';
-import TeamChat from './pages/TeamChat';
 import Layout from './Layout.jsx';
 
 
@@ -57,7 +56,6 @@ export const PAGES = {
     "Tasks": Tasks,
     "DailyReports": DailyReports,
     "AIChat": AIChat,
-    "TeamChat": TeamChat,
 }
 
 export const pagesConfig = {

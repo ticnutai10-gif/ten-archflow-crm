@@ -3,9 +3,10 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { 
   MessageCircle, 
   X,
@@ -16,7 +17,8 @@ import {
   Plus,
   Trash2,
   Edit2,
-  Save
+  Save,
+  Zap
 } from "lucide-react";
 import { toast } from "sonner";
 import MessageBubble from "./MessageBubble";
@@ -26,115 +28,95 @@ const AGENT_NAME = "business_assistant";
 export default function FloatingChatButton() {
   const [isOpen, setIsOpen] = useState(false);
   const [conversations, setConversations] = useState([]);
-  const [currentConvId, setCurrentConvId] = useState(null);
+  const [currentConversationId, setCurrentConversationId] = useState(null);
+  const [currentConversation, setCurrentConversation] = useState(null);
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState("");
-  const [sending, setSending] = useState(false);
-  const [loadingConvs, setLoadingConvs] = useState(false);
-  
-  // Edit dialog
-  const [editOpen, setEditOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [loadingConversations, setLoadingConversations] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingConv, setEditingConv] = useState(null);
-  const [editName, setEditName] = useState("");
-  const [editNotes, setEditNotes] = useState("");
-  
+  const [editForm, setEditForm] = useState({ name: '', notes: '' });
   const scrollRef = useRef(null);
-  const unsubscribeRef = useRef(null);
-  const mountedRef = useRef(true);
+  const sendingRef = useRef(false);
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      mountedRef.current = false;
-      if (unsubscribeRef.current) {
-        try {
-          unsubscribeRef.current();
-        } catch (e) {
-          console.warn('Cleanup warning:', e);
-        }
-        unsubscribeRef.current = null;
-      }
-    };
-  }, []);
-
-  // Auto scroll to bottom
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages]);
-
-  // Load conversations when opened
+  // טעינת שיחות כשנפתח הדיאלוג
   useEffect(() => {
     if (isOpen && conversations.length === 0) {
       loadConversations();
     }
   }, [isOpen]);
 
-  // Subscribe to current conversation
+  // סקרול אוטומטי
   useEffect(() => {
-    if (!currentConvId || !isOpen) {
-      if (unsubscribeRef.current) {
-        unsubscribeRef.current();
-        unsubscribeRef.current = null;
-      }
-      return;
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
+  }, [messages]);
 
-    // Cleanup previous subscription
-    if (unsubscribeRef.current) {
-      unsubscribeRef.current();
-      unsubscribeRef.current = null;
-    }
-
-    // Subscribe to updates
+  // מנוי לעדכונים בזמן אמת - FIX: טיפול טוב יותר ב-WebSocket
+  useEffect(() => {
+    if (!currentConversationId) return;
+    
+    let unsubscribe;
+    
     try {
-      const unsub = base44.agents.subscribeToConversation(
-        currentConvId,
+      unsubscribe = base44.agents.subscribeToConversation(
+        currentConversationId,
         (data) => {
-          if (mountedRef.current && isOpen) {
-            setMessages(data.messages || []);
-          }
+          setMessages([...data.messages || []]);
         }
       );
-      unsubscribeRef.current = unsub;
     } catch (error) {
-      console.error('Subscribe error:', error);
+      console.error('❌ [WEBSOCKET] Subscription error:', error);
+      // אל תעצור את האפליקציה בגלל שגיאת WebSocket
     }
-
+    
     return () => {
-      if (unsubscribeRef.current) {
-        unsubscribeRef.current();
-        unsubscribeRef.current = null;
+      if (unsubscribe && typeof unsubscribe === 'function') {
+        try {
+          unsubscribe();
+        } catch (error) {
+          console.error('❌ [WEBSOCKET] Unsubscribe error:', error);
+        }
       }
     };
-  }, [currentConvId, isOpen]);
+  }, [currentConversationId]);
 
   const loadConversations = async () => {
-    setLoadingConvs(true);
+    setLoadingConversations(true);
     try {
       const convs = await base44.agents.listConversations({
         agent_name: AGENT_NAME
       });
       
-      if (!mountedRef.current) return;
+      const activeConvs = convs.filter(c => !c.metadata?.deleted);
+      setConversations(activeConvs);
       
-      setConversations(convs || []);
-      
-      if (convs && convs.length > 0 && !currentConvId) {
-        setCurrentConvId(convs[0].id);
+      if (activeConvs.length > 0 && !currentConversationId) {
+        await loadConversation(activeConvs[0].id);
       }
     } catch (error) {
       console.error('Error loading conversations:', error);
-      toast.error('שגיאה בטעינת שיחות');
-    } finally {
-      if (mountedRef.current) {
-        setLoadingConvs(false);
+    }
+    setLoadingConversations(false);
+  };
+
+  const loadConversation = async (convId) => {
+    try {
+      const conv = await base44.agents.getConversation(convId);
+      
+      if (conv) {
+        setCurrentConversationId(convId);
+        setCurrentConversation(conv);
+        setMessages([...conv.messages || []]);
       }
+    } catch (error) {
+      console.error('Error loading conversation:', error);
     }
   };
 
-  const createNewConversation = async () => {
+  const handleNewConversation = async () => {
     try {
       const newConv = await base44.agents.createConversation({
         agent_name: AGENT_NAME,
@@ -149,11 +131,10 @@ export default function FloatingChatButton() {
         }
       });
       
-      if (!mountedRef.current) return;
-      
       await loadConversations();
-      setCurrentConvId(newConv.id);
-      toast.success('🎉 שיחה חדשה נוצרה!');
+      await loadConversation(newConv.id);
+      
+      toast.success('🎉 שיחה חדשה!');
       
       return newConv.id;
     } catch (error) {
@@ -163,97 +144,115 @@ export default function FloatingChatButton() {
     }
   };
 
-  const sendMessage = async () => {
-    const text = inputMessage.trim();
-    
-    if (!text || sending) return;
-
-    let convId = currentConvId;
-    
-    // Create new conversation if needed
-    if (!convId) {
-      convId = await createNewConversation();
-      if (!convId) return;
-      await new Promise(r => setTimeout(r, 300));
+  const handleEditConversation = (conv, e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
     }
-
-    setInputMessage("");
-    setSending(true);
-
-    try {
-      const conv = await base44.agents.getConversation(convId);
-      
-      await base44.agents.addMessage(conv, {
-        role: "user",
-        content: text
-      });
-    } catch (error) {
-      console.error('Error sending message:', error);
-      toast.error('שגיאה בשליחת הודעה');
-    } finally {
-      if (mountedRef.current) {
-        setSending(false);
-      }
-    }
-  };
-
-  const deleteConversation = async (convId, e) => {
-    e.stopPropagation();
     
-    if (!confirm('למחוק את השיחה לצמיתות?')) return;
-    
-    try {
-      // Remove from local state immediately
-      setConversations(prev => prev.filter(c => c.id !== convId));
-      
-      // If it was the current conversation, switch to another
-      if (currentConvId === convId) {
-        const remaining = conversations.filter(c => c.id !== convId);
-        if (remaining.length > 0) {
-          setCurrentConvId(remaining[0].id);
-        } else {
-          setCurrentConvId(null);
-          setMessages([]);
-        }
-      }
-      
-      toast.success('✅ השיחה נמחקה');
-    } catch (error) {
-      console.error('Error deleting conversation:', error);
-      toast.error('שגיאה במחיקת השיחה');
-    }
-  };
-
-  const openEditDialog = (conv, e) => {
-    e.stopPropagation();
     setEditingConv(conv);
-    setEditName(conv?.metadata?.name || '');
-    setEditNotes(conv?.metadata?.notes || '');
-    setEditOpen(true);
+    setEditForm({
+      name: conv.metadata?.name || '',
+      notes: conv.metadata?.notes || ''
+    });
+    setEditDialogOpen(true);
   };
 
-  const saveEdit = async () => {
-    if (!editName.trim()) {
+  const handleSaveEdit = async () => {
+    if (!editingConv || !editForm.name.trim()) {
       toast.error('נא להזין שם לשיחה');
       return;
     }
 
     try {
-      // Update local state
-      setConversations(prev => 
-        prev.map(c => 
-          c.id === editingConv.id 
-            ? { ...c, metadata: { ...c.metadata, name: editName.trim(), notes: editNotes.trim() } }
-            : c
-        )
-      );
-      
-      setEditOpen(false);
+      await base44.agents.updateConversation(editingConv.id, {
+        metadata: {
+          ...editingConv.metadata,
+          name: editForm.name.trim(),
+          notes: editForm.notes.trim()
+        }
+      });
+
+      await loadConversations();
+      setEditDialogOpen(false);
       setEditingConv(null);
+      
       toast.success('✅ השיחה עודכנה!');
     } catch (error) {
       console.error('Error updating conversation:', error);
       toast.error('שגיאה בעדכון השיחה');
+    }
+  };
+
+  const handleSendMessage = async () => {
+    const text = inputMessage.trim();
+    
+    if (!text || loading || sendingRef.current) return;
+
+    sendingRef.current = true;
+
+    let convId = currentConversationId;
+    let conv = currentConversation;
+    
+    if (!convId) {
+      convId = await handleNewConversation();
+      if (!convId) {
+        sendingRef.current = false;
+        return;
+      }
+      await new Promise(resolve => setTimeout(resolve, 500));
+      conv = await base44.agents.getConversation(convId);
+    }
+
+    setInputMessage("");
+    setLoading(true);
+
+    try {
+      await base44.agents.addMessage(conv, {
+        role: "user",
+        content: text
+      });
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error(`שגיאה: ${error.message}`);
+    } finally {
+      setLoading(false);
+      sendingRef.current = false;
+    }
+  };
+
+  const handleDeleteConversation = async (convId, e) => {
+    e.stopPropagation();
+    
+    if (!confirm('למחוק את השיחה?')) return;
+    
+    try {
+      const conv = conversations.find(c => c.id === convId);
+      if (conv) {
+        await base44.agents.updateConversation(convId, {
+          metadata: {
+            ...conv.metadata,
+            deleted: true
+          }
+        });
+      }
+      
+      await loadConversations();
+      
+      if (currentConversationId === convId) {
+        const remaining = conversations.filter(c => c.id !== convId && !c.metadata?.deleted);
+        if (remaining.length > 0) {
+          await loadConversation(remaining[0].id);
+        } else {
+          setCurrentConversationId(null);
+          setCurrentConversation(null);
+          setMessages([]);
+        }
+      }
+      
+      toast.success('נמחק');
+    } catch (error) {
+      console.error('Error deleting:', error);
     }
   };
 
@@ -263,22 +262,26 @@ export default function FloatingChatButton() {
       <div className="fixed bottom-6 right-6 z-50">
         <Button
           onClick={() => setIsOpen(true)}
-          className="h-14 w-14 rounded-full shadow-2xl hover:scale-110 transition-all duration-300 bg-gradient-to-br from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+          className="h-14 w-14 rounded-full shadow-2xl hover:scale-110 transition-all duration-300"
+          style={{ 
+            backgroundColor: '#2C3E50',
+            color: 'white'
+          }}
           title="העוזר החכם"
         >
           <Brain className="w-6 h-6 text-white" />
         </Button>
       </div>
 
-      {/* Main Dialog */}
+      {/* Chat Dialog */}
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className="max-w-4xl h-[80vh] p-0 gap-0" dir="rtl">
           <div className="flex h-full">
-            {/* Sidebar - Conversations List */}
+            {/* Sidebar */}
             <div className="w-64 bg-slate-50 border-l flex flex-col">
               <div className="p-3 border-b bg-white">
                 <Button 
-                  onClick={createNewConversation}
+                  onClick={handleNewConversation}
                   className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                   size="sm"
                 >
@@ -289,27 +292,19 @@ export default function FloatingChatButton() {
 
               <ScrollArea className="flex-1">
                 <div className="p-2 space-y-1">
-                  {loadingConvs ? (
+                  {loadingConversations ? (
                     <div className="text-center py-8">
                       <Loader2 className="w-6 h-6 animate-spin mx-auto text-blue-600" />
                     </div>
                   ) : conversations.length === 0 ? (
                     <div className="text-center py-8 px-3">
                       <p className="text-xs text-slate-500">אין שיחות</p>
-                      <Button
-                        onClick={createNewConversation}
-                        size="sm"
-                        variant="outline"
-                        className="mt-3 text-xs"
-                      >
-                        <Plus className="w-3 h-3 ml-1" />
-                        צור ראשונה
-                      </Button>
                     </div>
                   ) : (
                     conversations.map((conv) => {
-                      const isActive = currentConvId === conv.id;
-                      const convName = conv?.metadata?.name || 'שיחה';
+                      const isActive = currentConversationId === conv.id;
+                      const convName = conv.metadata?.name || 'שיחה';
+                      const convNotes = conv.metadata?.notes || '';
 
                       return (
                         <div
@@ -319,7 +314,7 @@ export default function FloatingChatButton() {
                               ? "bg-blue-100 border-2 border-blue-400" 
                               : "hover:bg-slate-100 border-2 border-transparent"
                           }`}
-                          onClick={() => setCurrentConvId(conv.id)}
+                          onClick={() => loadConversation(conv.id)}
                         >
                           <div className="flex justify-between items-start gap-1">
                             <div className="flex-1 min-w-0">
@@ -328,17 +323,22 @@ export default function FloatingChatButton() {
                               }`}>
                                 {convName}
                               </h4>
+                              {convNotes && (
+                                <p className="text-[10px] text-slate-500 mt-0.5 truncate">
+                                  💬 {convNotes}
+                                </p>
+                              )}
                               <p className="text-[10px] text-slate-400 mt-0.5">
-                                {conv?.created_date ? new Date(conv.created_date).toLocaleDateString('he-IL') : ''}
+                                {new Date(conv.created_date).toLocaleDateString('he-IL')}
                               </p>
                             </div>
                             
-                            <div className="flex gap-0.5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="flex gap-0.5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-all">
                               <Button
                                 variant="ghost"
                                 size="icon"
                                 className="h-5 w-5 hover:bg-blue-200"
-                                onClick={(e) => openEditDialog(conv, e)}
+                                onClick={(e) => handleEditConversation(conv, e)}
                                 title="ערוך"
                               >
                                 <Edit2 className="w-3 h-3 text-blue-600" />
@@ -348,7 +348,7 @@ export default function FloatingChatButton() {
                                 variant="ghost"
                                 size="icon"
                                 className="h-5 w-5 hover:bg-red-100"
-                                onClick={(e) => deleteConversation(conv.id, e)}
+                                onClick={(e) => handleDeleteConversation(conv.id, e)}
                                 title="מחק"
                               >
                                 <Trash2 className="w-3 h-3 text-red-500" />
@@ -363,7 +363,7 @@ export default function FloatingChatButton() {
               </ScrollArea>
             </div>
 
-            {/* Main Chat Area */}
+            {/* Main Chat */}
             <div className="flex-1 flex flex-col bg-white">
               {/* Header */}
               <div className="p-4 border-b bg-gradient-to-r from-blue-50 to-purple-50">
@@ -374,13 +374,17 @@ export default function FloatingChatButton() {
                     </div>
                     <div>
                       <h2 className="text-lg font-bold">העוזר החכם</h2>
-                      <p className="text-xs text-slate-600">מענה מיידי ופעולות אוטומטיות</p>
+                      <p className="text-xs text-slate-600 flex items-center gap-1">
+                        <Zap className="w-3 h-3" />
+                        מענה מיידי ופעולות אוטומטיות
+                      </p>
                     </div>
                   </div>
                   <Button
                     variant="ghost"
                     size="icon"
                     onClick={() => setIsOpen(false)}
+                    className="hover:bg-slate-100"
                   >
                     <X className="w-5 h-5" />
                   </Button>
@@ -396,7 +400,7 @@ export default function FloatingChatButton() {
                     </div>
                     <h3 className="text-lg font-bold mb-2">שלום! במה אוכל לעזור?</h3>
                     <p className="text-sm text-slate-600 mb-4 max-w-md">
-                      שאל שאלות, קבע פגישות, צור משימות, הוסף לקוחות ושלח מיילים
+                      תוכל לשאול שאלות, לקבוע פגישות, ליצור משימות, להוסיף לקוחות ולשלוח מיילים
                     </p>
                     <div className="grid grid-cols-2 gap-2 text-xs text-slate-500">
                       <div className="flex items-center gap-1">
@@ -420,13 +424,13 @@ export default function FloatingChatButton() {
                 ) : (
                   <div className="space-y-4">
                     {messages.map((msg, i) => (
-                      <MessageBubble key={`msg-${i}-${msg.timestamp || Date.now()}`} message={msg} />
+                      <MessageBubble key={`${i}-${msg.timestamp || i}`} message={msg} />
                     ))}
                     
-                    {sending && (
+                    {loading && (
                       <div className="flex gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
                         <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
-                        <span className="text-sm text-blue-900">הסוכן חושב...</span>
+                        <div className="text-sm text-blue-900">הסוכן עובד...</div>
                       </div>
                     )}
                   </div>
@@ -439,22 +443,23 @@ export default function FloatingChatButton() {
                   <Input
                     value={inputMessage}
                     onChange={(e) => setInputMessage(e.target.value)}
-                    onKeyDown={(e) => {
+                    onKeyPress={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
-                        sendMessage();
+                        handleSendMessage();
                       }
                     }}
                     placeholder="שאל שאלה או בקש לבצע פעולה..."
-                    disabled={sending}
+                    className="flex-1"
+                    disabled={loading}
                     dir="rtl"
                   />
                   <Button
-                    onClick={sendMessage}
-                    disabled={!inputMessage.trim() || sending}
+                    onClick={handleSendMessage}
+                    disabled={!inputMessage.trim() || loading}
                     className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                   >
-                    {sending ? (
+                    {loading ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
                       <>
@@ -471,7 +476,7 @@ export default function FloatingChatButton() {
       </Dialog>
 
       {/* Edit Dialog */}
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent className="max-w-md" dir="rtl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-right">
@@ -482,36 +487,48 @@ export default function FloatingChatButton() {
 
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">שם השיחה *</label>
+              <Label htmlFor="edit-name" className="text-right">שם השיחה *</Label>
               <Input
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
+                id="edit-name"
+                value={editForm.name}
+                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
                 placeholder="לדוגמה: שיחה עם העוזר"
+                className="text-right"
                 dir="rtl"
               />
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">הערות (אופציונלי)</label>
+              <Label htmlFor="edit-notes" className="text-right">הערות (אופציונלי)</Label>
               <Textarea
-                value={editNotes}
-                onChange={(e) => setEditNotes(e.target.value)}
+                id="edit-notes"
+                value={editForm.notes}
+                onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
                 placeholder="הוסף הערות..."
-                className="h-24"
+                className="text-right h-24"
                 dir="rtl"
               />
             </div>
           </div>
 
-          <div className="flex gap-2 justify-start">
-            <Button onClick={saveEdit} className="bg-blue-600 hover:bg-blue-700">
-              <Save className="w-4 h-4 ml-2" />
-              שמור
-            </Button>
-            <Button variant="outline" onClick={() => setEditOpen(false)}>
-              ביטול
-            </Button>
-          </div>
+          <DialogFooter dir="rtl">
+            <div className="flex gap-2 justify-start w-full">
+              <Button 
+                onClick={handleSaveEdit}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                <Save className="w-4 h-4 ml-2" />
+                שמור
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => setEditDialogOpen(false)}
+              >
+                <X className="w-4 h-4 ml-2" />
+                ביטול
+              </Button>
+            </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>
