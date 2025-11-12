@@ -18,7 +18,8 @@ import {
   Loader2,
   CheckCircle2,
   Brain,
-  Wand2
+  Wand2,
+  Bug
 } from 'lucide-react';
 import { base44 } from "@/api/base44Client";
 
@@ -44,11 +45,21 @@ const CLIENT_FIELDS = [
 
 // פונקציה לקריאת CSV פשוט
 const parseCSV = (text) => {
+  console.log('🔍 [CSV PARSER] Starting CSV parse...');
+  console.log('🔍 [CSV PARSER] Text length:', text.length);
+  console.log('🔍 [CSV PARSER] First 500 chars:', text.substring(0, 500));
+  
   const lines = text.split('\n').filter(line => line.trim());
-  if (lines.length === 0) return [];
+  console.log('🔍 [CSV PARSER] Total lines after filtering:', lines.length);
+  
+  if (lines.length === 0) {
+    console.error('❌ [CSV PARSER] No lines found in CSV!');
+    return [];
+  }
   
   const result = [];
-  for (const line of lines) {
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+    const line = lines[lineIndex];
     const values = [];
     let current = '';
     let inQuotes = false;
@@ -66,47 +77,117 @@ const parseCSV = (text) => {
       }
     }
     values.push(current.trim());
+    
+    if (lineIndex === 0) {
+      console.log('🔍 [CSV PARSER] Header row parsed:', values);
+    } else if (lineIndex === 1) {
+      console.log('🔍 [CSV PARSER] First data row sample:', values);
+    }
+    
     result.push(values);
   }
   
+  console.log('✅ [CSV PARSER] Parse complete:', result.length, 'rows');
   return result;
 };
 
 // פונקציה לקריאת Excel באמצעות parseSpreadsheet function
 const parseExcelFile = async (file) => {
+  console.log('═══════════════════════════════════════════════════');
+  console.log('📊 [EXCEL PARSER] Starting Excel file parsing');
+  console.log('═══════════════════════════════════════════════════');
+  console.log('📊 [EXCEL PARSER] File details:', {
+    name: file.name,
+    size: file.size,
+    type: file.type,
+    lastModified: new Date(file.lastModified).toLocaleString('he-IL')
+  });
+  
   try {
-    console.log('📤 Uploading file to parseSpreadsheet...', file.name);
-    
     // שלב 1: העלאת הקובץ
+    console.log('⬆️ [EXCEL PARSER] Step 1: Uploading file...');
     const uploadResult = await base44.integrations.Core.UploadFile({ file });
-    const fileUrl = uploadResult.file_url;
-    
-    console.log('✅ File uploaded:', fileUrl);
+    console.log('✅ [EXCEL PARSER] Upload successful!');
+    console.log('🔗 [EXCEL PARSER] File URL:', uploadResult.file_url);
     
     // שלב 2: קריאת הקובץ
-    const response = await base44.functions.invoke('parseSpreadsheet', { file_url: fileUrl });
+    console.log('📖 [EXCEL PARSER] Step 2: Parsing file via backend...');
+    console.log('📤 [EXCEL PARSER] Sending to parseSpreadsheet function with params:', {
+      file_url: uploadResult.file_url
+    });
     
-    console.log('📊 Parse response:', response);
+    const response = await base44.functions.invoke('parseSpreadsheet', { 
+      file_url: uploadResult.file_url 
+    });
     
-    if (response?.data?.status === 'success' && response.data.rows) {
-      // המרה לפורמט של מערך דו-ממדי
-      const headers = response.data.headers || [];
-      const rows = response.data.rows.map(row => 
-        headers.map(h => row[h] !== undefined ? String(row[h]) : '')
-      );
-      
-      return [headers, ...rows];
+    console.log('📥 [EXCEL PARSER] Response received from backend:');
+    console.log('📥 [EXCEL PARSER] Response type:', typeof response);
+    console.log('📥 [EXCEL PARSER] Response.data:', response?.data);
+    console.log('📥 [EXCEL PARSER] Full response structure:', JSON.stringify(response, null, 2));
+    
+    if (!response || !response.data) {
+      console.error('❌ [EXCEL PARSER] Invalid response structure!');
+      throw new Error('תגובה לא תקינה מהשרת');
     }
     
-    throw new Error(response?.data?.error || 'לא ניתן לקרוא את הקובץ');
+    if (response.data.status !== 'success') {
+      console.error('❌ [EXCEL PARSER] Backend returned error:', response.data.error);
+      throw new Error(response.data.error || 'שגיאה בעיבוד הקובץ');
+    }
+    
+    console.log('✅ [EXCEL PARSER] Backend parse successful!');
+    console.log('📊 [EXCEL PARSER] Backend returned:', {
+      status: response.data.status,
+      rowCount: response.data.rows?.length,
+      headerCount: response.data.headers?.length,
+      debug: response.data.debug
+    });
+    
+    // שלב 3: המרה לפורמט מערך דו-ממדי
+    console.log('🔄 [EXCEL PARSER] Step 3: Converting to 2D array format...');
+    const headers = response.data.headers || [];
+    console.log('📋 [EXCEL PARSER] Headers extracted:', headers);
+    
+    if (headers.length === 0) {
+      console.error('❌ [EXCEL PARSER] No headers found!');
+      throw new Error('לא נמצאו כותרות בקובץ');
+    }
+    
+    const rows = response.data.rows.map((row, idx) => {
+      const rowArray = headers.map(h => {
+        const value = row[h];
+        const stringValue = value !== undefined && value !== null ? String(value) : '';
+        if (idx === 0) {
+          console.log(`🔍 [EXCEL PARSER] First row - Column "${h}":`, value, '→', stringValue);
+        }
+        return stringValue;
+      });
+      return rowArray;
+    });
+    
+    console.log('✅ [EXCEL PARSER] Conversion complete!');
+    console.log('📊 [EXCEL PARSER] Rows converted:', rows.length);
+    console.log('📊 [EXCEL PARSER] First row sample:', rows[0]);
+    console.log('📊 [EXCEL PARSER] Second row sample:', rows[1]);
+    
+    const result = [headers, ...rows];
+    console.log('✅ [EXCEL PARSER] Final result:', result.length, 'total rows (including header)');
+    console.log('═══════════════════════════════════════════════════');
+    
+    return result;
   } catch (error) {
-    console.error('❌ Error parsing Excel:', error);
+    console.error('═══════════════════════════════════════════════════');
+    console.error('❌ [EXCEL PARSER] ERROR OCCURRED!');
+    console.error('❌ [EXCEL PARSER] Error type:', error.constructor.name);
+    console.error('❌ [EXCEL PARSER] Error message:', error.message);
+    console.error('❌ [EXCEL PARSER] Error stack:', error.stack);
+    console.error('═══════════════════════════════════════════════════');
     throw error;
   }
 };
 
 export default function SmartClientImporter({ open, onClose, onSuccess }) {
-  const [step, setStep] = useState(1); // 1: upload, 2: mapping, 3: preview, 4: import
+  const [step, setStep] = useState(1);
   const [file, setFile] = useState(null);
   const [rawData, setRawData] = useState(null);
   const [headers, setHeaders] = useState([]);
@@ -116,63 +197,86 @@ export default function SmartClientImporter({ open, onClose, onSuccess }) {
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState(null);
   const [error, setError] = useState(null);
+  const [debugLogs, setDebugLogs] = useState([]);
+
+  const addDebugLog = (message) => {
+    const timestamp = new Date().toLocaleTimeString('he-IL');
+    setDebugLogs(prev => [...prev, `[${timestamp}] ${message}`]);
+    console.log('🐛 [DEBUG]', message);
+  };
 
   // 📤 שלב 1: העלאת קובץ
   const handleFileUpload = async (e) => {
     const uploadedFile = e.target.files?.[0];
     if (!uploadedFile) return;
 
+    console.log('\n\n🚀🚀🚀 STARTING FILE UPLOAD PROCESS 🚀🚀🚀\n');
     setError(null);
     setFile(uploadedFile);
+    setDebugLogs([]);
+    
+    addDebugLog(`קובץ נבחר: ${uploadedFile.name} (${(uploadedFile.size / 1024).toFixed(2)} KB)`);
 
     try {
       let parsedData;
       
-      console.log('📂 Processing file:', uploadedFile.name, 'Type:', uploadedFile.type);
+      addDebugLog(`סוג הקובץ: ${uploadedFile.type}`);
+      addDebugLog(`תאריך שינוי אחרון: ${new Date(uploadedFile.lastModified).toLocaleString('he-IL')}`);
       
       // בדיקה אם זה CSV או Excel
       if (uploadedFile.name.toLowerCase().endsWith('.csv')) {
-        console.log('📄 Reading as CSV...');
-        // קריאת CSV
+        addDebugLog('🔍 זוהה כקובץ CSV - מתחיל פרסור...');
         const text = await uploadedFile.text();
+        addDebugLog(`📄 קובץ נקרא בהצלחה - ${text.length} תווים`);
         parsedData = parseCSV(text);
+        addDebugLog(`✅ CSV פורסר בהצלחה - ${parsedData.length} שורות`);
       } else {
-        console.log('📊 Reading as Excel...');
-        // קריאת Excel באמצעות backend function
+        addDebugLog('📊 זוהה כקובץ Excel - שולח לפרסור בשרת...');
         parsedData = await parseExcelFile(uploadedFile);
+        addDebugLog(`✅ Excel פורסר בהצלחה - ${parsedData.length} שורות`);
       }
 
-      console.log('✅ Parsed data:', parsedData?.length, 'rows');
-
       if (!parsedData || parsedData.length === 0) {
+        addDebugLog('❌ שגיאה: הקובץ ריק או לא תקין');
         setError('הקובץ ריק או לא תקין');
         return;
       }
 
       // השורה הראשונה היא כותרות
       const headerRow = parsedData[0];
+      addDebugLog(`📋 כותרות זוהו: ${JSON.stringify(headerRow)}`);
+      
       const dataRows = parsedData.slice(1).filter(row => 
         row && Array.isArray(row) && row.some(cell => cell !== null && cell !== undefined && cell !== '')
       );
-
-      console.log('✅ Headers:', headerRow);
-      console.log('✅ Data rows:', dataRows.length);
+      addDebugLog(`📊 שורות נתונים: ${dataRows.length}`);
+      
+      if (dataRows.length === 0) {
+        addDebugLog('⚠️ אזהרה: לא נמצאו שורות נתונים');
+      } else {
+        addDebugLog(`📄 שורה ראשונה לדוגמה: ${JSON.stringify(dataRows[0])}`);
+      }
 
       setHeaders(headerRow.map(h => String(h || '')));
       setRawData(dataRows);
       setStep(2);
+      
+      addDebugLog('✅ מעבר לשלב מיפוי');
 
       // הפעלת AI אוטומטית
       setTimeout(() => suggestMappingWithAI(headerRow, dataRows.slice(0, 5)), 500);
     } catch (err) {
-      console.error('❌ Error parsing file:', err);
+      console.error('❌ Critical error in handleFileUpload:', err);
+      addDebugLog(`❌ שגיאה קריטית: ${err.message}`);
       setError('שגיאה בקריאת הקובץ: ' + err.message);
     }
   };
 
   // 🤖 שלב 2: הצעת מיפוי באמצעות AI
   const suggestMappingWithAI = async (headerRow, sampleRows) => {
+    addDebugLog('🤖 מתחיל תהליך מיפוי AI...');
     setAiSuggesting(true);
+    
     try {
       const prompt = `
 אתה מומחה במיפוי נתונים למערכות CRM.
@@ -215,6 +319,7 @@ ${CLIENT_FIELDS.filter(f => f.value).map(f =>
 חשוב: השתמש במספרי העמודות (0, 1, 2...) כמפתחות.
 `;
 
+      addDebugLog('📤 שולח בקשה ל-AI...');
       const response = await base44.integrations.Core.InvokeLLM({
         prompt: prompt,
         add_context_from_internet: false,
@@ -235,13 +340,18 @@ ${CLIENT_FIELDS.filter(f => f.value).map(f =>
         }
       });
 
+      addDebugLog('📥 תגובה התקבלה מ-AI');
       console.log('🤖 AI Mapping Result:', response);
 
       if (response?.mapping) {
+        addDebugLog(`✅ מיפוי הוצע: ${JSON.stringify(response.mapping)}`);
         setMapping(response.mapping);
+      } else {
+        addDebugLog('⚠️ AI לא החזיר מיפוי');
       }
     } catch (error) {
       console.error('❌ AI mapping failed:', error);
+      addDebugLog(`❌ שגיאה במיפוי AI: ${error.message}`);
       setError('AI לא הצליח להציע מיפוי. אנא מפה ידנית.');
     } finally {
       setAiSuggesting(false);
@@ -250,16 +360,17 @@ ${CLIENT_FIELDS.filter(f => f.value).map(f =>
 
   // 👁️ שלב 3: תצוגה מקדימה
   const handlePreview = () => {
-    // בדיקת תקינות
+    addDebugLog('👁️ מכין תצוגה מקדימה...');
+    
     const mappedFields = Object.values(mapping).filter(v => v && v !== 'skip');
     const hasName = mappedFields.includes('name');
 
     if (!hasName) {
+      addDebugLog('❌ שגיאה: לא מופה שדה "שם לקוח"');
       setError('חובה למפות לפחות את שדה "שם לקוח"');
       return;
     }
 
-    // יצירת תצוגה מקדימה
     const preview = rawData.slice(0, 10).map(row => {
       const client = {};
       headers.forEach((header, index) => {
@@ -271,6 +382,7 @@ ${CLIENT_FIELDS.filter(f => f.value).map(f =>
       return client;
     });
 
+    addDebugLog(`✅ תצוגה מקדימה הוכנה: ${preview.length} לקוחות`);
     setPreviewData(preview);
     setStep(3);
     setError(null);
@@ -278,6 +390,7 @@ ${CLIENT_FIELDS.filter(f => f.value).map(f =>
 
   // 💾 שלב 4: ביצוע יבוא
   const handleImport = async () => {
+    addDebugLog('💾 מתחיל תהליך יבוא...');
     setImporting(true);
     setError(null);
 
@@ -292,9 +405,9 @@ ${CLIENT_FIELDS.filter(f => f.value).map(f =>
           }
         });
         return client;
-      }).filter(c => c.name); // רק לקוחות עם שם
+      }).filter(c => c.name);
 
-      console.log('📦 Importing clients:', clientsToImport.length);
+      addDebugLog(`📦 מייבא ${clientsToImport.length} לקוחות...`);
 
       let successCount = 0;
       let errorCount = 0;
@@ -304,11 +417,17 @@ ${CLIENT_FIELDS.filter(f => f.value).map(f =>
         try {
           await base44.entities.Client.create(clientsToImport[i]);
           successCount++;
+          if (i % 10 === 0) {
+            addDebugLog(`⏳ יובאו ${successCount} לקוחות מתוך ${clientsToImport.length}...`);
+          }
         } catch (err) {
           errorCount++;
           errors.push({ row: i + 1, error: err.message });
+          addDebugLog(`❌ שגיאה בשורה ${i + 1}: ${err.message}`);
         }
       }
+
+      addDebugLog(`✅ יבוא הסתיים: ${successCount} הצליחו, ${errorCount} נכשלו`);
 
       setImportResult({
         total: clientsToImport.length,
@@ -319,7 +438,6 @@ ${CLIENT_FIELDS.filter(f => f.value).map(f =>
 
       setStep(4);
 
-      // אם הכל הצליח
       if (errorCount === 0 && onSuccess) {
         setTimeout(() => {
           onSuccess();
@@ -328,6 +446,7 @@ ${CLIENT_FIELDS.filter(f => f.value).map(f =>
       }
     } catch (error) {
       console.error('❌ Import failed:', error);
+      addDebugLog(`❌ שגיאה ביבוא: ${error.message}`);
       setError('שגיאה ביבוא הלקוחות: ' + error.message);
     } finally {
       setImporting(false);
@@ -344,6 +463,7 @@ ${CLIENT_FIELDS.filter(f => f.value).map(f =>
     setPreviewData([]);
     setImportResult(null);
     setError(null);
+    setDebugLogs([]);
     onClose();
   };
 
@@ -356,6 +476,19 @@ ${CLIENT_FIELDS.filter(f => f.value).map(f =>
             יבוא לקוחות חכם
           </DialogTitle>
         </DialogHeader>
+
+        {/* Debug Panel */}
+        {debugLogs.length > 0 && (
+          <div className="bg-slate-900 text-green-400 rounded-lg p-4 mb-4 max-h-48 overflow-y-auto font-mono text-xs">
+            <div className="flex items-center gap-2 mb-2 text-white">
+              <Bug className="w-4 h-4" />
+              <span className="font-bold">יומן דיבאג</span>
+            </div>
+            {debugLogs.map((log, i) => (
+              <div key={i} className="py-0.5">{log}</div>
+            ))}
+          </div>
+        )}
 
         {/* Progress Indicator */}
         <div className="flex items-center justify-center gap-2 mb-6">
