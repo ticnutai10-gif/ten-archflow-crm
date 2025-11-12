@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Timer as TimerIcon, Play, Pause, RefreshCcw, Square, Save, Clock, Settings, Move, BookmarkPlus, Trash2, Plus, Loader2 } from 'lucide-react';
+import { Timer as TimerIcon, Play, Pause, RefreshCcw, Square, Save, Clock, Settings, BookmarkPlus, Trash2, Plus, Loader2, Calendar, Pencil } from 'lucide-react';
 import { Client, TimeLog } from "@/entities/all";
 import { logInfo, logWarn, logError, logEntry } from "@/components/utils/debugLog";
 import { useAccessControl } from "@/components/access/AccessValidator";
@@ -35,7 +35,9 @@ if (typeof window !== "undefined" && !window.__patchedSafeObjectKeys) {
     window.__patchedSafeObjectKeys = true;
   } catch {
     // no-op if patching fails
-  }}
+  }
+}
+
 function SafeGuard({ children }) {
   return <>{children}</>;
 }
@@ -260,7 +262,7 @@ export default function FloatingTimer() {
   const [detailsOpen, setDetailsOpen] = React.useState(false);
   const [manualH, setManualH] = React.useState("00");
   const [manualM, setManualM] = React.useState("00");
-  const [manualS, setManualS] = React.useState("00");
+  const [selectedLogDate, setSelectedLogDate] = React.useState(new Date()); // ✅ תאריך נבחר
 
   const [title, setTitle] = React.useState("");
   const [notes, setNotes] = React.useState("");
@@ -543,13 +545,12 @@ ${context}
 
   const openDetailsStep = async () => {
     setDetailsOpen(true);
-    // Use state.seconds directly, as it's the current elapsed time
+    // ✅ עדכון: רק שעות ודקות, ללא שניות
     const h = Math.floor(state.seconds / 3600);
     const m = Math.floor(state.seconds % 3600 / 60);
-    const s = state.seconds % 60;
     setManualH(String(h).padStart(2, "0"));
     setManualM(String(m).padStart(2, "0"));
-    setManualS(String(s).padStart(2, "0"));
+    setSelectedLogDate(new Date()); // ✅ הגדרת ברירת מחדל לתאריך הנוכחי
 
     // הצעת AI לכותרת והערות
     if (prefs.selectedClientName && !aiSuggested) {
@@ -557,20 +558,20 @@ ${context}
     }
   };
 
+  // ✅ עדכון: חישוב ללא שניות
   const computeSecondsFromManual = () => {
     const h = Math.max(0, parseInt(manualH || "0", 10) || 0);
     const m = Math.max(0, Math.min(59, parseInt(manualM || "0", 10) || 0));
-    const s = Math.max(0, Math.min(59, parseInt(manualS || "0", 10) || 0));
-    return h * 3600 + m * 60 + s;
+    return h * 3600 + m * 60; // ללא שניות
   };
 
   const performSave = async () => {
-    const today = new Date().toISOString().slice(0, 10);
+    const logDate = selectedLogDate.toISOString().slice(0, 10); // ✅ שימוש בתאריך הנבחר
     const secondsToSave = computeSecondsFromManual();
     await TimeLog.create({
       client_id: prefs.selectedClientId || "",
       client_name: prefs.selectedClientName || "",
-      log_date: today,
+      log_date: logDate, // ✅ שימוש בתאריך הנבחר
       duration_seconds: secondsToSave,
       title: title || "",
       notes: notes || ""
@@ -586,6 +587,7 @@ ${context}
     state.reset();
     setTitle("");
     setNotes("");
+    setSelectedLogDate(new Date()); // ✅ איפוס התאריך
     setDetailsOpen(false);
     setPopoverOpen(false);
     setAiSuggested(false); // Reset AI suggestion flag on successful save
@@ -749,14 +751,14 @@ ${context}
                 side="bottom"
                 align="start"
                 sideOffset={10}
-                className="w-[340px] p-0 border border-slate-200 bg-white shadow-2xl rounded-2xl overflow-hidden"
+                className="w-[420px] p-0 border border-slate-200 bg-white shadow-2xl rounded-2xl overflow-hidden"
                 dir="rtl">
 
                 <div className="max-h-[75vh] overflow-y-auto">
-                  <div className="p-3 border-b border-white/30">
+                  <div className="p-4 border-b bg-gradient-to-br from-slate-50 to-white">
                     <div className="flex items-center justify-between mb-3">
                       <div
-                        className="font-mono text-2xl leading-none text-transparent bg-clip-text"
+                        className="font-mono text-3xl leading-none text-transparent bg-clip-text font-bold"
                         style={{
                           backgroundImage: `linear-gradient(to bottom right, ${prefs.colorFrom}, ${prefs.colorTo})`,
                           fontFamily: prefs.fontFamily === "default" ? undefined : prefs.fontFamily
@@ -769,22 +771,22 @@ ${context}
                         size="icon"
                         variant="ghost"
                         onClick={() => setSettingsOpen(true)}
-                        className="h-8 w-8"
+                        className="h-9 w-9 hover:bg-slate-100"
                         title="הגדרות טיימר">
 
-                        <Settings className="w-4 h-4" />
+                        <Settings className="w-5 h-5" />
                       </Button>
                     </div>
 
                     {prefs.selectedClientId ?
-                    <div className="text-[11px] text-slate-700 mb-2">
-                        לקוח: <span className="font-medium">{prefs.selectedClientName}</span>
+                    <div className="text-sm text-slate-700 mb-3 font-medium text-right">
+                        לקוח: <span className="text-blue-600">{prefs.selectedClientName}</span>
                       </div> :
 
-                    <div className="text-[11px] text-slate-500 mb-2">בחר לקוח</div>
+                    <div className="text-sm text-slate-500 mb-3 text-right">בחר לקוח להתחלה</div>
                     }
 
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-2 justify-end">
                       <Button
                         size="icon"
                         onClick={() => {
@@ -792,16 +794,16 @@ ${context}
                           state.toggle();
                         }}
                         disabled={!prefs.selectedClientName && !state.running}
-                        className="rounded-full h-8 w-8"
+                        className="rounded-full h-10 w-10 shadow-md hover:shadow-lg transition-all"
                         title={!prefs.selectedClientName && !state.running ? "בחר לקוח קודם" : state.running ? "השהה" : "התחל"}>
 
-                        {state.running ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                        {state.running ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
                       </Button>
-                      <Button size="icon" variant="outline" onClick={state.stop} className="rounded-full h-8 w-8" title="עצור">
-                        <Square className="w-4 h-4" />
+                      <Button size="icon" variant="outline" onClick={state.stop} className="rounded-full h-10 w-10" title="עצור">
+                        <Square className="w-5 h-5" />
                       </Button>
-                      <Button size="icon" variant="outline" onClick={state.reset} className="rounded-full h-8 w-8" title="איפוס">
-                        <RefreshCcw className="w-4 h-4" />
+                      <Button size="icon" variant="outline" onClick={state.reset} className="rounded-full h-10 w-10" title="איפוס">
+                        <RefreshCcw className="w-5 h-5" />
                       </Button>
                       {/* ✅ כפתור שמור חדש */}
                       <Button 
@@ -809,44 +811,45 @@ ${context}
                         variant="outline" 
                         onClick={handleSaveClick}
                         disabled={!prefs.selectedClientName}
-                        className="rounded-full h-8 w-8"
+                        className="rounded-full h-10 w-10 bg-green-50 hover:bg-green-100 border-green-300"
                         title={!prefs.selectedClientName ? "בחר לקוח לפני שמירה" : "שמור"}>
-                        <Save className="w-4 h-4" />
+                        <Save className="w-5 h-5 text-green-600" />
                       </Button>
                     </div>
                   </div>
 
                   {/* סעיף בחירת לקוח - מוצג רק כש-detailsOpen הוא false */}
                   {!detailsOpen &&
-                  <div className="p-3 border-b border-white/30">
-                      <div className="text-sm font-semibold text-slate-800 mb-1.5">בחר לקוח</div>
+                  <div className="p-4">
+                      <div className="text-base font-bold text-slate-800 mb-3 text-right">בחר לקוח</div>
                       <Input
                       placeholder="חיפוש לקוח..."
                       value={query}
                       onChange={(e) => setQuery(e.target.value)}
-                      className="bg-white/70 h-8 text-sm" />
+                      className="bg-white/70 h-10 text-sm text-right mb-2"
+                      dir="rtl" />
 
                       
                       {/* מספר תוצאות */}
                       {query &&
-                    <div className="text-xs text-slate-500 mt-1 px-1">
+                    <div className="text-xs text-slate-500 mb-2 px-1 text-right">
                           {filtered.length} תוצאות
                         </div>
                     }
                       
-                      <div className="max-h-72 overflow-y-auto mt-2 rounded-md border border-slate-100 bg-white shadow-inner">
+                      <div className="max-h-64 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-sm">
                         <div className="py-1">
                           {filtered.length === 0 ?
-                        <div className="text-sm text-slate-600 p-4 text-center">
+                        <div className="text-sm text-slate-600 p-6 text-center">
                               {query ? 'לא נמצאו לקוחות תואמים' : 'לא נמצאו לקוחות'}
                             </div> :
 
-                        filtered.map((c, index) => {
+                        filtered.map((c) => {
                           const isRecent = !query && (prefs.recentClients || []).some((r) => r.id === c.id);
                           return (
                             <button
                               key={c.id}
-                              className={`w-full text-right px-3 py-2 hover:bg-blue-50 transition flex flex-col rounded-md border-b border-slate-50 last:border-b-0 ${isRecent ? 'bg-blue-50/30' : ''}`}
+                              className={`w-full text-right px-4 py-3 hover:bg-blue-50 transition flex flex-col border-b border-slate-100 last:border-b-0 ${isRecent ? 'bg-blue-50/50' : ''}`}
                               onClick={() => {
                                 savePrefs({ selectedClientId: c.id, selectedClientName: c.name || "" });
                                 saveRecentClient(c.id, c.name || "");
@@ -857,11 +860,11 @@ ${context}
                               }}>
 
                                   <div className="flex items-center justify-between w-full">
-                                    <span className="text-sm text-slate-800 truncate font-medium">{c.name || "ללא שם"}</span>
-                                    {isRecent && <span className="text-[10px] text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded mr-2">אחרון</span>}
+                                    <span className="text-sm text-slate-900 truncate font-semibold">{c.name || "ללא שם"}</span>
+                                    {isRecent && <span className="text-[10px] text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full mr-2 font-medium">אחרון</span>}
                                   </div>
                                   {(c.company || c.email || c.phone) &&
-                              <span className="text-[11px] text-slate-500 truncate">
+                              <span className="text-xs text-slate-500 truncate mt-1">
                                       {(c.company || c.email || c.phone || "").toString()}
                                     </span>
                               }
@@ -872,9 +875,8 @@ ${context}
                         </div>
                       </div>
                       
-                      {/* אינדיקטור גלילה */}
                       {filtered.length > 8 &&
-                    <div className="text-xs text-slate-400 mt-1 px-1 flex items-center gap-1">
+                    <div className="text-xs text-slate-400 mt-2 px-1 flex items-center gap-1 justify-center">
                           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                           </svg>
@@ -884,271 +886,295 @@ ${context}
                     </div>
                   }
 
-                  <div className="p-3">
-                    {!detailsOpen ?
-                    <Button
-                      size="sm"
-                      className="w-full rounded-full"
-                      onClick={handleSaveClick}
-                      disabled={!prefs.selectedClientName}
-                      title={!prefs.selectedClientName ? "בחר לקוח לפני שמירה" : "שמור"}>
-
-                        <Save className="w-4 h-4 ml-1" />
-                        שמור
-                      </Button> :
-
-                    <div className="space-y-3">
-                        {/* אינדיקטור טעינת AI */}
+                  {detailsOpen &&
+                    <div className="p-4">
+                      <div className="space-y-4">
                         {aiSuggesting &&
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center gap-2">
-                            <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
-                            <span className="text-sm text-blue-700">AI מציע כותרת והערות...</span>
+                          <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-200 rounded-xl p-4 flex items-center gap-3 shadow-sm">
+                            <Loader2 className="w-5 h-5 animate-spin text-blue-600 flex-shrink-0" />
+                            <span className="text-sm text-blue-900 font-medium">AI מציע כותרת והערות מותאמות...</span>
                           </div>
-                      }
+                        }
 
-                        {/* אינדיקטור שהצעת AI הצליחה */}
                         {aiSuggested && !aiSuggesting &&
-                      <div className="bg-green-50 border border-green-200 rounded-lg p-2 flex items-center gap-2">
-                            <div className="text-xs text-green-700 flex items-center gap-1">
-                              <span>✨</span>
-                              <span>AI הציע תוכן - ניתן לערוך</span>
+                          <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-3 flex items-center gap-2 shadow-sm">
+                            <span className="text-xl">✨</span>
+                            <div className="text-xs text-green-800 font-medium">
+                              AI הציע תוכן - ניתן לערוך ולהתאים
                             </div>
                           </div>
-                      }
-
-                        {/* כותרת והערות - מועברים למעלה */}
-                        <div className="grid gap-2">
-                          <div className="relative">
-                            <label className="text-slate-600 mb-1 text-lg font-medium block">כותרת (אופציונלי)</label>
-                            <Input
-                            placeholder="כותרת..."
-                            value={title}
-                            onChange={(e) => setTitle(e.target.value)}
-                            className="bg-white/80 h-8 text-sm pr-8"
-                            disabled={aiSuggesting} />
-
-                            <button
-                            onClick={() => setShowTitleTemplates(!showTitleTemplates)}
-                            className="absolute left-2 top-7 hover:bg-slate-100 rounded p-1"
-                            title="תבניות כותרת"
-                            disabled={aiSuggesting}>
-
-                              <BookmarkPlus className="w-4 h-4 text-slate-600" />
-                            </button>
-                          </div>
-
-                          {/* 3 פרומפטים קבועים לכותרת */}
-                          <div className="bg-slate-50 rounded-lg p-2 border border-slate-200">
-                            <div className="text-[10px] text-slate-500 mb-1 font-medium">בחר כותרת מהירה:</div>
-                            <div className="flex flex-wrap gap-1">
-                              {(prefs.quickTitlePrompts || []).map((prompt, idx) =>
-                            <button
-                              key={idx}
-                              onClick={() => setTitle(prompt)}
-                              className="text-xs px-2 py-1 bg-white hover:bg-blue-50 border border-slate-200 rounded transition-colors"
-                              disabled={aiSuggesting}>
-
-                                  {prompt}
-                                </button>
-                            )}
-                            </div>
-                          </div>
-
-                          {showTitleTemplates &&
-                        <div className="bg-white rounded-lg border p-2 space-y-2">
-                              <div className="text-xs font-semibold text-slate-700">תבניות כותרת</div>
-                              <ScrollArea className="max-h-32">
-                                <div className="space-y-1">
-                                  {prefs.titleTemplates.length === 0 ?
-                              <div className="text-xs text-slate-500 text-center py-2">אין תבניות שמורות</div> :
-
-                              prefs.titleTemplates.map((template, idx) =>
-                              <div key={idx} className="flex items-center gap-2 group">
-                                        <button
-                                  onClick={() => {
-                                    setTitle(template);
-                                    setShowTitleTemplates(false);
-                                  }}
-                                  className="flex-1 text-right text-xs px-2 py-1 hover:bg-slate-100 rounded truncate"
-                                  disabled={aiSuggesting}>
-
-                                          {template}
-                                        </button>
-                                        <button
-                                  onClick={() => deleteTitleTemplate(idx)}
-                                  className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-50 rounded"
-                                  disabled={aiSuggesting}>
-
-                                          <Trash2 className="w-3 h-3 text-red-600" />
-                                        </button>
-                                      </div>
-                              )
-                              }
-                                </div>
-                              </ScrollArea>
-                              <div className="flex gap-1">
-                                <Input
-                              placeholder="הוסף תבנית חדשה..."
-                              value={newTitleTemplate}
-                              onChange={(e) => setNewTitleTemplate(e.target.value)}
-                              className="h-7 text-xs"
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  e.preventDefault();
-                                  addTitleTemplate();
-                                }
-                              }}
-                              disabled={aiSuggesting} />
-
-                                <Button size="sm" onClick={addTitleTemplate} className="h-7 px-2" disabled={aiSuggesting}>
-                                  <Plus className="w-3 h-3" />
-                                </Button>
-                              </div>
-                            </div>
                         }
 
-                          <div className="relative">
-                            <label className="text-slate-600 mb-1 text-lg font-medium block">הערות (אופציונלי)</label>
-                            <Textarea
-                            placeholder="הערות..."
-                            value={notes}
-                            onChange={(e) => setNotes(e.target.value)}
-                            className="bg-white/80 min-h-[70px] text-sm pr-8"
-                            disabled={aiSuggesting} />
-
-                            <button
-                            onClick={() => setShowNotesTemplates(!showNotesTemplates)}
-                            className="absolute left-2 top-7 hover:bg-slate-100 rounded p-1"
-                            title="תבניות הערות"
-                            disabled={aiSuggesting}>
-
-                              <BookmarkPlus className="w-4 h-4 text-slate-600" />
-                            </button>
-                          </div>
-
-                          {/* 3 פרומפטים קבועים להערות */}
-                          <div className="bg-slate-50 rounded-lg p-2 border border-slate-200">
-                            <div className="text-[10px] text-slate-500 mb-1 font-medium">בחר הערה מהירה:</div>
-                            <div className="flex flex-wrap gap-1">
-                              {(prefs.quickNotesPrompts || []).map((prompt, idx) =>
-                            <button
-                              key={idx}
-                              onClick={() => setNotes(prompt)}
-                              className="text-xs px-2 py-1 bg-white hover:bg-blue-50 border border-slate-200 rounded transition-colors"
-                              disabled={aiSuggesting}>
-
-                                  {prompt}
-                                </button>
-                            )}
-                            </div>
-                          </div>
-
-                          {showNotesTemplates &&
-                        <div className="bg-white rounded-lg border p-2 space-y-2">
-                              <div className="text-xs font-semibold text-slate-700">תבניות הערות</div>
-                              <ScrollArea className="max-h-32">
-                                <div className="space-y-1">
-                                  {prefs.notesTemplates.length === 0 ?
-                              <div className="text-xs text-slate-500 text-center py-2">אין תבניות שמורות</div> :
-
-                              prefs.notesTemplates.map((template, idx) =>
-                              <div key={idx} className="flex items-center gap-2 group">
-                                        <button
-                                  onClick={() => {
-                                    setNotes(template);
-                                    setShowNotesTemplates(false);
-                                  }}
-                                  className="flex-1 text-right text-xs px-2 py-1 hover:bg-slate-100 rounded truncate"
-                                  disabled={aiSuggesting}>
-
-                                          {template}
-                                        </button>
-                                        <button
-                                  onClick={() => deleteNotesTemplate(idx)}
-                                  className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-50 rounded"
-                                  disabled={aiSuggesting}>
-
-                                          <Trash2 className="w-3 h-3 text-red-600" />
-                                        </button>
-                                      </div>
-                              )
-                              }
-                                </div>
-                              </ScrollArea>
-                              <div className="flex gap-1">
+                        {/* 📝 סקשן פרטי הפעילות */}
+                        <div className="bg-gradient-to-br from-slate-50 to-white p-5 rounded-xl border-2 border-slate-200 shadow-sm">
+                          <h3 className="font-bold text-slate-900 mb-4 flex items-center gap-2 text-right text-lg">
+                            <Pencil className="w-5 h-5 text-blue-600" />
+                            פרטי הפעילות
+                          </h3>
+                          
+                          <div className="space-y-4">
+                            <div>
+                              <label className="text-sm font-semibold text-slate-700 mb-2 block text-right">
+                                כותרת <span className="text-xs text-slate-500 font-normal">(אופציונלי)</span>
+                              </label>
+                              <div className="relative">
                                 <Input
-                              placeholder="הוסף תבנית חדשה..."
-                              value={newNotesTemplate}
-                              onChange={(e) => setNewNotesTemplate(e.target.value)}
-                              className="h-7 text-xs"
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  e.preventDefault();
-                                  addNotesTemplate();
-                                }
-                              }}
-                              disabled={aiSuggesting} />
-
-                                <Button size="sm" onClick={addNotesTemplate} className="h-7 px-2" disabled={aiSuggesting}>
-                                  <Plus className="w-3 h-3" />
-                                </Button>
+                                  placeholder="למשל: פגישת תכנון, ייעוץ טלפוני..."
+                                  value={title}
+                                  onChange={(e) => setTitle(e.target.value)}
+                                  className="bg-white h-10 text-sm pr-10 text-right border-slate-300 focus:border-blue-500"
+                                  dir="rtl"
+                                  disabled={aiSuggesting}
+                                />
+                                <button
+                                  onClick={() => setShowTitleTemplates(!showTitleTemplates)}
+                                  className="absolute left-2 top-2 hover:bg-slate-100 rounded p-1.5 transition-colors"
+                                  title="תבניות כותרת"
+                                  disabled={aiSuggesting}>
+                                  <BookmarkPlus className="w-4 h-4 text-slate-600" />
+                                </button>
                               </div>
+
+                              <div className="bg-white rounded-lg p-3 mt-2 border border-slate-200">
+                                <div className="text-[11px] text-slate-600 mb-2 font-semibold text-right">בחר כותרת מהירה:</div>
+                                <div className="flex flex-wrap gap-2 justify-end">
+                                  {(prefs.quickTitlePrompts || []).map((prompt, idx) => (
+                                    <button
+                                      key={idx}
+                                      onClick={() => setTitle(prompt)}
+                                      className="text-xs px-3 py-1.5 bg-gradient-to-r from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200 border border-blue-300 rounded-lg transition-all font-medium text-blue-700"
+                                      disabled={aiSuggesting}>
+                                      {prompt}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+
+                              {showTitleTemplates && (
+                                <div className="bg-white rounded-lg border-2 border-slate-300 p-3 mt-2 shadow-md">
+                                  <div className="text-sm font-bold text-slate-800 mb-2 text-right">תבניות כותרת שמורות</div>
+                                  <ScrollArea className="max-h-32">
+                                    <div className="space-y-1">
+                                      {prefs.titleTemplates.length === 0 ? (
+                                        <div className="text-xs text-slate-500 text-center py-3">אין תבניות שמורות</div>
+                                      ) : (
+                                        prefs.titleTemplates.map((template, idx) => (
+                                          <div key={idx} className="flex items-center gap-2 group">
+                                            <button
+                                              onClick={() => {
+                                                setTitle(template);
+                                                setShowTitleTemplates(false);
+                                              }}
+                                              className="flex-1 text-right text-xs px-3 py-2 hover:bg-slate-100 rounded-lg truncate transition-colors"
+                                              disabled={aiSuggesting}>
+                                              {template}
+                                            </button>
+                                            <button
+                                              onClick={() => deleteTitleTemplate(idx)}
+                                              className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-red-50 rounded transition-all"
+                                              disabled={aiSuggesting}>
+                                              <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                                            </button>
+                                          </div>
+                                        ))
+                                      )}
+                                    </div>
+                                  </ScrollArea>
+                                  <div className="flex gap-2 mt-3">
+                                    <Input
+                                      placeholder="הוסף תבנית חדשה..."
+                                      value={newTitleTemplate}
+                                      onChange={(e) => setNewTitleTemplate(e.target.value)}
+                                      className="h-8 text-xs text-right"
+                                      dir="rtl"
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                          e.preventDefault();
+                                          addTitleTemplate();
+                                        }
+                                      }}
+                                      disabled={aiSuggesting}
+                                    />
+                                    <Button size="sm" onClick={addTitleTemplate} className="h-8 px-3" disabled={aiSuggesting}>
+                                      <Plus className="w-3.5 h-3.5" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              )}
                             </div>
-                        }
-                        </div>
 
-                        <div>
-                          <div className="text-xs text-slate-600 mb-1">זמן להכנסה</div>
-                          <div className="flex items-center gap-2">
-                            <Input
-                            value={manualH}
-                            onChange={(e) => setManualH(e.target.value.replace(/\D/g, "").slice(0, 2))}
-                            className="w-14 h-8 text-center"
-                            placeholder="שש"
-                            disabled={aiSuggesting} />
+                            <div>
+                              <label className="text-sm font-semibold text-slate-700 mb-2 block text-right">
+                                הערות <span className="text-xs text-slate-500 font-normal">(אופציונלי)</span>
+                              </label>
+                              <div className="relative">
+                                <Textarea
+                                  placeholder="הוסף פרטים והערות על הפעילות..."
+                                  value={notes}
+                                  onChange={(e) => setNotes(e.target.value)}
+                                  className="bg-white min-h-[90px] text-sm pr-10 text-right border-slate-300 focus:border-blue-500 resize-none"
+                                  dir="rtl"
+                                  disabled={aiSuggesting}
+                                />
+                                <button
+                                  onClick={() => setShowNotesTemplates(!showNotesTemplates)}
+                                  className="absolute left-2 top-2 hover:bg-slate-100 rounded p-1.5 transition-colors"
+                                  title="תבניות הערות"
+                                  disabled={aiSuggesting}>
+                                  <BookmarkPlus className="w-4 h-4 text-slate-600" />
+                                </button>
+                              </div>
 
-                            <span className="text-slate-400">:</span>
-                            <Input
-                            value={manualM}
-                            onChange={(e) => setManualM(e.target.value.replace(/\D/g, "").slice(0, 2))}
-                            className="w-14 h-8 text-center"
-                            placeholder="דד"
-                            disabled={aiSuggesting} />
+                              <div className="bg-white rounded-lg p-3 mt-2 border border-slate-200">
+                                <div className="text-[11px] text-slate-600 mb-2 font-semibold text-right">בחר הערה מהירה:</div>
+                                <div className="flex flex-wrap gap-2 justify-end">
+                                  {(prefs.quickNotesPrompts || []).map((prompt, idx) => (
+                                    <button
+                                      key={idx}
+                                      onClick={() => setNotes(prompt)}
+                                      className="text-xs px-3 py-1.5 bg-gradient-to-r from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200 border border-purple-300 rounded-lg transition-all font-medium text-purple-700"
+                                      disabled={aiSuggesting}>
+                                      {prompt}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
 
-                            <span className="text-slate-400">:</span>
-                            <Input
-                            value={manualS}
-                            onChange={(e) => setManualS(e.target.value.replace(/\D/g, "").slice(0, 2))}
-                            className="w-14 h-8 text-center"
-                            placeholder="שש"
-                            disabled={aiSuggesting} />
-
+                              {showNotesTemplates && (
+                                <div className="bg-white rounded-lg border-2 border-slate-300 p-3 mt-2 shadow-md">
+                                  <div className="text-sm font-bold text-slate-800 mb-2 text-right">תבניות הערות שמורות</div>
+                                  <ScrollArea className="max-h-32">
+                                    <div className="space-y-1">
+                                      {prefs.notesTemplates.length === 0 ? (
+                                        <div className="text-xs text-slate-500 text-center py-3">אין תבניות שמורות</div>
+                                      ) : (
+                                        prefs.notesTemplates.map((template, idx) => (
+                                          <div key={idx} className="flex items-center gap-2 group">
+                                            <button
+                                              onClick={() => {
+                                                setNotes(template);
+                                                setShowNotesTemplates(false);
+                                              }}
+                                              className="flex-1 text-right text-xs px-3 py-2 hover:bg-slate-100 rounded-lg truncate transition-colors"
+                                              disabled={aiSuggesting}>
+                                              {template}
+                                            </button>
+                                            <button
+                                              onClick={() => deleteNotesTemplate(idx)}
+                                              className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-red-50 rounded transition-all"
+                                              disabled={aiSuggesting}>
+                                              <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                                            </button>
+                                          </div>
+                                        ))
+                                      )}
+                                    </div>
+                                  </ScrollArea>
+                                  <div className="flex gap-2 mt-3">
+                                    <Input
+                                      placeholder="הוסף תבנית חדשה..."
+                                      value={newNotesTemplate}
+                                      onChange={(e) => setNewNotesTemplate(e.target.value)}
+                                      className="h-8 text-xs text-right"
+                                      dir="rtl"
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                          e.preventDefault();
+                                          addNotesTemplate();
+                                        }
+                                      }}
+                                      disabled={aiSuggesting}
+                                    />
+                                    <Button size="sm" onClick={addNotesTemplate} className="h-8 px-3" disabled={aiSuggesting}>
+                                      <Plus className="w-3.5 h-3.5" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
 
-                        <div className="flex items-center justify-between gap-2">
+                        {/* ⏰ סקשן תאריך וזמן */}
+                        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-5 rounded-xl border-2 border-blue-200 shadow-sm">
+                          <h3 className="font-bold text-slate-900 mb-4 flex items-center gap-2 text-right text-lg">
+                            <Clock className="w-5 h-5 text-blue-600" />
+                            תאריך וזמן
+                          </h3>
+                          
+                          <div className="space-y-4">
+                            <div>
+                              <label className="text-sm font-semibold text-slate-700 mb-2 block text-right flex items-center gap-2">
+                                <Calendar className="w-4 h-4 text-blue-600" />
+                                תאריך הפעילות
+                              </label>
+                              <Input
+                                type="date"
+                                value={selectedLogDate ? selectedLogDate.toISOString().split('T')[0] : ''}
+                                onChange={(e) => setSelectedLogDate(new Date(e.target.value))}
+                                className="bg-white h-10 text-sm text-right border-blue-300 focus:border-blue-500 font-medium"
+                                dir="rtl"
+                              />
+                              <div className="text-xs text-slate-600 mt-2 text-right">
+                                📅 {selectedLogDate.toLocaleDateString('he-IL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                              </div>
+                            </div>
+
+                            <div>
+                              <label className="text-sm font-semibold text-slate-700 mb-2 block text-right">
+                                משך זמן (שעות:דקות)
+                              </label>
+                              <div className="flex items-center gap-3 justify-center">
+                                <div className="flex flex-col items-center">
+                                  <Input
+                                    value={manualH}
+                                    onChange={(e) => setManualH(e.target.value.replace(/\D/g, "").slice(0, 2))}
+                                    className="w-20 h-12 text-center text-lg font-bold bg-white border-blue-300"
+                                    placeholder="00"
+                                    dir="ltr"
+                                    disabled={aiSuggesting}
+                                  />
+                                  <span className="text-xs text-slate-600 mt-1 font-medium">שעות</span>
+                                </div>
+                                <span className="text-2xl font-bold text-blue-600 mt-[-20px]">:</span>
+                                <div className="flex flex-col items-center">
+                                  <Input
+                                    value={manualM}
+                                    onChange={(e) => setManualM(e.target.value.replace(/\D/g, "").slice(0, 2))}
+                                    className="w-20 h-12 text-center text-lg font-bold bg-white border-blue-300"
+                                    placeholder="00"
+                                    dir="ltr"
+                                    disabled={aiSuggesting}
+                                  />
+                                  <span className="text-xs text-slate-600 mt-1 font-medium">דקות</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* כפתורי פעולה */}
+                        <div className="flex items-center gap-3 pt-2">
                           <Button
-                          variant="outline"
-                          size="sm"
-                          className="rounded-full"
-                          onClick={() => {setDetailsOpen(false);setAiSuggested(false);}}
-                          disabled={aiSuggesting}>
-
-                            בטל
+                            variant="outline"
+                            size="lg"
+                            className="flex-1 rounded-xl h-12 font-bold border-2"
+                            onClick={() => {setDetailsOpen(false);setAiSuggested(false);}}
+                            disabled={aiSuggesting}>
+                            ביטול
                           </Button>
                           <Button
-                          size="sm"
-                          className="rounded-full"
-                          onClick={handleSaveClick}
-                          disabled={!prefs.selectedClientName || aiSuggesting}>
-
-                            <Save className="w-4 h-4 ml-1" />
+                            size="lg"
+                            className="flex-1 rounded-xl h-12 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 shadow-lg font-bold text-white"
+                            onClick={handleSaveClick}
+                            disabled={!prefs.selectedClientName || aiSuggesting}>
+                            <Save className="w-5 h-5 ml-2" />
                             אשר ושמור
                           </Button>
                         </div>
                       </div>
-                    }
-                  </div>
+                    </div>
+                  }
                 </div>
               </PopoverContent>
             </Popover>
@@ -1191,7 +1217,6 @@ ${context}
                   if (!detailsOpen) {
                     setManualH(state.h);
                     setManualM(state.m);
-                    setManualS(state.s);
                     setDetailsOpen(true);
                   }
                 }}
@@ -1304,7 +1329,7 @@ ${context}
                 <div className="flex gap-3">
                   {[
                   { key: "sm", label: "קטן", size: "w-6 h-6" },
-                  { key: "md", label: "בינוני", size: "w-8 h-8" },
+                  { key: "md", label: "בינוני", label: "בינוני", size: "w-8 h-8" },
                   { key: "lg", label: "גדול", size: "w-10 h-10" }].
                   map(({ key, label, size }) =>
                   <button
