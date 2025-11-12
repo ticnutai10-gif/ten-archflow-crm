@@ -43,6 +43,11 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [isUndoRedoAction, setIsUndoRedoAction] = useState(false);
   
+  // Resizing
+  const [resizingColumn, setResizingColumn] = useState(null);
+  const [resizingRow, setResizingRow] = useState(null);
+  const [rowHeights, setRowHeights] = useState({});
+  
   // ייבוא CSV
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [importFile, setImportFile] = useState(null);
@@ -75,6 +80,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       setColumns(initialColumns);
       setRowsData(initialRows);
       setCellStyles(initialStyles);
+      setRowHeights(spreadsheet.row_heights || {});
       
       // אתחול ההיסטוריה
       setHistory([{
@@ -473,6 +479,71 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     await saveToBackend(updated, rowsData, cellStyles);
   };
 
+  // פונקציות Resizing
+  const handleColumnResizeStart = (e, columnKey) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setResizingColumn({ key: columnKey, startX: e.pageX });
+  };
+
+  const handleRowResizeStart = (e, rowId) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setResizingRow({ id: rowId, startY: e.pageY });
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (resizingColumn) {
+        const diff = e.pageX - resizingColumn.startX;
+        const column = columns.find(c => c.key === resizingColumn.key);
+        if (column) {
+          const currentWidth = parseInt(column.width) || 150;
+          const newWidth = Math.max(50, currentWidth + diff);
+          
+          const updated = columns.map(col => 
+            col.key === resizingColumn.key ? { ...col, width: `${newWidth}px` } : col
+          );
+          setColumns(updated);
+          setResizingColumn({ ...resizingColumn, startX: e.pageX });
+        }
+      }
+      
+      if (resizingRow) {
+        const diff = e.pageY - resizingRow.startY;
+        const currentHeight = rowHeights[resizingRow.id] || 40;
+        const newHeight = Math.max(30, currentHeight + diff);
+        
+        setRowHeights(prev => ({
+          ...prev,
+          [resizingRow.id]: newHeight
+        }));
+        setResizingRow({ ...resizingRow, startY: e.pageY });
+      }
+    };
+
+    const handleMouseUp = () => {
+      if (resizingColumn) {
+        saveToBackend(columns, rowsData, cellStyles);
+        setResizingColumn(null);
+      }
+      if (resizingRow) {
+        saveToBackend(columns, rowsData, cellStyles);
+        setResizingRow(null);
+      }
+    };
+
+    if (resizingColumn || resizingRow) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [resizingColumn, resizingRow, columns, rowHeights]);
+
   const applyCellStyle = (cellKey, style) => {
     const newStyles = {
       ...cellStyles,
@@ -639,7 +710,8 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       await base44.entities.CustomSpreadsheet.update(spreadsheet.id, {
         columns: cols,
         rows_data: rows,
-        cell_styles: styles
+        cell_styles: styles,
+        row_heights: rowHeights
       });
 
       console.log('✅ Saved successfully');
@@ -810,7 +882,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                     <th className="border border-slate-200 p-3 w-12 bg-slate-200">
                       <GripVertical className="w-4 h-4 mx-auto text-slate-400" />
                     </th>
-                    {visibleColumns.map(col => {
+                    {visibleColumns.map((col, colIndex) => {
                       const isEditing = editingColumnKey === col.key;
                       const isSorted = sortColumn === col.key;
                       const hasFilter = columnFilters[col.key];
@@ -819,7 +891,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                         <th
                           key={col.key}
                           className="border border-slate-200 p-3 text-right font-semibold hover:bg-blue-50 cursor-pointer group relative"
-                          style={{ width: col.width }}
+                          style={{ width: col.width, position: 'relative' }}
                           onClick={(e) => handleColumnHeaderClick(col.key, e)}
                         >
                           {isEditing ? (
@@ -844,29 +916,31 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
                                 <span>{col.title}</span>
-                                {isSorted && (
-                                  sortDirection === 'asc' ? 
-                                    <ArrowUp className="w-4 h-4 text-blue-600" /> : 
-                                    <ArrowDown className="w-4 h-4 text-blue-600" />
-                                )}
                                 {hasFilter && (
                                   <Badge variant="outline" className="h-5 px-1 text-xs bg-blue-50">
                                     <Filter className="w-3 h-3" />
                                   </Badge>
                                 )}
                               </div>
-                              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
+                              <div className="flex items-center gap-1">
+                                {/* כפתור מיון */}
                                 <Button
                                   size="icon"
                                   variant="ghost"
-                                  className="h-6 w-6"
+                                  className="h-7 w-7"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleSort(col.key);
                                   }}
-                                  title="מיין (או Shift+Click)"
+                                  title="מיין עמודה"
                                 >
-                                  <ArrowUpDown className="w-3 h-3" />
+                                  {isSorted ? (
+                                    sortDirection === 'asc' ? 
+                                      <ArrowUp className="w-4 h-4 text-blue-600" /> : 
+                                      <ArrowDown className="w-4 h-4 text-blue-600" />
+                                  ) : (
+                                    <ArrowUpDown className="w-4 h-4 text-slate-400" />
+                                  )}
                                 </Button>
                                 <Popover 
                                   open={popoverOpen === `header_${col.key}`}
@@ -952,6 +1026,16 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                               </div>
                             </div>
                           )}
+                          
+                          {/* Column Resizer - ידית גרירה לשינוי רוחב */}
+                          {colIndex < visibleColumns.length - 1 && (
+                            <div
+                              className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-500 z-10 group-hover:bg-blue-300"
+                              onMouseDown={(e) => handleColumnResizeStart(e, col.key)}
+                              onClick={(e) => e.stopPropagation()}
+                              title="גרור לשינוי רוחב"
+                            />
+                          )}
                         </th>
                       );
                     })}
@@ -977,6 +1061,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                       ) : (
                         filteredAndSortedData.map((row, rowIndex) => {
                           console.log(`🔍 Rendering row ${rowIndex}:`, row);
+                          const rowHeight = rowHeights[row.id] || 40;
                           
                           return (
                             <Draggable key={row.id} draggableId={row.id} index={rowIndex}>
@@ -984,13 +1069,23 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                 <tr 
                                   ref={provided.innerRef}
                                   {...provided.draggableProps}
-                                  className={`${rowIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50'} ${snapshot.isDragging ? 'opacity-70' : ''}`}
+                                  className={`${rowIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50'} ${snapshot.isDragging ? 'opacity-70' : ''} relative`}
+                                  style={{ height: `${rowHeight}px` }}
                                 >
                                   <td 
                                     {...provided.dragHandleProps}
-                                    className="border border-slate-200 p-2 cursor-grab active:cursor-grabbing bg-slate-100 hover:bg-slate-200"
+                                    className="border border-slate-200 p-2 cursor-grab active:cursor-grabbing bg-slate-100 hover:bg-slate-200 relative"
+                                    style={{ height: `${rowHeight}px` }}
                                   >
                                     <GripVertical className="w-4 h-4 mx-auto text-slate-500" />
+                                    
+                                    {/* Row Resizer - ידית גרירה לשינוי גובה */}
+                                    <div
+                                      className="absolute bottom-0 left-0 right-0 h-1 cursor-row-resize hover:bg-blue-500 z-10"
+                                      onMouseDown={(e) => handleRowResizeStart(e, row.id)}
+                                      onClick={(e) => e.stopPropagation()}
+                                      title="גרור לשינוי גובה"
+                                    />
                                   </td>
                                   {visibleColumns.map(column => {
                                     const cellKey = `${row.id}_${column.key}`;
@@ -1010,7 +1105,10 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                         style={{
                                           backgroundColor: isSelected ? '#faf5ff' : cellStyle.backgroundColor,
                                           opacity: cellStyle.opacity ? cellStyle.opacity / 100 : 1,
-                                          fontWeight: cellStyle.fontWeight || 'normal'
+                                          fontWeight: cellStyle.fontWeight || 'normal',
+                                          height: `${rowHeight}px`,
+                                          maxHeight: `${rowHeight}px`,
+                                          overflow: 'hidden'
                                         }}
                                         onClick={(e) => !isEditing && handleCellClick(row.id, column.key, e)}
                                       >
@@ -1055,7 +1153,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                       </td>
                                     );
                                   })}                        
-                                  <td className="border border-slate-200 p-2">
+                                  <td className="border border-slate-200 p-2" style={{ height: `${rowHeight}px` }}>
                                     <div className="flex gap-1 justify-center">
                                       <Button
                                         size="icon"
@@ -1542,11 +1640,12 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                 <li>• <kbd className="px-2 py-1 bg-white rounded text-xs">Ctrl+Click</kbd> על תא = תפריט צבעים</li>
                 <li>• <kbd className="px-2 py-1 bg-white rounded text-xs">Alt+Click</kbd> על תא = בחירה מרובה</li>
                 <li>• <kbd className="px-2 py-1 bg-white rounded text-xs">Click</kbd> על כותרת = שינוי שם</li>
-                <li>• <kbd className="px-2 py-1 bg-white rounded text-xs">Shift+Click</kbd> על כותרת = מיון מהיר</li>
+                <li>• <kbd className="px-2 py-1 bg-white rounded text-xs">חץ בכותרת</kbd> = מיון מהיר</li>
                 <li>• <kbd className="px-2 py-1 bg-white rounded text-xs">Ctrl+Click</kbd> על כותרת = תפריט עמודה</li>
                 <li>• <kbd className="px-2 py-1 bg-white rounded text-xs">Ctrl+Z</kbd> = בטל פעולה</li>
                 <li>• <kbd className="px-2 py-1 bg-white rounded text-xs">Ctrl+Y</kbd> = שחזר פעולה</li>
-                <li>• <kbd className="px-2 py-1 bg-white rounded text-xs">גרור</kbd> את הידית = שנה סדר שורות</li>
+                <li>• <kbd className="px-2 py-1 bg-white rounded text-xs">גרור ידית ≡</kbd> = שנה סדר שורות</li>
+                <li>• <kbd className="px-2 py-1 bg-white rounded text-xs">גרור קו כחול</kbd> = שנה גודל עמודה/שורה</li>
               </ul>
             </div>
           </div>
