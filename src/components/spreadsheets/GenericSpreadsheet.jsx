@@ -955,7 +955,8 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                     setEditingColumnTitle("");
                                   }
                                 }}
-                                className="h-8"
+                                className="h-8 min-w-[200px]"
+                                style={{ width: 'auto', minWidth: '200px' }}
                                 autoFocus
                               />
                             </div>
