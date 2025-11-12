@@ -526,22 +526,25 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                   dir="rtl"
                                 />
                               ) : (
-                                <Popover
-                                  open={popoverOpen === cellKey}
-                                  onOpenChange={(open) => !open && setPopoverOpen(null)}
-                                >
-                                  <PopoverTrigger asChild>
-                                    <div className="text-sm w-full">
-                                      {String(cellValue)}
-                                    </div>
-                                  </PopoverTrigger>
-                                  <PopoverContent className="w-64" align="start">
-                                    <ColorPicker 
-                                      onApply={(style) => applyCellStyle(cellKey, style)}
-                                      currentStyle={cellStyle}
-                                    />
-                                  </PopoverContent>
-                                </Popover>
+                                <div className="text-sm w-full">
+                                  {String(cellValue)}
+                                  {popoverOpen === cellKey && (
+                                    <Popover
+                                      open={true}
+                                      onOpenChange={(open) => !open && setPopoverOpen(null)}
+                                    >
+                                      <PopoverContent className="w-64" align="start">
+                                        <ColorPicker 
+                                          onApply={(style) => {
+                                            applyCellStyle(cellKey, style);
+                                            setPopoverOpen(null);
+                                          }}
+                                          currentStyle={cellStyle}
+                                        />
+                                      </PopoverContent>
+                                    </Popover>
+                                  )}
+                                </div>
                               )}
                             </td>
                           );
