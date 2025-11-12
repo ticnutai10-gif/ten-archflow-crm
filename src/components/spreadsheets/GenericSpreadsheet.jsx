@@ -91,7 +91,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     if (!columnName) return;
 
     const newColumn = {
-      key: `col_${Date.now()}`,
+      key: `col${Date.now()}`,  // ללא קו תחתון!
       title: columnName,
       width: '150px',
       visible: true
