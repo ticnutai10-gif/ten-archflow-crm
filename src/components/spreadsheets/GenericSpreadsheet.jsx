@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Table, Copy, Settings, Palette, Eye, EyeOff, Edit2, X, Download, Upload, Grid, List, Search, Filter, ArrowUp, ArrowDown, ArrowUpDown, XCircle, Undo, Redo, GripVertical, BarChart3, TrendingUp, Calculator } from "lucide-react";
+import { Plus, Trash2, Table, Copy, Settings, Palette, Eye, EyeOff, Edit2, X, Download, Upload, Grid, List, Search, Filter, ArrowUp, ArrowDown, ArrowUpDown, XCircle, Undo, Redo, GripVertical, BarChart3, TrendingUp, Calculator, Layers, Save, Bookmark } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -13,6 +13,7 @@ import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
 import ThemeSelector, { COLOR_PALETTES, BORDER_STYLES, FONT_OPTIONS } from "./ThemeSelector";
+import ViewManager from "./ViewManager";
 
 export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMode = false }) {
   const [columns, setColumns] = useState([]);
@@ -63,6 +64,9 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const [showColumnStats, setShowColumnStats] = useState(false);
   const [showThemeSelector, setShowThemeSelector] = useState(false);
   const [themeSettings, setThemeSettings] = useState(null);
+  const [showViewManager, setShowViewManager] = useState(false);
+  const [savedViews, setSavedViews] = useState([]);
+  const [activeViewId, setActiveViewId] = useState(null);
   
   const editInputRef = useRef(null);
   const columnEditRef = useRef(null);
@@ -91,6 +95,8 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         fontSize: "medium",
         density: "comfortable"
       });
+      setSavedViews(spreadsheet.saved_views || []);
+      setActiveViewId(spreadsheet.active_view_id || null);
       
       setHistory([{ columns: initialColumns, rows: initialRows, styles: initialStyles }]);
       setHistoryIndex(0);
@@ -757,7 +763,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         columns: cols, rows_data: rows, cell_styles: styles, row_heights: rowHeights,
         validation_rules: validationRules, conditional_formats: conditionalFormats,
         freeze_settings: freezeSettings, custom_cell_types: customCellTypes, merged_cells: mergedCells,
-        theme_settings: themeSettings
+        theme_settings: themeSettings, saved_views: savedViews, active_view_id: activeViewId
       });
       if (onUpdate) await onUpdate();
     } catch (error) {
@@ -772,6 +778,102 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       theme_settings: newTheme
     });
     if (onUpdate) await onUpdate();
+  };
+
+  const handleSaveView = async (view) => {
+    const existingIndex = savedViews.findIndex(v => v.id === view.id);
+    let updatedViews;
+    
+    if (existingIndex >= 0) {
+      // עדכון תצוגה קיימת
+      updatedViews = [...savedViews];
+      updatedViews[existingIndex] = view;
+    } else {
+      // הוספת תצוגה חדשה
+      updatedViews = [...savedViews, view];
+    }
+    
+    setSavedViews(updatedViews);
+    setActiveViewId(view.id);
+    
+    await base44.entities.CustomSpreadsheet.update(spreadsheet.id, {
+      saved_views: updatedViews,
+      active_view_id: view.id
+    });
+    
+    if (onUpdate) await onUpdate();
+  };
+
+  const handleLoadView = async (view) => {
+    // יצירת מפה של העמודות הנוכחיות לפי key
+    const columnMap = new Map(columns.map(col => [col.key, col]));
+    
+    // יצירת מערך עמודות חדש לפי התצוגה
+    const newColumns = view.columns
+      .sort((a, b) => a.order - b.order)
+      .map(viewCol => {
+        const existingCol = columnMap.get(viewCol.key);
+        if (!existingCol) return null;
+        
+        return {
+          ...existingCol,
+          visible: viewCol.visible,
+          width: viewCol.width
+        };
+      })
+      .filter(Boolean);
+    
+    // הוספת עמודות שלא היו בתצוגה (במקרה של עמודות חדשות שנוספו אחרי יצירת התצוגה)
+    columns.forEach(col => {
+      if (!view.columns.find(vc => vc.key === col.key)) {
+        newColumns.push({ ...col, visible: false });
+      }
+    });
+    
+    setColumns(newColumns);
+    setActiveViewId(view.id);
+    saveToHistory(newColumns, rowsData, cellStyles);
+    
+    await base44.entities.CustomSpreadsheet.update(spreadsheet.id, {
+      columns: newColumns,
+      active_view_id: view.id
+    });
+    
+    if (onUpdate) await onUpdate();
+    toast.success(`✓ תצוגה "${view.name}" נטענה בהצלחה`);
+  };
+
+  const handleDeleteView = async (viewId) => {
+    const updatedViews = savedViews.filter(v => v.id !== viewId);
+    setSavedViews(updatedViews);
+    
+    // אם מחקנו את התצוגה הפעילה, נבטל את ה-active view
+    if (activeViewId === viewId) {
+      setActiveViewId(null);
+    }
+    
+    await base44.entities.CustomSpreadsheet.update(spreadsheet.id, {
+      saved_views: updatedViews,
+      active_view_id: activeViewId === viewId ? null : activeViewId
+    });
+    
+    if (onUpdate) await onUpdate();
+  };
+
+  const handleSetDefaultView = async (viewId) => {
+    const updatedViews = savedViews.map(v => ({
+      ...v,
+      isDefault: v.id === viewId
+    }));
+    
+    setSavedViews(updatedViews);
+    
+    await base44.entities.CustomSpreadsheet.update(spreadsheet.id, {
+      saved_views: updatedViews
+    });
+    
+    if (onUpdate) await onUpdate();
+    toast.success('✓ ברירת המחדל עודכנה');
   };
 
   if (!spreadsheet) return <div className="p-6 text-center text-slate-500">לא נבחרה טבלה</div>;
@@ -831,6 +933,12 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
               <Badge variant="outline">{filteredAndSortedData.length}/{rowsData.length} שורות</Badge>
               <Badge variant="outline">{visibleColumns.length}/{columns.length} עמודות</Badge>
               {hasActiveFilters && <Badge className="bg-blue-600 text-white"><Filter className="w-3 h-3 ml-1" />פעיל</Badge>}
+              {activeViewId && savedViews.find(v => v.id === activeViewId) && (
+                <Badge className="bg-indigo-100 text-indigo-800 border-indigo-300">
+                  <Bookmark className="w-3 h-3 ml-1" />
+                  {savedViews.find(v => v.id === activeViewId)?.name}
+                </Badge>
+              )}
             </div>
             <div className="flex gap-2 flex-wrap">
               <Button onClick={handleUndo} size="sm" variant="outline" disabled={!canUndo} title="בטל פעולה (Ctrl+Z)" className="gap-2 hover:bg-blue-50 transition-all"><Undo className="w-4 h-4" /></Button>
@@ -842,6 +950,15 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
               <Button onClick={() => setShowThemeSelector(true)} size="sm" variant="outline" className="gap-2 hover:bg-pink-50 transition-all" title="עיצוב הטבלה">
                 <Palette className="w-4 h-4" />
                 עיצוב
+              </Button>
+              <Button onClick={() => setShowViewManager(true)} size="sm" variant="outline" className="gap-2 hover:bg-indigo-50 transition-all" title="ניהול תצוגות">
+                <Layers className="w-4 h-4" />
+                תצוגות
+                {savedViews.length > 0 && (
+                  <Badge variant="outline" className="mr-1 h-5 px-1.5 text-xs bg-indigo-50 text-indigo-700 border-indigo-300">
+                    {savedViews.length}
+                  </Badge>
+                )}
               </Button>
               <Button onClick={addNewRow} size="sm" className="gap-2"><Plus className="w-4 h-4" />שורה</Button>
               <Button onClick={addColumn} size="sm" variant="outline" className="gap-2"><Plus className="w-4 h-4" />עמודה</Button>
@@ -1130,6 +1247,18 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         onClose={() => setShowThemeSelector(false)}
         currentTheme={currentTheme}
         onApply={handleThemeApply}
+      />
+      
+      <ViewManager
+        open={showViewManager}
+        onClose={() => setShowViewManager(false)}
+        savedViews={savedViews}
+        activeViewId={activeViewId}
+        currentColumns={columns}
+        onSaveView={handleSaveView}
+        onLoadView={handleLoadView}
+        onDeleteView={handleDeleteView}
+        onSetDefault={handleSetDefaultView}
       />
     </div>
   );
