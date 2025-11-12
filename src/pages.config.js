@@ -24,6 +24,7 @@ import Meetings from './pages/Meetings';
 import SpreadsheetDetails from './pages/SpreadsheetDetails';
 import Tasks from './pages/Tasks';
 import DailyReports from './pages/DailyReports';
+import CustomSpreadsheets from './pages/CustomSpreadsheets';
 import Layout from './Layout.jsx';
 
 
@@ -54,6 +55,7 @@ export const PAGES = {
     "SpreadsheetDetails": SpreadsheetDetails,
     "Tasks": Tasks,
     "DailyReports": DailyReports,
+    "CustomSpreadsheets": CustomSpreadsheets,
 }
 
 export const pagesConfig = {
