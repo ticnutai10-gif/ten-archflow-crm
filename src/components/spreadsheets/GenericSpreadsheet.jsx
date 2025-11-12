@@ -275,8 +275,14 @@ function FloatingActionBar({ selectedCount, actions, onClear }) {
 }
 
 export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMode = false }) {
-  const [columns, setColumns] = useState(spreadsheet?.columns || []);
-  const [rowsData, setRowsData] = useState(spreadsheet?.rows_data || []);
+  const [columns, setColumns] = useState(() => {
+    console.log('🏗️ [Initial State] columns:', spreadsheet?.columns);
+    return spreadsheet?.columns || [];
+  });
+  const [rowsData, setRowsData] = useState(() => {
+    console.log('🏗️ [Initial State] rowsData:', spreadsheet?.rows_data);
+    return spreadsheet?.rows_data || [];
+  });
   const [editingCell, setEditingCell] = useState(null);
   const [editValue, setEditValue] = useState("");
   const [cellStyles, setCellStyles] = useState(spreadsheet?.cell_styles || {});
@@ -797,30 +803,62 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   }, []);
 
   const visibleColumns = useMemo(() => {
-    return columns.filter((col) => col.visible !== false);
+    const visible = columns.filter((col) => col.visible !== false);
+    console.log('👁️ [visibleColumns]:', { 
+      totalColumns: columns.length, 
+      visibleCount: visible.length,
+      visible 
+    });
+    return visible;
   }, [columns]);
 
   const filteredRows = useMemo(() => {
-    if (!searchTerm) return rowsData;
+    console.log('🔍 [filteredRows] Input:', { 
+      rowsDataLength: rowsData.length, 
+      searchTerm,
+      rowsData 
+    });
+    
+    if (!searchTerm) {
+      console.log('🔍 [filteredRows] No search term, returning all rows:', rowsData.length);
+      return rowsData;
+    }
     
     const search = searchTerm.toLowerCase();
-    return rowsData.filter(row => {
+    const filtered = rowsData.filter(row => {
       return Object.values(row).some(val => 
         String(val).toLowerCase().includes(search)
       );
     });
+    
+    console.log('🔍 [filteredRows] Filtered result:', { 
+      originalCount: rowsData.length,
+      filteredCount: filtered.length,
+      filtered 
+    });
+    
+    return filtered;
   }, [rowsData, searchTerm]);
 
   const addNewRow = () => {
     const newRow = { id: `row_${Date.now()}` };
-    setRowsData(prev => [...prev, newRow]);
+    console.log('➕ [addNewRow] Creating new row:', newRow);
+    
+    setRowsData(prev => {
+      const updated = [...prev, newRow];
+      console.log('📊 [addNewRow] Updated rows:', updated);
+      return updated;
+    });
     
     addToHistory({
       type: ACTION_TYPES.ADD_ROW,
       payload: { row: newRow }
     });
     
-    if (autoSave) saveToBackend();
+    if (autoSave) {
+      console.log('💾 [addNewRow] Auto-saving...');
+      saveToBackend();
+    }
     toast.success('✓ שורה נוספה');
   };
 
@@ -1037,6 +1075,8 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
 
   // Cell click handler (left click only)
   const handleCellClick = (rowId, columnKey, event) => {
+    console.log('🖱️ [handleCellClick]:', { rowId, columnKey, altKey: event.altKey });
+    
     // Alt + Click = multi-select
     if (event.altKey) {
       event.preventDefault();
@@ -1057,12 +1097,25 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
 
     // Regular click = edit
     const column = columns.find((c) => c.key === columnKey);
-    if (!column) return;
+    if (!column) {
+      console.error('❌ [handleCellClick] Column not found:', columnKey);
+      return;
+    }
 
     const row = rowsData.find((r) => r.id === rowId);
-    if (!row) return;
+    if (!row) {
+      console.error('❌ [handleCellClick] Row not found:', rowId);
+      return;
+    }
 
     const currentValue = row[columnKey] || '';
+    console.log('📝 [handleCellClick] Opening edit mode:', { 
+      rowId, 
+      columnKey, 
+      currentValue,
+      fullRow: row 
+    });
+    
     setEditingCell(`${rowId}_${columnKey}`);
     setEditValue(String(currentValue));
     setTimeout(() => editInputRef.current?.focus(), 0);
@@ -1187,14 +1240,23 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   };
 
   const saveEdit = async () => {
-    if (!editingCell) return;
+    if (!editingCell) {
+      console.log('⚠️ [saveEdit] No editingCell');
+      return;
+    }
     
     const [rowId, columnKey] = editingCell.split('_');
+    console.log('📝 [saveEdit] Editing cell:', { rowId, columnKey, editValue });
+    
     const row = rowsData.find(r => r.id === rowId);
     const oldValue = row?.[columnKey] || '';
     
+    console.log('📝 [saveEdit] Current row before update:', row);
+    console.log('📝 [saveEdit] Old value:', oldValue, 'New value:', editValue);
+    
     // Only save if value actually changed
     if (String(oldValue) === editValue) {
+      console.log('⚠️ [saveEdit] No change detected, skipping save');
       if (autoCloseEdit) {
         setEditingCell(null);
         setEditValue("");
@@ -1204,11 +1266,14 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
 
     const updatedRows = rowsData.map((row) => {
       if (row.id === rowId) {
-        return { ...row, [columnKey]: editValue };
+        const newRow = { ...row, [columnKey]: editValue };
+        console.log('✏️ [saveEdit] Creating updated row:', newRow);
+        return newRow;
       }
       return row;
     });
 
+    console.log('📊 [saveEdit] All updated rows:', updatedRows);
     setRowsData(updatedRows);
     
     addToHistory({
@@ -1228,10 +1293,11 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
 
     // ✅ תמיד שמור - גם אם autoSave כבוי
     try {
+      console.log('💾 [saveEdit] Calling saveToBackend...');
       await saveToBackend();
-      console.log('✅ Cell saved successfully');
+      console.log('✅ [saveEdit] Cell saved successfully');
     } catch (error) {
-      console.error('❌ Error saving cell:', error);
+      console.error('❌ [saveEdit] Error saving cell:', error);
       toast.error('שגיאה בשמירת התא');
     }
   };
@@ -2205,73 +2271,91 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                   </thead>
                   
                   <tbody>
-                    {filteredRows.map((row, rowIndex) => (
-                      <tr
-                        key={row.id}
-                        className={`${rowIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50'} ${
-                          selectedRows.has(row.id) ? 'bg-blue-50 ring-2 ring-blue-300' : ''
-                        } hover:bg-blue-50/50 transition-colors`}
-                      >
-                        <td 
-                          className="border border-slate-200 p-2 text-center"
-                          onContextMenu={(e) => handleRowContextMenu(row.id, e)}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selectedRows.has(row.id)}
-                            onChange={() => toggleRowSelection(row.id)}
-                            className="cursor-pointer"
-                            title="בחר שורה"
-                          />
+                    {filteredRows.length === 0 ? (
+                      <tr>
+                        <td colSpan={visibleColumns.length + 2} className="text-center py-12 text-slate-500 border">
+                          {searchTerm ? 'אין תוצאות לחיפוש' : 'אין שורות בטבלה - לחץ "שורה" להוספה'}
                         </td>
-                        {visibleColumns.map((column) => {
-                          const cellKey = `${row.id}_${column.key}`;
-                          const isEditing = editingCell === cellKey;
-                          const cellStyle = cellStyles[cellKey] || {};
-                          const isSelected = selectedCells.has(cellKey);
-                          const cellValue = row[column.key] || '';
-
-                          return (
-                            <td
-                              key={column.key}
-                              className={`border border-slate-200 p-2 cursor-pointer transition-all ${
-                                isSelected ? 'ring-2 ring-purple-500 bg-purple-50' : 'hover:bg-blue-50'
-                              }`}
-                              onClick={(e) => handleCellClick(row.id, column.key, e)}
-                              onContextMenu={(e) => handleCellContextMenu(row.id, column.key, e)}
-                              onMouseEnter={(e) => handleCellMouseEnter(row.id, column.key, e)}
-                              onMouseDown={(e) => {
-                                if (e.altKey) e.preventDefault();
-                              }}
-                              style={{
-                                backgroundColor: isSelected ? '#faf5ff' : (cellStyle.backgroundColor || 'inherit'),
-                                opacity: cellStyle.opacity ? cellStyle.opacity / 100 : 1,
-                                fontWeight: cellStyle.fontWeight || 'normal'
-                              }}
+                      </tr>
+                    ) : (
+                      filteredRows.map((row, rowIndex) => {
+                        console.log(`🔍 [Rendering Row ${rowIndex}]:`, row);
+                        
+                        return (
+                          <tr
+                            key={row.id}
+                            className={`${rowIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50'} ${
+                              selectedRows.has(row.id) ? 'bg-blue-50 ring-2 ring-blue-300' : ''
+                            } hover:bg-blue-50/50 transition-colors`}
+                          >
+                            <td 
+                              className="border border-slate-200 p-2 text-center"
+                              onContextMenu={(e) => handleRowContextMenu(row.id, e)}
                             >
-                              {isEditing ? (
-                                <Input
-                                  ref={editInputRef}
-                                  value={editValue}
-                                  onChange={(e) => setEditValue(e.target.value)}
-                                  onBlur={saveEdit}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') saveEdit();
-                                    if (e.key === 'Escape') {
-                                      setEditingCell(null);
-                                      setEditValue("");
-                                    }
-                                  }}
-                                  className="h-8 w-full"
-                                  dir="rtl"
-                                  onClick={(e) => e.stopPropagation()}
-                                />
-                              ) : (
-                                <span className="text-sm">{String(cellValue)}</span>
-                              )}
+                              <input
+                                type="checkbox"
+                                checked={selectedRows.has(row.id)}
+                                onChange={() => toggleRowSelection(row.id)}
+                                className="cursor-pointer"
+                                title="בחר שורה"
+                              />
                             </td>
-                          );
-                        })}
+                            {visibleColumns.map((column) => {
+                              const cellKey = `${row.id}_${column.key}`;
+                              const isEditing = editingCell === cellKey;
+                              const cellStyle = cellStyles[cellKey] || {};
+                              const isSelected = selectedCells.has(cellKey);
+                              const cellValue = row[column.key] || '';
+
+                              console.log(`🔍 [Cell ${cellKey}]:`, {
+                                rowId: row.id,
+                                columnKey: column.key,
+                                cellValue,
+                                isEditing,
+                                fullRow: row
+                              });
+
+                              return (
+                                <td
+                                  key={column.key}
+                                  className={`border border-slate-200 p-2 cursor-pointer transition-all ${
+                                    isSelected ? 'ring-2 ring-purple-500 bg-purple-50' : 'hover:bg-blue-50'
+                                  }`}
+                                  onClick={(e) => handleCellClick(row.id, column.key, e)}
+                                  onContextMenu={(e) => handleCellContextMenu(row.id, column.key, e)}
+                                  onMouseEnter={(e) => handleCellMouseEnter(row.id, column.key, e)}
+                                  onMouseDown={(e) => {
+                                    if (e.altKey) e.preventDefault();
+                                  }}
+                                  style={{
+                                    backgroundColor: isSelected ? '#faf5ff' : (cellStyle.backgroundColor || 'inherit'),
+                                    opacity: cellStyle.opacity ? cellStyle.opacity / 100 : 1,
+                                    fontWeight: cellStyle.fontWeight || 'normal'
+                                  }}
+                                >
+                                  {isEditing ? (
+                                    <Input
+                                      ref={editInputRef}
+                                      value={editValue}
+                                      onChange={(e) => setEditValue(e.target.value)}
+                                      onBlur={saveEdit}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') saveEdit();
+                                        if (e.key === 'Escape') {
+                                          setEditingCell(null);
+                                          setEditValue("");
+                                        }
+                                      }}
+                                      className="h-8 w-full"
+                                      dir="rtl"
+                                      onClick={(e) => e.stopPropagation()}
+                                    />
+                                  ) : (
+                                    <span className="text-sm">{String(cellValue)}</span>
+                                  )}
+                                </td>
+                              );
+                            })}
                         <td 
                           className="border border-slate-200 p-2"
                           onContextMenu={(e) => handleRowContextMenu(row.id, e)}
