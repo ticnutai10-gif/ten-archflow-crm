@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -381,6 +380,9 @@ export default function ClientImportWizard({ open, onClose, onSuccess }) {
   };
 
   const handleImport = async () => {
+    // 🚨 ALERT למבחן - אם זה לא מופיע, הפונקציה לא נקראת!
+    alert('🐕 handleImport נקרא! בדוק קונסול עכשיו');
+    
     console.log('═══════════════════════════════════════════════════════════');
     console.log('🐕🐕🐕 [IMPORT] *** FUNCTION CALLED ***');
     console.log('🐕🐕🐕 [IMPORT] Timestamp:', new Date().toISOString());
@@ -784,16 +786,33 @@ export default function ClientImportWizard({ open, onClose, onSuccess }) {
               </div>
             </div>
 
-            {/* Logs */}
-            {logs.length > 0 && (
-              <div className="px-6 py-3 bg-slate-900 text-green-400 font-mono text-xs border-b">
-                <ScrollArea className="h-24">
-                  {logs.map((log, i) => (
-                    <div key={i} className="py-0.5">{log}</div>
-                  ))}
-                </ScrollArea>
+            {/* Logs - תמיד גלוי עם DEBUG */}
+            <div className="px-6 py-3 bg-slate-900 text-green-400 font-mono text-xs border-b">
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-white font-bold">📋 לוג מערכת (לייב)</div>
+                <Badge variant="outline" className="bg-green-900 text-green-300">
+                  {logs.length} הודעות
+                </Badge>
               </div>
-            )}
+              <ScrollArea className="h-32">
+                {logs.length === 0 ? (
+                  <div className="text-slate-500 italic py-2">אין לוגים עדיין... מחכה לפעולות</div>
+                ) : (
+                  logs.map((log, i) => (
+                    <div key={i} className="py-0.5 hover:bg-slate-800">{log}</div>
+                  ))
+                )}
+              </ScrollArea>
+              
+              {/* תצוגת state נוכחי */}
+              <div className="mt-2 pt-2 border-t border-slate-700 text-xs text-slate-400">
+                <div>🎯 Step: {step} ({Object.keys(STEPS).find(k => STEPS[k] === step)})</div>
+                <div>📊 Mode: {importMode || 'לא נבחר'}</div>
+                <div>🎲 Table Type: {targetTable?.type || 'אין'}</div>
+                <div>📝 Validated: {validatedData.length} rows</div>
+                <div>⚙️ Processing: {isProcessing ? 'כן ⏳' : 'לא'}</div>
+              </div>
+            </div>
 
             <ScrollArea className="flex-1 px-6">
               <div className="py-4 space-y-4">
@@ -1217,6 +1236,7 @@ export default function ClientImportWizard({ open, onClose, onSuccess }) {
                 {step === STEPS.VALIDATE && (
                   <Button
                     onClick={() => {
+                      alert('🐕 כפתור ייבוא נלחץ! בדוק קונסול');
                       console.log('═══════════════════════════════════════════════════════════');
                       console.log('🐕🐕🐕 [BUTTON-CLICK] *** IMPORT BUTTON CLICKED ***');
                       console.log('🐕🐕🐕 [BUTTON-CLICK] Timestamp:', new Date().toISOString());
@@ -1224,15 +1244,22 @@ export default function ClientImportWizard({ open, onClose, onSuccess }) {
                       console.log('🐕🐕🐕 [BUTTON-CLICK] validatedData.length:', validatedData.length);
                       console.log('🐕🐕🐕 [BUTTON-CLICK] validationErrors.length:', validationErrors.length);
                       console.log('🐕🐕🐕 [BUTTON-CLICK] isProcessing:', isProcessing);
+                      console.log('🐕🐕🐕 [BUTTON-CLICK] targetTable:', targetTable);
                       console.log('🐕🐕🐕 [BUTTON-CLICK] Calling handleImport() NOW...');
                       console.log('═══════════════════════════════════════════════════════════');
                       handleImport();
                     }}
                     disabled={validationErrors.length === validatedData.length}
-                    className="bg-green-600 hover:bg-green-700 gap-2"
+                    className="bg-green-600 hover:bg-green-700 gap-2 relative"
                   >
                     <CheckCircle2 className="w-4 h-4" />
                     ייבא {validatedData.length} שורות
+                    {/* DEBUG: הצג אם הכפתור disabled */}
+                    {validationErrors.length === validatedData.length && (
+                      <span className="absolute -top-8 left-0 bg-red-600 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
+                        ❌ כפתור מושבת - כל השורות עם שגיאות
+                      </span>
+                    )}
                   </Button>
                 )}
               </div>
