@@ -85,9 +85,11 @@ function isEmail(str) {
 
 export default function TimerLogs({ timeLogs, isLoading, onUpdate }) {
   console.log('🎬 [TimerLogs] Component rendered with:', {
+    timeLogs,
+    timeLogsType: typeof timeLogs,
+    isArray: Array.isArray(timeLogs),
     timeLogsCount: timeLogs?.length || 0,
-    isLoading,
-    timeLogsSample: timeLogs?.slice(0, 2)
+    isLoading
   });
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -123,8 +125,27 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate }) {
     }
   }, [viewMode]);
 
-  const safeTimeLogs = timeLogs || [];
-  console.log('✅ [TimerLogs] safeTimeLogs:', { count: safeTimeLogs.length });
+  // ✅ הגנה מלאה על timeLogs prop
+  const safeTimeLogs = React.useMemo(() => {
+    if (!timeLogs) {
+      console.warn('⚠️ [TimerLogs] timeLogs is null/undefined');
+      return [];
+    }
+    if (!Array.isArray(timeLogs)) {
+      console.error('❌ [TimerLogs] timeLogs is not an array!', {
+        type: typeof timeLogs,
+        value: timeLogs
+      });
+      return [];
+    }
+    // Filter out invalid items
+    const valid = timeLogs.filter(log => log && typeof log === 'object');
+    console.log('✅ [TimerLogs] safeTimeLogs:', { 
+      original: timeLogs.length, 
+      valid: valid.length 
+    });
+    return valid;
+  }, [timeLogs]);
 
   // טעינת מיפוי של user IDs למיילים ושמות
   useEffect(() => {
@@ -345,9 +366,12 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate }) {
     }
   };
 
-  // קבלת רשימת לקוחות ייחודיים
-  const uniqueClients = [...new Set(safeTimeLogs.map(log => log.client_name))].filter(Boolean);
-  console.log('👥 [TimerLogs] uniqueClients:', { count: uniqueClients.length, clients: uniqueClients });
+  // ✅ הגנה על uniqueClients
+  const uniqueClients = React.useMemo(() => {
+    const clients = [...new Set(safeTimeLogs.map(log => log?.client_name))].filter(Boolean);
+    console.log('👥 [TimerLogs] uniqueClients:', { count: clients.length, clients });
+    return clients;
+  }, [safeTimeLogs]);
 
   // קבלת רשימת משתמשים ייחודיים עם פרטים מלאים
   const allUsers = React.useMemo(() => {
@@ -361,7 +385,7 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate }) {
 
     const users = uniqueIds.map(idOrEmail => {
       const userLogs = safeTimeLogs.filter(l => getCreatedBy(l) === idOrEmail);
-      const totalSeconds = userLogs.reduce((sum, log) => sum + (log.duration_seconds || 0), 0);
+      const totalSeconds = userLogs.reduce((sum, log) => sum + (log?.duration_seconds || 0), 0);
       const email = getUserEmail(idOrEmail);
       const fullName = getUserFullName(idOrEmail);
       
@@ -372,7 +396,7 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate }) {
         name: getUserDisplayName(idOrEmail),
         totalHours: totalSeconds / 3600,
         sessionsCount: userLogs.length,
-        clients: [...new Set(userLogs.map(l => l.client_name).filter(Boolean))]
+        clients: [...new Set(userLogs.map(l => l?.client_name).filter(Boolean))]
       };
 
       console.log('👥 [TimerLogs] Created user object:', user);
@@ -387,95 +411,107 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate }) {
     return users;
   }, [safeTimeLogs, userIdToDataMap]);
 
-  // פילטור משתמשים לפי חיפוש
-  const filteredUsers = userSearchTerm
-    ? allUsers.filter(user => {
-        const matches = user.email?.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
-                       user.name?.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
-                       user.full_name?.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
-                       user.id?.toLowerCase().includes(userSearchTerm.toLowerCase());
-        console.log('🔍 [TimerLogs] Filtering user:', { user: user.name, searchTerm: userSearchTerm, matches });
-        return matches;
-      })
-    : allUsers;
+  // ✅ הגנה על filteredUsers
+  const filteredUsers = React.useMemo(() => {
+    if (!userSearchTerm) return allUsers;
+    
+    return allUsers.filter(user => {
+      const matches = user?.email?.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+                     user?.name?.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+                     user?.full_name?.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+                     user?.id?.toLowerCase().includes(userSearchTerm.toLowerCase());
+      return matches;
+    });
+  }, [allUsers, userSearchTerm]);
 
   console.log('🔍 [TimerLogs] filteredUsers:', { count: filteredUsers.length });
 
-  // פילטור הנתונים
-  const filteredLogs = safeTimeLogs.filter(log => {
-    const matchesSearch = log.client_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         log.title?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesClient = clientFilter === "all" || log.client_name === clientFilter;
-    const matchesUser = userFilter === "all" || getCreatedBy(log) === userFilter;
+  // ✅ הגנה על filteredLogs
+  const filteredLogs = React.useMemo(() => {
+    return safeTimeLogs.filter(log => {
+      if (!log || typeof log !== 'object') return false;
+      
+      const matchesSearch = log.client_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           log.title?.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesClient = clientFilter === "all" || log.client_name === clientFilter;
+      const matchesUser = userFilter === "all" || getCreatedBy(log) === userFilter;
 
-    let matchesTime = true;
-    if (timeFilter !== "all") {
-      const logDate = new Date(log.log_date);
-      const now = new Date();
+      let matchesTime = true;
+      if (timeFilter !== "all" && log.log_date) {
+        const logDate = new Date(log.log_date);
+        const now = new Date();
 
-      switch (timeFilter) {
-        case 'today':
-          matchesTime = isToday(logDate);
-          break;
-        case 'week':
-          matchesTime = isWithinInterval(logDate, {
-            start: startOfWeek(now, { weekStartsOn: 0 }),
-            end: endOfWeek(now, { weekStartsOn: 0 })
-          });
-          break;
-        case 'month':
-          matchesTime = logDate.getMonth() === now.getMonth() &&
-                      logDate.getFullYear() === now.getFullYear();
-          break;
-        default:
-          break;
+        switch (timeFilter) {
+          case 'today':
+            matchesTime = isToday(logDate);
+            break;
+          case 'week':
+            matchesTime = isWithinInterval(logDate, {
+              start: startOfWeek(now, { weekStartsOn: 0 }),
+              end: endOfWeek(now, { weekStartsOn: 0 })
+            });
+            break;
+          case 'month':
+            matchesTime = logDate.getMonth() === now.getMonth() &&
+                        logDate.getFullYear() === now.getFullYear();
+            break;
+          default:
+            break;
+        }
       }
-    }
 
-    const result = matchesSearch && matchesClient && matchesUser && matchesTime;
-    if (!result) {
-      console.log('🔍 [TimerLogs] Log filtered out:', { 
-        logId: log.id, 
-        matchesSearch, 
-        matchesClient, 
-        matchesUser, 
-        matchesTime 
-      });
-    }
-    return result;
-  });
+      const result = matchesSearch && matchesClient && matchesUser && matchesTime;
+      if (!result) {
+        // console.log('🔍 [TimerLogs] Log filtered out:', { 
+        //   logId: log.id, 
+        //   matchesSearch, 
+        //   matchesClient, 
+        //   matchesUser, 
+        //   matchesTime 
+        // });
+      }
+      return result;
+    });
+  }, [safeTimeLogs, searchTerm, clientFilter, userFilter, timeFilter]);
 
   console.log('🔍 [TimerLogs] filteredLogs:', { 
     count: filteredLogs.length,
     filters: { searchTerm, clientFilter, userFilter, timeFilter }
   });
 
-  // חישוב סטטיסטיקות
-  const totalTime = filteredLogs.reduce((sum, log) => sum + (log.duration_seconds || 0), 0);
-  console.log('📊 [TimerLogs] Total time:', { totalTime, formatted: formatDuration(totalTime) });
-  const clientStats = uniqueClients.map(clientName => {
-    const clientLogs = filteredLogs.filter(log => log.client_name === clientName);
-    const clientTime = clientLogs.reduce((sum, log) => sum + (log.duration_seconds || 0), 0);
-    return {
-      clientName,
-      time: clientTime,
-      sessions: clientLogs.length
-    };
-  }).sort((a, b) => b.time - a.time);
+  // ✅ הגנה על totalTime
+  const totalTime = React.useMemo(() => {
+    return filteredLogs.reduce((sum, log) => sum + (log?.duration_seconds || 0), 0);
+  }, [filteredLogs]);
 
-  // חישוב סטטיסטיקות משתמשים מפולטרות
-  const userStats = allUsers
-    .map(user => {
-      const userLogs = filteredLogs.filter(log => getCreatedBy(log) === user.id); // Filter by user.id
-      const userTime = userLogs.reduce((sum, log) => sum + (log.duration_seconds || 0), 0);
+  // ✅ הגנה על clientStats
+  const clientStats = React.useMemo(() => {
+    return uniqueClients.map(clientName => {
+      const clientLogs = filteredLogs.filter(log => log?.client_name === clientName);
+      const clientTime = clientLogs.reduce((sum, log) => sum + (log?.duration_seconds || 0), 0);
       return {
-        ...user,
-        filteredHours: userTime / 3600,
-        filteredSessions: userLogs.length
+        clientName,
+        time: clientTime,
+        sessions: clientLogs.length
       };
-    })
-    .filter(user => user.filteredSessions > 0)
-    .sort((a, b) => b.filteredHours - a.filteredHours);
+    }).sort((a, b) => b.time - a.time);
+  }, [uniqueClients, filteredLogs]);
+
+  // ✅ הגנה על userStats
+  const userStats = React.useMemo(() => {
+    return allUsers
+      .map(user => {
+        const userLogs = filteredLogs.filter(log => getCreatedBy(log) === user.id);
+        const userTime = userLogs.reduce((sum, log) => sum + (log?.duration_seconds || 0), 0);
+        return {
+          ...user,
+          filteredHours: userTime / 3600,
+          filteredSessions: userLogs.length
+        };
+      })
+      .filter(user => user.filteredSessions > 0)
+      .sort((a, b) => b.filteredHours - a.filteredHours);
+  }, [allUsers, filteredLogs]);
 
   // Build summary columns
   const getSummaryColumns = () => {
@@ -541,20 +577,20 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate }) {
     if (!summaryMode) return [];
     const rowsMap = new Map();
 
-    const clientsInFilteredLogs = [...new Set(filteredLogs.map(l => l.client_name))].filter(Boolean);
+    const clientsInFilteredLogs = [...new Set(filteredLogs.map(l => l?.client_name))].filter(Boolean);
     clientsInFilteredLogs.forEach(name => {
       rowsMap.set(name, { clientName: name, totals: Object.fromEntries(summaryColumns.map(c => [c.key, 0])), total: 0 });
     });
 
     filteredLogs.forEach(log => {
-      const row = rowsMap.get(log.client_name);
+      const row = rowsMap.get(log?.client_name);
       if (!row) return;
       const logDate = new Date(log.log_date);
 
       for (const col of summaryColumns) {
         if (isWithinInterval(logDate, { start: col.start, end: col.end })) {
-          row.totals[col.key] += (log.duration_seconds || 0);
-          row.total += (log.duration_seconds || 0);
+          row.totals[col.key] += (log?.duration_seconds || 0);
+          row.total += (log?.duration_seconds || 0);
           break;
         }
       }

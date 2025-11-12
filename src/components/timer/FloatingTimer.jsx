@@ -34,8 +34,6 @@ if (typeof window !== "undefined" && !window.__patchedSafeObjectKeys) {
     };
     window.__patchedSafeObjectKeys = true;
   } catch {
-
-
     // no-op if patching fails
   }}
 function SafeGuard({ children }) {
@@ -356,21 +354,26 @@ export default function FloatingTimer() {
       console.log('🔄 [TIMER] Cache expired or empty, fetching from server...');
       const allowedClients = await getAllowedClientsForTimer();
 
-      console.log('✅ [TIMER] Received clients from server:', allowedClients.length);
-      console.log('📋 [TIMER] Sample clients:', allowedClients.slice(0, 5).map((c) => ({ name: c.name, phone: c.phone })));
+      // ✅ הגנה על תוצאות
+      const validClients = Array.isArray(allowedClients) ? allowedClients : [];
+
+      console.log('✅ [TIMER] Received clients from server:', validClients.length);
+      console.log('📋 [TIMER] Sample clients:', validClients.slice(0, 5).map((c) => ({ name: c.name, phone: c.phone })));
 
       // כבר לא מסננים לפי טלפון - מציגים את כל הלקוחות
-      clientsCache = allowedClients;
+      clientsCache = validClients;
       clientsCacheTime = now;
 
-      setClients(allowedClients);
-      console.log('✅ [TIMER] Loaded and cached all clients:', allowedClients.length);
+      setClients(validClients);
+      console.log('✅ [TIMER] Loaded and cached all clients:', validClients.length);
     } catch (error) {
       console.error('❌ [TIMER] Error loading clients:', error);
 
       if (error.response?.status === 429 && clientsCache) {
         console.log('⚠️ [TIMER] Rate limit - using old cache');
         setClients(clientsCache);
+      } else {
+        setClients([]);
       }
     }
   };
@@ -412,23 +415,34 @@ export default function FloatingTimer() {
     savePrefs({ recentClients: updated });
   }, [prefs.recentClients, savePrefs]);
 
-  // מיון לקוחות - אחרונים בראש
+  // ✅ הגנה על filtered clients
   const filtered = React.useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!clients) return [];
+    
+    // ✅ בדיקה שclients הוא array
+    if (!Array.isArray(clients)) {
+      console.error('❌ [TIMER] clients is not an array!', clients);
+      return [];
+    }
+    
+    if (!clients || clients.length === 0) return [];
 
     let result = clients;
     if (q) {
       result = clients.filter((c) =>
-      (c.name || "").toLowerCase().includes(q) ||
-      (c.company || "").toLowerCase().includes(q) ||
-      (c.email || "").toLowerCase().includes(q)
+        c && ( // Added safety check for 'c'
+          (c.name || "").toLowerCase().includes(q) ||
+          (c.company || "").toLowerCase().includes(q) ||
+          (c.email || "").toLowerCase().includes(q)
+        )
       );
     }
 
     // מיון לפי שימוש אחרון
-    const recentIds = (prefs.recentClients || []).map((r) => r.id);
+    const recentIds = (prefs.recentClients || []).map((r) => r?.id).filter(Boolean); // Added ?.id and filter(Boolean)
     const sorted = [...result].sort((a, b) => {
+      if (!a || !b) return 0; // Added safety check for 'a' and 'b'
+      
       const aIndex = recentIds.indexOf(a.id);
       const bIndex = recentIds.indexOf(b.id);
 

@@ -65,14 +65,28 @@ export default function ClientTasks({ client }) {
   const loadTasks = async () => {
     try {
       setLoading(true);
+      
+      // ✅ הגנה על client prop
+      if (!client || !client.name) {
+        console.error('❌ [ClientTasks] Invalid client:', client);
+        setTasks([]);
+        return;
+      }
+      
       const allTasks = await base44.entities.Task.filter(
         { client_name: client.name },
         '-created_date'
-      );
-      setTasks(allTasks);
+      ).catch(() => []); // Gracefully handle filter errors by returning an empty array
+      
+      // ✅ הגנה על תוצאות
+      const validTasks = Array.isArray(allTasks) ? allTasks : [];
+      console.log('✅ [ClientTasks] Loaded tasks:', validTasks.length);
+      
+      setTasks(validTasks);
     } catch (error) {
-      console.error('Error loading tasks:', error);
+      console.error('❌ [ClientTasks] Error loading tasks:', error);
       toast.error('שגיאה בטעינת משימות');
+      setTasks([]); // Ensure tasks array is cleared on error
     } finally {
       setLoading(false);
     }
@@ -194,16 +208,35 @@ export default function ClientTasks({ client }) {
     return format(date, 'dd/MM/yyyy', { locale: he });
   };
 
-  const filteredTasks = filterStatus === 'all' 
-    ? tasks 
-    : tasks.filter(t => t.status === filterStatus);
+  // ✅ הגנה על filteredTasks
+  const filteredTasks = React.useMemo(() => {
+    if (!Array.isArray(tasks)) {
+      console.error('❌ [ClientTasks] tasks is not an array!', tasks);
+      return [];
+    }
+    
+    return filterStatus === 'all' 
+      ? tasks 
+      : tasks.filter(t => t?.status === filterStatus);
+  }, [tasks, filterStatus]);
 
-  const stats = {
-    total: tasks.length,
-    open: tasks.filter(t => t.status !== 'הושלמה').length,
-    completed: tasks.filter(t => t.status === 'הושלמה').length,
-    overdue: tasks.filter(t => t.due_date && isPast(new Date(t.due_date)) && t.status !== 'הושלמה').length
-  };
+  // ✅ הגנה על stats
+  const stats = React.useMemo(() => {
+    if (!Array.isArray(tasks)) {
+      return { total: 0, open: 0, completed: 0, overdue: 0 };
+    }
+    
+    return {
+      total: tasks.length,
+      open: tasks.filter(t => t?.status !== 'הושלמה').length,
+      completed: tasks.filter(t => t?.status === 'הושלמה').length,
+      overdue: tasks.filter(t => 
+        t?.due_date && 
+        isPast(new Date(t.due_date)) && 
+        t?.status !== 'הושלמה'
+      ).length
+    };
+  }, [tasks]);
 
   if (loading) {
     return (

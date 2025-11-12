@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -102,19 +103,41 @@ export default function ClientTimeline({ clientId, clientName }) {
         base44.entities.Quote.filter({ client_id: clientId }, '-created_date', 100).catch(() => []),
         base44.entities.Invoice.filter({ client_id: clientId }, '-created_date', 100).catch(() => []),
         base44.entities.CommunicationMessage.filter({ client_id: clientId }, '-created_date', 100).catch(() => []),
-        base44.entities.ClientFeedback.filter({ client_id: clientId }, '-created_date', 100).catch(() => []),
+        base44.entities.ClientFeedback?.filter({ client_id: clientId }, '-created_date', 100).catch(() => []) || [],
         base44.entities.ClientApproval.filter({ client_id: clientId }, '-created_date', 100).catch(() => [])
       ]);
+
+      // ✅ הגנה על כל התוצאות
+      const validProjects = Array.isArray(projects) ? projects : [];
+      const validTasks = Array.isArray(tasks) ? tasks : [];
+      const validMeetings = Array.isArray(meetings) ? meetings : [];
+      const validQuotes = Array.isArray(quotes) ? quotes : [];
+      const validInvoices = Array.isArray(invoices) ? invoices : [];
+      const validCommunications = Array.isArray(communications) ? communications : [];
+      const validFeedbacks = Array.isArray(feedbacks) ? feedbacks : [];
+      const validApprovals = Array.isArray(approvals) ? approvals : [];
+
+      console.log('📊 [ClientTimeline] Loaded data:', {
+        projects: validProjects.length,
+        tasks: validTasks.length,
+        meetings: validMeetings.length,
+        quotes: validQuotes.length,
+        invoices: validInvoices.length,
+        communications: validCommunications.length,
+        feedbacks: validFeedbacks.length,
+        approvals: validApprovals.length
+      });
 
       // Convert all to timeline events
       const timelineEvents = [];
 
       // Projects
-      projects.forEach(project => {
+      validProjects.forEach(project => {
+        if (!project || typeof project !== 'object') return;
         timelineEvents.push({
           id: `project_${project.id}`,
           type: 'project_created',
-          title: `פרויקט נוצר: ${project.name}`,
+          title: `פרויקט נוצר: ${project.name || 'ללא שם'}`,
           description: project.description || '',
           date: project.created_date,
           metadata: {
@@ -125,11 +148,12 @@ export default function ClientTimeline({ clientId, clientName }) {
       });
 
       // Tasks
-      tasks.forEach(task => {
+      validTasks.forEach(task => {
+        if (!task || typeof task !== 'object') return;
         timelineEvents.push({
           id: `task_${task.id}`,
           type: task.status === 'הושלמה' ? 'task_completed' : 'task_created',
-          title: task.title,
+          title: task.title || 'משימה ללא כותרת',
           description: task.description || '',
           date: task.status === 'הושלמה' ? task.updated_date : task.created_date,
           metadata: {
@@ -141,11 +165,12 @@ export default function ClientTimeline({ clientId, clientName }) {
       });
 
       // Meetings
-      meetings.forEach(meeting => {
+      validMeetings.forEach(meeting => {
+        if (!meeting || typeof meeting !== 'object') return;
         timelineEvents.push({
           id: `meeting_${meeting.id}`,
           type: 'meeting',
-          title: meeting.title,
+          title: meeting.title || 'פגישה',
           description: meeting.description || '',
           date: meeting.meeting_date,
           metadata: {
@@ -157,7 +182,8 @@ export default function ClientTimeline({ clientId, clientName }) {
       });
 
       // Quotes
-      quotes.forEach(quote => {
+      validQuotes.forEach(quote => {
+        if (!quote || typeof quote !== 'object') return;
         timelineEvents.push({
           id: `quote_${quote.id}`,
           type: 'quote',
@@ -172,7 +198,8 @@ export default function ClientTimeline({ clientId, clientName }) {
       });
 
       // Invoices
-      invoices.forEach(invoice => {
+      validInvoices.forEach(invoice => {
+        if (!invoice || typeof invoice !== 'object') return;
         timelineEvents.push({
           id: `invoice_${invoice.id}`,
           type: 'invoice',
@@ -187,7 +214,8 @@ export default function ClientTimeline({ clientId, clientName }) {
       });
 
       // Communications
-      communications.forEach(comm => {
+      validCommunications.forEach(comm => {
+        if (!comm || typeof comm !== 'object') return;
         timelineEvents.push({
           id: `comm_${comm.id}`,
           type: 'communication',
@@ -202,7 +230,8 @@ export default function ClientTimeline({ clientId, clientName }) {
       });
 
       // Feedbacks
-      feedbacks.forEach(feedback => {
+      validFeedbacks.forEach(feedback => {
+        if (!feedback || typeof feedback !== 'object') return;
         timelineEvents.push({
           id: `feedback_${feedback.id}`,
           type: 'feedback',
@@ -216,11 +245,12 @@ export default function ClientTimeline({ clientId, clientName }) {
       });
 
       // Approvals
-      approvals.forEach(approval => {
+      validApprovals.forEach(approval => {
+        if (!approval || typeof approval !== 'object') return;
         timelineEvents.push({
           id: `approval_${approval.id}`,
           type: 'approval',
-          title: approval.title,
+          title: approval.title || 'אישור',
           description: approval.description || '',
           date: approval.approved_at || approval.created_date,
           metadata: {
@@ -229,12 +259,15 @@ export default function ClientTimeline({ clientId, clientName }) {
         });
       });
 
-      // Sort by date (newest first)
-      timelineEvents.sort((a, b) => new Date(b.date) - new Date(a.date));
+      // ✅ הגנה על sort
+      const validEvents = timelineEvents.filter(e => e && e.date);
+      validEvents.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-      setEvents(timelineEvents);
+      console.log('✅ [ClientTimeline] Timeline events created:', validEvents.length);
+      setEvents(validEvents);
     } catch (error) {
-      console.error("Error loading timeline:", error);
+      console.error("❌ [ClientTimeline] Error loading timeline:", error);
+      setEvents([]);
     } finally {
       setIsLoading(false);
     }
