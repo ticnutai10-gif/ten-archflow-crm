@@ -479,7 +479,9 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     await saveToBackend(updated, rowsData, cellStyles);
   };
 
-  // פונקציות Resizing - גרסה משופרת
+  // Resizing
+  const [resizingColumn, setResizingColumn] = useState(null);
+  const [resizingRow, setResizingRow] = useState(null);
   const resizeStartRef = useRef(null);
   
   const handleColumnResizeStart = (e, columnKey) => {
@@ -492,7 +494,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     resizeStartRef.current = {
       type: 'column',
       key: columnKey,
-      startX: e.pageX,
+      startX: e.clientX,
       startWidth: currentWidth
     };
     
@@ -508,7 +510,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     resizeStartRef.current = {
       type: 'row',
       id: rowId,
-      startY: e.pageY,
+      startY: e.clientY,
       startHeight: currentHeight
     };
     
@@ -519,10 +521,12 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     if (!resizingColumn && !resizingRow) return;
 
     const handleMouseMove = (e) => {
+      e.preventDefault();
+      
       if (!resizeStartRef.current) return;
       
       if (resizeStartRef.current.type === 'column') {
-        const diff = e.pageX - resizeStartRef.current.startX;
+        const diff = e.clientX - resizeStartRef.current.startX;
         const newWidth = Math.max(50, resizeStartRef.current.startWidth + diff);
         
         const updated = columns.map(col => 
@@ -532,7 +536,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       }
       
       if (resizeStartRef.current.type === 'row') {
-        const diff = e.pageY - resizeStartRef.current.startY;
+        const diff = e.clientY - resizeStartRef.current.startY;
         const newHeight = Math.max(30, resizeStartRef.current.startHeight + diff);
         
         setRowHeights(prev => ({
@@ -542,7 +546,9 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       }
     };
 
-    const handleMouseUp = () => {
+    const handleMouseUp = (e) => {
+      e.preventDefault();
+      
       if (resizingColumn || resizingRow) {
         saveToBackend(columns, rowsData, cellStyles);
         setResizingColumn(null);
@@ -552,20 +558,19 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       }
     };
 
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('mousemove', handleMouseMove, { capture: true });
+    window.addEventListener('mouseup', handleMouseUp, { capture: true });
     
-    // מניעת בחירת טקסט בזמן גרירה
     document.body.style.userSelect = 'none';
     document.body.style.cursor = resizingColumn ? 'col-resize' : 'row-resize';
     
     return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('mousemove', handleMouseMove, { capture: true });
+      window.removeEventListener('mouseup', handleMouseUp, { capture: true });
       document.body.style.userSelect = '';
       document.body.style.cursor = '';
     };
-  }, [resizingColumn, resizingRow]);
+  }, [resizingColumn, resizingRow, columns, rowHeights]);
 
   const applyCellStyle = (cellKey, style) => {
     const newStyles = {
@@ -925,11 +930,14 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                             colIndex === 0 ? 'sticky shadow-[2px_0_5px_rgba(0,0,0,0.1)] bg-slate-100' : ''
                           }`}
                           style={{ 
-                            width: col.width, 
+                            width: col.width,
+                            minWidth: col.width,
+                            maxWidth: col.width,
                             position: colIndex === 0 ? 'sticky' : 'relative',
                             right: colIndex === 0 ? '48px' : undefined,
                             backgroundColor: colIndex === 0 ? '#f1f5f9' : '#f1f5f9',
-                            zIndex: colIndex === 0 ? 30 : 25
+                            zIndex: colIndex === 0 ? 30 : 25,
+                            overflow: editingColumnKey === col.key ? 'visible' : 'hidden'
                           }}
                           onClick={(e) => handleColumnHeaderClick(col.key, e)}
                         >
@@ -1066,25 +1074,18 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                             </div>
                           )}
                           
-                          {/* Column Resizer - ידית גרירה לשינוי רוחב */}
+                          {/* Column Resizer - ידית גרירה */}
                           <div
-                            className="absolute top-0 bottom-0 cursor-col-resize transition-all"
-                            style={{ 
-                              left: '-6px',
-                              width: '12px',
-                              backgroundColor: resizingColumn === col.key ? '#3b82f6' : 'transparent',
-                              zIndex: 100,
-                              pointerEvents: 'auto'
-                            }}
                             onMouseDown={(e) => handleColumnResizeStart(e, col.key)}
-                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#93c5fd'}
-                            onMouseLeave={(e) => {
-                              if (resizingColumn !== col.key) {
-                                e.currentTarget.style.backgroundColor = 'transparent';
-                              }
+                            className="absolute top-0 bottom-0 hover:bg-blue-300 active:bg-blue-500 cursor-col-resize"
+                            style={{ 
+                              right: '-4px',
+                              width: '8px',
+                              backgroundColor: resizingColumn === col.key ? '#3b82f6' : '#e2e8f0',
+                              zIndex: 999,
+                              opacity: resizingColumn === col.key ? 1 : 0.3
                             }}
-                            onClick={(e) => e.stopPropagation()}
-                            title="⬌ גרור לשינוי רוחב עמודה"
+                            title="גרור לשינוי רוחב"
                           />
                         </th>
                       );
@@ -1129,25 +1130,18 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                   >
                                     <GripVertical className="w-4 h-4 mx-auto text-slate-500" />
                                     
-                                    {/* Row Resizer - ידית גרירה לשינוי גובה */}
+                                    {/* Row Resizer - ידית גרירה */}
                                     <div
-                                      className="absolute left-0 right-0 cursor-row-resize transition-all"
-                                      style={{ 
-                                        bottom: '-6px',
-                                        height: '12px',
-                                        backgroundColor: resizingRow === row.id ? '#3b82f6' : 'transparent',
-                                        zIndex: 100,
-                                        pointerEvents: 'auto'
-                                      }}
                                       onMouseDown={(e) => handleRowResizeStart(e, row.id)}
-                                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#93c5fd'}
-                                      onMouseLeave={(e) => {
-                                        if (resizingRow !== row.id) {
-                                          e.currentTarget.style.backgroundColor = 'transparent';
-                                        }
+                                      className="absolute left-0 right-0 hover:bg-blue-300 active:bg-blue-500 cursor-row-resize"
+                                      style={{ 
+                                        bottom: '-4px',
+                                        height: '8px',
+                                        backgroundColor: resizingRow === row.id ? '#3b82f6' : '#e2e8f0',
+                                        zIndex: 999,
+                                        opacity: resizingRow === row.id ? 1 : 0.3
                                       }}
-                                      onClick={(e) => e.stopPropagation()}
-                                      title="⬍ גרור לשינוי גובה שורה"
+                                      title="גרור לשינוי גובה"
                                     />
                                   </td>
                                   {visibleColumns.map(column => {
