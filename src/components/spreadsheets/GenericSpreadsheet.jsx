@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Save, Table, Copy, Settings, Palette, Eye, EyeOff, Edit2, X, Download, Upload, Grid, List } from "lucide-react";
+import { Plus, Trash2, Save, Table, Copy, Settings, Palette, Eye, EyeOff, Edit2, X, Download, Upload, Grid, List, Search, Filter, ArrowUp, ArrowDown, ArrowUpDown, XCircle } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -29,6 +29,13 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const [editingColumnKey, setEditingColumnKey] = useState(null);
   const [editingColumnTitle, setEditingColumnTitle] = useState("");
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
+  
+  // מיון וסינון
+  const [sortColumn, setSortColumn] = useState(null);
+  const [sortDirection, setSortDirection] = useState('asc'); // 'asc' or 'desc'
+  const [globalFilter, setGlobalFilter] = useState("");
+  const [columnFilters, setColumnFilters] = useState({}); // { columnKey: filterValue }
+  const [showFilterDialog, setShowFilterDialog] = useState(false);
   
   const editInputRef = useRef(null);
   const columnEditRef = useRef(null);
@@ -58,6 +65,94 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       console.warn('⚠️ [GenericSpreadsheet] No spreadsheet provided to useEffect');
     }
   }, [spreadsheet]);
+
+  // פונקציית מיון
+  const handleSort = (columnKey) => {
+    if (sortColumn === columnKey) {
+      // אם זו אותה עמודה - החלף כיוון
+      if (sortDirection === 'asc') {
+        setSortDirection('desc');
+      } else {
+        // אם היה desc - בטל מיון
+        setSortColumn(null);
+        setSortDirection('asc');
+      }
+    } else {
+      // עמודה חדשה - מיין בסדר עולה
+      setSortColumn(columnKey);
+      setSortDirection('asc');
+    }
+  };
+
+  // חישוב נתונים מסוננים וממוינים
+  const filteredAndSortedData = useMemo(() => {
+    let result = [...rowsData];
+
+    // 1. סינון גלובלי
+    if (globalFilter) {
+      const searchLower = globalFilter.toLowerCase();
+      result = result.filter(row => {
+        return columns.some(col => {
+          const value = String(row[col.key] || '').toLowerCase();
+          return value.includes(searchLower);
+        });
+      });
+    }
+
+    // 2. סינון לפי עמודות
+    Object.entries(columnFilters).forEach(([columnKey, filterValue]) => {
+      if (filterValue) {
+        const searchLower = filterValue.toLowerCase();
+        result = result.filter(row => {
+          const value = String(row[columnKey] || '').toLowerCase();
+          return value.includes(searchLower);
+        });
+      }
+    });
+
+    // 3. מיון
+    if (sortColumn) {
+      result.sort((a, b) => {
+        const aVal = a[sortColumn] || '';
+        const bVal = b[sortColumn] || '';
+        
+        // נסה להמיר למספרים אם אפשר
+        const aNum = Number(aVal);
+        const bNum = Number(bVal);
+        
+        if (!isNaN(aNum) && !isNaN(bNum)) {
+          // מיון מספרי
+          return sortDirection === 'asc' ? aNum - bNum : bNum - aNum;
+        } else {
+          // מיון טקסטואלי
+          const comparison = String(aVal).localeCompare(String(bVal), 'he');
+          return sortDirection === 'asc' ? comparison : -comparison;
+        }
+      });
+    }
+
+    return result;
+  }, [rowsData, columns, sortColumn, sortDirection, globalFilter, columnFilters]);
+
+  // עדכון סינון עמודה
+  const updateColumnFilter = (columnKey, value) => {
+    setColumnFilters(prev => {
+      if (!value) {
+        const { [columnKey]: removed, ...rest } = prev;
+        return rest;
+      }
+      return { ...prev, [columnKey]: value };
+    });
+  };
+
+  // ניקוי כל הסינונים
+  const clearAllFilters = () => {
+    setGlobalFilter("");
+    setColumnFilters({});
+    setSortColumn(null);
+    setSortDirection('asc');
+    toast.success('✓ כל הסינונים והמיונים נוקו');
+  };
 
   const addNewRow = async () => {
     const newRow = { id: `row_${Date.now()}` };
@@ -215,8 +310,8 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     // כותרות
     const headers = visibleColumns.map(col => col.title).join(',');
     
-    // שורות
-    const rows = rowsData.map(row => {
+    // שורות - השתמש בנתונים המסוננים והממוינים
+    const rows = filteredAndSortedData.map(row => {
       return visibleColumns.map(col => {
         const value = row[col.key] || '';
         // Escape commas and quotes
@@ -259,7 +354,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     }
 
     // Click רגיל = עריכה
-    const row = rowsData.find(r => r.id === rowId);
+    const row = filteredAndSortedData.find(r => r.id === rowId);
     if (!row) return;
 
     const currentValue = row[columnKey] || '';
@@ -271,6 +366,13 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   };
 
   const handleColumnHeaderClick = (columnKey, event) => {
+    // Shift+Click = מיון
+    if (event?.shiftKey) {
+      event.preventDefault();
+      handleSort(columnKey);
+      return;
+    }
+
     // Ctrl+Click = תפריט הגדרות עמודה
     if (event?.ctrlKey || event?.metaKey) {
       event.preventDefault();
@@ -362,23 +464,32 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   }
 
   const visibleColumns = columns.filter(col => col.visible !== false);
+  const hasActiveFilters = globalFilter || Object.keys(columnFilters).length > 0 || sortColumn;
 
   console.log('🎨 Rendering table:', {
     visibleColumns: visibleColumns.length,
-    rows: rowsData.length,
-    rowsData
+    totalRows: rowsData.length,
+    filteredRows: filteredAndSortedData.length,
+    sortColumn,
+    sortDirection
   });
 
   return (
     <div className="w-full" dir="rtl">
       <Card className="shadow-lg">
-        <CardHeader className="border-b">
+        <CardHeader className="border-b space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Table className="w-6 h-6 text-purple-600" />
               <CardTitle className="text-xl">{spreadsheet.name}</CardTitle>
-              <Badge variant="outline">{rowsData.length} שורות</Badge>
+              <Badge variant="outline">{filteredAndSortedData.length}/{rowsData.length} שורות</Badge>
               <Badge variant="outline">{visibleColumns.length}/{columns.length} עמודות</Badge>
+              {hasActiveFilters && (
+                <Badge className="bg-blue-600 text-white">
+                  <Filter className="w-3 h-3 ml-1" />
+                  פעיל
+                </Badge>
+              )}
             </div>
             
             <div className="flex gap-2">
@@ -418,6 +529,15 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                 </>
               )}
               <Button 
+                onClick={() => setShowFilterDialog(true)} 
+                size="sm" 
+                variant={hasActiveFilters ? "default" : "outline"}
+                className="gap-2"
+              >
+                <Filter className="w-4 h-4" />
+                סינון
+              </Button>
+              <Button 
                 onClick={() => setShowSettingsDialog(true)} 
                 size="sm" 
                 variant="ghost"
@@ -432,6 +552,25 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
               </Button>
             </div>
           </div>
+
+          {/* שורת חיפוש מהיר */}
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Input
+                placeholder="חיפוש בכל הטבלה..."
+                value={globalFilter}
+                onChange={(e) => setGlobalFilter(e.target.value)}
+                className="pr-10"
+              />
+            </div>
+            {hasActiveFilters && (
+              <Button size="sm" variant="ghost" onClick={clearAllFilters} className="gap-2">
+                <XCircle className="w-4 h-4" />
+                נקה הכל
+              </Button>
+            )}
+          </div>
         </CardHeader>
 
         <CardContent className="p-0">
@@ -441,6 +580,8 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                 <tr>
                   {visibleColumns.map(col => {
                     const isEditing = editingColumnKey === col.key;
+                    const isSorted = sortColumn === col.key;
+                    const hasFilter = columnFilters[col.key];
                     
                     return (
                       <th
@@ -469,76 +610,114 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                           </div>
                         ) : (
                           <div className="flex items-center justify-between">
-                            <span>{col.title}</span>
-                            <Popover 
-                              open={popoverOpen === `header_${col.key}`}
-                              onOpenChange={(open) => !open && setPopoverOpen(null)}
-                            >
-                              <PopoverTrigger asChild>
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-6 w-6 opacity-0 group-hover:opacity-100"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setPopoverOpen(`header_${col.key}`);
-                                  }}
-                                >
-                                  <Settings className="w-3 h-3" />
-                                </Button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-56" align="start">
-                                <div className="space-y-2">
-                                  <h4 className="font-semibold text-sm mb-3">{col.title}</h4>
+                            <div className="flex items-center gap-2">
+                              <span>{col.title}</span>
+                              {isSorted && (
+                                sortDirection === 'asc' ? 
+                                  <ArrowUp className="w-4 h-4 text-blue-600" /> : 
+                                  <ArrowDown className="w-4 h-4 text-blue-600" />
+                              )}
+                              {hasFilter && (
+                                <Badge variant="outline" className="h-5 px-1 text-xs bg-blue-50">
+                                  <Filter className="w-3 h-3" />
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-6 w-6"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleSort(col.key);
+                                }}
+                                title="מיין (או Shift+Click)"
+                              >
+                                <ArrowUpDown className="w-3 h-3" />
+                              </Button>
+                              <Popover 
+                                open={popoverOpen === `header_${col.key}`}
+                                onOpenChange={(open) => !open && setPopoverOpen(null)}
+                              >
+                                <PopoverTrigger asChild>
                                   <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="w-full justify-start gap-2"
-                                    onClick={() => {
-                                      setEditingColumnKey(col.key);
-                                      setEditingColumnTitle(col.title);
-                                      setPopoverOpen(null);
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-6 w-6"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setPopoverOpen(`header_${col.key}`);
                                     }}
                                   >
-                                    <Edit2 className="w-4 h-4" />
-                                    שנה שם
+                                    <Settings className="w-3 h-3" />
                                   </Button>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="w-full justify-start gap-2"
-                                    onClick={() => {
-                                      toggleColumnVisibility(col.key);
-                                      setPopoverOpen(null);
-                                    }}
-                                  >
-                                    {col.visible !== false ? (
-                                      <>
-                                        <EyeOff className="w-4 h-4" />
-                                        הסתר עמודה
-                                      </>
-                                    ) : (
-                                      <>
-                                        <Eye className="w-4 h-4" />
-                                        הצג עמודה
-                                      </>
-                                    )}
-                                  </Button>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="w-full justify-start gap-2 text-red-600"
-                                    onClick={() => {
-                                      deleteColumn(col.key);
-                                      setPopoverOpen(null);
-                                    }}
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                    מחק עמודה
-                                  </Button>
-                                </div>
-                              </PopoverContent>
-                            </Popover>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-56" align="start">
+                                  <div className="space-y-2">
+                                    <h4 className="font-semibold text-sm mb-3">{col.title}</h4>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="w-full justify-start gap-2"
+                                      onClick={() => {
+                                        setEditingColumnKey(col.key);
+                                        setEditingColumnTitle(col.title);
+                                        setPopoverOpen(null);
+                                      }}
+                                    >
+                                      <Edit2 className="w-4 h-4" />
+                                      שנה שם
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="w-full justify-start gap-2"
+                                      onClick={() => {
+                                        handleSort(col.key);
+                                        setPopoverOpen(null);
+                                      }}
+                                    >
+                                      <ArrowUpDown className="w-4 h-4" />
+                                      מיין עמודה
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="w-full justify-start gap-2"
+                                      onClick={() => {
+                                        toggleColumnVisibility(col.key);
+                                        setPopoverOpen(null);
+                                      }}
+                                    >
+                                      {col.visible !== false ? (
+                                        <>
+                                          <EyeOff className="w-4 h-4" />
+                                          הסתר עמודה
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Eye className="w-4 h-4" />
+                                          הצג עמודה
+                                        </>
+                                      )}
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="w-full justify-start gap-2 text-red-600"
+                                      onClick={() => {
+                                        deleteColumn(col.key);
+                                        setPopoverOpen(null);
+                                      }}
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                      מחק עמודה
+                                    </Button>
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
+                            </div>
                           </div>
                         )}
                       </th>
@@ -551,14 +730,18 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
               </thead>
 
               <tbody>
-                {rowsData.length === 0 ? (
+                {filteredAndSortedData.length === 0 ? (
                   <tr>
                     <td colSpan={visibleColumns.length + 1} className="text-center py-12 text-slate-500 border">
-                      אין שורות בטבלה - לחץ "הוסף שורה"
+                      {rowsData.length === 0 ? (
+                        <>אין שורות בטבלה - לחץ "הוסף שורה"</>
+                      ) : (
+                        <>אין תוצאות מתאימות לחיפוש</>
+                      )}
                     </td>
                   </tr>
                 ) : (
-                  rowsData.map((row, rowIndex) => {
+                  filteredAndSortedData.map((row, rowIndex) => {
                     console.log(`🔍 Rendering row ${rowIndex}:`, row);
                     
                     return (
@@ -657,10 +840,148 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
           </div>
         </CardContent>
 
-        <div className="px-6 py-3 border-t bg-slate-50 text-xs text-slate-600">
-          {rowsData.length} שורות • {visibleColumns.length} עמודות גלויות • {Object.keys(cellStyles).length} תאים מעוצבים
+        <div className="px-6 py-3 border-t bg-slate-50 text-xs text-slate-600 flex items-center justify-between">
+          <div>
+            {filteredAndSortedData.length} מתוך {rowsData.length} שורות • {visibleColumns.length} עמודות גלויות • {Object.keys(cellStyles).length} תאים מעוצבים
+          </div>
+          {hasActiveFilters && (
+            <div className="flex items-center gap-2 text-blue-600">
+              <Filter className="w-3 h-3" />
+              <span>סינון פעיל</span>
+            </div>
+          )}
         </div>
       </Card>
+
+      {/* דיאלוג סינון מתקדם */}
+      <Dialog open={showFilterDialog} onOpenChange={setShowFilterDialog}>
+        <DialogContent className="max-w-2xl" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl flex items-center gap-2">
+              <Filter className="w-6 h-6" />
+              סינון וחיפוש מתקדם
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-6 mt-4">
+            {/* חיפוש גלובלי */}
+            <div className="space-y-2">
+              <h3 className="font-bold flex items-center gap-2">
+                <Search className="w-5 h-5" />
+                חיפוש גלובלי
+              </h3>
+              <Input
+                placeholder="חפש בכל העמודות..."
+                value={globalFilter}
+                onChange={(e) => setGlobalFilter(e.target.value)}
+                className="text-lg"
+              />
+            </div>
+
+            <Separator />
+
+            {/* מיון */}
+            <div className="space-y-2">
+              <h3 className="font-bold flex items-center gap-2">
+                <ArrowUpDown className="w-5 h-5" />
+                מיון
+              </h3>
+              <div className="flex gap-3">
+                <Select value={sortColumn || ''} onValueChange={(val) => {
+                  if (val) {
+                    setSortColumn(val);
+                  } else {
+                    setSortColumn(null);
+                  }
+                }}>
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="בחר עמודה למיון" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={null}>ללא מיון</SelectItem>
+                    {columns.map(col => (
+                      <SelectItem key={col.key} value={col.key}>
+                        {col.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                
+                {sortColumn && (
+                  <Select value={sortDirection} onValueChange={setSortDirection}>
+                    <SelectTrigger className="w-40">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="asc">
+                        <div className="flex items-center gap-2">
+                          <ArrowUp className="w-4 h-4" />
+                          עולה (א-ת, 0-9)
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="desc">
+                        <div className="flex items-center gap-2">
+                          <ArrowDown className="w-4 h-4" />
+                          יורד (ת-א, 9-0)
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* סינון לפי עמודות */}
+            <div className="space-y-3">
+              <h3 className="font-bold flex items-center gap-2">
+                <Filter className="w-5 h-5" />
+                סינון לפי עמודות
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-96 overflow-y-auto">
+                {columns.map(col => (
+                  <div key={col.key} className="space-y-1">
+                    <label className="text-sm font-medium text-slate-700">
+                      {col.title}
+                    </label>
+                    <Input
+                      placeholder={`סנן לפי ${col.title}...`}
+                      value={columnFilters[col.key] || ''}
+                      onChange={(e) => updateColumnFilter(col.key, e.target.value)}
+                      className="h-9"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* תוצאות */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div className="text-sm">
+                  <span className="font-bold text-blue-900">{filteredAndSortedData.length}</span>
+                  <span className="text-blue-700"> מתוך </span>
+                  <span className="font-bold text-blue-900">{rowsData.length}</span>
+                  <span className="text-blue-700"> שורות</span>
+                </div>
+                {hasActiveFilters && (
+                  <Button size="sm" variant="outline" onClick={clearAllFilters}>
+                    <XCircle className="w-4 h-4 ml-2" />
+                    נקה הכל
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="mt-6">
+            <Button onClick={() => setShowFilterDialog(false)} className="w-full">
+              סגור
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* דיאלוג הגדרות מתקדם */}
       <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
@@ -841,6 +1162,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                 <li>• <kbd className="px-2 py-1 bg-white rounded text-xs">Ctrl+Click</kbd> על תא = תפריט צבעים</li>
                 <li>• <kbd className="px-2 py-1 bg-white rounded text-xs">Alt+Click</kbd> על תא = בחירה מרובה</li>
                 <li>• <kbd className="px-2 py-1 bg-white rounded text-xs">Click</kbd> על כותרת = שינוי שם</li>
+                <li>• <kbd className="px-2 py-1 bg-white rounded text-xs">Shift+Click</kbd> על כותרת = מיון מהיר</li>
                 <li>• <kbd className="px-2 py-1 bg-white rounded text-xs">Ctrl+Click</kbd> על כותרת = תפריט עמודה</li>
               </ul>
             </div>
