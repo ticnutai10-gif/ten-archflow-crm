@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { Client, Project, TimeLog, CustomSpreadsheet } from "@/entities/all"; // Added CustomSpreadsheet
+import { Client, Project, TimeLog } from "@/entities/all";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -13,8 +13,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator
+  DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -47,9 +46,7 @@ import {
   Sparkles,
   RefreshCw,
   ChevronDown,
-  MoreVertical,
-  FileDown,
-  Database
+  MoreVertical
 } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
@@ -67,9 +64,6 @@ import ClientImporter from "../components/clients/ClientImporter";
 import GoogleSheetsManager from "../components/clients/GoogleSheetsManager";
 import ClientMerger from "../components/clients/ClientMerger";
 import GoogleSheetsImporter from "../components/clients/GoogleSheetsImporter";
-import SmartClientImporter from "../components/clients/SmartClientImporter";
-import ClientImportWizard from "../components/clients/ClientImportWizard";
-import TableManager from "../components/clients/TableManager";
 import { useAccessControl, autoAssignToCreator } from "../components/access/AccessValidator";
 import { toast } from "sonner";
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
@@ -98,12 +92,6 @@ export default function ClientsPage() {
   const [showMerger, setShowMerger] = useState(false);
   const [showSheetsImporter, setShowSheetsImporter] = useState(false);
   const [isCleaningNames, setIsCleaningNames] = useState(false);
-  const [showSmartImporter, setShowSmartImporter] = useState(false);
-  const [showNewImporter, setShowNewImporter] = useState(false);
-  const [showTableManager, setShowTableManager] = useState(false);
-  const [customTables, setCustomTables] = useState([]); // NEW
-  const [selectedTable, setSelectedTable] = useState(null); // NEW
-  const [activeTab, setActiveTab] = useState('clients'); // NEW
 
   // scrollContainerRef is kept but its role in virtual scrolling is removed.
   // It could still be used for general layout purposes if needed, but no longer directly controls scroll behavior for DND/grid.
@@ -162,18 +150,6 @@ export default function ClientsPage() {
       });
   }, [clients, searchTerm, statusFilter, sourceFilter, budgetFilter, sortBy]);
 
-  // NEW: Load custom tables
-  const loadCustomTables = async () => {
-    try {
-      const tables = await base44.entities.CustomSpreadsheet.list('-created_date');
-      console.log('📊 [CLIENTS PAGE] Loaded custom tables:', tables.length);
-      setCustomTables(tables || []);
-    } catch (error) {
-      console.error('❌ Error loading custom tables:', error);
-      toast.error('שגיאה בטעינת טבלאות מותאמות');
-    }
-  };
-
   useEffect(() => {
     if (!accessLoading) {
       console.log('📊 [CLIENTS PAGE] Access loaded:', {
@@ -182,7 +158,6 @@ export default function ClientsPage() {
         canCreate: canCreateClient
       });
       loadClients();
-      loadCustomTables(); // Load custom tables
     }
   }, [accessLoading]);
 
@@ -361,6 +336,7 @@ export default function ClientsPage() {
           client.status || '',
           client.source || '',
           client.budget_range || '',
+          client.notes || '',
           client.created_date ? new Date(client.created_date).toLocaleDateString('he-IL') : ''].
           map((field) => `"${String(field).replace(/"/g, '""')}"`).join(','))].
         join('\n');
@@ -568,11 +544,6 @@ export default function ClientsPage() {
     toast.success('סדר הלקוחות עודכן');
   };
 
-  // Utility to create a page URL - placeholder, adjust based on actual routing setup
-  const createPageUrl = (path) => {
-    // Example for a simple routing:
-    return `/dashboard/${path}`;
-  };
 
   console.log('🔵 [CLIENTS PAGE] Rendering, viewMode:', viewMode);
 
@@ -624,17 +595,310 @@ export default function ClientsPage() {
       dir="rtl"
       style={{
         backgroundColor: 'var(--bg-cream, #FCF6E3)',
-        width: '100%'
+        width: '100%' // Changed overflow to visible for scrollArea to manage
       }}>
 
-      {/* New Importer Dialog */}
-      {showNewImporter && (
-        <ClientImportWizard
-          open={showNewImporter}
-          onClose={() => setShowNewImporter(false)}
-          onSuccess={loadClients}
-        />
-      )}
+      {/* כותרת העמוד */}
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-4 gap-4">
+        <div className="text-right">
+          <h1 className="text-3xl font-bold text-slate-900 mb-2">ניהול לקוחות</h1>
+          <p className="text-slate-600">ניהול מאגר הלקוחות והפרויקטים שלהם</p>
+        </div>
+      </div>
+
+      {/* סטטיסטיקות */}
+      <div className="mb-6">
+        <ClientStats clients={clients} isLoading={isLoading} />
+      </div>
+
+      {/* כפתורי הפעולה (Toolbar) */}
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
+        {/* Left group of buttons */}
+        <div className="flex flex-wrap gap-3">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="bg-background text-slate-800 px-4 py-2 text-sm font-medium rounded-md inline-flex items-center justify-center whitespace-nowrap ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border hover:text-accent-foreground h-10 gap-2 border-slate-200 hover:bg-slate-50">
+                <FileSpreadsheet className="w-4 h-4" style={{ color: iconColor }} />
+                פעולות נתונים
+                <ChevronDown className="w-4 h-4" style={{ color: iconColor }} />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-80 max-h-96 overflow-y-auto" dir="rtl">
+              {/* Google Sheets Manager בתוך התפריט */}
+              <div className="p-4 border-b border-slate-200">
+                <GoogleSheetsManager
+                  clients={filteredAndSortedClients}
+                  onRefresh={loadClients} />
+              </div>
+
+              <DropdownMenuItem onClick={openGoogleSheet} className="gap-3">
+                <FileSpreadsheet className="w-4 h-4" style={{ color: iconColor }} />
+                פתח Google Sheets
+              </DropdownMenuItem>
+
+              <DropdownMenuItem onClick={() => setShowSheetsImporter(true)} className="gap-3">
+                <Upload className="w-4 h-4" style={{ color: iconColor }} />
+                ייבא מ-Google Sheets
+              </DropdownMenuItem>
+
+              <div className="px-2 py-1.5 hover:bg-slate-50 rounded-sm">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Download className="w-4 h-4" style={{ color: iconColor }} />
+                    <span className="text-sm">ייצא לאקסל (CSV)</span>
+                  </div>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        exportToCSV();
+                      }}
+                      className="p-1 hover:bg-slate-100 rounded active:bg-slate-200"
+                      title="הורד קובץ מקומי"
+                      style={{ color: iconColor }}>
+                      <Download className="w-3 h-3" />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        createAndSendCSV('whatsapp');
+                      }}
+                      className="p-1 hover:bg-slate-100 rounded active:bg-slate-200"
+                      title="יצור CSV ושלח לוואטסאפ"
+                      style={{ color: iconColor }}>
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.890-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        createAndSendCSV('email');
+                      }}
+                      className="p-1 hover:bg-slate-100 rounded active:bg-slate-200"
+                      title="יצור CSV ושלח במייל"
+                      style={{ color: iconColor }}>
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <DropdownMenuItem onClick={() => setShowImporter(true)} className="gap-3">
+                <FileText className="w-4 h-4" style={{ color: iconColor }} />
+                ייבא לקוחות מקובץ
+              </DropdownMenuItem>
+
+              <div className="my-1 h-px bg-slate-200"></div>
+
+              <DropdownMenuItem onClick={deleteUnnamedClients} className="gap-3 text-red-600 focus:text-red-700">
+                <Eraser className="w-4 h-4" style={{ color: iconColor }} />
+                מחק לקוחות ללא שם
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {duplicateCount > 0 && (
+            <Button
+              variant="outline"
+              onClick={() => setShowMerger(true)}
+              className="gap-2 border-amber-200 text-amber-700 hover:bg-amber-50">
+              <Users className="w-4 h-4" style={{ color: iconColor }} />
+              מזג כפולים ({duplicateCount})
+            </Button>
+          )}
+
+          <Button
+            variant={selectionMode ? "default" : "outline"}
+            onClick={toggleSelectionMode}
+            className={selectionMode ? "bg-[#2C3A50] hover:bg-[#1f2937] text-white" : ""}
+            title="מצב בחירה מרובה">
+            {selectionMode ? (
+              <>
+                <CheckSquare className="w-4 h-4 ml-2" />
+                ביטול בחירה
+              </>
+            ) : (
+              <>
+                <Square className="w-4 h-4 ml-2" style={{ color: iconColor }} />
+                מצב בחירה
+              </>
+            )}
+          </Button>
+        </div>
+
+        {/* Right group of buttons */}
+        <div className="flex items-center gap-3">
+          {/* View Mode Selector */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                className="gap-2 bg-white border-slate-200 hover:bg-slate-50">
+                <Eye className="w-4 h-4" style={{ color: iconColor }} />
+                <span className="text-sm">תצוגה</span>
+                <ChevronDown className="w-4 h-4" style={{ color: iconColor }} />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56" dir="rtl">
+              <DropdownMenuItem
+                onClick={() => setViewMode("grid")}
+                className={`flex items-center gap-3 cursor-pointer ${viewMode === "grid" ? "bg-blue-50 text-blue-700" : ""}`}>
+                <LayoutGrid className="w-4 h-4" style={{ color: viewMode === "grid" ? undefined : iconColor }} />
+                <span className="flex-1">כרטיסים</span>
+                {viewMode === "grid" && <Eye className="w-4 h-4 text-blue-600" />}
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                onClick={() => setViewMode("list")}
+                className={`flex items-center gap-3 cursor-pointer ${viewMode === "list" ? "bg-blue-50 text-blue-700" : ""}`}>
+                <List className="w-4 h-4" style={{ color: viewMode === "list" ? undefined : iconColor }} />
+                <span className="flex-1">רשימה</span>
+                {viewMode === "list" && <Eye className="w-4 h-4 text-blue-600" />}
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                onClick={() => setViewMode("compact")}
+                className={`flex items-center gap-3 cursor-pointer ${viewMode === "compact" ? "bg-blue-50 text-blue-700" : ""}`}>
+                <Users className="w-4 h-4" style={{ color: viewMode === "compact" ? undefined : iconColor }} />
+                <span className="flex-1">קומפקטי</span>
+                {viewMode === "compact" && <Eye className="w-4 h-4 text-blue-600" />}
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                onClick={() => setViewMode("detailed")}
+                className={`flex items-center gap-3 cursor-pointer ${viewMode === "detailed" ? "bg-blue-50 text-blue-700" : ""}`}>
+                <FileText className="w-4 h-4" style={{ color: viewMode === "detailed" ? undefined : iconColor }} />
+                <span className="flex-1">מפורט</span>
+                {viewMode === "detailed" && <Eye className="w-4 h-4 text-blue-600" />}
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                onClick={() => setViewMode("table")}
+                className={`flex items-center gap-3 cursor-pointer ${viewMode === "table" ? "bg-blue-50 text-blue-700" : ""}`}>
+                <TableIcon className="w-4 h-4" style={{ color: viewMode === "table" ? undefined : iconColor }} />
+                <span className="flex-1">טבלה</span>
+                {viewMode === "table" && <Eye className="w-4 h-4 text-blue-600" />}
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                onClick={() => setViewMode("kanban")}
+                className={`flex items-center gap-3 cursor-pointer ${viewMode === "kanban" ? "bg-blue-50 text-blue-700" : ""}`}>
+                <CheckSquare className="w-4 h-4" style={{ color: viewMode === "kanban" ? undefined : iconColor }} />
+                <span className="flex-1">לוח קנבן</span>
+                {viewMode === "kanban" && <Eye className="w-4 h-4 text-blue-600" />}
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                onClick={() => setViewMode("spreadsheet")}
+                className={`flex items-center gap-3 cursor-pointer ${viewMode === "spreadsheet" ? "bg-blue-50 text-blue-700" : ""}`}>
+                <FileSpreadsheet className="w-4 h-4" style={{ color: viewMode === "spreadsheet" ? undefined : iconColor }} />
+                <span className="flex-1">Excel</span>
+                {viewMode === "spreadsheet" && <Eye className="w-4 h-4 text-blue-600" />}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <Button
+            onClick={() => {
+              console.log('🖱️ [UI] Clean Names button clicked!');
+              cleanAllNames();
+            }}
+            disabled={isCleaningNames}
+            variant="outline"
+            className="bg-background text-slate-800 px-4 py-2 text-sm font-medium rounded-xl inline-flex items-center justify-center gap-2 whitespace-nowrap ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-10 border-slate-200 hover:bg-slate-50">
+            {isCleaningNames ? (
+              <>
+                <RefreshCw className="w-4 h-4 ml-2 animate-spin" style={{ color: iconColor }} />
+                מנקה שמות...
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4 ml-2" style={{ color: iconColor }} />
+                נקה שמות אוטומטית
+              </>
+            )}
+          </Button>
+
+          {canCreateClient && (
+            <Button
+              onClick={() => setShowForm(true)}
+              className="bg-[#2C3A50] text-white px-6 py-2 text-sm font-medium rounded-xl inline-flex items-center justify-center gap-2 whitespace-nowrap ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-10 hover:bg-[#1f2937] shadow-lg hover:shadow-xl transition-all duration-200">
+              <Plus className="w-5 h-5 ml-2" />
+              לקוח חדש
+            </Button>
+          )}
+        </div>
+      </div>
+
+
+      {/* שורת החיפוש והפילטרים */}
+      <Card className="mb-6 shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+        <CardContent className="p-6">
+          <div className="flex flex-col lg:flex-row gap-4" dir="rtl">
+            <div className="relative flex-1">
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5" style={{ color: iconColor }} />
+              <Input
+                placeholder="חיפוש לקוח (שם, טלפון, אימייל)..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pr-10 text-right" />
+            </div>
+
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full lg:w-40">
+                <SelectValue placeholder="סטטוס" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">כל הסטטוסים</SelectItem>
+                <SelectItem value="פוטנציאלי">פוטנציאלי</SelectItem>
+                <SelectItem value="פעיל">פעיל</SelectItem>
+                <SelectItem value="לא פעיל">לא פעיל</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={sourceFilter} onValueChange={setSourceFilter}>
+              <SelectTrigger className="w-full lg:w-40">
+                <SelectValue placeholder="מקור הגעה" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">כל המקורות</SelectItem>
+                <SelectItem value="הפניה">הפניה</SelectItem>
+                <SelectItem value="אתר אינטרנט">אתר אינטרנט</SelectItem>
+                <SelectItem value="מדיה חברתית">מדיה חברתית</SelectItem>
+                <SelectItem value="פרסומת">פרסומת</SelectItem>
+                <SelectItem value="אחר">אחר</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={budgetFilter} onValueChange={setBudgetFilter}>
+              <SelectTrigger className="w-full lg:w-40">
+                <SelectValue placeholder="טווח תקציב" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">כל התקציבים</SelectItem>
+                <SelectItem value="עד 5,000 ש״ח">עד 5,000 ש״ח</SelectItem>
+                <SelectItem value="5,000 - 10,000 ש״ח">5,000 - 10,000 ש״ח</SelectItem>
+                <SelectItem value="10,000 - 20,000 ש״ח">10,000 - 20,000 ש״ח</SelectItem>
+                <SelectItem value="מעל 20,000 ש״ח">מעל 20,000 ש״ח</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="w-full lg:w-40">
+                <SelectValue placeholder="מיון" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="name">לפי שם</SelectItem>
+                <SelectItem value="created_date">לפי תאריך</SelectItem>
+                <SelectItem value="status">לפי סטטוס</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Dialogs and imports */}
       {showImporter &&
@@ -660,13 +924,31 @@ export default function ClientsPage() {
         </div>
       }
 
-      {showSmartImporter &&
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <SmartClientImporter
-            open={showSmartImporter}
-            onClose={() => setShowSmartImporter(false)}
-            onSuccess={loadClients} // Using loadClients as the equivalent of loadData
-          />
+      {/* Selection toolbar */}
+      {selectionMode && selectedIds.length > 0 &&
+        <div className="mb-4 bg-white border rounded-xl p-3 flex items-center justify-between animate-in slide-in-from-top-2">
+          <div className="text-slate-700 flex items-center gap-2">
+            <CheckSquare className="w-5 h-5" style={{ color: iconColor }} />
+            נבחרו {selectedIds.length} לקוחות
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={selectAllClients}
+              className="gap-2"
+              disabled={filteredAndSortedClients.length === 0}>
+              <CheckSquare className="w-4 h-4" style={{ color: iconColor }} />
+              {selectedIds.length === filteredAndSortedClients.length && filteredAndSortedClients.length > 0 ? 'בטל הכל' : 'בחר הכל'}
+            </Button>
+            <Button variant="outline" onClick={handleBulkCopy} className="gap-2">
+              <Copy className="w-4 h-4" style={{ color: iconColor }} />
+              העתק
+            </Button>
+            <Button variant="destructive" onClick={handleBulkDelete} className="gap-2">
+              <Trash2 className="w-4 h-4" />
+              מחק
+            </Button>
+          </div>
         </div>
       }
 
@@ -683,879 +965,406 @@ export default function ClientsPage() {
         </div>
       }
 
-      {/* Table Manager */}
-      {showTableManager && (
-        <TableManager
-          open={showTableManager}
-          onClose={() => {
-            setShowTableManager(false);
-            loadCustomTables(); // Reload tables when closed
-          }}
-          onTableSelect={(table) => {
-            console.log('Selected table:', table);
-            setSelectedTable(table); // Set selected table
-            setShowTableManager(false); // Close manager
-          }}
-        />
-      )}
-
-      {/* כותרת העמוד */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-4 gap-4">
-        <div className="text-right">
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">ניהול לקוחות</h1>
-          <p className="text-slate-600">ניהול מאגר הלקוחות והפרויקטים שלהם</p>
-        </div>
-
-        {/* כפתור ניהול טבלאות */}
-        <Button
-          onClick={() => setShowTableManager(true)}
-          variant="outline"
-          className="gap-2 border-2 border-blue-200 hover:bg-blue-50"
-        >
-          <Database className="w-4 h-4" style={{ color: iconColor }} />
-          נהל טבלאות
-        </Button>
-      </div>
-
-      {/* סטטיסטיקות */}
-      <div className="mb-6">
-        <ClientStats clients={clients} isLoading={isLoading} />
-      </div>
-
-      {/* Tabs for clients and custom tables */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full" dir="rtl">
-        <TabsList className="mb-6 bg-white border-2 border-slate-200 p-1">
-          <TabsTrigger value="clients" className="gap-2 data-[state=active]:bg-[#2C3A50] data-[state=active]:text-white">
-            <Users className="w-4 h-4" />
-            לקוחות ({clients.length})
-          </TabsTrigger>
-          <TabsTrigger value="tables" className="gap-2 data-[state=active]:bg-[#2C3A50] data-[state=active]:text-white">
-            <Database className="w-4 h-4" />
-            טבלאות ({customTables.length})
-          </TabsTrigger>
-        </TabsList>
-
-        {/* Clients Tab */}
-        <TabsContent value="clients" className="mt-0">
-          {/* Toolbar - Combined search, filters and buttons */}
-          <div className="mb-6 flex flex-col lg:flex-row items-center justify-between bg-white rounded-xl shadow-sm p-4 border border-slate-200" dir="rtl">
-            {/* Search and Filters group */}
-            <div className="flex flex-wrap items-center gap-4 w-full lg:w-auto mb-4 lg:mb-0">
-              <div className="relative flex-1 min-w-[200px]">
-                <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5" style={{ color: iconColor }} />
-                <Input
-                  placeholder="חיפוש לקוח (שם, טלפון, אימייל)..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pr-10 text-right" />
-              </div>
-
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full lg:w-40">
-                  <SelectValue placeholder="סטטוס" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">כל הסטטוסים</SelectItem>
-                  <SelectItem value="פוטנציאלי">פוטנציאלי</SelectItem>
-                  <SelectItem value="פעיל">פעיל</SelectItem>
-                  <SelectItem value="לא פעיל">לא פעיל</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={sourceFilter} onValueChange={setSourceFilter}>
-                <SelectTrigger className="w-full lg:w-40">
-                  <SelectValue placeholder="מקור הגעה" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">כל המקורות</SelectItem>
-                  <SelectItem value="הפניה">הפניה</SelectItem>
-                  <SelectItem value="אתר אינטרנט">אתר אינטרנט</SelectItem>
-                  <SelectItem value="מדיה חברתית">מדיה חברתית</SelectItem>
-                  <SelectItem value="פרסומת">פרסומת</SelectItem>
-                  <SelectItem value="אחר">אחר</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={budgetFilter} onValueChange={setBudgetFilter}>
-                <SelectTrigger className="w-full lg:w-40">
-                  <SelectValue placeholder="טווח תקציב" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">כל התקציבים</SelectItem>
-                  <SelectItem value="עד 5,000 ש״ח">עד 5,000 ש״ח</SelectItem>
-                  <SelectItem value="5,000 - 10,000 ש״ח">5,000 - 10,000 ש״ח</SelectItem>
-                  <SelectItem value="10,000 - 20,000 ש״ח">10,000 - 20,000 ש״ח</SelectItem>
-                  <SelectItem value="מעל 20,000 ש״ח">מעל 20,000 ש״ח</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="w-full lg:w-40">
-                  <SelectValue placeholder="מיון" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="name">לפי שם</SelectItem>
-                  <SelectItem value="created_date">לפי תאריך</SelectItem>
-                  <SelectItem value="status">לפי סטטוס</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Buttons group */}
-            <div className="flex flex-wrap items-center gap-3">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="bg-background text-slate-800 px-4 py-2 text-sm font-medium rounded-md inline-flex items-center justify-center whitespace-nowrap ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border hover:text-accent-foreground h-10 gap-2 border-slate-200 hover:bg-slate-50">
-                    <FileSpreadsheet className="w-4 h-4" style={{ color: iconColor }} />
-                    פעולות נתונים
-                    <ChevronDown className="w-4 h-4" style={{ color: iconColor }} />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-80 max-h-96 overflow-y-auto" dir="rtl">
-                  <div className="p-4 border-b border-slate-200">
-                    <GoogleSheetsManager
-                      clients={filteredAndSortedClients}
-                      onRefresh={loadClients} />
-                  </div>
-
-                  <DropdownMenuItem onClick={openGoogleSheet} className="gap-3">
-                    <FileSpreadsheet className="w-4 h-4" style={{ color: iconColor }} />
-                    פתח Google Sheets
-                  </DropdownMenuItem>
-
-                  <div className="px-2 py-1.5 hover:bg-slate-50 rounded-sm">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <Download className="w-4 h-4" style={{ color: iconColor }} />
-                        <span className="text-sm">ייצא לאקסל (CSV)</span>
-                      </div>
-                      <div className="flex gap-1">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            exportToCSV();
-                          }}
-                          className="p-1 hover:bg-slate-100 rounded active:bg-slate-200"
-                          title="הורד קובץ מקומי"
-                          style={{ color: iconColor }}>
-                          <Download className="w-3 h-3" />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            createAndSendCSV('whatsapp');
-                          }}
-                          className="p-1 hover:bg-slate-100 rounded active:bg-slate-200"
-                          title="יצור CSV ושלח לוואטסאפ"
-                          style={{ color: iconColor }}>
-                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.890-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488" />
-                          </svg>
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            createAndSendCSV('email');
-                          }}
-                          className="p-1 hover:bg-slate-100 rounded active:bg-slate-200"
-                          title="יצור CSV ושלח במייל"
-                          style={{ color: iconColor }}>
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                          </svg>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="my-1 h-px bg-slate-200"></div>
-
-                  <DropdownMenuItem onClick={deleteUnnamedClients} className="gap-3 text-red-600 focus:text-red-700">
-                    <Eraser className="w-4 h-4" style={{ color: iconColor }} />
-                    מחק לקוחות ללא שם
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              {duplicateCount > 0 && (
-                <Button
-                  variant="outline"
-                  onClick={() => setShowMerger(true)}
-                  className="gap-2 border-amber-200 text-amber-700 hover:bg-amber-50">
-                  <Users className="w-4 h-4" style={{ color: iconColor }} />
-                  מזג כפולים ({duplicateCount})
-                </Button>
-              )}
-
-              <Button
-                variant={selectionMode ? "default" : "outline"}
-                onClick={toggleSelectionMode}
-                className={selectionMode ? "bg-[#2C3A50] hover:bg-[#1f2937] text-white" : ""}
-                title="מצב בחירה מרובה">
-                {selectionMode ? (
-                  <>
-                    <CheckSquare className="w-4 h-4 ml-2" />
-                    ביטול בחירה
-                  </>
-                ) : (
-                  <>
-                    <Square className="w-4 h-4 ml-2" style={{ color: iconColor }} />
-                    מצב בחירה
-                  </>
-                )}
-              </Button>
-
-              {/* View Mode Selector */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="gap-2 bg-white border-slate-200 hover:bg-slate-50">
-                    <Eye className="w-4 h-4" style={{ color: iconColor }} />
-                    <span className="text-sm">תצוגה</span>
-                    <ChevronDown className="w-4 h-4" style={{ color: iconColor }} />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56" dir="rtl">
-                  <DropdownMenuItem
-                    onClick={() => setViewMode("grid")}
-                    className={`flex items-center gap-3 cursor-pointer ${viewMode === "grid" ? "bg-blue-50 text-blue-700" : ""}`}>
-                    <LayoutGrid className="w-4 h-4" style={{ color: viewMode === "grid" ? undefined : iconColor }} />
-                    <span className="flex-1">כרטיסים</span>
-                    {viewMode === "grid" && <Eye className="w-4 h-4 text-blue-600" />}
-                  </DropdownMenuItem>
-
-                  <DropdownMenuItem
-                    onClick={() => setViewMode("list")}
-                    className={`flex items-center gap-3 cursor-pointer ${viewMode === "list" ? "bg-blue-50 text-blue-700" : ""}`}>
-                    <List className="w-4 h-4" style={{ color: viewMode === "list" ? undefined : iconColor }} />
-                    <span className="flex-1">רשימה</span>
-                    {viewMode === "list" && <Eye className="w-4 h-4 text-blue-600" />}
-                  </DropdownMenuItem>
-
-                  <DropdownMenuItem
-                    onClick={() => setViewMode("compact")}
-                    className={`flex items-center gap-3 cursor-pointer ${viewMode === "compact" ? "bg-blue-50 text-blue-700" : ""}`}>
-                    <Users className="w-4 h-4" style={{ color: viewMode === "compact" ? undefined : iconColor }} />
-                    <span className="flex-1">קומפקטי</span>
-                    {viewMode === "compact" && <Eye className="w-4 h-4 text-blue-600" />}
-                  </DropdownMenuItem>
-
-                  <DropdownMenuItem
-                    onClick={() => setViewMode("detailed")}
-                    className={`flex items-center gap-3 cursor-pointer ${viewMode === "detailed" ? "bg-blue-50 text-blue-700" : ""}`}>
-                    <FileText className="w-4 h-4" style={{ color: viewMode === "detailed" ? undefined : iconColor }} />
-                    <span className="flex-1">מפורט</span>
-                    {viewMode === "detailed" && <Eye className="w-4 h-4 text-blue-600" />}
-                  </DropdownMenuItem>
-
-                  <DropdownMenuItem
-                    onClick={() => setViewMode("table")}
-                    className={`flex items-center gap-3 cursor-pointer ${viewMode === "table" ? "bg-blue-50 text-blue-700" : ""}`}>
-                    <TableIcon className="w-4 h-4" style={{ color: viewMode === "table" ? undefined : iconColor }} />
-                    <span className="flex-1">טבלה</span>
-                    {viewMode === "table" && <Eye className="w-4 h-4 text-blue-600" />}
-                  </DropdownMenuItem>
-
-                  <DropdownMenuItem
-                    onClick={() => setViewMode("kanban")}
-                    className={`flex items-center gap-3 cursor-pointer ${viewMode === "kanban" ? "bg-blue-50 text-blue-700" : ""}`}>
-                    <CheckSquare className="w-4 h-4" style={{ color: viewMode === "kanban" ? undefined : iconColor }} />
-                    <span className="flex-1">לוח קנבן</span>
-                    {viewMode === "kanban" && <Eye className="w-4 h-4 text-blue-600" />}
-                  </DropdownMenuItem>
-
-                  <DropdownMenuItem
-                    onClick={() => setViewMode("spreadsheet")}
-                    className={`flex items-center gap-3 cursor-pointer ${viewMode === "spreadsheet" ? "bg-blue-50 text-blue-700" : ""}`}>
-                    <FileSpreadsheet className="w-4 h-4" style={{ color: viewMode === "spreadsheet" ? undefined : iconColor }} />
-                    <span className="flex-1">Excel</span>
-                    {viewMode === "spreadsheet" && <Eye className="w-4 h-4 text-blue-600" />}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-2 bg-white border-slate-200 hover:bg-slate-50">
-                    <FileDown className="w-4 h-4" style={{ color: iconColor }} />
-                    ייבוא
-                    <ChevronDown className="w-4 h-4" style={{ color: iconColor }} />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" dir="rtl" className="w-56">
-                  <DropdownMenuItem
-                    onClick={() => setShowNewImporter(true)}
-                    className="gap-2 cursor-pointer bg-gradient-to-r from-purple-50 to-blue-50 border-b-2 border-purple-200"
-                  >
-                    <Sparkles className="w-4 h-4 text-purple-600" />
-                    <div className="flex-1">
-                      <div className="font-bold text-purple-900">🚀 יבוא חדש ומתקדם</div>
-                      <div className="text-xs text-purple-700">מערכת משופרת עם AI</div>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => setShowSmartImporter(true)}
-                    className="gap-2 cursor-pointer"
-                  >
-                    <Sparkles className="w-4 h-4 text-purple-600" />
-                    <div className="flex-1">
-                      <div className="font-semibold">יבוא חכם (ישן)</div>
-                      <div className="text-xs text-slate-500">גרסה קודמת</div>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => setShowImporter(true)}
-                    className="gap-2 cursor-pointer"
-                  >
-                    <Upload className="w-4 h-4" style={{ color: iconColor }} />
-                    יבוא בסיסי
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => setShowSheetsImporter(true)}
-                    className="gap-2 cursor-pointer"
-                  >
-                    <TableIcon className="w-4 h-4" style={{ color: iconColor }} />
-                    ייבוא מ-Google Sheets
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              <Button
-                onClick={() => {
-                  console.log('🖱️ [UI] Clean Names button clicked!');
-                  cleanAllNames();
-                }}
-                disabled={isCleaningNames}
-                variant="outline"
-                className="bg-background text-slate-800 px-4 py-2 text-sm font-medium rounded-xl inline-flex items-center justify-center gap-2 whitespace-nowrap ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-10 border-slate-200 hover:bg-slate-50">
-                {isCleaningNames ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 ml-2 animate-spin" style={{ color: iconColor }} />
-                    מנקה שמות...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-4 h-4 ml-2" style={{ color: iconColor }} />
-                    נקה שמות אוטומטית
-                  </>
-                )}
-              </Button>
-
-              {canCreateClient && (
-                <Button
-                  onClick={() => setShowForm(true)}
-                  className="bg-[#2C3A50] text-white px-6 py-2 text-sm font-medium rounded-xl inline-flex items-center justify-center gap-2 whitespace-nowrap ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-10 hover:bg-[#1f2937] shadow-lg hover:shadow-xl transition-all duration-200">
-                  <Plus className="w-5 h-5 ml-2" />
-                  לקוח חדש
-                </Button>
-              )}
-            </div>
+      {/* Main content - SINGLE RENDER */}
+      <div ref={scrollContainerRef} style={{ width: '100%' }}>
+        {viewMode === "spreadsheet" ? (
+          <div key="spreadsheet-view" style={{ width: '100%', overflow: 'visible' }}>
+            <ClientSpreadsheet
+              clients={filteredAndSortedClients}
+              onEdit={handleEdit}
+              onView={handleViewDetails}
+              isLoading={isLoading}
+            />
           </div>
-
-          {/* Selection toolbar */}
-          {selectionMode && selectedIds.length > 0 &&
-            <div className="mb-4 bg-white border rounded-xl p-3 flex items-center justify-between animate-in slide-in-from-top-2">
-              <div className="text-slate-700 flex items-center gap-2">
-                <CheckSquare className="w-5 h-5" style={{ color: iconColor }} />
-                נבחרו {selectedIds.length} לקוחות
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={selectAllClients}
-                  className="gap-2"
-                  disabled={filteredAndSortedClients.length === 0}>
-                  <CheckSquare className="w-4 h-4" style={{ color: iconColor }} />
-                  {selectedIds.length === filteredAndSortedClients.length && filteredAndSortedClients.length > 0 ? 'בטל הכל' : 'בחר הכל'}
-                </Button>
-                <Button variant="outline" onClick={handleBulkCopy} className="gap-2">
-                  <Copy className="w-4 h-4" style={{ color: iconColor }} />
-                  העתק
-                </Button>
-                <Button variant="destructive" onClick={handleBulkDelete} className="gap-2">
-                  <Trash2 className="w-4 h-4" />
-                  מחק
-                </Button>
-              </div>
-            </div>
-          }
-
-          {/* Main content - SINGLE RENDER */}
-          <div ref={scrollContainerRef} style={{ width: '100%' }}>
-            {viewMode === "spreadsheet" ? (
-              <div key="spreadsheet-view" style={{ width: '100%', overflow: 'visible' }}>
-                <ClientSpreadsheet
-                  clients={filteredAndSortedClients}
-                  onEdit={handleEdit}
-                  onView={handleViewDetails}
-                  isLoading={isLoading}
-                />
-              </div>
-            ) : viewMode === "table" ? (
-              <ClientTable
-                clients={filteredAndSortedClients}
-                onEdit={handleEdit}
-                onView={handleViewDetails}
-                isLoading={isLoading}
-                selectionMode={selectionMode}
-                selectedIds={selectedIds}
-                onToggleSelect={toggleSelect}
-                onCopy={duplicateClient}
-                onDelete={handleDelete}
-              />
-            ) : viewMode === "compact" ? (
-              <ScrollArea className="h-[calc(100vh-380px)] rounded-md pr-4">
-                <div className="space-y-2">
-                  {isLoading ? (
-                    Array(10).fill(0).map((_, i) => (
-                      <div key={i} className="h-20 bg-slate-200 rounded-lg animate-pulse"></div>
-                    ))
-                  ) : filteredAndSortedClients.length === 0 ? (
-                    <div className="text-center py-16">
-                      <Users className="w-16 h-16 mx-auto mb-4" style={{ color: iconColor }} />
-                      <h3 className="text-xl font-semibold text-slate-600 mb-2">
-                        {searchTerm || statusFilter !== "all" || sourceFilter !== "all" || budgetFilter !== "all" ? "לא נמצאו לקוחות" : "אין לקוחות עדיין"}
-                      </h3>
-                      {!searchTerm && statusFilter === "all" && sourceFilter === "all" && budgetFilter === "all" && canCreateClient && (
-                        <Button onClick={() => setShowForm(true)} className="mt-4 bg-[#2C3A50] hover:bg-[#1f2937]">
-                          <Plus className="w-4 h-4 ml-2" />
-                          הוסף לקוח ראשון
-                        </Button>
-                      )}
-                    </div>
-                  ) : (
-                    filteredAndSortedClients.map((client) => (
-                      <div
-                        key={client.id}
-                        className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200 hover:shadow-md transition-all cursor-pointer group"
-                        onClick={() => handleViewDetails(client)}>
-                        <div className="flex items-center gap-4 flex-1 min-w-0">
-                          {selectionMode && (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); toggleSelect(client.id); }}
-                              className="flex-shrink-0">
-                              {selectedIds.includes(client.id) ? (
-                                <CheckSquare className="w-5 h-5" style={{ color: iconColor }} />
-                              ) : (
-                                <Square className="w-5 h-5 text-slate-400" />
-                              )}
-                            </button>
-                          )}
-
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <h3 className="font-semibold text-slate-900 truncate">{highlightText(client.name, searchTerm)}</h3>
-                              <Badge variant="outline" className={`${statusColors[client.status]} text-xs`}>
-                                {client.status}
-                              </Badge>
-                            </div>
-                            <div className="flex items-center gap-3 mt-1 text-sm text-slate-600">
-                              {client.phone && (
-                                <span className="flex items-center gap-1">
-                                  <Phone className="w-3 h-3" style={{ color: iconColor }} />
-                                  {highlightText(client.phone, searchTerm)}
-                                </span>
-                              )}
-                              {client.email && (
-                                <span className="flex items-center gap-1 truncate">
-                                  <Mail className="w-3 h-3" style={{ color: iconColor }} />
-                                  {highlightText(client.email, searchTerm)}
-                                </span>
-                              )}
-                              {client.company && (
-                                <span className="flex items-center gap-1 truncate">
-                                  <Building className="w-3 h-3" style={{ color: iconColor }} />
-                                  {client.company}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => { e.stopPropagation(); handleEdit(client); }}>
-                            <Edit className="w-4 h-4" style={{ color: iconColor }} />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => { e.stopPropagation(); duplicateClient(client); }}>
-                            <Copy className="w-4 h-4" style={{ color: iconColor }} />
-                          </Button>
-                        </div>
-                      </div>
-                    ))
+        ) : viewMode === "table" ? (
+          <ClientTable
+            clients={filteredAndSortedClients}
+            onEdit={handleEdit}
+            onView={handleViewDetails}
+            isLoading={isLoading}
+            selectionMode={selectionMode}
+            selectedIds={selectedIds}
+            onToggleSelect={toggleSelect}
+            onCopy={duplicateClient}
+            onDelete={handleDelete}
+          />
+        ) : viewMode === "compact" ? (
+          <ScrollArea className="h-[calc(100vh-380px)] rounded-md pr-4">
+            <div className="space-y-2">
+              {isLoading ? (
+                Array(10).fill(0).map((_, i) => (
+                  <div key={i} className="h-20 bg-slate-200 rounded-lg animate-pulse"></div>
+                ))
+              ) : filteredAndSortedClients.length === 0 ? (
+                <div className="text-center py-16">
+                  <Users className="w-16 h-16 mx-auto mb-4" style={{ color: iconColor }} />
+                  <h3 className="text-xl font-semibold text-slate-600 mb-2">
+                    {searchTerm || statusFilter !== "all" || sourceFilter !== "all" || budgetFilter !== "all" ? "לא נמצאו לקוחות" : "אין לקוחות עדיין"}
+                  </h3>
+                  {!searchTerm && statusFilter === "all" && sourceFilter === "all" && budgetFilter === "all" && canCreateClient && (
+                    <Button onClick={() => setShowForm(true)} className="mt-4 bg-[#2C3A50] hover:bg-[#1f2937]">
+                      <Plus className="w-4 h-4 ml-2" />
+                      הוסף לקוח ראשון
+                    </Button>
                   )}
                 </div>
-              </ScrollArea>
-            ) : viewMode === "detailed" ? (
-              <ScrollArea className="h-[calc(100vh-380px)] rounded-md pr-4">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {isLoading ? (
-                    Array(4).fill(0).map((_, i) => (
-                      <Card key={i} className="h-64">
-                        <CardHeader>
-                          <Skeleton className="h-6 w-32" />
-                          <Skeleton className="h-4 w-24 mt-2" />
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-3">
-                            <Skeleton className="h-4 w-full" />
-                            <Skeleton className="h-4 w-3/4" />
-                            <Skeleton className="h-4 w-5/6" />
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))
-                  ) : filteredAndSortedClients.length === 0 ? (
-                    <div className="col-span-full text-center py-16">
-                      <Users className="w-16 h-16 mx-auto mb-4" style={{ color: iconColor }} />
-                      <h3 className="text-xl font-semibold text-slate-600 mb-2">
-                        {searchTerm || statusFilter !== "all" || sourceFilter !== "all" || budgetFilter !== "all" ? "לא נמצאו לקוחות" : "אין לקוחות עדיין"}
-                      </h3>
-                      {!searchTerm && statusFilter === "all" && sourceFilter === "all" && budgetFilter === "all" && canCreateClient && (
-                        <Button onClick={() => setShowForm(true)} className="mt-4 bg-[#2C3A50] hover:bg-[#1f2937]">
-                          <Plus className="w-4 h-4 ml-2" />
-                          הוסף לקוח ראשון
-                        </Button>
+              ) : (
+                filteredAndSortedClients.map((client) => (
+                  <div
+                    key={client.id}
+                    className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200 hover:shadow-md transition-all cursor-pointer group"
+                    onClick={() => handleViewDetails(client)}>
+                    <div className="flex items-center gap-4 flex-1 min-w-0">
+                      {selectionMode && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); toggleSelect(client.id); }}
+                          className="flex-shrink-0">
+                          {selectedIds.includes(client.id) ? (
+                            <CheckSquare className="w-5 h-5" style={{ color: iconColor }} />
+                          ) : (
+                            <Square className="w-5 h-5 text-slate-400" />
+                          )}
+                        </button>
                       )}
-                    </div>
-                  ) : (
-                    filteredAndSortedClients.map((client) => (
-                      <Card key={client.id} className="hover:shadow-lg transition-all bg-white/80 backdrop-blur-sm">
-                        <CardHeader className="pb-3">
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                              <CardTitle className="text-xl font-bold text-slate-900 mb-2">{client.name}</CardTitle>
-                              <div className="flex flex-wrap gap-2">
-                                <Badge variant="outline" className={`${statusColors[client.status]} text-xs`}>
-                                  {client.status}
-                                </Badge>
-                                {client.budget_range && (
-                                  <Badge variant="outline" className="bg-slate-100 text-slate-700 text-xs">
-                                    {client.budget_range}
-                                  </Badge>
-                                )}
-                              </div>
-                            </div>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon">
-                                  <MoreVertical className="w-4 h-4" style={{ color: iconColor }} />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" dir="rtl">
-                                <DropdownMenuItem onClick={() => handleViewDetails(client)}>
-                                  <Eye className="w-4 h-4 ml-2" style={{ color: iconColor }} />
-                                  פתח דף לקוח
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleEdit(client)}>
-                                  <Edit className="w-4 h-4 ml-2" style={{ color: iconColor }} />
-                                  ערוך
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => duplicateClient(client)}>
-                                  <Copy className="w-4 h-4 ml-2" style={{ color: iconColor }} />
-                                  העתק
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleDelete(client.id)} className="text-red-600">
-                                  <Trash2 className="w-4 h-4 ml-2" />
-                                  מחק
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-semibold text-slate-900 truncate">{highlightText(client.name, searchTerm)}</h3>
+                          <Badge variant="outline" className={`${statusColors[client.status]} text-xs`}>
+                            {client.status}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-3 mt-1 text-sm text-slate-600">
                           {client.phone && (
-                            <div className="flex items-center gap-2 text-slate-600">
-                              <Phone className="w-4 h-4" style={{ color: iconColor }} />
-                              <span>{highlightText(client.phone, searchTerm)}</span>
-                            </div>
+                            <span className="flex items-center gap-1">
+                              <Phone className="w-3 h-3" style={{ color: iconColor }} />
+                              {highlightText(client.phone, searchTerm)}
+                            </span>
                           )}
                           {client.email && (
-                            <div className="flex items-center gap-2 text-slate-600">
-                              <Mail className="w-4 h-4" style={{ color: iconColor }} />
-                              <span>{highlightText(client.email, searchTerm)}</span>
-                            </div>
+                            <span className="flex items-center gap-1 truncate">
+                              <Mail className="w-3 h-3" style={{ color: iconColor }} />
+                              {highlightText(client.email, searchTerm)}
+                            </span>
                           )}
                           {client.company && (
-                            <div className="flex items-center gap-2 text-slate-600">
-                              <Building className="w-4 h-4" style={{ color: iconColor }} />
-                              <span>{client.company}</span>
-                            </div>
+                            <span className="flex items-center gap-1 truncate">
+                              <Building className="w-3 h-3" style={{ color: iconColor }} />
+                              {client.company}
+                            </span>
                           )}
-                          {client.address && (
-                            <div className="flex items-center gap-2 text-slate-600">
-                              <MapPin className="w-4 h-4" style={{ color: iconColor }} />
-                              <span>{client.address}</span>
-                            </div>
-                          )}
-                          {client.source && (
-                            <div className="flex items-center gap-2 text-slate-500 text-sm">
-                              <TrendingUp className="w-4 h-4" style={{ color: iconColor }} />
-                              <span>מקור: {client.source}</span>
-                            </div>
-                          )}
-                          {client.notes && (
-                            <div className="mt-3 p-3 bg-slate-50 rounded-lg">
-                              <p className="text-sm text-slate-600 line-clamp-3">{client.notes}</p>
-                            </div>
-                          )}
-                          <div className="flex items-center gap-2 text-slate-400 text-xs pt-2 border-t">
-                            <Clock className="w-3 h-3" style={{ color: iconColor }} />
-                            <span>נוסף ב-{format(new Date(client.created_date), 'dd/MM/yy', { locale: he })}</span>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))
-                  )}
-                </div>
-              </ScrollArea>
-            ) : viewMode === "kanban" ? (
-              <div className="h-[calc(100vh-380px)] overflow-x-auto">
-                <div className="flex gap-4 min-w-max pb-4">
-                  {['פוטנציאלי', 'פעיל', 'לא פעיל'].map((status) => {
-                    const statusClients = filteredAndSortedClients.filter(c => c.status === status);
-                    return (
-                      <div key={status} className="flex-shrink-0 w-80">
-                        <div className={`rounded-lg border-2 ${
-                          status === 'פוטנציאלי' ? 'border-amber-200 bg-amber-50' :
-                          status === 'פעיל' ? 'border-green-200 bg-green-50' :
-                          'border-slate-200 bg-slate-50'
-                        } p-4`}>
-                          <div className="flex items-center justify-between mb-4">
-                            <h3 className="font-bold text-lg">{status}</h3>
-                            <Badge variant="outline" className="bg-white">
-                              {statusClients.length}
-                            </Badge>
-                          </div>
-
-                          <ScrollArea className="h-[calc(100vh-500px)]">
-                            <div className="space-y-3 pr-2"> {/* Added pr-2 for scrollbar spacing */}
-                              {isLoading ?
-                                Array(3).fill(0).map((_, i) => (
-                                  <Card key={i} className="h-32">
-                                    <CardHeader className="pb-2"><Skeleton className="h-4 w-3/4" /></CardHeader>
-                                    <CardContent className="space-y-2 text-xs">
-                                      <Skeleton className="h-3 w-full" />
-                                      <Skeleton className="h-3 w-5/6" />
-                                      <Skeleton className="h-3 w-2/3" />
-                                    </CardContent>
-                                  </Card>
-                                ))
-                              : statusClients.length === 0 ? (
-                                <div className="text-center py-8 text-slate-400 text-sm">
-                                  אין לקוחות בסטטוס זה
-                                </div>
-                              ) : (
-                                statusClients.map((client) => (
-                                  <Card
-                                    key={client.id}
-                                    className="cursor-pointer hover:shadow-md transition-all bg-white"
-                                    onClick={() => handleViewDetails(client)}>
-                                    <CardHeader className="pb-2">
-                                      <CardTitle className="text-sm font-semibold">{client.name}</CardTitle>
-                                    </CardHeader>
-                                    <CardContent className="space-y-2 text-xs">
-                                      {client.phone && (
-                                        <div className="flex items-center gap-1 text-slate-600">
-                                          <Phone className="w-3 h-3" style={{ color: iconColor }} />
-                                          <span className="truncate">{highlightText(client.phone, searchTerm)}</span>
-                                        </div>
-                                      )}
-                                      {client.email && (
-                                        <div className="flex items-center gap-1 text-slate-600">
-                                          <Mail className="w-3 h-3" style={{ color: iconColor }} />
-                                          <span className="truncate">{highlightText(client.email, searchTerm)}</span>
-                                        </div>
-                                      )}
-                                      {client.company && (
-                                        <div className="flex items-center gap-1 text-slate-600">
-                                          <Building className="w-3 h-3" style={{ color: iconColor }} />
-                                          <span className="truncate">{client.company}</span>
-                                        </div>
-                                      )}
-                                      <div className="flex gap-2 mt-2">
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          className="h-7 text-xs"
-                                          onClick={(e) => { e.stopPropagation(); handleEdit(client); }}>
-                                          <Edit className="w-3 h-3 ml-1" style={{ color: iconColor }} />
-                                          ערוך
-                                        </Button>
-                                      </div>
-                                    </CardContent>
-                                  </Card>
-                                ))
-                              )}
-                            </div>
-                          </ScrollArea>
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : ( // Default to Grid view for DND
-              <DragDropContext onDragEnd={onDragEnd}>
-                <Droppable droppableId="clients-grid">
-                  {(provided) => (
-                    <ScrollArea className="h-[calc(100vh-380px)] rounded-md pr-4">
-                      <div
-                        ref={provided.innerRef}
-                        {...provided.droppableProps}
-                        className={`grid ${viewMode === "grid" ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : "grid-cols-1"} gap-6`}>
-                        {isLoading ?
-                          Array(8).fill(0).map((_, i) =>
-                            <Card key={i} className="h-[320px]">
-                              <CardHeader>
-                                <Skeleton className="h-6 w-32" />
-                                <Skeleton className="h-4 w-24 mt-2" />
-                              </CardHeader>
-                              <CardContent>
-                                <div className="space-y-3">
-                                  <Skeleton className="h-4 w-full" />
-                                  <Skeleton className="h-4 w-3/4" />
-                                  <Skeleton className="h-4 w-5/6" />
-                                </div>
-                              </CardContent>
-                            </Card>
-                          ) :
-                          filteredAndSortedClients.length === 0 ?
-                            <div className="col-span-full text-center py-16">
-                              <Users className="w-16 h-16 mx-auto mb-4" style={{ color: iconColor }} />
-                              <h3 className="text-xl font-semibold text-slate-600 mb-2">
-                                {searchTerm || statusFilter !== "all" || sourceFilter !== "all" || budgetFilter !== "all" ? "לא נמצאו לקוחות" : "אין לקוחות עדיין"}
-                              </h3>
-                              {!searchTerm && statusFilter === "all" && sourceFilter === "all" && budgetFilter === "all" && canCreateClient &&
-                                <Button onClick={() => setShowForm(true)} className="mt-4 bg-[#2C3A50] hover:bg-[#1f2937]">
-                                  <Plus className="w-4 h-4 ml-2" />
-                                  הוסף לקוח ראשון
-                                </Button>
-                              }
-                            </div> :
-                            filteredAndSortedClients.map((client, index) =>
-                              <Draggable key={client.id} draggableId={client.id} index={index}>
-                                {(provided, snapshot) => (
-                                  <div
-                                    ref={provided.innerRef}
-                                    {...provided.draggableProps}
-                                    className={`h-[320px] transition-all ${snapshot.isDragging ? 'opacity-50 scale-105 rotate-2' : ''}`}>
-                                    <ClientCard
-                                      client={client}
-                                      onEdit={() => handleEdit(client)}
-                                      onView={() => handleViewDetails(client)}
-                                      selectionMode={selectionMode}
-                                      selected={selectedIds.includes(client.id)}
-                                      onToggleSelect={() => toggleSelect(client.id)}
-                                      onCopy={() => duplicateClient(client)}
-                                      onDelete={() => handleDelete(client.id)}
-                                      onEnterSelectionMode={() => enterSelectionModeWith(client.id)}
-                                      isDraggable={true}
-                                      dragHandleProps={provided.dragHandleProps}
-                                    />
-                                  </div>
-                                )}
-                              </Draggable>
-                            )
-                        }
-                        {provided.placeholder}
-                      </div>
-                    </ScrollArea>
-                  )}
-                </Droppable>
-              </DragDropContext>
-            )}
-          </div>
+                    </div>
 
-          {/* Footer */}
-          {!isLoading && filteredAndSortedClients.length > 0 &&
-            <div className="text-center mt-8">
-              <p className="text-slate-500">
-                מציג {filteredAndSortedClients.length} מתוך {clients.length} לקוחות
-              </p>
+                    <div className="flex items-center gap-2 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => { e.stopPropagation(); handleEdit(client); }}>
+                        <Edit className="w-4 h-4" style={{ color: iconColor }} />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => { e.stopPropagation(); duplicateClient(client); }}>
+                        <Copy className="w-4 h-4" style={{ color: iconColor }} />
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
-          }
-        </TabsContent>
-
-        {/* Custom Tables Tab */}
-        <TabsContent value="tables" className="mt-0">
-          {customTables.length === 0 ? (
-            <Card className="border-2 border-dashed border-slate-300">
-              <CardContent className="p-16 text-center">
-                <Database className="w-20 h-20 mx-auto mb-4 text-slate-400" />
-                <h3 className="text-xl font-semibold text-slate-700 mb-2">אין טבלאות מותאמות</h3>
-                <p className="text-sm text-slate-600 mb-6">צור טבלה חדשה כדי לארגן נתונים בצורה מותאמת אישית</p>
-                <Button
-                  onClick={() => setShowTableManager(true)}
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 gap-2"
-                >
-                  <Plus className="w-5 h-5" />
-                  צור טבלה ראשונה
-                </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {customTables.map((table) => (
-                <Card
-                  key={table.id}
-                  className="cursor-pointer hover:shadow-xl transition-all border-2 hover:border-blue-400 bg-gradient-to-br from-white to-blue-50"
-                  onClick={() => {
-                    window.location.href = createPageUrl(`SpreadsheetDetails?id=${table.id}`);
-                  }}
-                >
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start gap-3">
-                      <div className="p-3 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl shadow-lg">
-                        <TableIcon className="w-6 h-6 text-white" />
+          </ScrollArea>
+        ) : viewMode === "detailed" ? (
+          <ScrollArea className="h-[calc(100vh-380px)] rounded-md pr-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {isLoading ? (
+                Array(4).fill(0).map((_, i) => (
+                  <Card key={i} className="h-64">
+                    <CardHeader>
+                      <Skeleton className="h-6 w-32" />
+                      <Skeleton className="h-4 w-24 mt-2" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-3/4" />
+                        <Skeleton className="h-4 w-5/6" />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <CardTitle className="text-lg font-bold text-slate-900 truncate">
-                          {table.name}
-                        </CardTitle>
-                        <p className="text-xs text-slate-600 mt-1 line-clamp-2">
-                          {table.description || 'אין תיאור'}
-                        </p>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="flex gap-2">
-                      <Badge variant="outline" className="bg-blue-100 text-blue-800">
-                        {table.columns?.length || 0} עמודות
-                      </Badge>
-                      <Badge variant="outline" className="bg-green-100 text-green-800">
-                        {table.rows_data?.length || 0} שורות
-                      </Badge>
-                    </div>
-                    <div className="flex items-center gap-2 text-slate-400 text-xs pt-2 border-t">
-                      <Clock className="w-3 h-3" style={{ color: iconColor }} />
-                      <span>נוסף ב-{format(new Date(table.created_date), 'dd/MM/yy', { locale: he })}</span>
-                    </div>
-                    <Button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        window.location.href = createPageUrl(`SpreadsheetDetails?id=${table.id}`);
-                      }}
-                      className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 gap-2"
-                    >
-                      <Eye className="w-4 h-4" />
-                      פתח טבלה
+                    </CardContent>
+                  </Card>
+                ))
+              ) : filteredAndSortedClients.length === 0 ? (
+                <div className="col-span-full text-center py-16">
+                  <Users className="w-16 h-16 mx-auto mb-4" style={{ color: iconColor }} />
+                  <h3 className="text-xl font-semibold text-slate-600 mb-2">
+                    {searchTerm || statusFilter !== "all" || sourceFilter !== "all" || budgetFilter !== "all" ? "לא נמצאו לקוחות" : "אין לקוחות עדיין"}
+                  </h3>
+                  {!searchTerm && statusFilter === "all" && sourceFilter === "all" && budgetFilter === "all" && canCreateClient && (
+                    <Button onClick={() => setShowForm(true)} className="mt-4 bg-[#2C3A50] hover:bg-[#1f2937]">
+                      <Plus className="w-4 h-4 ml-2" />
+                      הוסף לקוח ראשון
                     </Button>
-                  </CardContent>
-                </Card>
-              ))}
+                  )}
+                </div>
+              ) : (
+                filteredAndSortedClients.map((client) => (
+                  <Card key={client.id} className="hover:shadow-lg transition-all bg-white/80 backdrop-blur-sm">
+                    <CardHeader className="pb-3">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <CardTitle className="text-xl font-bold text-slate-900 mb-2">{client.name}</CardTitle>
+                          <div className="flex flex-wrap gap-2">
+                            <Badge variant="outline" className={`${statusColors[client.status]} text-xs`}>
+                              {client.status}
+                            </Badge>
+                            {client.budget_range && (
+                              <Badge variant="outline" className="bg-slate-100 text-slate-700 text-xs">
+                                {client.budget_range}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreVertical className="w-4 h-4" style={{ color: iconColor }} />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" dir="rtl">
+                            <DropdownMenuItem onClick={() => handleViewDetails(client)}>
+                              <Eye className="w-4 h-4 ml-2" style={{ color: iconColor }} />
+                              פתח דף לקוח
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleEdit(client)}>
+                              <Edit className="w-4 h-4 ml-2" style={{ color: iconColor }} />
+                              ערוך
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => duplicateClient(client)}>
+                              <Copy className="w-4 h-4 ml-2" style={{ color: iconColor }} />
+                              העתק
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDelete(client.id)} className="text-red-600">
+                              <Trash2 className="w-4 h-4 ml-2" />
+                              מחק
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {client.phone && (
+                        <div className="flex items-center gap-2 text-slate-600">
+                          <Phone className="w-4 h-4" style={{ color: iconColor }} />
+                          <span>{highlightText(client.phone, searchTerm)}</span>
+                        </div>
+                      )}
+                      {client.email && (
+                        <div className="flex items-center gap-2 text-slate-600">
+                          <Mail className="w-4 h-4" style={{ color: iconColor }} />
+                          <span>{highlightText(client.email, searchTerm)}</span>
+                        </div>
+                      )}
+                      {client.company && (
+                        <div className="flex items-center gap-2 text-slate-600">
+                          <Building className="w-4 h-4" style={{ color: iconColor }} />
+                          <span>{client.company}</span>
+                        </div>
+                      )}
+                      {client.address && (
+                        <div className="flex items-center gap-2 text-slate-600">
+                          <MapPin className="w-4 h-4" style={{ color: iconColor }} />
+                          <span>{client.address}</span>
+                        </div>
+                      )}
+                      {client.source && (
+                        <div className="flex items-center gap-2 text-slate-500 text-sm">
+                          <TrendingUp className="w-4 h-4" style={{ color: iconColor }} />
+                          <span>מקור: {client.source}</span>
+                        </div>
+                      )}
+                      {client.notes && (
+                        <div className="mt-3 p-3 bg-slate-50 rounded-lg">
+                          <p className="text-sm text-slate-600 line-clamp-3">{client.notes}</p>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2 text-slate-400 text-xs pt-2 border-t">
+                        <Clock className="w-3 h-3" style={{ color: iconColor }} />
+                        <span>נוסף ב-{format(new Date(client.created_date), 'dd/MM/yy', { locale: he })}</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
             </div>
-          )}
-        </TabsContent>
-      </Tabs>
+          </ScrollArea>
+        ) : viewMode === "kanban" ? (
+          <div className="h-[calc(100vh-380px)] overflow-x-auto">
+            <div className="flex gap-4 min-w-max pb-4">
+              {['פוטנציאלי', 'פעיל', 'לא פעיל'].map((status) => {
+                const statusClients = filteredAndSortedClients.filter(c => c.status === status);
+                return (
+                  <div key={status} className="flex-shrink-0 w-80">
+                    <div className={`rounded-lg border-2 ${
+                      status === 'פוטנציאלי' ? 'border-amber-200 bg-amber-50' :
+                      status === 'פעיל' ? 'border-green-200 bg-green-50' :
+                      'border-slate-200 bg-slate-50'
+                    } p-4`}>
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-bold text-lg">{status}</h3>
+                        <Badge variant="outline" className="bg-white">
+                          {statusClients.length}
+                        </Badge>
+                      </div>
+
+                      <ScrollArea className="h-[calc(100vh-500px)]">
+                        <div className="space-y-3 pr-2"> {/* Added pr-2 for scrollbar spacing */}
+                          {isLoading ?
+                            Array(3).fill(0).map((_, i) => (
+                              <Card key={i} className="h-32">
+                                <CardHeader className="pb-2"><Skeleton className="h-4 w-3/4" /></CardHeader>
+                                <CardContent className="space-y-2 text-xs">
+                                  <Skeleton className="h-3 w-full" />
+                                  <Skeleton className="h-3 w-5/6" />
+                                  <Skeleton className="h-3 w-2/3" />
+                                </CardContent>
+                              </Card>
+                            ))
+                          : statusClients.length === 0 ? (
+                            <div className="text-center py-8 text-slate-400 text-sm">
+                              אין לקוחות בסטטוס זה
+                            </div>
+                          ) : (
+                            statusClients.map((client) => (
+                              <Card
+                                key={client.id}
+                                className="cursor-pointer hover:shadow-md transition-all bg-white"
+                                onClick={() => handleViewDetails(client)}>
+                                <CardHeader className="pb-2">
+                                  <CardTitle className="text-sm font-semibold">{client.name}</CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-2 text-xs">
+                                  {client.phone && (
+                                    <div className="flex items-center gap-1 text-slate-600">
+                                      <Phone className="w-3 h-3" style={{ color: iconColor }} />
+                                      <span className="truncate">{highlightText(client.phone, searchTerm)}</span>
+                                    </div>
+                                  )}
+                                  {client.email && (
+                                    <div className="flex items-center gap-1 text-slate-600">
+                                      <Mail className="w-3 h-3" style={{ color: iconColor }} />
+                                      <span className="truncate">{highlightText(client.email, searchTerm)}</span>
+                                    </div>
+                                  )}
+                                  {client.company && (
+                                    <div className="flex items-center gap-1 text-slate-600">
+                                      <Building className="w-3 h-3" style={{ color: iconColor }} />
+                                      <span className="truncate">{client.company}</span>
+                                    </div>
+                                  )}
+                                  <div className="flex gap-2 mt-2">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-7 text-xs"
+                                      onClick={(e) => { e.stopPropagation(); handleEdit(client); }}>
+                                      <Edit className="w-3 h-3 ml-1" style={{ color: iconColor }} />
+                                      ערוך
+                                    </Button>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))
+                          )}
+                        </div>
+                      </ScrollArea>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : ( // Default to Grid view for DND
+          <DragDropContext onDragEnd={onDragEnd}>
+            <Droppable droppableId="clients-grid">
+              {(provided) => (
+                <ScrollArea className="h-[calc(100vh-380px)] rounded-md pr-4">
+                  <div
+                    ref={provided.innerRef}
+                    {...provided.droppableProps}
+                    className={`grid ${viewMode === "grid" ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : "grid-cols-1"} gap-6`}>
+                    {isLoading ?
+                      Array(8).fill(0).map((_, i) =>
+                        <Card key={i} className="h-[320px]">
+                          <CardHeader>
+                            <Skeleton className="h-6 w-32" />
+                            <Skeleton className="h-4 w-24 mt-2" />
+                          </CardHeader>
+                          <CardContent>
+                            <div className="space-y-3">
+                              <Skeleton className="h-4 w-full" />
+                              <Skeleton className="h-4 w-3/4" />
+                              <Skeleton className="h-4 w-5/6" />
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ) :
+                      filteredAndSortedClients.length === 0 ?
+                        <div className="col-span-full text-center py-16">
+                          <Users className="w-16 h-16 mx-auto mb-4" style={{ color: iconColor }} />
+                          <h3 className="text-xl font-semibold text-slate-600 mb-2">
+                            {searchTerm || statusFilter !== "all" || sourceFilter !== "all" || budgetFilter !== "all" ? "לא נמצאו לקוחות" : "אין לקוחות עדיין"}
+                          </h3>
+                          {!searchTerm && statusFilter === "all" && sourceFilter === "all" && budgetFilter === "all" && canCreateClient &&
+                            <Button onClick={() => setShowForm(true)} className="mt-4 bg-[#2C3A50] hover:bg-[#1f2937]">
+                              <Plus className="w-4 h-4 ml-2" />
+                              הוסף לקוח ראשון
+                            </Button>
+                          }
+                        </div> :
+                        filteredAndSortedClients.map((client, index) =>
+                          <Draggable key={client.id} draggableId={client.id} index={index}>
+                            {(provided, snapshot) => (
+                              <div
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                className={`h-[320px] transition-all ${snapshot.isDragging ? 'opacity-50 scale-105 rotate-2' : ''}`}>
+                                <ClientCard
+                                  client={client}
+                                  onEdit={() => handleEdit(client)}
+                                  onView={() => handleViewDetails(client)}
+                                  selectionMode={selectionMode}
+                                  selected={selectedIds.includes(client.id)}
+                                  onToggleSelect={() => toggleSelect(client.id)}
+                                  onCopy={() => duplicateClient(client)}
+                                  onDelete={() => handleDelete(client.id)}
+                                  onEnterSelectionMode={() => enterSelectionModeWith(client.id)}
+                                  isDraggable={true}
+                                  dragHandleProps={provided.dragHandleProps}
+                                />
+                              </div>
+                            )}
+                          </Draggable>
+                        )
+                    }
+                    {provided.placeholder}
+                  </div>
+                </ScrollArea>
+              )}
+            </Droppable>
+          </DragDropContext>
+        )}
+      </div>
+
+      {/* Footer */}
+      {!isLoading && filteredAndSortedClients.length > 0 &&
+        <div className="text-center mt-8">
+          <p className="text-slate-500">
+            מציג {filteredAndSortedClients.length} מתוך {clients.length} לקוחות
+          </p>
+        </div>
+      }
     </div>
   );
 }

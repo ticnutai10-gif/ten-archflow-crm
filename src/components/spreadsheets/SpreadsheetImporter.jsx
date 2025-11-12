@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -360,7 +359,7 @@ export default function SpreadsheetImporter({ spreadsheet, columns, onImportComp
 
             <Separator />
 
-            {/* Duplicate Handling Strategy - FIXED */}
+            {/* Duplicate Handling Strategy */}
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
               <Label className="font-semibold text-amber-900 mb-3 block flex items-center gap-2">
                 <AlertCircle className="w-5 h-5" />
@@ -369,7 +368,7 @@ export default function SpreadsheetImporter({ spreadsheet, columns, onImportComp
               
               <RadioGroup value={duplicateStrategy} onValueChange={setDuplicateStrategy}>
                 <div className="space-y-3">
-                  <div className="flex items-center space-x-2 space-x-reverse p-3 bg-white rounded-lg border hover:border-blue-300 transition-all">
+                  <div className="flex items-center space-x-2 space-x-reverse p-3 bg-white rounded-lg border hover:border-blue-300 transition-all cursor-pointer">
                     <RadioGroupItem value="skip" id="skip" />
                     <Label htmlFor="skip" className="flex-1 cursor-pointer">
                       <div className="font-medium text-slate-900">דלג על כפולים</div>
@@ -378,7 +377,7 @@ export default function SpreadsheetImporter({ spreadsheet, columns, onImportComp
                     <Badge variant="outline" className="bg-blue-50 text-blue-700">מומלץ</Badge>
                   </div>
 
-                  <div className="flex items-center space-x-2 space-x-reverse p-3 bg-white rounded-lg border hover:border-blue-300 transition-all">
+                  <div className="flex items-center space-x-2 space-x-reverse p-3 bg-white rounded-lg border hover:border-blue-300 transition-all cursor-pointer">
                     <RadioGroupItem value="overwrite" id="overwrite" />
                     <Label htmlFor="overwrite" className="flex-1 cursor-pointer">
                       <div className="font-medium text-slate-900">שכתב קיימים</div>
@@ -386,7 +385,7 @@ export default function SpreadsheetImporter({ spreadsheet, columns, onImportComp
                     </Label>
                   </div>
 
-                  <div className="flex items-center space-x-2 space-x-reverse p-3 bg-white rounded-lg border hover:border-blue-300 transition-all">
+                  <div className="flex items-center space-x-2 space-x-reverse p-3 bg-white rounded-lg border hover:border-blue-300 transition-all cursor-pointer">
                     <RadioGroupItem value="create_new" id="create_new" />
                     <Label htmlFor="create_new" className="flex-1 cursor-pointer">
                       <div className="font-medium text-slate-900">צור רשומות חדשות</div>

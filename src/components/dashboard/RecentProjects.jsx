@@ -18,30 +18,36 @@ const STATUS_COLORS = {
   "מבוטל": "bg-red-100 text-red-800"
 };
 
-export default function RecentProjects({ projects, isLoading, onUpdate }) {
+export default function RecentProjects({ projects = [], isLoading, onUpdate }) {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
 
-  // ✅ הגנה מלאה על projects
-  const safeProjects = React.useMemo(() => {
-    if (!projects) {
-      console.warn('⚠️ [RecentProjects] projects is null/undefined');
-      return [];
-    }
-    if (!Array.isArray(projects)) {
-      console.error('❌ [RecentProjects] projects is not an array!', projects);
-      return [];
-    }
-    return projects.filter(p => p && typeof p === 'object');
-  }, [projects]);
-
   useEffect(() => {
     console.log('🔍 [RecentProjects] Received projects:', {
-      projectsCount: safeProjects.length,
+      projectsCount: projects?.length,
       projectsType: typeof projects,
-      isArray: Array.isArray(projects)
+      isArray: Array.isArray(projects),
+      firstProject: projects?.[0],
+      allProjects: projects
     });
-  }, [safeProjects, projects]);
+
+    if (projects && Array.isArray(projects)) {
+      projects.forEach((project, index) => {
+        if (!project) {
+          console.error(`❌ [RecentProjects] Project at index ${index} is null/undefined!`);
+        } else if (typeof project !== 'object') {
+          console.error(`❌ [RecentProjects] Project at index ${index} is not an object:`, project);
+        } else {
+          console.log(`✅ [RecentProjects] Project ${index}:`, {
+            id: project.id,
+            name: project.name,
+            hasName: 'name' in project,
+            keys: Object.keys(project)
+          });
+        }
+      });
+    }
+  }, [projects]);
 
   const toggleSelect = (id) => {
     setSelectedIds(prev => 
@@ -67,7 +73,7 @@ export default function RecentProjects({ projects, isLoading, onUpdate }) {
     if (selectedIds.length === 0) return;
     
     try {
-      const toCopy = safeProjects.filter(p => p && selectedIds.includes(p.id));
+      const toCopy = projects.filter(p => p && selectedIds.includes(p.id));
       for (const project of toCopy) {
         if (!project) continue;
         const { id, created_date, updated_date, created_by, ...rest } = project;
@@ -105,7 +111,7 @@ export default function RecentProjects({ projects, isLoading, onUpdate }) {
     );
   }
 
-  if (safeProjects.length === 0) {
+  if (!projects || projects.length === 0) {
     console.log('📭 [RecentProjects] No projects to display');
     return (
       <div className="p-8 text-center text-slate-500">
@@ -116,6 +122,9 @@ export default function RecentProjects({ projects, isLoading, onUpdate }) {
       </div>
     );
   }
+
+  const validProjects = projects.filter(p => p && typeof p === 'object');
+  console.log('📊 [RecentProjects] Valid projects:', validProjects.length, 'out of', projects.length);
 
   return (
     <div>
@@ -136,16 +145,34 @@ export default function RecentProjects({ projects, isLoading, onUpdate }) {
       )}
 
       <div className="p-4 space-y-3 max-h-96 overflow-y-auto">
-        {safeProjects.map((project, index) => {
+        {validProjects.map((project, index) => {
           if (!project || typeof project !== 'object') {
             console.error(`❌ [RecentProjects] Skipping invalid project at index ${index}:`, project);
             return null;
           }
           
-          const projectName = project.name || project.project_name || 'פרויקט ללא שם';
-          const clientName = project.client_name || 'לקוח לא ידוע';
-          const projectStatus = project.status || 'הצעת מחיר';
-          const progress = Math.min(100, Math.max(0, project.progress || 0));
+          let projectName = 'פרויקט ללא שם';
+          let clientName = 'לקוח לא ידוע';
+          let projectStatus = 'הצעת מחיר';
+          let progress = 0;
+
+          try {
+            projectName = project.name || project.project_name || 'פרויקט ללא שם';
+            clientName = project.client_name || 'לקוח לא ידוע';
+            projectStatus = project.status || 'הצעת מחיר';
+            progress = Math.min(100, Math.max(0, project.progress || 0));
+
+            console.log(`✅ [RecentProjects] Rendering project ${index}:`, {
+              id: project.id,
+              projectName,
+              clientName,
+              projectStatus
+            });
+          } catch (error) {
+            console.error(`❌ [RecentProjects] Error processing project ${index}:`, error, project);
+            return null;
+          }
+
           const statusColor = STATUS_COLORS[projectStatus] || STATUS_COLORS["הצעת מחיר"];
 
           return (

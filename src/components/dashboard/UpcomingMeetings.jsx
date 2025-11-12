@@ -1,297 +1,368 @@
-import React, { useState } from "react";
+import React, { useState } from 'react';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import {
-  Calendar,
-  Clock,
-  MapPin,
-  Users,
-  Video,
-  Phone,
-  Building,
-  Globe,
-  Edit,
-  Trash2,
-  BellRing,
-  BellOff
-} from "lucide-react";
-import { format, isToday, isTomorrow, isThisWeek } from "date-fns";
-import { he } from "date-fns/locale";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { base44 } from "@/api/base44Client";
+import { Calendar, Clock, MapPin, Users, Video, Phone, ExternalLink, Edit, Trash2, Bell, AlertCircle, X } from "lucide-react";
+import { format, isToday, isTomorrow, parseISO } from "date-fns";
+import { he } from "date-fns/locale";
+import { Meeting } from "@/entities/all";
+import { toast } from "sonner";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-const STATUS_COLORS = {
-  "מתוכננת": "bg-blue-100 text-blue-800",
-  "אושרה": "bg-green-100 text-green-800",
-  "בוצעה": "bg-slate-100 text-slate-800",
-  "בוטלה": "bg-red-100 text-red-800",
-  "נדחתה": "bg-yellow-100 text-yellow-800"
+const statusColors = {
+  'מתוכננת': 'bg-blue-50 text-blue-700 border-blue-200',
+  'אושרה': 'bg-green-50 text-green-700 border-green-200',
+  'בוצעה': 'bg-slate-50 text-slate-600 border-slate-200',
+  'בוטלה': 'bg-red-50 text-red-700 border-red-200',
+  'נדחתה': 'bg-amber-50 text-amber-700 border-amber-200'
 };
 
-const MEETING_ICONS = {
-  "פגישת היכרות": Users,
-  "פגישת תכנון": Building,
-  "פגישת מעקב": Clock,
-  "פגישת סיכום": Globe,
-  "פגישת אתר": MapPin,
-  "שיחת טלפון": Phone,
-  "Zoom": Video,
-  "אחר": Calendar
+const typeIcons = {
+  'שיחת טלפון': Phone,
+  'Zoom': Video,
+  'פגישת אתר': MapPin,
+  'פגישת היכרות': Users,
+  'פגישת תכנון': Calendar,
+  'פגישת מעקב': Clock
 };
 
-function getDateLabel(dateString) {
+const getDateLabel = (dateString) => {
   if (!dateString) return '';
   
   try {
     const date = new Date(dateString);
-    if (isNaN(date.getTime())) return '';
-
+    
+    if (isNaN(date.getTime())) {
+      console.warn('Invalid date:', dateString);
+      return dateString;
+    }
+    
     if (isToday(date)) return 'היום';
     if (isTomorrow(date)) return 'מחר';
-    if (isThisWeek(date)) return format(date, 'EEEE', { locale: he });
-    return format(date, 'dd/MM/yyyy', { locale: he });
-  } catch (error) {
-    console.error('Error formatting date:', error);
-    return '';
+    
+    return format(date, 'dd/MM', { locale: he });
+  } catch (e) {
+    console.error('Error formatting date:', dateString, e);
+    return dateString;
   }
-}
+};
 
 export default function UpcomingMeetings({ meetings, isLoading, onUpdate }) {
   const [editingMeeting, setEditingMeeting] = useState(null);
   const [formData, setFormData] = useState({});
+  const [saving, setSaving] = useState(false);
 
-  // ✅ הגנה מלאה על meetings
-  const safeMeetings = React.useMemo(() => {
-    if (!meetings) {
-      console.warn('⚠️ [UpcomingMeetings] meetings is null/undefined');
-      return [];
-    }
-    if (!Array.isArray(meetings)) {
-      console.error('❌ [UpcomingMeetings] meetings is not an array!', meetings);
-      return [];
-    }
-    return meetings.filter(m => m && typeof m === 'object');
-  }, [meetings]);
+  console.log('📅 [UPCOMING MEETINGS COMPONENT] Received meetings:', meetings);
+  console.log('📅 [UPCOMING MEETINGS COMPONENT] Meetings count:', meetings?.length || 0);
 
-  const handleEdit = (meeting) => {
-    setEditingMeeting(meeting);
+  const handleDelete = async (meetingId, e) => {
+    e.stopPropagation();
+    if (confirm('האם אתה בטוח שברצונך למחוק את הפגישה?')) {
+      try {
+        await Meeting.delete(meetingId);
+        toast.success('הפגישה נמחקה');
+        if (onUpdate) onUpdate();
+      } catch (error) {
+        toast.error('שגיאה במחיקת הפגישה');
+      }
+    }
+  };
+
+  const handleEdit = (meeting, e) => {
+    e.stopPropagation();
+    console.log('✏️ Opening edit dialog for meeting:', meeting);
+    
+    // המרת התאריך לפורמט datetime-local
+    const meetingDate = new Date(meeting.meeting_date);
+    const dateTimeLocal = format(meetingDate, "yyyy-MM-dd'T'HH:mm");
+    
     setFormData({
-      title: meeting.title || '',
-      meeting_date: meeting.meeting_date ? new Date(meeting.meeting_date).toISOString().slice(0, 16) : '',
-      meeting_type: meeting.meeting_type || 'פגישת תכנון',
-      status: meeting.status || 'מתוכננת',
-      location: meeting.location || '',
-      description: meeting.description || ''
+      ...meeting,
+      meeting_date: dateTimeLocal
     });
+    setEditingMeeting(meeting);
   };
 
   const handleSave = async () => {
     if (!editingMeeting) return;
     
+    setSaving(true);
     try {
-      await base44.entities.Meeting.update(editingMeeting.id, formData);
+      // המרת התאריך חזרה ל-ISO
+      const updatedData = {
+        ...formData,
+        meeting_date: new Date(formData.meeting_date).toISOString()
+      };
+
+      await Meeting.update(editingMeeting.id, updatedData);
+      toast.success('הפגישה עודכנה בהצלחה');
       setEditingMeeting(null);
-      onUpdate?.();
+      setFormData({});
+      if (onUpdate) onUpdate();
     } catch (error) {
-      console.error('Error updating meeting:', error);
+      console.error('Error saving meeting:', error);
+      toast.error('שגיאה בשמירת הפגישה');
+    } finally {
+      setSaving(false);
     }
   };
 
-  const handleDelete = async (meetingId) => {
-    if (!confirm('למחוק את הפגישה?')) return;
-    
+  const handleToggleReminder = async (meeting, e) => {
+    e.stopPropagation();
     try {
-      await base44.entities.Meeting.delete(meetingId);
-      onUpdate?.();
-    } catch (error) {
-      console.error('Error deleting meeting:', error);
-    }
-  };
-
-  const toggleReminder = async (meeting) => {
-    try {
-      await base44.entities.Meeting.update(meeting.id, {
-        reminder_enabled: !meeting.reminder_enabled
+      await Meeting.update(meeting.id, { 
+        reminder_enabled: !meeting.reminder_enabled,
+        reminder_sent: false 
       });
-      onUpdate?.();
+      toast.success(meeting.reminder_enabled ? 'התזכורת כובתה' : 'התזכורת הופעלה');
+      if (onUpdate) onUpdate();
     } catch (error) {
-      console.error('Error toggling reminder:', error);
+      toast.error('שגיאה בעדכון התזכורת');
     }
   };
 
   if (isLoading) {
     return (
-      <div className="p-4 space-y-3">
-        {[1, 2, 3].map(i => (
-          <div key={i} className="h-24 bg-slate-200 rounded-lg animate-pulse" />
+      <div className="p-6 space-y-3 h-[400px] overflow-y-auto">
+        {Array(4).fill(0).map((_, i) => (
+          <div key={i} className="animate-pulse">
+            <div className="h-24 bg-slate-100 rounded-xl"></div>
+          </div>
         ))}
       </div>
     );
   }
 
-  if (safeMeetings.length === 0) {
+  if (!meetings || meetings.length === 0) {
     return (
-      <div className="p-8 text-center text-slate-500">
-        <p className="mb-4">אין פגישות קרובות</p>
-        <Link to={createPageUrl("Meetings")}>
-          <Button variant="outline" size="sm">תזמן פגישה ראשונה</Button>
-        </Link>
+      <div className="p-8 text-center h-[400px] flex items-center justify-center">
+        <div>
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-indigo-50 flex items-center justify-center">
+            <Calendar className="w-8 h-8 text-indigo-400" />
+          </div>
+          <h3 className="text-sm font-semibold text-slate-700 mb-1">אין פגישות קרובות</h3>
+          <p className="text-xs text-slate-500 mb-4">הוסף פגישה ראשונה כדי להתחיל</p>
+          <Link to={createPageUrl("Meetings")}>
+            <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-sm">
+              <Calendar className="w-4 h-4 mr-2" />
+              הוסף פגישה
+            </Button>
+          </Link>
+        </div>
       </div>
     );
   }
 
   return (
-    <div>
-      <div className="p-4 space-y-3 max-h-96 overflow-y-auto">
-        {safeMeetings.map((meeting) => {
-          if (!meeting || typeof meeting !== 'object') {
-            console.error('Invalid meeting:', meeting);
-            return null;
-          }
-
-          const MeetingIcon = MEETING_ICONS[meeting.meeting_type] || Calendar;
-          const statusColor = STATUS_COLORS[meeting.status || "מתוכננת"];
-          const dateLabel = getDateLabel(meeting.meeting_date);
-          const timeLabel = meeting.meeting_date ? 
-            format(new Date(meeting.meeting_date), 'HH:mm', { locale: he }) : '';
-
-          return (
-            <div
-              key={meeting.id}
-              className="p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-all"
-            >
-              <div className="flex items-start gap-3">
-                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                  <MeetingIcon className="w-5 h-5 text-blue-600" />
-                </div>
-
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between mb-2">
-                    <h4 className="font-semibold text-slate-900 truncate flex-1">
-                      {meeting.title || 'פגישה ללא כותרת'}
-                    </h4>
-                    <Badge className={`${statusColor} text-xs flex-shrink-0 ml-2`}>
-                      {meeting.status || 'מתוכננת'}
-                    </Badge>
-                  </div>
-
-                  <div className="text-sm text-slate-600 space-y-1">
-                    {meeting.client_name && (
-                      <div className="flex items-center gap-2">
-                        <Users className="w-3 h-3 flex-shrink-0" />
-                        <span className="truncate">{meeting.client_name}</span>
-                      </div>
-                    )}
-                    
-                    {meeting.meeting_date && (
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-3 h-3 flex-shrink-0" />
-                        <span className="font-medium">{dateLabel}</span>
-                        <Clock className="w-3 h-3 flex-shrink-0 mr-2" />
-                        <span>{timeLabel}</span>
-                      </div>
-                    )}
-
-                    {meeting.location && (
-                      <div className="flex items-center gap-2">
-                        <MapPin className="w-3 h-3 flex-shrink-0" />
-                        <span className="truncate">{meeting.location}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex gap-1 flex-shrink-0">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
-                    onClick={() => toggleReminder(meeting)}
-                    title={meeting.reminder_enabled ? "בטל תזכורת" : "הפעל תזכורת"}
-                  >
-                    {meeting.reminder_enabled ? (
-                      <BellRing className="w-3 h-3 text-blue-600" />
-                    ) : (
-                      <BellOff className="w-3 h-3 text-slate-400" />
-                    )}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
-                    onClick={() => handleEdit(meeting)}
-                    title="ערוך"
-                  >
-                    <Edit className="w-3 h-3" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
-                    onClick={() => handleDelete(meeting.id)}
-                    title="מחק"
-                  >
-                    <Trash2 className="w-3 h-3 text-red-500" />
-                  </Button>
-                </div>
-              </div>
+    <>
+      <div className="h-[400px] flex flex-col">
+        {/* Header עם מספר פגישות */}
+        <div className="flex-shrink-0 px-6 pt-4 pb-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-indigo-600" />
+              <span className="text-sm font-semibold text-slate-700">
+                {meetings.length} פגישות קרובות
+              </span>
             </div>
-          );
-        })}
+            <Link to={createPageUrl("Meetings")}>
+              <Button variant="ghost" size="sm" className="text-xs">
+                צפה בהכל →
+              </Button>
+            </Link>
+          </div>
+        </div>
+
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto px-6 py-4">
+          <div className="space-y-3">
+            {meetings.map((meeting) => {
+              const TypeIcon = typeIcons[meeting.meeting_type] || Calendar;
+              const meetingDate = new Date(meeting.meeting_date);
+              const dateLabel = getDateLabel(meeting.meeting_date);
+              const isUrgent = isToday(meetingDate) || isTomorrow(meetingDate);
+              
+              return (
+                <div 
+                  key={meeting.id} 
+                  className={`
+                    group relative p-4 rounded-xl border transition-all duration-200 bg-white
+                    hover:shadow-lg hover:border-indigo-300 hover:-translate-y-0.5
+                    ${isUrgent ? 'border-indigo-200 bg-gradient-to-br from-indigo-50/50 to-white' : 'border-slate-200'}
+                  `}
+                >
+                  {/* כותרת ופעולות */}
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-2">
+                        {TypeIcon && (
+                          <div className={`p-1.5 rounded-lg ${isUrgent ? 'bg-indigo-100' : 'bg-slate-100'}`}>
+                            <TypeIcon className={`w-4 h-4 ${isUrgent ? 'text-indigo-600' : 'text-slate-600'}`} />
+                          </div>
+                        )}
+                        <h4 className="font-semibold text-slate-900 text-sm truncate flex-1">
+                          {meeting.title}
+                        </h4>
+                        <Badge variant="outline" className={`${statusColors[meeting.status]} text-xs px-2 py-0.5 whitespace-nowrap flex-shrink-0`}>
+                          {meeting.status}
+                        </Badge>
+                      </div>
+                      
+                      {/* מידע נוסף */}
+                      <div className="flex items-center gap-4 text-xs text-slate-600 flex-wrap">
+                        {meeting.client_name && (
+                          <div className="flex items-center gap-1.5">
+                            <Users className="w-3.5 h-3.5 text-slate-400" />
+                            <span className="font-medium">{meeting.client_name}</span>
+                          </div>
+                        )}
+                        <div className={`flex items-center gap-1.5 ${isUrgent ? 'text-indigo-700 font-semibold' : ''}`}>
+                          <Calendar className="w-3.5 h-3.5" />
+                          <span>{dateLabel}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5 text-slate-400" />
+                          <span>{format(meetingDate, 'HH:mm', { locale: he })}</span>
+                        </div>
+                        {meeting.location && (
+                          <div className="flex items-center gap-1.5">
+                            <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                            <span className="truncate max-w-[100px]">{meeting.location}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* תיאור */}
+                  {meeting.description && (
+                    <p className="text-xs text-slate-600 line-clamp-2 mb-3 pr-1">
+                      {meeting.description}
+                    </p>
+                  )}
+
+                  {/* כפתורי פעולה */}
+                  <div className="flex items-center gap-2 pt-3 border-t border-slate-100">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => handleToggleReminder(meeting, e)}
+                      className={`h-8 px-3 text-xs ${meeting.reminder_enabled ? 'text-amber-600 bg-amber-50 hover:bg-amber-100' : 'text-slate-500 hover:text-amber-600 hover:bg-amber-50'}`}
+                      title={meeting.reminder_enabled ? 'כבה תזכורת' : 'הפעל תזכורת'}
+                    >
+                      <Bell className={`w-3.5 h-3.5 ml-1.5 ${meeting.reminder_enabled ? 'fill-current' : ''}`} />
+                      תזכורת
+                    </Button>
+                    
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => handleEdit(meeting, e)}
+                      className="h-8 px-3 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                      title="ערוך פגישה"
+                    >
+                      <Edit className="w-3.5 h-3.5 ml-1.5" />
+                      ערוך
+                    </Button>
+                    
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => handleDelete(meeting.id, e)}
+                      className="h-8 px-3 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+                      title="מחק פגישה"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 ml-1.5" />
+                      מחק
+                    </Button>
+
+                    {/* משתתפים */}
+                    {meeting.participants && meeting.participants.length > 0 && (
+                      <div className="flex items-center gap-1 mr-auto">
+                        <div className="flex -space-x-2">
+                          {meeting.participants.slice(0, 3).map((participant, idx) => (
+                            <div 
+                              key={idx}
+                              className="w-6 h-6 rounded-full bg-indigo-100 border-2 border-white flex items-center justify-center"
+                              title={participant}
+                            >
+                              <span className="text-[10px] font-semibold text-indigo-700">
+                                {participant.charAt(0).toUpperCase()}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                        {meeting.participants.length > 3 && (
+                          <span className="text-xs text-slate-500">+{meeting.participants.length - 3}</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        
+        {/* Fixed footer */}
+        <div className="flex-shrink-0 px-6 pb-4 pt-2 border-t border-slate-100">
+          <Link to={createPageUrl("Meetings")}>
+            <Button variant="outline" size="sm" className="w-full text-sm hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300">
+              <ExternalLink className="w-4 h-4 ml-2" />
+              צפה בכל הפגישות
+            </Button>
+          </Link>
+        </div>
       </div>
 
-      <div className="p-3 border-t">
-        <Link to={createPageUrl("Meetings")} className="block">
-          <Button variant="outline" size="sm" className="w-full">
-            כל הפגישות →
-          </Button>
-        </Link>
-      </div>
-
+      {/* דיאלוג עריכה */}
       {editingMeeting && (
-        <Dialog open={true} onOpenChange={() => setEditingMeeting(null)}>
-          <DialogContent className="sm:max-w-lg" dir="rtl">
+        <Dialog open={!!editingMeeting} onOpenChange={() => setEditingMeeting(null)}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" dir="rtl">
             <DialogHeader>
-              <DialogTitle>עריכת פגישה</DialogTitle>
+              <DialogTitle className="flex items-center gap-2">
+                <Edit className="w-5 h-5 text-blue-600" />
+                עריכת פגישה
+              </DialogTitle>
             </DialogHeader>
-            
-            <div className="space-y-4" dir="rtl">
-              <div>
-                <label className="text-sm font-medium mb-1 block text-right">כותרת</label>
+
+            <div className="space-y-4 py-4">
+              {/* כותרת */}
+              <div className="space-y-2">
+                <Label>כותרת הפגישה *</Label>
                 <Input
-                  value={formData.title}
+                  value={formData.title || ''}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="text-right"
-                  dir="rtl"
+                  placeholder="לדוגמה: פגישת תכנון פרויקט"
                 />
               </div>
 
-              <div>
-                <label className="text-sm font-medium mb-1 block text-right">תאריך ושעה</label>
+              {/* תאריך ושעה */}
+              <div className="space-y-2">
+                <Label>תאריך ושעה *</Label>
                 <Input
                   type="datetime-local"
-                  value={formData.meeting_date}
+                  value={formData.meeting_date || ''}
                   onChange={(e) => setFormData({ ...formData, meeting_date: e.target.value })}
-                  className="text-right"
-                  dir="rtl"
                 />
               </div>
 
-              <div>
-                <label className="text-sm font-medium mb-1 block text-right">סוג פגישה</label>
+              {/* סוג פגישה */}
+              <div className="space-y-2">
+                <Label>סוג פגישה</Label>
                 <Select
-                  value={formData.meeting_type}
+                  value={formData.meeting_type || ''}
                   onValueChange={(value) => setFormData({ ...formData, meeting_type: value })}
                 >
-                  <SelectTrigger className="text-right" dir="rtl">
-                    <SelectValue />
+                  <SelectTrigger>
+                    <SelectValue placeholder="בחר סוג פגישה" />
                   </SelectTrigger>
-                  <SelectContent dir="rtl">
+                  <SelectContent>
                     <SelectItem value="פגישת היכרות">פגישת היכרות</SelectItem>
                     <SelectItem value="פגישת תכנון">פגישת תכנון</SelectItem>
                     <SelectItem value="פגישת מעקב">פגישת מעקב</SelectItem>
@@ -304,16 +375,17 @@ export default function UpcomingMeetings({ meetings, isLoading, onUpdate }) {
                 </Select>
               </div>
 
-              <div>
-                <label className="text-sm font-medium mb-1 block text-right">סטטוס</label>
+              {/* סטטוס */}
+              <div className="space-y-2">
+                <Label>סטטוס</Label>
                 <Select
-                  value={formData.status}
+                  value={formData.status || ''}
                   onValueChange={(value) => setFormData({ ...formData, status: value })}
                 >
-                  <SelectTrigger className="text-right" dir="rtl">
-                    <SelectValue />
+                  <SelectTrigger>
+                    <SelectValue placeholder="בחר סטטוס" />
                   </SelectTrigger>
-                  <SelectContent dir="rtl">
+                  <SelectContent>
                     <SelectItem value="מתוכננת">מתוכננת</SelectItem>
                     <SelectItem value="אושרה">אושרה</SelectItem>
                     <SelectItem value="בוצעה">בוצעה</SelectItem>
@@ -323,38 +395,47 @@ export default function UpcomingMeetings({ meetings, isLoading, onUpdate }) {
                 </Select>
               </div>
 
-              <div>
-                <label className="text-sm font-medium mb-1 block text-right">מיקום</label>
+              {/* מיקום */}
+              <div className="space-y-2">
+                <Label>מיקום</Label>
                 <Input
-                  value={formData.location}
+                  value={formData.location || ''}
                   onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                  className="text-right"
-                  dir="rtl"
+                  placeholder="לדוגמה: משרד הלקוח, זום, טלפון"
                 />
               </div>
 
-              <div>
-                <label className="text-sm font-medium mb-1 block text-right">תיאור</label>
+              {/* תיאור */}
+              <div className="space-y-2">
+                <Label>תיאור</Label>
                 <Textarea
-                  value={formData.description}
+                  value={formData.description || ''}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="text-right"
-                  dir="rtl"
+                  placeholder="פרטים נוספים על הפגישה..."
+                  rows={4}
                 />
               </div>
             </div>
 
-            <DialogFooter className="gap-2" dir="rtl">
-              <Button variant="outline" onClick={() => setEditingMeeting(null)}>
+            <div className="flex justify-end gap-2 pt-4 border-t">
+              <Button
+                variant="outline"
+                onClick={() => setEditingMeeting(null)}
+                disabled={saving}
+              >
                 ביטול
               </Button>
-              <Button onClick={handleSave}>
-                שמור
+              <Button
+                onClick={handleSave}
+                disabled={saving || !formData.title || !formData.meeting_date}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                {saving ? 'שומר...' : 'שמור שינויים'}
               </Button>
-            </DialogFooter>
+            </div>
           </DialogContent>
         </Dialog>
       )}
-    </div>
+    </>
   );
 }

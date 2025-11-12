@@ -1,256 +1,256 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.4';
-import * as XLSX from 'npm:xlsx@0.18.5';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.7.0';
+import XLSX from 'npm:xlsx@0.18.5';
+import Papa from 'npm:papaparse@5.4.1';
+
+function inferExt(nameOrUrl = "") {
+  try {
+    const qless = nameOrUrl.split('?')[0] || "";
+    const parts = qless.toLowerCase().split('.');
+    return parts.length > 1 ? parts.pop() : '';
+  } catch {
+    return '';
+  }
+}
+
+// Enhanced CSV decoder with Hebrew encoding support
+function decodeCsvBuffer(ab) {
+  const u8 = new Uint8Array(ab);
+  
+  // BOM detection
+  const hasUtf8Bom = u8.length >= 3 && u8[0] === 0xEF && u8[1] === 0xBB && u8[2] === 0xBF;
+  const hasUtf16LE = u8.length >= 2 && u8[0] === 0xFF && u8[1] === 0xFE;
+  const hasUtf16BE = u8.length >= 2 && u8[0] === 0xFE && u8[1] === 0xFF;
+
+  // List of encodings to try for Hebrew text
+  const encodingsToTry = [
+    'utf-8',
+    'windows-1255', // Hebrew Windows encoding
+    'iso-8859-8',   // Hebrew ISO encoding
+    'utf-16le',
+    'utf-16be',
+    'windows-1252', // Western European fallback
+  ];
+
+  // If BOM detected, use specific encoding
+  if (hasUtf16LE) {
+    try {
+      return new TextDecoder('utf-16le').decode(u8);
+    } catch {
+      // Fall through to try other encodings
+    }
+  }
+  if (hasUtf16BE) {
+    try {
+      return new TextDecoder('utf-16be').decode(u8);
+    } catch {
+      // Fall through to try other encodings
+    }
+  }
+  if (hasUtf8Bom) {
+    try {
+      return new TextDecoder('utf-8').decode(u8);
+    } catch {
+      // Fall through to try other encodings
+    }
+  }
+
+  // Try each encoding and check for Hebrew characters
+  for (const encoding of encodingsToTry) {
+    try {
+      const decoder = new TextDecoder(encoding, { fatal: false });
+      const text = decoder.decode(u8);
+      
+      // Check if decoded text contains Hebrew characters or looks reasonable
+      if (containsHebrewOrLooksGood(text)) {
+        console.log(`Successfully decoded CSV with encoding: ${encoding}`);
+        return text;
+      }
+    } catch (e) {
+      console.log(`Failed to decode with ${encoding}:`, e.message);
+      continue;
+    }
+  }
+
+  // Ultimate fallback - try to manually decode as Windows-1255
+  try {
+    return manualDecodeWindows1255(u8);
+  } catch {
+    // Last resort - return as UTF-8 with error recovery
+    try {
+      return new TextDecoder('utf-8', { fatal: false }).decode(u8);
+    } catch {
+      return '';
+    }
+  }
+}
+
+function containsHebrewOrLooksGood(text) {
+  // Check for Hebrew characters (Unicode range U+0590 to U+05FF)
+  const hebrewRegex = /[\u0590-\u05FF]/;
+  
+  // Check for common Hebrew words
+  const commonHebrewWords = ['שם', 'כתובת', 'טלפון', 'מייל', 'אימייל', 'לקוח', 'חברה'];
+  
+  // Check if text contains Hebrew characters or common Hebrew words
+  if (hebrewRegex.test(text)) {
+    return true;
+  }
+  
+  for (const word of commonHebrewWords) {
+    if (text.includes(word)) {
+      return true;
+    }
+  }
+  
+  // Check if text doesn't contain too many replacement characters (�)
+  const replacementCount = (text.match(/�/g) || []).length;
+  const totalLength = text.length;
+  
+  // If less than 10% replacement characters, consider it good
+  if (totalLength > 0 && (replacementCount / totalLength) < 0.1) {
+    return true;
+  }
+  
+  return false;
+}
+
+function manualDecodeWindows1255(bytes) {
+  // Windows-1255 character map for Hebrew (partial)
+  const cp1255Map = {
+    0x80: 0x20AC, // Euro sign
+    0x81: null,    // Undefined
+    0x82: 0x201A, // Single low-9 quotation mark
+    0x83: 0x0192, // Latin small letter f with hook
+    0x84: 0x201E, // Double low-9 quotation mark
+    0x85: 0x2026, // Horizontal ellipsis
+    // ... more mappings would go here
+    // Hebrew letters start at 0xE0
+    0xE0: 0x05D0, // Hebrew letter Alef
+    0xE1: 0x05D1, // Hebrew letter Bet
+    0xE2: 0x05D2, // Hebrew letter Gimel
+    0xE3: 0x05D3, // Hebrew letter Dalet
+    0xE4: 0x05D4, // Hebrew letter He
+    0xE5: 0x05D5, // Hebrew letter Vav
+    0xE6: 0x05D6, // Hebrew letter Zayin
+    0xE7: 0x05D7, // Hebrew letter Het
+    0xE8: 0x05D8, // Hebrew letter Tet
+    0xE9: 0x05D9, // Hebrew letter Yod
+    0xEA: 0x05DA, // Hebrew letter Final Kaf
+    0xEB: 0x05DB, // Hebrew letter Kaf
+    0xEC: 0x05DC, // Hebrew letter Lamed
+    0xED: 0x05DD, // Hebrew letter Final Mem
+    0xEE: 0x05DE, // Hebrew letter Mem
+    0xEF: 0x05DF, // Hebrew letter Final Nun
+    0xF0: 0x05E0, // Hebrew letter Nun
+    0xF1: 0x05E1, // Hebrew letter Samekh
+    0xF2: 0x05E2, // Hebrew letter Ayin
+    0xF3: 0x05E3, // Hebrew letter Final Pe
+    0xF4: 0x05E4, // Hebrew letter Pe
+    0xF5: 0x05E5, // Hebrew letter Final Tsadi
+    0xF6: 0x05E6, // Hebrew letter Tsadi
+    0xF7: 0x05E7, // Hebrew letter Qof
+    0xF8: 0x05E8, // Hebrew letter Resh
+    0xF9: 0x05E9, // Hebrew letter Shin
+    0xFA: 0x05EA, // Hebrew letter Tav
+  };
+
+  let result = '';
+  for (let i = 0; i < bytes.length; i++) {
+    const byte = bytes[i];
+    
+    if (byte < 0x80) {
+      // ASCII range
+      result += String.fromCharCode(byte);
+    } else if (cp1255Map[byte] !== undefined) {
+      if (cp1255Map[byte] !== null) {
+        result += String.fromCharCode(cp1255Map[byte]);
+      }
+    } else {
+      // Fallback for unmapped characters
+      result += String.fromCharCode(byte);
+    }
+  }
+  
+  return result;
+}
 
 Deno.serve(async (req) => {
-  console.log('═══════════════════════════════════════════════════');
-  console.log('🧠 [SMART PARSER] Intelligent Structure Detection');
-  console.log('═══════════════════════════════════════════════════');
-
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) {
-      return Response.json({ status: 'error', error: 'Unauthorized' }, { status: 401 });
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { file_url } = await req.json();
+    const payload = await req.json().catch(() => ({}));
+    const file_url = payload?.file_url;
     if (!file_url) {
-      return Response.json({ status: 'error', error: 'Missing file_url' }, { status: 400 });
+      return Response.json({ error: 'Missing file_url' }, { status: 400 });
     }
 
-    console.log('⬇️ [FETCH] Downloading:', file_url);
-    const fileResponse = await fetch(file_url);
-    const arrayBuffer = await fileResponse.arrayBuffer();
-    console.log('✅ [FETCH]', arrayBuffer.byteLength, 'bytes');
-
-    const workbook = XLSX.read(arrayBuffer, {
-      type: 'array',
-      cellDates: true,
-      cellStyles: true,
-      cellNF: true,
-      sheetStubs: true,
-      raw: false
-    });
-
-    const sheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[sheetName];
-    const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
-    
-    console.log('📐 [RANGE]', range.e.r + 1, 'rows x', range.e.c + 1, 'cols');
-
-    // ✅ זיהוי תאים ממוזגים
-    const mergedCells = worksheet['!merges'] || [];
-    console.log('🔗 [MERGED]', mergedCells.length, 'ranges found');
-    
-    const mergeMap = new Map();
-    mergedCells.forEach(merge => {
-      for (let R = merge.s.r; R <= merge.e.r; R++) {
-        for (let C = merge.s.c; C <= merge.e.c; C++) {
-          const addr = XLSX.utils.encode_cell({ r: R, c: C });
-          mergeMap.set(addr, {
-            masterCell: XLSX.utils.encode_cell({ r: merge.s.r, c: merge.s.c }),
-            spanRows: merge.e.r - merge.s.r + 1,
-            spanCols: merge.e.c - merge.s.c + 1,
-            isTopLeft: R === merge.s.r && C === merge.s.c
-          });
-        }
-      }
-    });
-
-    // ✅ קריאת 10 שורות ראשונות לניתוח
-    const firstRows = [];
-    for (let r = 0; r <= Math.min(10, range.e.r); r++) {
-      const row = [];
-      for (let c = 0; c <= range.e.c; c++) {
-        const cellAddr = XLSX.utils.encode_cell({ r, c });
-        const cell = worksheet[cellAddr];
-        const mergeInfo = mergeMap.get(cellAddr);
-        
-        let value = '';
-        let formatted = '';
-        
-        if (cell) {
-          value = String(cell.v || '');
-          formatted = String(cell.w || cell.v || '');
-        }
-        
-        // אם תא ממוזג ולא התא הראשי - קח מהתא הראשי
-        if (mergeInfo && !mergeInfo.isTopLeft) {
-          const masterCell = worksheet[mergeInfo.masterCell];
-          if (masterCell) {
-            value = String(masterCell.v || '');
-            formatted = String(masterCell.w || masterCell.v || '');
-          }
-        }
-        
-        row.push({
-          value,
-          formatted,
-          type: cell ? cell.t : 'z',
-          style: cell ? (cell.s || null) : null,
-          merged: mergeInfo,
-          isEmpty: !value || value.trim() === ''
-        });
-      }
-      firstRows.push(row);
+    console.log('Parsing file:', file_url);
+    const ext = inferExt(file_url);
+    const res = await fetch(file_url);
+    if (!res.ok) {
+      return Response.json({ error: `Failed to fetch file (${res.status})` }, { status: 400 });
     }
 
-    // 🧠 אלגוריתם זיהוי כותרות אוטומטי
-    const detectHeaderRows = (rows) => {
-      const scores = [];
+    let rows = [];
+    let headers = [];
+
+    if (ext === 'xlsx' || ext === 'xls') {
+      console.log('Processing Excel file');
+      const ab = await res.arrayBuffer();
+      const wb = XLSX.read(ab, { type: 'array' });
+      const sheetName = wb.SheetNames?.[0];
+      if (!sheetName) {
+        return Response.json({ error: 'No sheets found in workbook' }, { status: 400 });
+      }
+      const ws = wb.Sheets[sheetName];
+      rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+      headers = Array.from(new Set(rows.flatMap((r) => Object.keys(r || {}))));
+      console.log(`Excel parsed: ${rows.length} rows, ${headers.length} headers`);
+    } else if (ext === 'csv') {
+      console.log('Processing CSV file with enhanced Hebrew support');
+      const ab = await res.arrayBuffer();
+      const text = decodeCsvBuffer(ab);
       
-      for (let idx = 0; idx < Math.min(5, rows.length); idx++) {
-        const row = rows[idx];
-        let score = 0;
-        
-        // 1️⃣ תאים ממוזגים = כותרת חזקה (10 נקודות)
-        const mergedCount = row.filter(c => c.merged?.isTopLeft).length;
-        score += mergedCount * 10;
-        
-        // 2️⃣ טקסט vs מספרים (5 נקודות אם יותר טקסט)
-        const textCells = row.filter(c => c.type === 's' && c.value).length;
-        const numericCells = row.filter(c => c.type === 'n').length;
-        if (textCells > numericCells) score += 5;
-        
-        // 3️⃣ אורך טקסט קצר = כותרת (3 נקודות)
-        const nonEmptyCells = row.filter(c => !c.isEmpty);
-        const avgLength = nonEmptyCells.reduce((sum, c) => sum + c.value.length, 0) / (nonEmptyCells.length || 1);
-        if (avgLength > 0 && avgLength < 50) score += 3;
-        
-        // 4️⃣ עיצוב מיוחד (2 נקודות)
-        const styledCells = row.filter(c => c.style).length;
-        score += Math.min(styledCells, 5) * 2;
-        
-        // 5️⃣ אחוז תאים מלאים (2 נקודות אם מעל 50%)
-        const fillRate = nonEmptyCells.length / row.length;
-        if (fillRate > 0.5) score += 2;
-        
-        // 6️⃣ בונוס לשורות ראשונות
-        if (idx === 0) score += 15;
-        if (idx === 1) score += 10;
-        if (idx === 2) score += 5;
-        
-        // 7️⃣ בדיקה אם יש תווי V/X רבים = סימן שזה נתונים (הפחתת ציון)
-        const vxCount = row.filter(c => {
-          const v = c.value.toUpperCase();
-          return v === 'V' || v === 'X' || v === '✓' || v === '✗';
-        }).length;
-        if (vxCount > row.length * 0.3) score -= 15;
-        
-        scores.push({ rowIndex: idx, score });
+      console.log('Decoded text preview:', text.substring(0, 200));
+      
+      const parsed = Papa.parse(text, { 
+        header: true, 
+        skipEmptyLines: true,
+        encoding: 'utf-8'
+      });
+      
+      if (parsed.errors && parsed.errors.length) {
+        console.error('CSV parse errors:', parsed.errors);
+        return Response.json({ error: 'CSV parse error', details: parsed.errors }, { status: 400 });
       }
       
-      console.log('📊 [SCORES]:', scores.map(s => `R${s.rowIndex}:${s.score}`).join(', '));
+      rows = parsed.data || [];
+      headers = parsed.meta?.fields || Array.from(new Set(rows.flatMap((r) => Object.keys(r || {}))));
       
-      // שורות עם ציון מעל 15 = כותרות
-      const headerRows = scores
-        .filter(s => s.score >= 15)
-        .sort((a, b) => a.rowIndex - b.rowIndex)
-        .map(s => s.rowIndex);
-      
-      // אם לא מצאנו - שורה 0 בלבד
-      return headerRows.length > 0 ? headerRows : [0];
-    };
-
-    const headerRowIndices = detectHeaderRows(firstRows);
-    console.log('✅ [HEADERS] Auto-detected rows:', headerRowIndices);
-
-    // ✅ בניית כותרות סופיות (הירארכיות)
-    const buildFinalHeaders = () => {
-      const finalHeaders = [];
-      
-      for (let c = 0; c <= range.e.c; c++) {
-        const parts = [];
-        
-        // אסוף כותרות מכל הרמות
-        headerRowIndices.forEach(rowIdx => {
-          const cell = firstRows[rowIdx][c];
-          if (cell && cell.value && cell.value.trim()) {
-            parts.push(cell.value.trim());
-          }
-        });
-        
-        // בניית כותרת סופית
-        if (parts.length > 1) {
-          // הירארכיה: "כותרת ראשית - תת-כותרת"
-          finalHeaders.push(parts.join(' - '));
-        } else if (parts.length === 1) {
-          finalHeaders.push(parts[0]);
-        } else {
-          finalHeaders.push(`עמודה ${c + 1}`);
-        }
-      }
-      
-      console.log('📋 [FINAL]:', finalHeaders);
-      return finalHeaders;
-    };
-
-    const headers = buildFinalHeaders();
-
-    // ✅ קריאת נתונים (מתחת לכותרות)
-    const dataStartRow = Math.max(...headerRowIndices) + 1;
-    console.log('📊 [DATA] Starting from row:', dataStartRow + 1);
-
-    const rows = [];
-    for (let r = dataStartRow; r <= range.e.r; r++) {
-      const rowData = {};
-      let hasData = false;
-      
-      for (let c = 0; c <= range.e.c; c++) {
-        const cellAddr = XLSX.utils.encode_cell({ r, c });
-        const cell = worksheet[cellAddr];
-        let value = cell ? String(cell.w || cell.v || '') : '';
-        
-        // המרת V/X
-        const upperValue = value.toUpperCase().trim();
-        if (upperValue === 'V' || upperValue === '✓') {
-          value = 'בוצע';
-        } else if (upperValue === 'X' || upperValue === '✗') {
-          value = 'לא בוצע';
-        }
-        
-        rowData[headers[c]] = value;
-        if (value) hasData = true;
-      }
-      
-      if (hasData) rows.push(rowData);
+      console.log(`CSV parsed: ${rows.length} rows, ${headers.length} headers`);
+      console.log('Headers:', headers);
+      console.log('First row sample:', rows[0]);
+    } else {
+      return Response.json({ error: `Unsupported file type: .${ext}` }, { status: 400 });
     }
-
-    console.log('✅ [SUCCESS]', rows.length, 'data rows extracted');
-    console.log('═══════════════════════════════════════════════════');
 
     return Response.json({
       status: 'success',
-      headers: headers,
-      rows: rows,
+      rows,
+      headers,
       count: rows.length,
       debug: {
-        sheetName,
-        totalRows: range.e.r + 1,
-        totalCols: range.e.c + 1,
-        headerRows: headerRowIndices,
-        headerLevels: headerRowIndices.length,
-        mergedCellsCount: mergedCells.length,
-        dataStartRow: dataStartRow + 1
-      },
-      structure: {
-        hasMultiLevelHeaders: headerRowIndices.length > 1,
-        hasMergedCells: mergedCells.length > 0,
-        headerRowIndices: headerRowIndices,
-        detectionMethod: 'automatic-scoring',
-        mergedRegions: mergedCells.map(m => ({
-          range: `${XLSX.utils.encode_cell(m.s)}:${XLSX.utils.encode_cell(m.e)}`,
-          rows: m.e.r - m.s.r + 1,
-          cols: m.e.c - m.s.c + 1
-        }))
+        fileType: ext,
+        headersFound: headers.length,
+        firstRowKeys: rows[0] ? Object.keys(rows[0]) : []
       }
     });
-
   } catch (error) {
-    console.error('❌ [ERROR]', error.message);
-    return Response.json({
-      status: 'error',
-      error: error.message
-    }, { status: 500 });
+    console.error('Parse error:', error);
+    return Response.json({ error: error?.message || 'Unknown error' }, { status: 500 });
   }
 });

@@ -1,103 +1,79 @@
-import React from "react";
+
+import React from 'react';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
+import { TrendingUp, ExternalLink } from "lucide-react";
 
-const STATUS_COLORS = {
-  "נשלחה": "bg-blue-100 text-blue-800",
-  "בהמתנה": "bg-yellow-100 text-yellow-800",
-  "אושרה": "bg-green-100 text-green-800",
-  "נדחתה": "bg-red-100 text-red-800",
-  "פג תוקף": "bg-slate-100 text-slate-800"
+const statusColors = {
+  'נשלחה': 'bg-blue-100 text-blue-800 border-blue-200',
+  'בהמתנה': 'bg-amber-100 text-amber-800 border-amber-200',
+  'אושרה': 'bg-green-100 text-green-800 border-green-200',
+  'נדחתה': 'bg-red-100 text-red-800 border-red-200',
+  'פגה תוקף': 'bg-slate-100 text-slate-800 border-slate-200'
 };
 
 export default function QuoteStatus({ quotes, isLoading }) {
-  // ✅ הגנה מלאה על quotes
-  const safeQuotes = React.useMemo(() => {
-    if (!quotes) {
-      console.warn('⚠️ [QuoteStatus] quotes is null/undefined');
-      return [];
-    }
-    if (!Array.isArray(quotes)) {
-      console.error('❌ [QuoteStatus] quotes is not an array!', quotes);
-      return [];
-    }
-    return quotes.filter(q => q && typeof q === 'object');
-  }, [quotes]);
-
-  const formatCurrency = (amount) => {
-    if (!amount) return '₪0';
-    return new Intl.NumberFormat('he-IL', {
-      style: 'currency',
+  const formatAmount = (amount) => {
+    return new Intl.NumberFormat('he-IL', { 
+      style: 'currency', 
       currency: 'ILS',
-      minimumFractionDigits: 0
+      maximumFractionDigits: 0 
     }).format(amount);
   };
 
   if (isLoading) {
     return (
-      <div className="p-4 space-y-3">
-        {[1, 2, 3].map(i => (
-          <div key={i} className="h-20 bg-slate-200 rounded-lg animate-pulse" />
+      <div className="p-6 space-y-4 h-[400px] overflow-y-auto" dir="rtl">
+        {Array(3).fill(0).map((_, i) => (
+          <div key={i} className="animate-pulse">
+            <div className="h-20 bg-slate-200 rounded-lg"></div>
+          </div>
         ))}
       </div>
     );
   }
 
-  if (safeQuotes.length === 0) {
+  if (quotes.length === 0) {
     return (
-      <div className="p-8 text-center text-slate-500">
-        <p className="mb-4">אין הצעות מחיר</p>
-        <Link to={createPageUrl("Quotes")}>
-          <Button variant="outline" size="sm">צור הצעה ראשונה</Button>
-        </Link>
+      <div className="p-6 text-center h-[400px] flex items-center justify-center" dir="rtl">
+        <p className="text-slate-500 text-center">אין הצעות מחיר עדיין</p>
       </div>
     );
   }
 
   return (
-    <div>
-      <div className="p-4 space-y-3 max-h-96 overflow-y-auto">
-        {safeQuotes.map((quote) => {
-          if (!quote || typeof quote !== 'object') {
-            console.error('Invalid quote:', quote);
-            return null;
-          }
-
-          const statusColor = STATUS_COLORS[quote.status || "בהמתנה"];
-
-          return (
-            <div
-              key={quote.id}
-              className="p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-all"
-            >
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="font-semibold text-slate-900">
-                  {quote.project_name || 'פרויקט ללא שם'}
-                </h4>
-                <Badge className={`${statusColor} text-xs`}>
-                  {quote.status || 'בהמתנה'}
+    <div className="h-[400px] flex flex-col" dir="rtl">
+      {/* Scrollable content */}
+      <div className="flex-1 overflow-y-auto px-6 py-4" dir="rtl">
+        <div className="space-y-4">
+          {quotes.map((quote) => (
+            <div key={quote.id} className="p-4 border border-slate-200 rounded-xl hover:shadow-md transition-all duration-200 bg-white" dir="rtl">
+              <div className="flex justify-between items-start mb-3" dir="rtl">
+                <div className="flex-1 min-w-0 text-right" dir="rtl">
+                  <h3 className="font-semibold text-slate-900 mb-1 truncate text-right">{quote.project_name}</h3>
+                  <p className="text-sm text-slate-600 mb-2 truncate text-right">{quote.client_name}</p>
+                  <div className="flex items-center gap-2 text-lg font-bold text-green-600" dir="rtl">
+                    <TrendingUp className="w-4 h-4 flex-shrink-0" />
+                    <span>{formatAmount(quote.amount)}</span>
+                  </div>
+                </div>
+                <Badge variant="outline" className={`${statusColors[quote.status] || 'bg-slate-100 text-slate-800'} flex-shrink-0 text-xs`}>
+                  {quote.status}
                 </Badge>
               </div>
-              
-              <div className="text-sm text-slate-600">
-                <div className="flex justify-between items-center">
-                  <span>{quote.client_name || 'לקוח לא ידוע'}</span>
-                  <span className="font-semibold text-slate-900">
-                    {formatCurrency(quote.amount)}
-                  </span>
-                </div>
-              </div>
             </div>
-          );
-        })}
+          ))}
+        </div>
       </div>
-
-      <div className="p-3 border-t">
-        <Link to={createPageUrl("Quotes")} className="block">
-          <Button variant="outline" size="sm" className="w-full">
-            כל ההצעות →
+      
+      {/* Fixed footer */}
+      <div className="flex-shrink-0 px-6 pb-4 pt-2 border-t border-slate-100" dir="rtl">
+        <Link to={createPageUrl("Quotes")}>
+          <Button variant="outline" className="w-full text-sm">
+            <ExternalLink className="w-4 h-4 ml-2" />
+            צפה בכל הצעות המחיר
           </Button>
         </Link>
       </div>

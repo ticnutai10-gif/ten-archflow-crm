@@ -21,9 +21,9 @@ import TimeLogs from './pages/TimeLogs';
 import Register from './pages/Register';
 import UserApprovals from './pages/UserApprovals';
 import Meetings from './pages/Meetings';
+import SpreadsheetDetails from './pages/SpreadsheetDetails';
 import Tasks from './pages/Tasks';
 import DailyReports from './pages/DailyReports';
-import SpreadsheetDetails from './pages/SpreadsheetDetails';
 import Layout from './Layout.jsx';
 
 
@@ -51,9 +51,9 @@ export const PAGES = {
     "Register": Register,
     "UserApprovals": UserApprovals,
     "Meetings": Meetings,
+    "SpreadsheetDetails": SpreadsheetDetails,
     "Tasks": Tasks,
     "DailyReports": DailyReports,
-    "SpreadsheetDetails": SpreadsheetDetails,
 }
 
 export const pagesConfig = {
