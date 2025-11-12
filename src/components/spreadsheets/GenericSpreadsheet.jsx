@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +16,8 @@ import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
 import ThemeSelector, { COLOR_PALETTES, BORDER_STYLES, FONT_OPTIONS } from "./ThemeSelector";
 import ViewManager from "./ViewManager";
+import ChartBuilder from "./ChartBuilder"; // New import
+import ChartViewer from "./ChartViewer";   // New import
 import { useAccessControl } from "@/components/access/AccessValidator";
 
 export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMode = false }) {
@@ -40,7 +43,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const [resizingRow, setResizingRow] = useState(null);
   const [rowHeights, setRowHeights] = useState({});
   const [showImportDialog, setShowImportDialog] = useState(false);
-  const [importFile, setImportFile] = useState(null);
+  const [importFile, setImportFile] = null;
   const [importPreview, setImportPreview] = useState(null);
   const fileInputRef = useRef(null);
   const [validationRules, setValidationRules] = useState([]);
@@ -73,6 +76,9 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const [clientSearchQuery, setClientSearchQuery] = useState("");
   const [showClientPicker, setShowClientPicker] = useState(null);
   const [showAddFromClientDialog, setShowAddFromClientDialog] = useState(false);
+  const [showChartBuilder, setShowChartBuilder] = useState(false); // New state
+  const [charts, setCharts] = useState([]); // New state
+  const [editingChart, setEditingChart] = useState(null); // New state
   
   const editInputRef = useRef(null);
   const columnEditRef = useRef(null);
@@ -137,6 +143,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       
       setSavedViews(spreadsheet.saved_views || []);
       setActiveViewId(spreadsheet.active_view_id || null);
+      setCharts(spreadsheet.charts || []); // Initialize charts from spreadsheet
       
       setHistory([{ columns: initialColumns, rows: initialRows, styles: initialStyles }]);
       setHistoryIndex(0);
@@ -165,7 +172,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     saveToBackend(prevState.columns, prevState.rows, prevState.styles);
     toast.success('✓ פעולה בוטלה');
     setTimeout(() => setIsUndoRedoAction(false), 100);
-  }, [history, historyIndex]);
+  }, [history, historyIndex, saveToBackend]);
 
   const handleRedo = useCallback(() => {
     if (historyIndex >= history.length - 1) { toast.error('אין מה לשחזר'); return; }
@@ -178,7 +185,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     saveToBackend(nextState.columns, nextState.rows, nextState.styles);
     toast.success('✓ פעולה שוחזרה');
     setTimeout(() => setIsUndoRedoAction(false), 100);
-  }, [history, historyIndex]);
+  }, [history, historyIndex, saveToBackend]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -200,9 +207,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       // Paste (Ctrl+V)
       if ((e.ctrlKey || e.metaKey) && e.key === 'v' && copiedCells && selectedCells.size > 0) {
         e.preventDefault();
-        const targetCell = Array.from(selectedCells)[0];
-        const [targetRowId, targetColKey] = targetCell.split('_');
-        
         const updatedRows = [...rowsData];
         copiedCells.forEach((copiedCell, idx) => {
           if (idx < selectedCells.size) {
@@ -243,7 +247,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleUndo, handleRedo, selectedCells, copiedCells, rowsData, columns, cellStyles, editingCell]);
+  }, [handleUndo, handleRedo, selectedCells, copiedCells, rowsData, columns, cellStyles, editingCell, saveToHistory, saveToBackend]);
 
   const handleFileSelect = async (e) => {
     const file = e.target.files[0];
@@ -541,7 +545,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       document.body.style.userSelect = '';
       document.body.style.cursor = '';
     };
-  }, [resizingColumn, resizingRow, columns, rowHeights]);
+  }, [resizingColumn, resizingRow, columns, rowHeights, rowsData, cellStyles, saveToBackend]);
 
   const applyCellStyle = (cellKey, style) => {
     const newStyles = { ...cellStyles, [cellKey]: style };
@@ -584,6 +588,23 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     link.download = `${spreadsheet.name || 'spreadsheet'}.csv`;
     link.click();
     toast.success('✓ הקובץ יוצא בהצלחה');
+  };
+
+  const getConditionalStyle = (columnKey, value) => {
+    const formats = conditionalFormats.filter(f => f.active !== false && f.column_key === columnKey);
+    for (const format of formats) {
+      let matches = false;
+      if (format.condition_type === 'equals') matches = String(value) === String(format.condition_value);
+      else if (format.condition_type === 'contains') matches = String(value).toLowerCase().includes(String(format.condition_value).toLowerCase());
+      else if (format.condition_type === 'greater_than') matches = Number(value) > Number(format.condition_value);
+      else if (format.condition_type === 'less_than') matches = Number(value) < Number(format.condition_value);
+      else if (format.condition_type === 'between') {
+        const num = Number(value);
+        matches = num >= Number(format.condition_value) && num <= Number(format.condition_value2);
+      }
+      if (matches && format.style) return format.style;
+    }
+    return {};
   };
 
   const exportToPDF = () => {
@@ -874,24 +895,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     toast.success('✓ התא נשמר');
   };
 
-  const getConditionalStyle = (columnKey, value) => {
-    const formats = conditionalFormats.filter(f => f.active !== false && f.column_key === columnKey);
-    for (const format of formats) {
-      let matches = false;
-      if (format.condition_type === 'equals') matches = String(value) === String(format.condition_value);
-      else if (format.condition_type === 'contains') matches = String(value).toLowerCase().includes(String(format.condition_value).toLowerCase());
-      else if (format.condition_type === 'greater_than') matches = Number(value) > Number(format.condition_value);
-      else if (format.condition_type === 'less_than') matches = Number(value) < Number(format.condition_value);
-      else if (format.condition_type === 'between') {
-        const num = Number(value);
-        matches = num >= Number(format.condition_value) && num <= Number(format.condition_value2);
-      }
-      if (matches && format.style) return format.style;
-    }
-    return {};
-  };
-
-  const saveToBackend = async (cols, rows, styles) => {
+  const saveToBackend = useCallback(async (cols, rows, styles) => {
     if (!spreadsheet?.id) return;
     try {
       const payload = {
@@ -906,7 +910,8 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         merged_cells: mergedCells,
         theme_settings: themeSettings, 
         saved_views: savedViews, 
-        active_view_id: activeViewId
+        active_view_id: activeViewId,
+        charts: charts // Include charts in the payload
       };
       
       console.log('💾 [SAVE] Saving to backend, theme_settings:', themeSettings);
@@ -921,7 +926,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       console.error('❌ Save error:', error);
       toast.error('שגיאה בשמירה');
     }
-  };
+  }, [spreadsheet?.id, rowHeights, validationRules, conditionalFormats, freezeSettings, customCellTypes, mergedCells, themeSettings, savedViews, activeViewId, charts, onUpdate]);
 
   const handleThemeApply = async (newTheme) => {
     console.log('🎨 [THEME] Applying new theme:', newTheme);
@@ -1056,6 +1061,42 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     toast.success('✓ ברירת המחדל עודכנה');
   };
 
+  // New chart handling functions
+  const handleSaveChart = async (chart) => {
+    const updatedCharts = editingChart
+      ? charts.map(c => c.id === chart.id ? chart : c)
+      : [...charts, { ...chart, id: chart.id || `chart_${Date.now()}` }]; // Ensure new charts have an ID
+    
+    setCharts(updatedCharts);
+    await base44.entities.CustomSpreadsheet.update(spreadsheet.id, {
+      charts: updatedCharts
+    });
+    
+    setShowChartBuilder(false);
+    setEditingChart(null);
+    if (onUpdate) await onUpdate();
+    toast.success('✓ גרף נשמר');
+  };
+
+  const handleEditChart = (chart) => {
+    setEditingChart(chart);
+    setShowChartBuilder(true);
+  };
+
+  const handleDeleteChart = async (chartId) => {
+    if (!confirm('האם למחוק גרף זה?')) return;
+    
+    const updatedCharts = charts.filter(c => c.id !== chartId);
+    setCharts(updatedCharts);
+    
+    await base44.entities.CustomSpreadsheet.update(spreadsheet.id, {
+      charts: updatedCharts
+    });
+    
+    toast.success('✓ גרף נמחק');
+    if (onUpdate) await onUpdate();
+  };
+
   if (!spreadsheet) return <div className="p-6 text-center text-slate-500">לא נבחרה טבלה</div>;
 
   const visibleColumns = columns.filter(col => col.visible !== false);
@@ -1147,7 +1188,29 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   }, [visibleColumns, filteredAndSortedData]);
 
   return (
-    <div className="w-full" dir="rtl">
+    <div className="w-full space-y-6" dir="rtl">
+      {/* תצוגת גרפים */}
+      {charts.length > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+            <BarChart3 className="w-6 h-6 text-green-600" />
+            גרפים וויזואליזציות
+          </h3>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {charts.map(chart => (
+              <ChartViewer
+                key={chart.id}
+                chart={chart}
+                rowsData={filteredAndSortedData}
+                columns={columns}
+                onEdit={handleEditChart}
+                onDelete={handleDeleteChart}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
       <Card className="shadow-lg">
         <CardHeader className="border-b space-y-4">
           <div className="flex items-center justify-between">
@@ -1181,6 +1244,15 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                 {savedViews.length > 0 && (
                   <Badge variant="outline" className="mr-1 h-5 px-1.5 text-xs bg-indigo-50 text-indigo-700 border-indigo-300">
                     {savedViews.length}
+                  </Badge>
+                )}
+              </Button>
+              <Button onClick={() => { setEditingChart(null); setShowChartBuilder(true); }} size="sm" variant="outline" className="gap-2 hover:bg-green-50 transition-all" title="בניית גרף חדש">
+                <BarChart3 className="w-4 h-4" />
+                גרפים
+                {charts.length > 0 && (
+                  <Badge variant="outline" className="mr-1 h-5 px-1.5 text-xs bg-green-50 text-green-700 border-green-300">
+                    {charts.length}
                   </Badge>
                 )}
               </Button>
@@ -1705,7 +1777,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
             </ScrollArea>
           </div>
           
-          <div className="flex justify-end gap-2">
+          <DialogFooter>
             <Button 
               variant="outline" 
               onClick={() => {
@@ -1715,9 +1787,22 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
             >
               ביטול
             </Button>
-          </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* דיאלוג בניית גרפים */}
+      <ChartBuilder
+        open={showChartBuilder}
+        onClose={() => {
+          setShowChartBuilder(false);
+          setEditingChart(null);
+        }}
+        columns={columns}
+        rowsData={filteredAndSortedData}
+        onSave={handleSaveChart}
+        editingChart={editingChart}
+      />
     </div>
   );
 }
