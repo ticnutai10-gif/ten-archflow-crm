@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import ReactMarkdown from 'react-markdown';
+import { toast } from "sonner";
 
 const QUICK_PROMPTS = [
   {
@@ -106,6 +107,7 @@ export default function SmartAIPage() {
       setConversations(convs || []);
     } catch (error) {
       console.error('Error loading conversations:', error);
+      toast.error('שגיאה בטעינת השיחות');
     }
   };
 
@@ -123,9 +125,10 @@ export default function SmartAIPage() {
       setMessages([]);
       await loadConversations();
       inputRef.current?.focus();
+      toast.success('שיחה חדשה נוצרה');
     } catch (error) {
       console.error('Error creating conversation:', error);
-      alert('שגיאה ביצירת שיחה חדשה');
+      toast.error('שגיאה ביצירת שיחה חדשה');
     }
   };
 
@@ -137,21 +140,52 @@ export default function SmartAIPage() {
       scrollToBottom();
     } catch (error) {
       console.error('Error loading conversation:', error);
+      toast.error('שגיאה בטעינת השיחה');
     }
   };
 
-  const deleteConversation = async (convId) => {
-    if (!confirm('למחוק את השיחה?')) return;
+  const deleteConversation = async (convId, e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
+    if (!confirm('למחוק את השיחה? פעולה זו אינה הפיכה.')) return;
     
     try {
-      await base44.agents.deleteConversation(convId);
+      console.log('🗑️ [AI] Deleting conversation:', convId);
+      
+      // נסיון ראשון - דרך ה-API של agents
+      try {
+        await base44.agents.deleteConversation(convId);
+        console.log('✅ [AI] Deleted via agents API');
+      } catch (agentError) {
+        console.warn('⚠️ [AI] Agent API delete failed, trying direct entity delete:', agentError);
+        
+        // נסיון שני - מחיקה ישירה של ה-entity
+        // צריך למצוא את שם ה-entity של conversations
+        try {
+          await base44.entities.Conversation.delete(convId);
+          console.log('✅ [AI] Deleted via entity API');
+        } catch (entityError) {
+          console.error('❌ [AI] Entity delete also failed:', entityError);
+          throw new Error('לא הצלחנו למחוק את השיחה');
+        }
+      }
+      
+      // עדכון ה-UI
       if (currentConversation?.id === convId) {
         setCurrentConversation(null);
         setMessages([]);
       }
+      
+      // טעינת השיחות מחדש
       await loadConversations();
+      
+      toast.success('השיחה נמחקה בהצלחה');
     } catch (error) {
-      console.error('Error deleting conversation:', error);
+      console.error('❌ [AI] Error deleting conversation:', error);
+      toast.error('שגיאה במחיקת השיחה: ' + (error.message || 'נסה שוב'));
     }
   };
 
@@ -175,7 +209,7 @@ export default function SmartAIPage() {
       });
     } catch (error) {
       console.error('Error sending message:', error);
-      alert('שגיאה בשליחת ההודעה');
+      toast.error('שגיאה בשליחת ההודעה');
     } finally {
       setIsSending(false);
     }
@@ -314,7 +348,7 @@ export default function SmartAIPage() {
                   conversations.map((conv) => (
                     <div
                       key={conv.id}
-                      className={`p-3 rounded-lg cursor-pointer transition-all group ${
+                      className={`p-3 rounded-lg cursor-pointer transition-all group relative ${
                         currentConversation?.id === conv.id
                           ? 'bg-blue-50 border-2 border-blue-500'
                           : 'bg-slate-50 border border-slate-200 hover:bg-slate-100'
@@ -333,11 +367,9 @@ export default function SmartAIPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="opacity-0 group-hover:opacity-100 h-6 w-6"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteConversation(conv.id);
-                          }}
+                          className="opacity-0 group-hover:opacity-100 h-6 w-6 hover:bg-red-100 hover:text-red-600 transition-all"
+                          onClick={(e) => deleteConversation(conv.id, e)}
+                          title="מחק שיחה"
                         >
                           <Trash2 className="w-3 h-3" />
                         </Button>
