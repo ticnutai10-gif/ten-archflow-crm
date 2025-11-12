@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
@@ -113,35 +112,7 @@ export default function AIChatPage() {
     }
   }, []);
 
-  const loadConversations = useCallback(async () => {
-    console.log('💬 [AIChat] Loading conversations...');
-    setLoadingConversations(true);
-    try {
-      const convs = await base44.agents.listConversations({ agent_name: AGENT_NAME });
-      
-      // ✅ הגנה על תוצאות
-      const safeConvs = Array.isArray(convs) ? convs : [];
-      const activeConvs = safeConvs.filter(c => c && !c.metadata?.deleted);
-      
-      console.log('✅ [AIChat] Conversations loaded:', {
-        total: safeConvs.length,
-        active: activeConvs.length
-      });
-      
-      setConversations(activeConvs);
-      
-      // טען את השיחה הראשונה אם אין שיחה פעילה
-      if (activeConvs.length > 0 && !currentConversationId) {
-        await loadConversation(activeConvs[0].id);
-      }
-    } catch (error) {
-      console.error('❌ [AIChat] Error loading conversations:', error);
-      toast.error('שגיאה בטעינת שיחות');
-      setConversations([]);
-    }
-    setLoadingConversations(false);
-  }, [currentConversationId, loadConversation]);
-
+  // ✅ FIX: הגדרת loadConversation לפני loadConversations
   const loadConversation = useCallback(async (convId) => {
     console.log('📖 [AIChat] Loading conversation:', convId);
     try {
@@ -176,6 +147,35 @@ export default function AIChatPage() {
       toast.error('שגיאה בטעינת שיחה');
     }
   }, []);
+
+  const loadConversations = useCallback(async () => {
+    console.log('💬 [AIChat] Loading conversations...');
+    setLoadingConversations(true);
+    try {
+      const convs = await base44.agents.listConversations({ agent_name: AGENT_NAME });
+      
+      // ✅ הגנה על תוצאות
+      const safeConvs = Array.isArray(convs) ? convs : [];
+      const activeConvs = safeConvs.filter(c => c && !c.metadata?.deleted);
+      
+      console.log('✅ [AIChat] Conversations loaded:', {
+        total: safeConvs.length,
+        active: activeConvs.length
+      });
+      
+      setConversations(activeConvs);
+      
+      // טען את השיחה הראשונה אם אין שיחה פעילה
+      if (activeConvs.length > 0 && !currentConversationId) {
+        await loadConversation(activeConvs[0].id);
+      }
+    } catch (error) {
+      console.error('❌ [AIChat] Error loading conversations:', error);
+      toast.error('שגיאה בטעינת שיחות');
+      setConversations([]);
+    }
+    setLoadingConversations(false);
+  }, [currentConversationId, loadConversation]);
 
   const handleNewConversation = useCallback(async () => {
     console.log('➕ [AIChat] Creating new conversation...');
@@ -367,7 +367,7 @@ export default function AIChatPage() {
     loadConversations();
     generateWhatsAppUrl();
     loadBusinessInsights();
-  }, [loadConversations, generateWhatsAppUrl, loadBusinessInsights]);
+  }, []);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -470,7 +470,7 @@ export default function AIChatPage() {
               </div>
             ) : (
               activeConversations.map((conv) => {
-                if (!conv) return null; // Defensive check for null/undefined conv
+                if (!conv) return null;
                 
                 const isActive = currentConversationId === conv.id;
                 const messageCount = conv.messages?.length || 0;
