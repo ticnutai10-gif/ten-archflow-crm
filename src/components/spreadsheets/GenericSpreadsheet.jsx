@@ -879,7 +879,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
               <table className="w-full border-collapse" dir="rtl">
                 <thead className="bg-slate-100 sticky top-0 z-10">
                   <tr>
-                    <th className="border border-slate-200 p-3 w-12 bg-slate-200">
+                    <th className="border border-slate-200 p-3 w-12 bg-slate-200 sticky right-0 z-30 shadow-[2px_0_5px_rgba(0,0,0,0.1)]">
                       <GripVertical className="w-4 h-4 mx-auto text-slate-400" />
                     </th>
                     {visibleColumns.map((col, colIndex) => {
@@ -890,8 +890,15 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                       return (
                         <th
                           key={col.key}
-                          className="border border-slate-200 p-3 text-right font-semibold hover:bg-blue-50 cursor-pointer group relative"
-                          style={{ width: col.width, position: 'relative' }}
+                          className={`border border-slate-200 p-3 text-right font-semibold hover:bg-blue-50 cursor-pointer group relative ${
+                            colIndex === 0 ? 'sticky z-20 shadow-[2px_0_5px_rgba(0,0,0,0.1)] bg-slate-100' : ''
+                          }`}
+                          style={{ 
+                            width: col.width, 
+                            position: 'relative',
+                            right: colIndex === 0 ? '48px' : undefined,
+                            backgroundColor: colIndex === 0 ? '#f1f5f9' : undefined
+                          }}
                           onClick={(e) => handleColumnHeaderClick(col.key, e)}
                         >
                           {isEditing ? (
@@ -1074,7 +1081,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                 >
                                   <td 
                                     {...provided.dragHandleProps}
-                                    className="border border-slate-200 p-2 cursor-grab active:cursor-grabbing bg-slate-100 hover:bg-slate-200 relative"
+                                    className="border border-slate-200 p-2 cursor-grab active:cursor-grabbing bg-slate-100 hover:bg-slate-200 relative sticky right-0 z-20 shadow-[2px_0_5px_rgba(0,0,0,0.1)]"
                                     style={{ height: `${rowHeight}px` }}
                                   >
                                     <GripVertical className="w-4 h-4 mx-auto text-slate-500" />
@@ -1096,19 +1103,24 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
 
                                     console.log(`  📝 Cell [${cellKey}]:`, { value: cellValue, isEditing });
 
+                                    const colIndex = visibleColumns.findIndex(c => c.key === column.key);
+                                    
                                     return (
                                       <td
                                         key={column.key}
                                         className={`border border-slate-200 p-2 cursor-pointer hover:bg-blue-50 ${
                                           isSelected ? 'ring-2 ring-purple-500 bg-purple-50' : ''
+                                        } ${
+                                          colIndex === 0 ? 'sticky z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]' : ''
                                         }`}
                                         style={{
-                                          backgroundColor: isSelected ? '#faf5ff' : cellStyle.backgroundColor,
+                                          backgroundColor: isSelected ? '#faf5ff' : colIndex === 0 ? (rowIndex % 2 === 0 ? '#ffffff' : '#f8fafc') : cellStyle.backgroundColor,
                                           opacity: cellStyle.opacity ? cellStyle.opacity / 100 : 1,
                                           fontWeight: cellStyle.fontWeight || 'normal',
                                           height: `${rowHeight}px`,
                                           maxHeight: `${rowHeight}px`,
-                                          overflow: 'hidden'
+                                          overflow: 'hidden',
+                                          right: colIndex === 0 ? '48px' : undefined
                                         }}
                                         onClick={(e) => !isEditing && handleCellClick(row.id, column.key, e)}
                                       >
@@ -1153,7 +1165,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                       </td>
                                     );
                                   })}                        
-                                  <td className="border border-slate-200 p-2" style={{ height: `${rowHeight}px` }}>
+                                  <td className="border border-slate-200 p-2 bg-white" style={{ height: `${rowHeight}px` }}>
                                     <div className="flex gap-1 justify-center">
                                       <Button
                                         size="icon"
