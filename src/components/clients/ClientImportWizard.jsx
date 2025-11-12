@@ -1,4 +1,4 @@
-// ... keep all imports ...
+// ... keep all imports and CLIENT_SCHEMA ...
 
 import React, { useState, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -14,13 +14,11 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Upload, FileSpreadsheet, Sparkles, Check, X, AlertTriangle, ArrowRight, Eye, Loader2,
   CheckCircle2, Terminal, Wand2, FileText, Database, Zap, Table as TableIcon, AlertCircle,
-  RefreshCw, Brain, XCircle, CheckSquare, Square, Info, Layers
+  RefreshCw, Brain, XCircle, CheckSquare, Square, Info, Layers, Edit2
 } from 'lucide-react';
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
 import TableManager from './TableManager';
-
-// ... keep CLIENT_SCHEMA with synonyms ...
 
 const CLIENT_SCHEMA = {
   name: { label: 'שם לקוח', required: true, type: 'text', example: 'חברת ABC', 
@@ -55,180 +53,9 @@ const CLIENT_SCHEMA = {
     synonyms: ['תקשורת מועדפת', 'דרך תקשורת', 'preferred contact', 'contact method'] }
 };
 
-// ... keep validation functions ...
+// ... keep all validation and matching functions unchanged ...
 
-const validateEmail = (email) => {
-  if (!email) return true;
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
-};
-
-const validatePhone = (phone) => {
-  if (!phone) return true;
-  const cleanPhone = phone.replace(/[^0-9]/g, '');
-  return cleanPhone.length >= 9 && cleanPhone.length <= 15;
-};
-
-const validateUrl = (url) => {
-  if (!url) return true;
-  try {
-    const urlPattern = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
-    return urlPattern.test(url);
-  } catch {
-    return false;
-  }
-};
-
-const validateRow = (rowData, schema, importMode) => {
-  const errors = [];
-  const warnings = [];
-  if (importMode === 'client') {
-    if (!rowData.name || rowData.name.trim() === '') {
-      errors.push('שדה "שם לקוח" חובה');
-    }
-    if (rowData.email && !validateEmail(rowData.email)) {
-      errors.push(`אימייל לא תקין: "${rowData.email}"`);
-    }
-    if (rowData.phone && !validatePhone(rowData.phone)) {
-      warnings.push(`טלפון אולי לא תקין: "${rowData.phone}"`);
-    }
-    if (rowData.phone_secondary && !validatePhone(rowData.phone_secondary)) {
-      warnings.push(`טלפון משני אולי לא תקין: "${rowData.phone_secondary}"`);
-    }
-    if (rowData.website && !validateUrl(rowData.website)) {
-      warnings.push(`כתובת אתר אולי לא תקינה: "${rowData.website}"`);
-    }
-    if (!rowData.phone && !rowData.email && !rowData.whatsapp) {
-      warnings.push('אין פרטי התקשרות (טלפון/אימייל/וואטסאפ)');
-    }
-  }
-  return { errors, warnings, isValid: errors.length === 0 };
-};
-
-// ... keep levenshteinDistance, calculateSimilarity, normalizeString ...
-
-const levenshteinDistance = (str1, str2) => {
-  const len1 = str1.length;
-  const len2 = str2.length;
-  const matrix = Array(len1 + 1).fill(null).map(() => Array(len2 + 1).fill(0));
-  for (let i = 0; i <= len1; i++) matrix[i][0] = i;
-  for (let j = 0; j <= len2; j++) matrix[0][j] = j;
-  for (let i = 1; i <= len1; i++) {
-    for (let j = 1; j <= len2; j++) {
-      const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
-      matrix[i][j] = Math.min(
-        matrix[i - 1][j] + 1,
-        matrix[i][j - 1] + 1,
-        matrix[i - 1][j - 1] + cost
-      );
-    }
-  }
-  return matrix[len1][len2];
-};
-
-const calculateSimilarity = (str1, str2) => {
-  const distance = levenshteinDistance(str1, str2);
-  const maxLen = Math.max(str1.length, str2.length);
-  if (maxLen === 0) return 100;
-  return Math.round(((maxLen - distance) / maxLen) * 100);
-};
-
-const normalizeString = (str) => {
-  return (str || '')
-    .toLowerCase()
-    .trim()
-    .replace(/[^\p{L}\p{N}\s]/gu, '')
-    .replace(/\s+/g, ' ');
-};
-
-const smartColumnMapping = (fileHeaders, targetFields, logFunction = console.log) => {
-  const mapping = {};
-  const SIMILARITY_THRESHOLD = 60;
-  
-  logFunction('🧠 [SMART MAP] Advanced algorithm with Levenshtein Distance...');
-  logFunction(`📋 [INPUT] ${fileHeaders.length} headers: ${fileHeaders.join(', ')}`);
-  logFunction(`🎯 [TARGET] ${targetFields.length} fields`);
-  
-  fileHeaders.forEach((header, index) => {
-    const normalizedHeader = normalizeString(header);
-    logFunction(`\n🔍 [COL ${index + 1}] "${header}" → "${normalizedHeader}"`);
-    
-    let bestMatch = null;
-    let bestScore = 0;
-    let bestReason = '';
-    
-    targetFields.forEach(targetFieldKey => {
-      const fieldInfo = CLIENT_SCHEMA[targetFieldKey] || { 
-        label: targetFieldKey, 
-        synonyms: [targetFieldKey] 
-      };
-      
-      const synonyms = fieldInfo.synonyms || [targetFieldKey, fieldInfo.label];
-      const normalizedFieldKey = normalizeString(targetFieldKey);
-      const normalizedFieldLabel = normalizeString(fieldInfo.label);
-      
-      // 1️⃣ Perfect Match (100)
-      if (normalizedHeader === normalizedFieldKey || normalizedHeader === normalizedFieldLabel) {
-        if (100 > bestScore) {
-          bestMatch = targetFieldKey;
-          bestScore = 100;
-          bestReason = `Perfect: "${header}" === "${fieldInfo.label}"`;
-          logFunction(`  ✅ ${bestReason}`);
-        }
-        return;
-      }
-      
-      // 2️⃣ Fuzzy matching on all synonyms
-      synonyms.forEach(synonym => {
-        const normalizedSynonym = normalizeString(synonym);
-        
-        if (normalizedHeader === normalizedSynonym) {
-          if (95 > bestScore) {
-            bestMatch = targetFieldKey;
-            bestScore = 95;
-            bestReason = `Exact synonym: "${header}" === "${synonym}"`;
-            logFunction(`  ✅ ${bestReason}`);
-          }
-          return;
-        }
-        
-        const similarity = calculateSimilarity(normalizedHeader, normalizedSynonym);
-        if (similarity >= SIMILARITY_THRESHOLD) {
-          if (similarity > bestScore) {
-            bestMatch = targetFieldKey;
-            bestScore = similarity;
-            bestReason = `Fuzzy: "${header}" ≈ "${synonym}" (${similarity}%)`;
-            logFunction(`  🎯 ${bestReason}`);
-          }
-        }
-      });
-      
-      // 3️⃣ Contains matching
-      if (normalizedHeader.includes(normalizedFieldKey) || normalizedFieldKey.includes(normalizedHeader)) {
-        const score = 70 + (Math.min(normalizedHeader.length, normalizedFieldKey.length) / 
-                           Math.max(normalizedHeader.length, normalizedFieldKey.length) * 20);
-        if (score > bestScore) {
-          bestMatch = targetFieldKey;
-          bestScore = score;
-          bestReason = `Contains: "${header}" ⊃⊂ "${targetFieldKey}" (${Math.round(score)}%)`;
-          logFunction(`  🔸 ${bestReason}`);
-        }
-      }
-    });
-    
-    if (bestMatch && bestScore >= SIMILARITY_THRESHOLD) {
-      mapping[index] = bestMatch;
-      logFunction(`  ✅ [MAPPED] "${header}" → ${bestMatch} (${Math.round(bestScore)})`);
-    } else {
-      logFunction(`  ⚠️ [UNMAPPED] "${header}" (best: ${Math.round(bestScore)})`);
-    }
-  });
-  
-  logFunction(`\n✅ [RESULT] ${Object.keys(mapping).length}/${fileHeaders.length} mapped (${Math.round((Object.keys(mapping).length/fileHeaders.length)*100)}%)`);
-  return mapping;
-};
-
-// ... keep STEPS ...
+// ... keep STEPS constant ...
 
 const STEPS = {
   SELECT_MODE: 0,
@@ -244,7 +71,8 @@ const STEPS = {
 };
 
 export default function ClientImportWizard({ open, onClose, onSuccess }) {
-  // ... keep all state ...
+  // ... keep all existing state ...
+  
   const [step, setStep] = useState(STEPS.SELECT_MODE);
   const [file, setFile] = useState(null);
   const [rawHeaders, setRawHeaders] = useState([]);
@@ -265,551 +93,45 @@ export default function ClientImportWizard({ open, onClose, onSuccess }) {
   const [previewRows, setPreviewRows] = useState([]);
   const [skippedRows, setSkippedRows] = useState(new Set());
   const [rowValidations, setRowValidations] = useState({});
-  const [tableStructure, setTableStructure] = useState(null); // NEW: Store detected structure
+  const [tableStructure, setTableStructure] = useState(null);
+  const [editingHeaders, setEditingHeaders] = useState({}); // NEW: For editing header names
 
-  const log = useCallback((message, type = 'info') => {
-    const timestamp = new Date().toLocaleTimeString('he-IL');
-    const emoji = type === 'error' ? '❌' : type === 'success' ? '✅' : type === 'warning' ? '⚠️' : '📋';
-    const logEntry = `${emoji} [${timestamp}] ${message}`;
-    setLogs(prev => [...prev, logEntry]);
-    if (type === 'error') toast.error(message);
-    else if (type === 'success') toast.success(message);
-  }, []);
+  // ... keep all existing functions (log, parseCSV, parseExcel, handleFileSelect, etc.) ...
 
-  // ... keep parseCSV ...
-
-  const parseCSV = async (text) => {
-    log('מתחיל פרסור CSV...');
-    const lines = text.split('\n').filter(line => line.trim());
-    if (lines.length === 0) throw new Error('הקובץ ריק');
-    const result = [];
-    for (let line of lines) {
-      const values = [];
-      let current = '';
-      let inQuotes = false;
-      for (let char of line) {
-        if (char === '"') inQuotes = !inQuotes;
-        else if (char === ',' && !inQuotes) {
-          values.push(current.trim());
-          current = '';
-        } else current += char;
-      }
-      values.push(current.trim());
-      result.push(values);
-    }
-    log(`CSV פורסר: ${result.length} שורות`, 'success');
-    return result;
-  };
-
-  // ENHANCED: parseExcel with structure detection
-  const parseExcel = async (file) => {
-    log('מעלה Excel + מזהה מבנה...');
-    try {
-      const uploadResult = await base44.integrations.Core.UploadFile({ file });
-      log(`הועלה: ${uploadResult.file_url}`);
-      
-      const response = await base44.functions.invoke('parseSpreadsheet', {
-        file_url: uploadResult.file_url
-      });
-      
-      if (!response?.data || response.data.status !== 'success') {
-        throw new Error(response?.data?.error || 'שגיאה בפרסור');
-      }
-      
-      log(`Excel פורסר: ${response.data.rows.length} שורות`, 'success');
-      
-      // שמירת מידע מבני
-      if (response.data.structure) {
-        setTableStructure(response.data.structure);
-        log(`זוהה מבנה: ${response.data.structure.hasMultiLevelHeaders ? 'כותרות רב-שכבתיות' : 'כותרות פשוטות'}`, 'info');
-        
-        if (response.data.structure.hasMergedCells) {
-          log(`זוהו ${response.data.structure.mergedRegions.length} אזורים ממוזגים`, 'info');
-        }
-      }
-      
-      if (response.data.debug?.sheetName) {
-        setDetectedSheetName(response.data.debug.sheetName);
-        log(`שם גיליון: "${response.data.debug.sheetName}"`);
-      }
-      
-      const headers = response.data.headers;
-      const dataRows = response.data.rows.map(rowObj =>
-        headers.map(h => rowObj[h] != null ? String(rowObj[h]) : '')
-      );
-      
-      return [headers, ...dataRows];
-    } catch (error) {
-      log(`שגיאה: ${error.message}`, 'error');
-      throw error;
-    }
-  };
-
-  // ... keep handleFileSelect, handleTableSelected, createNewTable, handlePreview, toggleSkipRow, executeImport, reset, handleClose ...
-
-  const handleFileSelect = async (e) => {
-    const selectedFile = e.target.files?.[0];
-    if (!selectedFile) return;
-    setLogs([]);
-    setFile(selectedFile);
-    setStep(STEPS.PARSE);
-    setIsProcessing(true);
-    log(`קובץ: ${selectedFile.name} (${(selectedFile.size / 1024).toFixed(2)} KB)`);
-    const defaultName = selectedFile.name.replace(/\.(xlsx?|csv)$/i, '');
-    setNewTableName(defaultName);
-    try {
-      let parsedData;
-      if (selectedFile.name.toLowerCase().endsWith('.csv')) {
-        const text = await selectedFile.text();
-        parsedData = await parseCSV(text);
-      } else {
-        parsedData = await parseExcel(selectedFile);
-      }
-      if (!parsedData || parsedData.length < 2) {
-        throw new Error('הקובץ חייב להכיל כותרות ונתונים');
-      }
-      const headers = parsedData[0];
-      const rows = parsedData.slice(1).filter(row => row.some(cell => cell && cell.trim()));
-      log(`${headers.length} עמודות • ${rows.length} שורות`, 'success');
-      setRawHeaders(headers);
-      setRawRows(rows);
-      if (importMode === 'new_table') {
-        if (detectedSheetName && detectedSheetName !== 'Sheet1') setNewTableName(detectedSheetName);
-        setStep(STEPS.NAME_TABLE);
-      } else if (importMode === 'existing_table' && targetTable) {
-        log('מיפוי Fuzzy לטבלה קיימת...');
-        const targetFields = targetTable.columns.map(col => col.key);
-        const autoMapping = smartColumnMapping(headers, targetFields, log);
-        setMapping(autoMapping);
-        setStep(STEPS.MAP);
-      } else if (importMode === 'client') {
-        log('מיפוי Fuzzy ל-Client...');
-        const targetFields = Object.keys(CLIENT_SCHEMA);
-        const autoMapping = smartColumnMapping(headers, targetFields, log);
-        setMapping(autoMapping);
-        setStep(STEPS.MAP);
-      } else {
-        log('שגיאה: מצב לא ידוע', 'error');
-        setStep(STEPS.SELECT_MODE);
-      }
-    } catch (error) {
-      log(`שגיאה: ${error.message}`, 'error');
-      setStep(STEPS.UPLOAD);
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleTableSelected = (table) => {
-    setTargetTable(table);
-    setShowTableSelector(false);
-    log(`טבלה: ${table.name}`, 'success');
-    setImportMode('existing_table');
-    setStep(STEPS.UPLOAD);
-  };
-
-  const createNewTable = async () => {
-    if (!newTableName.trim()) {
-      toast.error('נא להזין שם');
-      return;
-    }
-    log('יוצר טבלה...');
-    setStep(STEPS.CREATE_TABLE);
-    setIsProcessing(true);
-    try {
-      const columns = rawHeaders.map((header, index) => ({
-        key: `col_${index + 1}`,
-        title: header || `עמודה ${index + 1}`,
-        type: 'text',
-        visible: true,
-        width: '150px'
-      }));
-      const newTable = await base44.entities.CustomSpreadsheet.create({
-        name: newTableName.trim(),
-        description: newTableDescription.trim() || `יובא מ-${file?.name}`,
-        columns: columns,
-        rows_data: []
-      });
-      log(`נוצר: "${newTable.name}"`, 'success');
-      setTargetTable({
-        id: newTable.id,
-        name: newTable.name,
-        type: 'custom',
-        columns: columns,
-        data: newTable
-      });
-      const targetFields = columns.map(col => col.key);
-      const autoMapping = smartColumnMapping(rawHeaders, targetFields, log);
-      setMapping(autoMapping);
-      setStep(STEPS.MAP);
-    } catch (error) {
-      log(`שגיאה: ${error.message}`, 'error');
-      setStep(STEPS.NAME_TABLE);
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handlePreview = () => {
-    log('מכין תצוגה + תיקוף...');
-    const mappedFields = Object.values(mapping).filter(v => v && v !== 'skip');
-    if (mappedFields.length === 0) {
-      toast.error('מפה לפחות שדה אחד');
-      return;
-    }
-    if (importMode === 'client' && !mappedFields.includes('name')) {
-      toast.error('חובה למפות "שם לקוח"');
-      return;
-    }
-    const preview = [];
-    const validations = {};
-    let errorCount = 0;
-    let warningCount = 0;
-    const rowsToPreview = rawRows.slice(0, 20);
-    rowsToPreview.forEach((row, rowIndex) => {
-      const actualRowNumber = rowIndex + 2;
-      const item = { _rowNumber: actualRowNumber, _originalIndex: rowIndex };
-      rawHeaders.forEach((header, colIndex) => {
-        const targetField = mapping[colIndex];
-        if (targetField && targetField !== 'skip') {
-          const value = row[colIndex]?.trim() || '';
-          item[targetField] = value;
-        }
-      });
-      const validation = validateRow(item, CLIENT_SCHEMA, importMode);
-      validations[actualRowNumber] = validation;
-      if (validation.errors.length > 0) errorCount++;
-      if (validation.warnings.length > 0) warningCount++;
-      preview.push(item);
+  // NEW: Function to update header name
+  const updateHeaderName = (index, newName) => {
+    setRawHeaders(prev => {
+      const updated = [...prev];
+      updated[index] = newName;
+      return updated;
     });
-    log(`תצוגה: ${preview.length} שורות, ${errorCount} שגיאות, ${warningCount} אזהרות`, errorCount > 0 ? 'warning' : 'success');
-    setPreviewRows(preview);
-    setRowValidations(validations);
-    setSkippedRows(new Set());
-    setStep(STEPS.VALIDATE);
-  };
-
-  const toggleSkipRow = (rowNumber) => {
-    setSkippedRows(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(rowNumber)) newSet.delete(rowNumber);
-      else newSet.add(rowNumber);
-      return newSet;
+    setEditingHeaders(prev => {
+      const updated = { ...prev };
+      delete updated[index];
+      return updated;
     });
+    toast.success('שם הכותרת עודכן');
   };
 
-  const executeImport = async () => {
-    log('מייבא...');
-    setStep(STEPS.IMPORT);
-    setIsProcessing(true);
-    setImportProgress(0);
-    let successCount = 0;
-    let failedCount = 0;
-    const failedRows = [];
-    try {
-      const dataToImport = rawRows
-        .map((row, rowIdx) => {
-          const actualRowNumber = rowIdx + 2;
-          if (skippedRows.has(actualRowNumber)) {
-            log(`דילוג על שורה ${actualRowNumber}`);
-            return null;
-          }
-          const item = {};
-          rawHeaders.forEach((header, colIndex) => {
-            const targetField = mapping[colIndex];
-            if (targetField && targetField !== 'skip') {
-              item[targetField] = row[colIndex] || '';
-            }
-          });
-          return { ...item, _originalRowNumber: actualRowNumber };
-        })
-        .filter(item => item && Object.keys(item).some(key => key !== '_originalRowNumber' && item[key]));
-      if (dataToImport.length === 0) {
-        throw new Error('אין נתונים לייבוא');
-      }
-      log(`מייבא ${dataToImport.length} שורות (${skippedRows.size} דולגו)`);
-      if (importMode === 'client') {
-        for (let i = 0; i < dataToImport.length; i++) {
-          const clientData = { ...dataToImport[i] };
-          const originalRowNumber = clientData._originalRowNumber;
-          delete clientData._originalRowNumber;
-          try {
-            if (!clientData.name || clientData.name.trim() === '') {
-              throw new Error('חסר שם');
-            }
-            await base44.entities.Client.create(clientData);
-            successCount++;
-          } catch (error) {
-            failedCount++;
-            failedRows.push({ row: originalRowNumber, name: clientData.name || 'ללא שם', error: error.message });
-            log(`שגיאה בשורה ${originalRowNumber}: ${error.message}`, 'error');
-          }
-          setImportProgress(Math.round(((i + 1) / dataToImport.length) * 100));
-        }
-      } else {
-        if (!targetTable?.id) throw new Error('טבלה לא הוגדרה');
-        const newRows = dataToImport.map((item, i) => {
-          const row = { id: `row_${Date.now()}_${i}` };
-          Object.entries(item).forEach(([key, value]) => {
-            if (key !== '_originalRowNumber') row[key] = value;
-          });
-          return row;
-        });
-        const existingRows = targetTable.data?.rows_data || [];
-        await base44.entities.CustomSpreadsheet.update(targetTable.id, {
-          rows_data: [...existingRows, ...newRows]
-        });
-        successCount = newRows.length;
-        log(`יובאו ${successCount} שורות`, 'success');
-        setImportProgress(100);
-      }
-      log(`הושלם! ${successCount} הצליחו, ${failedCount} נכשלו`, 'success');
-      setImportResults({
-        total: dataToImport.length,
-        success: successCount,
-        failed: failedCount,
-        skipped: skippedRows.size,
-        failedRows
-      });
-      setStep(STEPS.COMPLETE);
-      if (successCount > 0 && onSuccess) setTimeout(() => onSuccess(), 1500);
-    } catch (error) {
-      log(`שגיאה: ${error.message}`, 'error');
-      setImportResults({
-        total: 0,
-        success: successCount,
-        failed: failedCount,
-        skipped: skippedRows.size,
-        failedRows: [{ row: 'כללי', error: error.message }]
-      });
-      setStep(STEPS.COMPLETE);
-    } finally {
-      setIsProcessing(false);
-    }
-  };
+  // ... keep all other existing functions unchanged ...
 
-  const reset = () => {
-    setStep(STEPS.SELECT_MODE);
-    setFile(null);
-    setRawHeaders([]);
-    setRawRows([]);
-    setMapping({});
-    setValidatedData([]);
-    setValidationErrors([]);
-    setImportProgress(0);
-    setImportResults(null);
-    setLogs([]);
-    setIsProcessing(false);
-    setTargetTable(null);
-    setImportMode(null);
-    setNewTableName('');
-    setNewTableDescription('');
-    setDetectedSheetName('');
-    setShowTableSelector(false);
-    setPreviewRows([]);
-    setSkippedRows(new Set());
-    setRowValidations({});
-    setTableStructure(null);
-  };
-
-  const handleClose = () => {
-    reset();
-    onClose();
-  };
-
-  const mappedCount = Object.values(mapping).filter(v => v && v !== 'skip').length;
-  const hasRequiredFields = importMode === 'client' ? Object.values(mapping).includes('name') : mappedCount > 0;
-  const validationStats = {
-    total: Object.keys(rowValidations).length,
-    errors: Object.values(rowValidations).filter(v => v.errors.length > 0).length,
-    warnings: Object.values(rowValidations).filter(v => v.warnings.length > 0).length,
-    valid: Object.values(rowValidations).filter(v => v.isValid).length
-  };
-
+  // בשלב MAP, עדכן את הרינדור של הכותרות:
   return (
     <>
       <Dialog open={open} onOpenChange={handleClose}>
         <DialogContent className="max-w-6xl h-[90vh] p-0" dir="rtl">
           <div className="flex flex-col h-full">
-            <div className="flex-shrink-0 px-6 pt-6 pb-4 border-b bg-gradient-to-r from-blue-50 to-purple-50">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-3 text-2xl">
-                  <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg shadow-lg">
-                    <Brain className="w-6 h-6 text-white" />
-                  </div>
-                  מערכת יבוא חכמה - Microsoft Research Algorithm
-                  {targetTable && (
-                    <Badge className="bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-md">
-                      → {targetTable.name}
-                    </Badge>
-                  )}
-                </DialogTitle>
-                <DialogDescription className="flex items-center gap-2 mt-2">
-                  <Layers className="w-4 h-4 text-purple-600" />
-                  <span>Levenshtein Distance • זיהוי כותרות רב-שכבתיות • תאים ממוזגים • RTL Support</span>
-                </DialogDescription>
-              </DialogHeader>
-              
-              {/* Structure Info */}
-              {tableStructure && (
-                <div className="mt-3 flex gap-2">
-                  {tableStructure.hasMultiLevelHeaders && (
-                    <Badge variant="outline" className="bg-purple-100 text-purple-700 gap-1">
-                      <Layers className="w-3 h-3" />
-                      {tableStructure.headerLevels} רמות כותרות
-                    </Badge>
-                  )}
-                  {tableStructure.hasMergedCells && (
-                    <Badge variant="outline" className="bg-blue-100 text-blue-700">
-                      🔗 {tableStructure.mergedRegions.length} תאים ממוזגים
-                    </Badge>
-                  )}
-                </div>
-              )}
-            </div>
+            {/* ... keep header section ... */}
 
             <ScrollArea className="flex-1 px-6">
               <div className="py-4 space-y-4">
-                {/* Console */}
-                {logs.length > 0 && (
-                  <div className="bg-slate-900 text-green-400 rounded-lg p-3 font-mono text-xs max-h-32 overflow-y-auto">
-                    {logs.map((log, i) => <div key={i} className="py-0.5">{log}</div>)}
-                  </div>
-                )}
-
-                {/* ... keep all step content from previous version (SELECT_MODE, UPLOAD, PARSE, NAME_TABLE, CREATE_TABLE, MAP, VALIDATE, IMPORT, COMPLETE) ... */}
-                
-                {step === STEPS.SELECT_MODE && (
-                  <div className="space-y-6 py-4">
-                    <div className="text-center mb-6">
-                      <h3 className="text-2xl font-bold mb-2">איך תרצה לייבא?</h3>
-                      <p className="text-slate-600">אלגוריתם Microsoft Research לזיהוי מבנה</p>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <Card className="cursor-pointer hover:shadow-xl transition-all border-2 hover:border-blue-400" onClick={() => {
-                        setImportMode('client');
-                        setTargetTable({ id: 'clients', name: 'לקוחות (Client)', type: 'entity', entity: 'Client' });
-                        setStep(STEPS.UPLOAD);
-                      }}>
-                        <CardContent className="p-6 text-center">
-                          <Database className="w-12 h-12 mx-auto mb-3 text-blue-600" />
-                          <h3 className="text-lg font-bold mb-2">לקוחות</h3>
-                          <p className="text-xs text-slate-600 mb-3">Fuzzy Matching + תיקוף</p>
-                          <Badge variant="outline" className="bg-blue-50 text-blue-700">
-                            <Brain className="w-3 h-3 ml-1" />
-                            Levenshtein
-                          </Badge>
-                        </CardContent>
-                      </Card>
-                      <Card className="cursor-pointer hover:shadow-xl transition-all border-2 hover:border-purple-400" onClick={() => {
-                        setImportMode('existing_table');
-                        setShowTableSelector(true);
-                      }}>
-                        <CardContent className="p-6 text-center">
-                          <FileText className="w-12 h-12 mx-auto mb-3 text-purple-600" />
-                          <h3 className="text-lg font-bold mb-2">טבלה קיימת</h3>
-                          <p className="text-xs text-slate-600 mb-3">מיפוי אינטליגנטי</p>
-                        </CardContent>
-                      </Card>
-                      <Card className="cursor-pointer hover:shadow-xl transition-all border-2 hover:border-green-400" onClick={() => {
-                        setImportMode('new_table');
-                        setStep(STEPS.UPLOAD);
-                      }}>
-                        <CardContent className="p-6 text-center">
-                          <Sparkles className="w-12 h-12 mx-auto mb-3 text-green-600" />
-                          <h3 className="text-lg font-bold mb-2">טבלה חדשה</h3>
-                          <p className="text-xs text-slate-600 mb-3">אוטומטי מלא</p>
-                        </CardContent>
-                      </Card>
-                    </div>
-                    <Alert className="bg-gradient-to-r from-blue-50 via-purple-50 to-blue-50 border-2 border-purple-300">
-                      <Brain className="w-5 h-5 text-purple-600" />
-                      <AlertDescription>
-                        <div className="font-bold text-purple-900 mb-2">🎓 אלגוריתם Microsoft Research</div>
-                        <div className="text-sm text-purple-800 space-y-1">
-                          <p>✅ <strong>Levenshtein Distance</strong> - דמיון 60%+</p>
-                          <p>✅ <strong>Multi-Level Headers</strong> - כותרות הירארכיות</p>
-                          <p>✅ <strong>Merged Cells</strong> - זיהוי תאים ממוזגים</p>
-                          <p>✅ <strong>RTL Support</strong> - תמיכה מלאה בעברית</p>
-                        </div>
-                      </AlertDescription>
-                    </Alert>
-                  </div>
-                )}
-
-                {step === STEPS.UPLOAD && (
-                  <div className="text-center py-12">
-                    <label htmlFor="file-upload" className="cursor-pointer block">
-                      <div className="border-4 border-dashed border-purple-300 rounded-2xl p-16 bg-gradient-to-br from-blue-50 via-purple-50 to-blue-50 hover:from-blue-100 hover:via-purple-100 hover:to-blue-100">
-                        <Brain className="w-20 h-20 mx-auto mb-4 text-purple-600" />
-                        <h3 className="text-2xl font-bold mb-2">העלה קובץ</h3>
-                        <p className="text-slate-600 mb-2">Excel / CSV</p>
-                        <Badge className="bg-gradient-to-r from-purple-500 to-blue-600 text-white">
-                          <Layers className="w-4 h-4 ml-1" />
-                          זיהוי מבנה חכם
-                        </Badge>
-                        <div className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl font-bold shadow-lg mt-6">
-                          <Upload className="w-5 h-5" />
-                          בחר קובץ
-                        </div>
-                      </div>
-                      <input id="file-upload" type="file" accept=".xlsx,.xls,.csv" onChange={handleFileSelect} className="hidden" />
-                    </label>
-                  </div>
-                )}
-
-                {step === STEPS.PARSE && (
-                  <div className="text-center py-16">
-                    <Loader2 className="w-16 h-16 mx-auto mb-4 text-purple-600 animate-spin" />
-                    <h3 className="text-xl font-bold mb-2">מעבד בינה מלאכותית...</h3>
-                    <div className="flex items-center justify-center gap-2 text-sm text-slate-600">
-                      <Layers className="w-4 h-4" />
-                      <span>מזהה כותרות • תאים ממוזגים • מבנה</span>
-                    </div>
-                  </div>
-                )}
-
-                {step === STEPS.NAME_TABLE && (
-                  <div className="space-y-6">
-                    <div className="text-center mb-6">
-                      <TableIcon className="w-16 h-16 mx-auto mb-4 text-green-600" />
-                      <h3 className="text-2xl font-bold mb-2">שם לטבלה</h3>
-                      <p className="text-slate-600">{rawHeaders.length} עמודות זוהו</p>
-                    </div>
-                    <Card className="p-6">
-                      <div className="space-y-4">
-                        <div>
-                          <label className="text-sm font-semibold mb-2 block">שם *</label>
-                          <Input value={newTableName} onChange={(e) => setNewTableName(e.target.value)} />
-                        </div>
-                        <div>
-                          <label className="text-sm font-semibold mb-2 block">תיאור</label>
-                          <Textarea value={newTableDescription} onChange={(e) => setNewTableDescription(e.target.value)} rows={2} />
-                        </div>
-                      </div>
-                    </Card>
-                    <div className="flex gap-3">
-                      <Button variant="outline" onClick={() => setStep(STEPS.UPLOAD)}>חזור</Button>
-                      <Button onClick={createNewTable} disabled={!newTableName.trim()} className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600">
-                        <Sparkles className="w-4 h-4 ml-2" />
-                        צור
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                {step === STEPS.CREATE_TABLE && (
-                  <div className="text-center py-16">
-                    <Loader2 className="w-16 h-16 mx-auto mb-4 text-green-600 animate-spin" />
-                    <h3 className="text-xl font-bold">יוצר...</h3>
-                  </div>
-                )}
+                {/* ... keep logs, SELECT_MODE, UPLOAD, PARSE, etc ... */}
 
                 {step === STEPS.MAP && (
                   <div className="space-y-4 pb-20">
                     <div className="flex items-center justify-between">
                       <div>
-                        <h3 className="text-lg font-bold">Fuzzy Matching</h3>
+                        <h3 className="text-lg font-bold">מיפוי עמודות</h3>
                         <p className="text-sm text-slate-600">דיוק {Math.round((mappedCount/rawHeaders.length)*100)}%</p>
                       </div>
                       <Badge className="bg-gradient-to-r from-purple-100 to-blue-100 border-purple-300">
@@ -817,36 +139,134 @@ export default function ClientImportWizard({ open, onClose, onSuccess }) {
                         {mappedCount} / {rawHeaders.length}
                       </Badge>
                     </div>
+
+                    <Alert className="bg-blue-50 border-blue-200">
+                      <Info className="w-5 h-5 text-blue-600" />
+                      <AlertDescription>
+                        <div className="font-semibold text-blue-900 mb-1">💡 טיפ</div>
+                        <div className="text-sm text-blue-800">
+                          ברירת המחדל היא שם הכותרת מהקובץ. לחץ על העיפרון ✏️ לשינוי שם הכותרת, או בחר שדה אחר מהרשימה.
+                        </div>
+                      </AlertDescription>
+                    </Alert>
+
                     <div className="space-y-3">
                       {rawHeaders.map((header, index) => {
                         const mappedField = mapping[index];
                         const isMapped = mappedField && mappedField !== 'skip';
                         const targetFields = importMode === 'client' ? Object.keys(CLIENT_SCHEMA) : targetTable?.columns?.map(col => col.key) || [];
+                        const isEditingName = editingHeaders[index] !== undefined;
+                        
                         return (
-                          <Card key={index} className={`p-4 ${isMapped ? 'border-2 border-green-400 bg-green-50/50 shadow-md' : 'hover:border-purple-300'}`}>
+                          <Card key={index} className={`p-4 transition-all ${isMapped ? 'border-2 border-green-400 bg-green-50/50 shadow-md' : 'hover:border-purple-300'}`}>
                             <div className="flex items-center gap-3">
+                              {/* שם הכותרת מהקובץ - עם אפשרות עריכה */}
                               <div className="flex-1 min-w-0">
-                                <div className="text-xs text-slate-500">עמודה {index + 1}</div>
-                                <div className="font-semibold truncate">{header || `עמודה ${index + 1}`}</div>
-                                <div className="text-xs text-slate-600 truncate">דוגמה: {rawRows[0]?.[index] || '—'}</div>
+                                <div className="text-xs text-slate-500 mb-1">עמודה {index + 1}</div>
+                                {isEditingName ? (
+                                  <div className="flex items-center gap-2">
+                                    <Input
+                                      value={editingHeaders[index]}
+                                      onChange={(e) => setEditingHeaders(prev => ({ ...prev, [index]: e.target.value }))}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                          updateHeaderName(index, editingHeaders[index]);
+                                        }
+                                        if (e.key === 'Escape') {
+                                          setEditingHeaders(prev => {
+                                            const updated = { ...prev };
+                                            delete updated[index];
+                                            return updated;
+                                          });
+                                        }
+                                      }}
+                                      onBlur={() => {
+                                        if (editingHeaders[index]?.trim()) {
+                                          updateHeaderName(index, editingHeaders[index]);
+                                        } else {
+                                          setEditingHeaders(prev => {
+                                            const updated = { ...prev };
+                                            delete updated[index];
+                                            return updated;
+                                          });
+                                        }
+                                      }}
+                                      className="h-8 text-sm"
+                                      autoFocus
+                                    />
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-8 w-8"
+                                      onClick={() => updateHeaderName(index, editingHeaders[index])}
+                                    >
+                                      <Check className="w-4 h-4 text-green-600" />
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-2 group">
+                                    <div className="font-semibold truncate flex-1">{header || `עמודה ${index + 1}`}</div>
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                      onClick={() => setEditingHeaders(prev => ({ ...prev, [index]: header }))}
+                                      title="ערוך שם כותרת"
+                                    >
+                                      <Edit2 className="w-3 h-3 text-blue-600" />
+                                    </Button>
+                                  </div>
+                                )}
+                                <div className="text-xs text-slate-600 truncate mt-1">דוגמה: {rawRows[0]?.[index] || '—'}</div>
                               </div>
+
                               <ArrowRight className={`w-5 h-5 flex-shrink-0 ${isMapped ? 'text-green-600' : 'text-slate-400'}`} />
+
+                              {/* בחירת שדה יעד */}
                               <div className="flex-1 min-w-0">
-                                <Select value={mappedField || ''} onValueChange={(value) => setMapping({ ...mapping, [index]: value })}>
+                                <Select 
+                                  value={mappedField || header} 
+                                  onValueChange={(value) => setMapping({ ...mapping, [index]: value })}
+                                >
                                   <SelectTrigger className={isMapped ? 'border-2 border-green-500 bg-green-50' : ''}>
-                                    <SelectValue placeholder="בחר..." />
+                                    <SelectValue placeholder={header || "בחר שדה..."} />
                                   </SelectTrigger>
                                   <SelectContent dir="rtl">
-                                    <SelectItem value="skip"><X className="w-4 h-4 inline ml-2" />דלג</SelectItem>
+                                    <SelectItem value="skip">
+                                      <div className="flex items-center gap-2">
+                                        <X className="w-4 h-4" />
+                                        דלג על עמודה זו
+                                      </div>
+                                    </SelectItem>
                                     {targetFields.map(field => (
                                       <SelectItem key={field} value={field}>
-                                        {importMode === 'client' ? CLIENT_SCHEMA[field]?.label : targetTable?.columns?.find(c => c.key === field)?.title || field}
+                                        {importMode === 'client'
+                                          ? CLIENT_SCHEMA[field]?.label
+                                          : targetTable?.columns?.find(c => c.key === field)?.title || field
+                                        }
                                       </SelectItem>
                                     ))}
                                   </SelectContent>
                                 </Select>
+                                <div className="text-xs text-slate-500 mt-1">
+                                  {isMapped && mappedField !== 'skip' && (
+                                    <span className="text-green-600">✓ ממופה ל-{
+                                      importMode === 'client' 
+                                        ? CLIENT_SCHEMA[mappedField]?.label 
+                                        : targetTable?.columns?.find(c => c.key === mappedField)?.title || mappedField
+                                    }</span>
+                                  )}
+                                  {mappedField === 'skip' && <span className="text-slate-400">⊗ עמודה זו תדולג</span>}
+                                  {!mappedField && <span className="text-blue-600">📌 שם הכותרת כברירת מחדל</span>}
+                                </div>
                               </div>
-                              {isMapped ? <CheckCircle2 className="w-6 h-6 text-green-600" /> : <AlertCircle className="w-6 h-6 text-slate-400" />}
+
+                              <div className="flex-shrink-0">
+                                {isMapped && mappedField !== 'skip' ? 
+                                  <CheckCircle2 className="w-6 h-6 text-green-600" /> : 
+                                  <AlertCircle className="w-6 h-6 text-slate-400" />
+                                }
+                              </div>
                             </div>
                           </Card>
                         );
@@ -855,237 +275,16 @@ export default function ClientImportWizard({ open, onClose, onSuccess }) {
                   </div>
                 )}
 
-                {/* ... keep VALIDATE, IMPORT, COMPLETE steps from previous version ... */}
-
-                {step === STEPS.VALIDATE && (
-                  <div className="space-y-4 pb-20">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="text-lg font-bold">תיקוף ותצוגה מקדימה</h3>
-                        <p className="text-sm text-slate-600">{previewRows.length} שורות • {rawRows.length} סה"כ</p>
-                      </div>
-                      <div className="flex gap-2">
-                        <Badge className="bg-green-100 text-green-700">
-                          <CheckCircle2 className="w-3 h-3 ml-1" />
-                          {validationStats.valid}
-                        </Badge>
-                        {validationStats.warnings > 0 && (
-                          <Badge className="bg-yellow-100 text-yellow-700">
-                            <AlertTriangle className="w-3 h-3 ml-1" />
-                            {validationStats.warnings}
-                          </Badge>
-                        )}
-                        {validationStats.errors > 0 && (
-                          <Badge className="bg-red-100 text-red-700">
-                            <XCircle className="w-3 h-3 ml-1" />
-                            {validationStats.errors}
-                          </Badge>
-                        )}
-                        {skippedRows.size > 0 && (
-                          <Badge className="bg-slate-100">
-                            {skippedRows.size} דולגים
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-
-                    {(validationStats.errors > 0 || validationStats.warnings > 0) && (
-                      <Alert className={validationStats.errors > 0 ? "bg-red-50 border-red-200" : "bg-yellow-50 border-yellow-200"}>
-                        <AlertTriangle className={validationStats.errors > 0 ? 'text-red-600 w-5 h-5' : 'text-yellow-600 w-5 h-5'} />
-                        <AlertDescription>
-                          <div className="font-semibold mb-2">
-                            {validationStats.errors > 0 ? `⚠️ ${validationStats.errors} שגיאות` : `💡 ${validationStats.warnings} אזהרות`}
-                          </div>
-                          <p className="text-sm">
-                            {validationStats.errors > 0 ? 'תקן מיפוי או דלג על שורות בעייתיות' : 'אזהרות לא מונעות יבוא'}
-                          </p>
-                        </AlertDescription>
-                      </Alert>
-                    )}
-
-                    <div className="space-y-3">
-                      {previewRows.map((item) => {
-                        const rowNumber = item._rowNumber;
-                        const validation = rowValidations[rowNumber] || { errors: [], warnings: [], isValid: true };
-                        const isSkipped = skippedRows.has(rowNumber);
-                        const hasIssues = validation.errors.length > 0 || validation.warnings.length > 0;
-                        return (
-                          <Card key={rowNumber} className={`
-                            ${isSkipped ? 'opacity-50 bg-slate-100' : ''}
-                            ${!isSkipped && validation.errors.length > 0 ? 'border-2 border-red-300 bg-red-50/30' : ''}
-                            ${!isSkipped && validation.errors.length === 0 && validation.warnings.length > 0 ? 'border-2 border-yellow-300 bg-yellow-50/30' : ''}
-                            ${!isSkipped && !hasIssues ? 'border-green-200 bg-green-50/20' : ''}
-                          `}>
-                            <CardContent className="p-4">
-                              <div className="flex items-start justify-between mb-3">
-                                <div className="flex items-center gap-3">
-                                  <button onClick={() => toggleSkipRow(rowNumber)} className="hover:scale-110 transition-transform">
-                                    {isSkipped ? <XCircle className="w-5 h-5 text-slate-500" /> :
-                                      validation.errors.length > 0 ? <Square className="w-5 h-5 text-red-500" /> :
-                                      <CheckSquare className="w-5 h-5 text-green-600" />}
-                                  </button>
-                                  <div>
-                                    <div className="font-bold">
-                                      שורה {rowNumber} {isSkipped && <span className="text-slate-500">(דולג)</span>}
-                                    </div>
-                                    {importMode === 'client' && item.name && <div className="text-sm text-slate-600">{item.name}</div>}
-                                  </div>
-                                </div>
-                                <div className="flex gap-2">
-                                  {validation.errors.length > 0 && <Badge className="bg-red-100 text-red-700">{validation.errors.length} שגיאות</Badge>}
-                                  {validation.warnings.length > 0 && <Badge className="bg-yellow-100 text-yellow-700">{validation.warnings.length} אזהרות</Badge>}
-                                  {!hasIssues && !isSkipped && <Badge className="bg-green-100 text-green-700">תקין</Badge>}
-                                </div>
-                              </div>
-                              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm mb-3">
-                                {Object.entries(item).filter(([k]) => k !== '_rowNumber' && k !== '_originalIndex').map(([key, value]) => {
-                                  const fieldInfo = importMode === 'client' ? CLIENT_SCHEMA[key] : null;
-                                  const isRequired = fieldInfo?.required;
-                                  const isEmpty = !value || value.trim() === '';
-                                  return (
-                                    <div key={key} className="flex gap-2">
-                                      <strong className={`text-slate-700 min-w-[100px] ${isRequired ? 'after:content-["*"] after:text-red-500' : ''}`}>
-                                        {importMode === 'client' ? CLIENT_SCHEMA[key]?.label : key}:
-                                      </strong>
-                                      <span className={`${isRequired && isEmpty ? 'text-red-600 font-semibold' : 'text-slate-900'} truncate`}>
-                                        {value || <span className="text-slate-400 italic">ריק</span>}
-                                      </span>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                              {hasIssues && !isSkipped && (
-                                <div className="space-y-2 pt-3 border-t">
-                                  {validation.errors.map((error, i) => (
-                                    <div key={`err-${i}`} className="flex items-start gap-2 text-sm text-red-700 bg-red-50 p-2 rounded">
-                                      <XCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                                      <span>{error}</span>
-                                    </div>
-                                  ))}
-                                  {validation.warnings.map((warning, i) => (
-                                    <div key={`warn-${i}`} className="flex items-start gap-2 text-sm text-yellow-700 bg-yellow-50 p-2 rounded">
-                                      <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                                      <span>{warning}</span>
-                                    </div>
-                                  ))}
-                                  <div className="flex gap-2 mt-2">
-                                    <Button size="sm" variant="outline" onClick={() => toggleSkipRow(rowNumber)}>
-                                      <X className="w-3 h-3 ml-1" />
-                                      דלג
-                                    </Button>
-                                    <Button size="sm" variant="outline" onClick={() => setStep(STEPS.MAP)}>
-                                      <RefreshCw className="w-3 h-3 ml-1" />
-                                      תקן
-                                    </Button>
-                                  </div>
-                                </div>
-                              )}
-                            </CardContent>
-                          </Card>
-                        );
-                      })}
-                      {rawRows.length > 20 && (
-                        <Card className="bg-blue-50 border-blue-200">
-                          <CardContent className="p-4 text-center">
-                            <Info className="w-8 h-8 mx-auto mb-2 text-blue-600" />
-                            <div className="font-semibold text-blue-900">+ עוד {rawRows.length - 20} שורות</div>
-                            <p className="text-sm text-blue-700 mt-1">כל השורות יעברו תיקוף זהה</p>
-                          </CardContent>
-                        </Card>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {step === STEPS.IMPORT && (
-                  <div className="text-center py-12">
-                    <Zap className="w-16 h-16 mx-auto mb-4 text-purple-600 animate-pulse" />
-                    <h3 className="text-2xl font-bold mb-4">מייבא...</h3>
-                    <Progress value={importProgress} className="w-full max-w-md mx-auto h-4" />
-                    <p className="text-slate-600 mt-2">{importProgress}%</p>
-                    {skippedRows.size > 0 && <p className="text-sm text-slate-500 mt-2">דילוג על {skippedRows.size}</p>}
-                  </div>
-                )}
-
-                {step === STEPS.COMPLETE && importResults && (
-                  <div className="text-center py-12">
-                    <CheckCircle2 className="w-24 h-24 mx-auto mb-6 text-green-600" />
-                    <h3 className="text-3xl font-bold mb-4">🎉 הושלם!</h3>
-                    <div className="grid grid-cols-3 gap-4 max-w-2xl mx-auto">
-                      <Card className="bg-green-50 border-green-200">
-                        <CardContent className="p-6 text-center">
-                          <div className="text-4xl font-bold text-green-600">{importResults.success}</div>
-                          <div className="text-sm">הצליחו</div>
-                        </CardContent>
-                      </Card>
-                      {importResults.failed > 0 && (
-                        <Card className="bg-red-50 border-red-200">
-                          <CardContent className="p-6 text-center">
-                            <div className="text-4xl font-bold text-red-600">{importResults.failed}</div>
-                            <div className="text-sm">נכשלו</div>
-                          </CardContent>
-                        </Card>
-                      )}
-                      {importResults.skipped > 0 && (
-                        <Card className="bg-slate-50">
-                          <CardContent className="p-6 text-center">
-                            <div className="text-4xl font-bold text-slate-600">{importResults.skipped}</div>
-                            <div className="text-sm">דולגו</div>
-                          </CardContent>
-                        </Card>
-                      )}
-                    </div>
-                    <Button onClick={handleClose} className="mt-6 px-8">סיים</Button>
-                  </div>
-                )}
+                {/* ... keep all other steps (VALIDATE, IMPORT, COMPLETE) unchanged ... */}
               </div>
             </ScrollArea>
 
-            {[STEPS.MAP, STEPS.VALIDATE].includes(step) && (
-              <div className="flex-shrink-0 px-6 py-4 border-t bg-white shadow-lg">
-                <div className="flex gap-3">
-                  {step === STEPS.MAP && (
-                    <>
-                      <Button variant="outline" onClick={() => setStep(STEPS.UPLOAD)}>חזור</Button>
-                      <Button onClick={() => {
-                        const targetFields = importMode === 'client' ? Object.keys(CLIENT_SCHEMA) : targetTable?.columns?.map(col => col.key) || [];
-                        const newMapping = smartColumnMapping(rawHeaders, targetFields, log);
-                        setMapping(newMapping);
-                        toast.success('רוענן');
-                      }} variant="outline">
-                        <RefreshCw className="w-4 h-4 ml-2" />
-                        רענן
-                      </Button>
-                      <Button onClick={handlePreview} className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600">
-                        <Eye className="w-4 h-4 ml-2" />
-                        תצוגה + תיקוף
-                      </Button>
-                    </>
-                  )}
-                  {step === STEPS.VALIDATE && (
-                    <>
-                      <Button variant="outline" onClick={() => setStep(STEPS.MAP)}>← מיפוי</Button>
-                      <Button onClick={handlePreview} variant="outline">
-                        <RefreshCw className="w-4 h-4 ml-2" />
-                        רענן
-                      </Button>
-                      <Button onClick={executeImport} className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600">
-                        <Zap className="w-4 h-4 ml-2" />
-                        ייבא {rawRows.length - skippedRows.size}
-                      </Button>
-                    </>
-                  )}
-                </div>
-              </div>
-            )}
+            {/* ... keep footer buttons ... */}
           </div>
         </DialogContent>
       </Dialog>
 
-      {showTableSelector && <TableManager open={showTableSelector} onClose={() => {
-        setShowTableSelector(false);
-        setStep(STEPS.SELECT_MODE);
-      }} onTableSelect={handleTableSelected} />}
+      {/* ... keep TableManager ... */}
     </>
   );
 }

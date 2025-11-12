@@ -30,25 +30,25 @@ const statusColors = {
 };
 
 const COLORS = [
-{ name: 'לבן', value: '#FFFFFF', border: '#E5E7EB' },
-{ name: 'צהוב', value: '#FEF3C7', border: '#FDE047' },
-{ name: 'ירוק', value: '#D1FAE5', border: '#34D399' },
-{ name: 'כחול', value: '#DBEAFE', border: '#60A5FA' },
-{ name: 'אדום', value: '#FEE2E2', border: '#F87171' },
-{ name: 'סגול', value: '#EDE9FE', border: '#A78BFA' },
-{ name: 'ורוד', value: '#FCE7F3', border: '#F472B6' },
-{ name: 'אפור', value: '#F3F4F6', border: '#9CA3AF' }];
+  { name: 'לבן', value: '#FFFFFF', border: '#E5E7EB' },
+  { name: 'צהוב', value: '#FEF3C7', border: '#FDE047' },
+  { name: 'ירוק', value: '#D1FAE5', border: '#34D399' },
+  { name: 'כחול', value: '#DBEAFE', border: '#60A5FA' },
+  { name: 'אדום', value: '#FEE2E2', border: '#F87171' },
+  { name: 'סגול', value: '#EDE9FE', border: '#A78BFA' },
+  { name: 'ורוד', value: '#FCE7F3', border: '#F472B6' },
+  { name: 'אפור', value: '#F3F4F6', border: '#9CA3AF' }];
 
 
 const fixedDefaultColumns = [
-{ key: 'name', title: 'שם', width: '200px', type: 'text', required: true },
-{ key: 'name_clean', title: 'שם נקי', width: '200px', type: 'text', required: false },
-{ key: 'phone', title: 'טלפון', width: '150px', type: 'phone', required: false },
-{ key: 'email', title: 'אימייל', width: '150px', type: 'email', required: false },
-{ key: 'company', title: 'חברה', width: '150px', type: 'text', required: false },
-{ key: 'status', title: 'סטטוס', width: '120px', type: 'status', required: false },
-{ key: 'budget_range', title: 'תקציב', width: '120px', type: 'text', required: false },
-{ key: 'created_date', title: 'תאריך יצירה', width: '120px', type: 'date', required: false }];
+  { key: 'name', title: 'שם', width: '200px', type: 'text', required: true },
+  { key: 'name_clean', title: 'שם נקי', width: '200px', type: 'text', required: false },
+  { key: 'phone', title: 'טלפון', width: '150px', type: 'phone', required: false },
+  { key: 'email', title: 'אימייל', width: '150px', type: 'email', required: false },
+  { key: 'company', title: 'חברה', width: '150px', type: 'text', required: false },
+  { key: 'status', title: 'סטטוס', width: '120px', type: 'status', required: false },
+  { key: 'budget_range', title: 'תקציב', width: '120px', type: 'text', required: false },
+  { key: 'created_date', title: 'תאריך יצירה', width: '120px', type: 'date', required: false }];
 
 
 const isValidPhone = (phone) => {
@@ -127,20 +127,19 @@ function ColorPicker({ onApply, currentStyle = {}, onClose }) {
         <h4 className="font-semibold text-sm mb-3">בחר צבע</h4>
         <div className="grid grid-cols-4 gap-2 mb-3">
           {COLORS.map((color) =>
-          <button
-            key={color.value}
-            type="button"
-            className={`h-10 rounded border-2 hover:scale-110 transition-transform ${
-            selectedColor === color.value ? 'ring-2 ring-blue-500' : ''}`}
-            style={{
-              backgroundColor: color.value,
-              borderColor: color.border
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
-              setSelectedColor(color.value);
-            }}
-            title={color.name} />
+            <button
+              key={color.value}
+              type="button"
+              className={`h-10 rounded border-2 hover:scale-110 transition-transform ${selectedColor === color.value ? 'ring-2 ring-blue-500' : ''}`}
+              style={{
+                backgroundColor: color.value,
+                borderColor: color.border
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedColor(color.value);
+              }}
+              title={color.name} />
 
           )}
         </div>
@@ -573,8 +572,8 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
       }
 
       const mergedValue = targetValue && sourceValue ?
-      `${targetValue}, ${sourceValue}` :
-      targetValue || sourceValue;
+        `${targetValue}, ${sourceValue}` :
+        targetValue || sourceValue;
 
       let updatedClient = { ...client };
       if (targetKey.startsWith('cf:')) {
@@ -1035,7 +1034,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
       const [clientId, columnKey] = cellKey.split('_');
       const client = localClients.find(c => c.id === clientId);
       const column = columns.find(c => c.key === columnKey);
-      
+
       if (client && column) {
         let value = '';
         if (columnKey.startsWith('cf:')) {
@@ -1044,7 +1043,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
         } else {
           value = client[columnKey] || '';
         }
-        
+
         cellsData.push({
           client: client.name,
           column: column.title,
@@ -1131,7 +1130,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
       const [clientId, columnKey] = cellKey.split('_');
       const client = localClients.find(c => c.id === clientId);
       const column = columns.find(c => c.key === columnKey);
-      
+
       if (client && column) {
         let value = '';
         if (columnKey.startsWith('cf:')) {
@@ -1140,7 +1139,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
         } else {
           value = client[columnKey] || '';
         }
-        
+
         cellsData.push({
           client: client.name,
           column: column.title,
@@ -1162,7 +1161,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    
+
     toast.success(`${selectedCells.size} תאים יוצאו לקובץ CSV`);
   };
 
@@ -1222,16 +1221,16 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
   return (
     <div className="w-full overflow-visible" dir="rtl">
       {showDebugPanel &&
-      <div className="fixed top-4 left-4 bg-red-600 text-white p-4 rounded-lg shadow-2xl z-[9999] max-w-sm" dir="rtl">
+        <div className="fixed top-4 left-4 bg-red-600 text-white p-4 rounded-lg shadow-2xl z-[9999] max-w-sm" dir="rtl">
           <div className="font-bold text-lg mb-2 flex items-center justify-between">
             <span>🔴 DEBUG</span>
             <Button
-            size="sm"
-            variant="ghost"
-            className="text-white hover:bg-red-700 h-6 w-6 p-0"
-            onClick={() => {
-              setShowDebugPanel(false);
-            }}>
+              size="sm"
+              variant="ghost"
+              className="text-white hover:bg-red-700 h-6 w-6 p-0"
+              onClick={() => {
+                setShowDebugPanel(false);
+              }}>
 
               <X className="w-4 h-4" />
             </Button>
@@ -1342,10 +1341,10 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
 
                     <h3 className="font-semibold text-sm mb-2">כללי</h3>
 
-                    <DropdownMenuItem onClick={() => {setIsSheetOpen(true);setIsDropdownSettingsOpen(false);}} className="flex items-center justify-between">
+                    <DropdownMenuItem onClick={() => { setIsSheetOpen(true); setIsDropdownSettingsOpen(false); }} className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                          <Edit2 className="w-4 h-4" />
-                          <span>ניהול עמודות</span>
+                        <Edit2 className="w-4 h-4" />
+                        <span>ניהול עמודות</span>
                       </div>
                       <HelpIcon text="הגדר עמודות, נראות, ומחוק עמודות מותאמות אישית." side="left" />
                     </DropdownMenuItem>
@@ -1380,12 +1379,12 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
         </CardHeader>
 
         {showShortcuts &&
-        <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
+          <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
             <div className="flex items-start gap-2 mb-3">
               <Sparkles className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
               <h3 className="font-semibold text-blue-900">קיצורי מקלדת מהירים</h3>
               <HelpIcon
-              text="השתמש בקיצורים אלה לעבודה מהירה ויעילה יותר בטבלה." />
+                text="השתמש בקיצורים אלה לעבודה מהירה ויעילה יותר בטבלה." />
 
             </div>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-y-3 gap-x-6 text-sm">
@@ -1412,166 +1411,166 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
           </div>
         }
 
-      {!showShortcuts &&
-        <CardHeader className="pt-3 border-b border-slate-200">
-          <div className="flex items-center gap-2 flex-wrap">
-            <Button
-              size="sm"
-              onClick={addNewRow}
-              className="bg-[#2C3A50] hover:bg-[#1f2937] text-white gap-2 h-8"
-            >
-              <Plus className="w-3 h-3" />
-              שורה
-            </Button>
-
-            <Button
-              size="sm"
-              onClick={addQuickColumn}
-              className="bg-[#2C3A50] hover:bg-[#1f2937] text-white gap-2 h-8"
-            >
-              <Plus className="w-3 h-3" />
-              עמודה מהירה
-            </Button>
-
-            <Popover open={showAddColumnDialog} onOpenChange={setShowAddColumnDialog}>
-              <PopoverTrigger asChild>
-                <Button
-                  size="sm"
-                  className="bg-[#2C3A50] hover:bg-[#1f2937] text-white gap-2 h-8"
-                >
-                  <Plus className="w-3 h-3" />
-                  עמודה מוכנה
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-80" align="start" side="bottom" dir="rtl">
-                <div className="space-y-3">
-                  <h4 className="font-semibold">הוסף עמודה מוכנה</h4>
-                  <Select value={presetToAdd} onValueChange={setPresetToAdd}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="בחר סוג עמודה" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PRESET_CLIENT_COLUMNS.filter((p) => !columns.some((col) => col.key === `cf:${p.slug}`)).map((p) =>
-                      <SelectItem key={p.slug} value={p.slug}>
-                          {p.label}
-                        </SelectItem>
-                      )}
-                    </SelectContent>
-                  </Select>
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={addPresetColumn}
-                      className="flex-1 bg-green-600 hover:bg-green-700">
-
-                      <Plus className="w-4 h-4 ml-2" />
-                      הוסף
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setShowAddColumnDialog(false);
-                        setPresetToAdd("");
-                      }}>
-
-                      ביטול
-                    </Button>
-                  </div>
-                </div>
-              </PopoverContent>
-            </Popover>
-
-            <Button
-              size="sm"
-              variant={showSubHeaders ? "default" : "outline"}
-              onClick={toggleSubHeaders}
-              className={`gap-2 h-8 ${showSubHeaders ? 'bg-purple-600 hover:bg-purple-700 text-white' : ''}`}
-            >
-              <Plus className="w-3 h-3" />
-              {showSubHeaders ? 'הסתר כותרות משנה' : 'הוסף כותרות משנה'}
-            </Button>
-
-            {selectedHeaders.size > 0 &&
-            <>
-                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                  נבחרו {selectedHeaders.size} כותרות
-                </Badge>
-
-                {selectedHeaders.size >= 2 &&
+        {!showShortcuts &&
+          <CardHeader className="pt-3 border-b border-slate-200">
+            <div className="flex items-center gap-2 flex-wrap">
               <Button
                 size="sm"
-                variant="outline"
-                className="gap-2 h-8"
-                onClick={mergeSelectedHeaders}>
+                onClick={addNewRow}
+                className="bg-[#2C3A50] hover:bg-[#1f2937] text-white gap-2 h-8"
+              >
+                <Plus className="w-3 h-3" />
+                שורה
+              </Button>
 
-                    <Merge className="w-3 h-3" />
-                    מזג כותרות
+              <Button
+                size="sm"
+                onClick={addQuickColumn}
+                className="bg-[#2C3A50] hover:bg-[#1f2937] text-white gap-2 h-8"
+              >
+                <Plus className="w-3 h-3" />
+                עמודה מהירה
+              </Button>
+
+              <Popover open={showAddColumnDialog} onOpenChange={setShowAddColumnDialog}>
+                <PopoverTrigger asChild>
+                  <Button
+                    size="sm"
+                    className="bg-[#2C3A50] hover:bg-[#1f2937] text-white gap-2 h-8"
+                  >
+                    <Plus className="w-3 h-3" />
+                    עמודה מוכנה
                   </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80" align="start" side="bottom" dir="rtl">
+                  <div className="space-y-3">
+                    <h4 className="font-semibold">הוסף עמודה מוכנה</h4>
+                    <Select value={presetToAdd} onValueChange={setPresetToAdd}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="בחר סוג עמודה" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PRESET_CLIENT_COLUMNS.filter((p) => !columns.some((col) => col.key === `cf:${p.slug}`)).map((p) =>
+                          <SelectItem key={p.slug} value={p.slug}>
+                            {p.label}
+                          </SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={addPresetColumn}
+                        className="flex-1 bg-green-600 hover:bg-green-700">
+
+                        <Plus className="w-4 h-4 ml-2" />
+                        הוסף
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setShowAddColumnDialog(false);
+                          setPresetToAdd("");
+                        }}>
+
+                        ביטול
+                      </Button>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+
+              <Button
+                size="sm"
+                variant={showSubHeaders ? "default" : "outline"}
+                onClick={toggleSubHeaders}
+                className={`gap-2 h-8 ${showSubHeaders ? 'bg-purple-600 hover:bg-purple-700 text-white' : ''}`}
+              >
+                <Plus className="w-3 h-3" />
+                {showSubHeaders ? 'הסתר כותרות משנה' : 'הוסף כותרות משנה'}
+              </Button>
+
+              {selectedHeaders.size > 0 &&
+                <>
+                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                    נבחרו {selectedHeaders.size} כותרות
+                  </Badge>
+
+                  {selectedHeaders.size >= 2 &&
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-2 h-8"
+                      onClick={mergeSelectedHeaders}>
+
+                      <Merge className="w-3 h-3" />
+                      מזג כותרות
+                    </Button>
+                  }
+
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="gap-2 h-8"
+                    onClick={clearSelection}>
+
+                    <X className="w-3 h-3" />
+                    בטל
+                  </Button>
+                </>
               }
 
-                <Button
-                size="sm"
-                variant="ghost"
-                className="gap-2 h-8"
-                onClick={clearSelection}>
+              {selectionMode && selectedCells.size > 0 &&
+                <>
+                  <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                    נבחרו: {selectedCells.size}
+                  </Badge>
 
-                  <X className="w-3 h-3" />
-                  בטל
-                </Button>
-              </>
-            }
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-2 h-8">
 
-            {selectionMode && selectedCells.size > 0 &&
-            <>
-                <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
-                  נבחרו: {selectedCells.size}
-                </Badge>
+                        <Palette className="w-3 h-3" />
+                        צבע
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" side="bottom" align="start">
+                      <ColorPicker
+                        onApply={applyStyleToSelection}
+                        onClose={() => { }} />
 
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
+                    </PopoverContent>
+                  </Popover>
+
+                  <Button
                     size="sm"
                     variant="outline"
-                    className="gap-2 h-8">
+                    className="gap-2 h-8 text-red-600"
+                    onClick={deleteSelectedCells}>
 
-                      <Palette className="w-3 h-3" />
-                      צבע
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" side="bottom" align="start">
-                    <ColorPicker
-                    onApply={applyStyleToSelection}
-                    onClose={() => {}} />
+                    <Trash2 className="w-3 h-3" />
+                    מחק
+                  </Button>
 
-                  </PopoverContent>
-                </Popover>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="gap-2 h-8"
+                    onClick={clearSelection}>
 
-                <Button
-                size="sm"
-                variant="outline"
-                className="gap-2 h-8 text-red-600"
-                onClick={deleteSelectedCells}>
-
-                  <Trash2 className="w-3 h-3" />
-                  מחק
-                </Button>
-
-                <Button
-                size="sm"
-                variant="ghost"
-                className="gap-2 h-8"
-                onClick={clearSelection}>
-
-                  <X className="w-3 h-3" />
-                  בטל
-                </Button>
-              </>
-            }
-          </div>
-        </CardHeader>
+                    <X className="w-3 h-3" />
+                    בטל
+                  </Button>
+                </>
+              }
+            </div>
+          </CardHeader>
         }
 
 
-      {selectionMode && selectedCells.size > 0 && (
+        {selectionMode && selectedCells.size > 0 && (
           <div className="border-b bg-gradient-to-r from-purple-50 to-blue-50 p-4">
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div className="flex items-center gap-2">
@@ -1579,7 +1578,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                   ✓ נבחרו {selectedCells.size} תאים
                 </Badge>
               </div>
-              
+
               <div className="flex items-center gap-2 flex-wrap">
                 {/* Style */}
                 <Popover>
@@ -1595,7 +1594,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                   <PopoverContent className="w-auto p-0" side="bottom" align="start">
                     <ColorPicker
                       onApply={applyStyleToSelection}
-                      onClose={() => {}} />
+                      onClose={() => { }} />
                   </PopoverContent>
                 </Popover>
 
@@ -1669,8 +1668,8 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
           </div>
         )}
 
-      <CardContent className="p-0">
-        <div
+        <CardContent className="p-0">
+          <div
             ref={tableContainerRef}
             className="border border-slate-200 overflow-auto"
             style={{
@@ -1680,786 +1679,776 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
             }}
             onScroll={(e) => {
             }}>
-          <DragDropContext onDragEnd={handleDragEnd}>
-            <table className="border-collapse" dir="rtl" style={{
-                  width: 'max-content',
-                  minWidth: '100%',
-                  tableLayout: 'fixed'
-                }}>
+            <DragDropContext onDragEnd={handleDragEnd}>
+              <table className="border-collapse" dir="rtl" style={{
+                width: 'max-content',
+                minWidth: '100%',
+                tableLayout: 'fixed'
+              }}>
 
-              <Droppable droppableId="columns" direction="horizontal">
-                {(provided) =>
-                  <thead
-                    className="bg-slate-100 sticky top-0 z-20"
-                    ref={provided.innerRef}
-                    {...provided.droppableProps}>
+                <Droppable droppableId="columns" direction="horizontal">
+                  {(provided) =>
+                    <thead
+                      className="bg-slate-100 sticky top-0 z-20"
+                      ref={provided.innerRef}
+                      {...provided.droppableProps}>
 
-                    <tr>
-                      {visibleColumns.map((column, colIndex) => {
-                        const headerStyle = cellStyles[`header_${column.key}`] || {};
-                        const isHeaderSelected = selectedHeaders.has(column.key);
-                        const canEdit = !column.required && column.key !== 'actions';
-                        const canDrag = !column.required && column.key !== 'actions';
+                      <tr>
+                        {visibleColumns.map((column, colIndex) => {
+                          const headerStyle = cellStyles[`header_${column.key}`] || {};
+                          const isHeaderSelected = selectedHeaders.has(column.key);
+                          const canEdit = !column.required && column.key !== 'actions';
+                          const canDrag = !column.required && column.key !== 'actions';
 
-                        return (
-                          <Draggable
-                            key={column.key}
-                            draggableId={column.key}
-                            index={colIndex}
-                            isDragDisabled={!canDrag}>
+                          return (
+                            <Draggable
+                              key={column.key}
+                              draggableId={column.key}
+                              index={colIndex}
+                              isDragDisabled={!canDrag}>
 
-                            {(provided, snapshot) =>
-                            <th
-                              ref={provided.innerRef}
-                              {...provided.draggableProps}
-                              {...canDrag ? provided.dragHandleProps : {}}
-                              className={`border border-slate-200 p-3 text-right font-medium text-slate-700 ${
-                              colIndex === 0 ? 'sticky right-0 z-30 shadow-[2px_0_5px_rgba(0,0,0,0.1)]' : ''} ${
-                              isHeaderSelected ? 'ring-2 ring-blue-500 bg-blue-50' : ''}
+                              {(provided, snapshot) =>
+                                <th
+                                  ref={provided.innerRef}
+                                  {...provided.draggableProps}
+                                  {...canDrag ? provided.dragHandleProps : {}}
+                                  className={`border border-slate-200 p-3 text-right font-medium text-slate-700 ${colIndex === 0 ? 'sticky right-0 z-30 shadow-[2px_0_5px_rgba(0,0,0,0.1)]' : ''} ${isHeaderSelected ? 'ring-2 ring-blue-500 bg-blue-50' : ''}
                                 ${canEdit ? 'hover:bg-blue-50 hover:shadow-inner transition-all cursor-pointer' : ''}
                                 ${snapshot.isDragging ? 'opacity-50 bg-blue-100' : ''}`}
-                              style={{
-                                width: column.width,
-                                minWidth: column.width,
-                                backgroundColor: snapshot.isDragging ? '#dbeafe' : isHeaderSelected ? '#eff6ff' : headerStyle.backgroundColor || (colIndex === 0 ? '#f1f5f9' : '#f1f5f9'),
-                                opacity: headerStyle.opacity ? headerStyle.opacity / 100 : 1,
-                                fontWeight: headerStyle.fontWeight || 'normal',
-                                borderColor: isHeaderSelected ? '#3b82f6' : headerStyle.borderColor || '#e2e8f0',
-                                cursor: canDrag ? 'grab' : 'default',
-                                ...provided.draggableProps.style
-                              }}
-                              onClick={(e) => !snapshot.isDragging && handleColumnClick(column.key, e)}
-                              onMouseDown={(e) => {
-                                if (e.altKey || e.ctrlKey || e.metaKey) {
-                                  e.preventDefault();
-                                }
-                              }}>
-
-                                {editingColumnKey === column.key ?
-                              <div className="flex items-center gap-2">
-                                    <Input
-                                  ref={columnEditRef}
-                                  value={editingColumnTitle}
-                                  onChange={(e) => setEditingColumnTitle(e.target.value)}
-                                  onBlur={saveColumnTitle}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') saveColumnTitle();
-                                    if (e.key === 'Escape') {
-                                      setEditingColumnKey(null);
-                                      setEditingColumnTitle("");
+                                  style={{
+                                    width: column.width,
+                                    minWidth: column.width,
+                                    backgroundColor: snapshot.isDragging ? '#dbeafe' : isHeaderSelected ? '#eff6ff' : headerStyle.backgroundColor || (colIndex === 0 ? '#f1f5f9' : '#f1f5f9'),
+                                    opacity: headerStyle.opacity ? headerStyle.opacity / 100 : 1,
+                                    fontWeight: headerStyle.fontWeight || 'normal',
+                                    borderColor: isHeaderSelected ? '#3b82f6' : headerStyle.borderColor || '#e2e8f0',
+                                    cursor: canDrag ? 'grab' : 'default',
+                                    ...provided.draggableProps.style
+                                  }}
+                                  onClick={(e) => !snapshot.isDragging && handleColumnClick(column.key, e)}
+                                  onMouseDown={(e) => {
+                                    if (e.altKey || e.ctrlKey || e.metaKey) {
+                                      e.preventDefault();
                                     }
-                                  }}
-                                  className="h-8 flex-1"
-                                  onClick={(e) => e.stopPropagation()} />
+                                  }}>
 
-                                    <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-8 w-8 p-0"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    saveColumnTitle();
-                                  }}
-                                  title="שמור שינויים">
+                                  {editingColumnKey === column.key ?
+                                    <div className="flex items-center gap-2">
+                                      <Input
+                                        ref={columnEditRef}
+                                        value={editingColumnTitle}
+                                        onChange={(e) => setEditingColumnTitle(e.target.value)}
+                                        onBlur={saveColumnTitle}
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter') saveColumnTitle();
+                                          if (e.key === 'Escape') {
+                                            setEditingColumnKey(null);
+                                            setEditingColumnTitle("");
+                                          }
+                                        }}
+                                        className="h-8 flex-1"
+                                        onClick={(e) => e.stopPropagation()} />
 
-                                      <Save className="w-4 h-4 text-green-600" />
-                                    </Button>
-                                    <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-8 w-8 p-0"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setEditingColumnKey(null);
-                                    setEditingColumnTitle("");
-                                  }}
-                                  title="בטל עריכה">
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-8 w-8 p-0"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          saveColumnTitle();
+                                        }}
+                                        title="שמור שינויים">
 
-                                      <X className="w-4 h-4 text-red-600" />
-                                    </Button>
+                                        <Save className="w-4 h-4 text-green-600" />
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-8 w-8 p-0"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setEditingColumnKey(null);
+                                          setEditingColumnTitle("");
+                                        }}
+                                        title="בטל עריכה">
+
+                                        <X className="w-4 h-4 text-red-600" />
+                                      </Button>
+                                    </div> :
+
+                                    <div className="flex items-center justify-between group">
+                                      <span>{column.title}</span>
+
+                                      {canEdit && !snapshot.isDragging &&
+                                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                          <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            className="h-6 w-6 p-0 hover:bg-blue-100"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setEditingColumnKey(column.key);
+                                              setEditingColumnTitle(column.title);
+                                            }}
+                                            title="ערוך שם (או לחץ על הכותרת)">
+
+                                            <Edit2 className="w-3 h-3 text-slate-500" />
+                                          </Button>
+
+                                          <Popover
+                                            open={popoverOpen === `header_${column.key}`}
+                                            onOpenChange={(open) => {
+                                              if (!open) setPopoverOpen(null);
+                                            }}>
+
+                                            <PopoverTrigger asChild>
+                                              <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                className="h-6 w-6 p-0 hover:bg-blue-100"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  setPopoverOpen(`header_${column.key}`);
+                                                }}
+                                                title="תפריט אפשרויות (או Ctrl+Click)">
+
+                                                <Settings className="w-3 h-3 text-slate-500" />
+                                              </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent
+                                              className="w-64 p-2"
+                                              align="start"
+                                              side="bottom"
+                                              dir="rtl"
+                                            >
+                                              <div className="space-y-2">
+                                                <div className="px-2 py-1 border-b border-slate-200">
+                                                  <h4 className="font-semibold text-sm">{column.title}</h4>
+                                                  <p className="text-xs text-slate-500 mt-1">אפשרויות עמודה</p>
+                                                </div>
+
+                                                <Button
+                                                  variant="outline"
+                                                  size="sm"
+                                                  className="w-full justify-start gap-2"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setEditingColumnKey(column.key);
+                                                    setEditingColumnTitle(column.title);
+                                                    setPopoverOpen(null);
+                                                  }}>
+
+                                                  <Edit2 className="w-4 h-4" />
+                                                  ערוך שם
+                                                </Button>
+
+                                                <Popover>
+                                                  <PopoverTrigger asChild>
+                                                    <Button
+                                                      variant="outline"
+                                                      size="sm"
+                                                      className="w-full justify-start gap-2"
+                                                      onClick={(e) => e.stopPropagation()}>
+
+                                                      <Palette className="w-4 h-4" />
+                                                      צבע כותרת
+                                                    </Button>
+                                                  </PopoverTrigger>
+                                                  <PopoverContent
+                                                    side="left"
+                                                    align="start"
+                                                    className="w-auto p-0"
+                                                  >
+                                                    <ColorPicker
+                                                      currentStyle={headerStyle}
+                                                      onApply={(style) => applyHeaderStyle(column.key, style)}
+                                                      onClose={() => setPopoverOpen(null)} />
+
+                                                  </PopoverContent>
+                                                </Popover>
+
+                                                <Popover>
+                                                  <PopoverTrigger asChild>
+                                                    <Button
+                                                      variant="outline"
+                                                      size="sm"
+                                                      className="w-full justify-start gap-2"
+                                                      onClick={(e) => e.stopPropagation()}>
+
+                                                      <Palette className="w-4 h-4" />
+                                                      צבע עמודה מלאה
+                                                    </Button>
+                                                  </PopoverTrigger>
+                                                  <PopoverContent
+                                                    side="left"
+                                                    align="start"
+                                                    className="w-auto p-0"
+                                                  >
+                                                    <ColorPicker
+                                                      onApply={(style) => applyColumnStyle(column.key, style)}
+                                                      onClose={() => setPopoverOpen(null)} />
+
+                                                  </PopoverContent>
+                                                </Popover>
+
+                                                <div className="border-t border-slate-200 my-2"></div>
+
+                                                <Popover>
+                                                  <PopoverTrigger asChild>
+                                                    <Button
+                                                      variant="outline"
+                                                      size="sm"
+                                                      className="w-full justify-start gap-2"
+                                                      onClick={(e) => e.stopPropagation()}>
+
+                                                      <Merge className="w-4 h-4" />
+                                                      מזג לעמודה אחרת
+                                                    </Button>
+                                                  </PopoverTrigger>
+                                                  <PopoverContent
+                                                    side="left"
+                                                    align="start"
+                                                    className="w-64 p-3"
+                                                  >
+                                                    <div className="space-y-3">
+                                                      <h4 className="font-semibold text-sm">מזג לעמודה אחרת</h4>
+                                                      <p className="text-xs text-slate-600">
+                                                        בחר עמודה למיזוג. הנתונים יאוחדו והעמודה הנוכחית תמחק.
+                                                      </p>
+                                                      <Select onValueChange={(targetKey) => {
+                                                        mergeColumns(column.key, targetKey);
+                                                        setPopoverOpen(null);
+                                                      }}>
+                                                        <SelectTrigger>
+                                                          <SelectValue placeholder="בחר עמודת יעד" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                          {columns.filter((c) =>
+                                                            c.key !== column.key &&
+                                                            !c.required &&
+                                                            c.key !== 'actions'
+                                                          ).map((c) =>
+                                                            <SelectItem key={c.key} value={c.key}>
+                                                              {c.title}
+                                                            </SelectItem>
+                                                          )}
+                                                        </SelectContent>
+                                                      </Select>
+                                                    </div>
+                                                  </PopoverContent>
+                                                </Popover>
+
+                                                <Button
+                                                  variant="outline"
+                                                  size="sm"
+                                                  className="w-full justify-start gap-2"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    splitColumn(column.key);
+                                                  }}>
+
+                                                  <Split className="w-4 h-4" />
+                                                  פצל לשתי עמודות
+                                                </Button>
+
+                                                <Button
+                                                  variant="outline"
+                                                  size="sm"
+                                                  className="w-full justify-start gap-2"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    toggleColumnVisibility(column.key);
+                                                    setPopoverOpen(null);
+                                                  }}>
+
+                                                  {column.visible !== false ?
+                                                    <>
+                                                      <Eye className="w-4 h-4" />
+                                                      הסתר עמודה
+                                                    </> :
+
+                                                    <>
+                                                      <Eye className="w-4 h-4" />
+                                                      הצג עמודה
+                                                    </>
+                                                  }
+                                                </Button>
+
+
+                                                <div className="border-t border-slate-200 my-2"></div>
+
+                                                <Button
+                                                  variant="outline"
+                                                  size="sm"
+                                                  className="w-full justify-start gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    deleteColumn(column.key);
+                                                  }}>
+
+                                                  <Trash2 className="w-4 h-4" />
+                                                  מחק עמודה
+                                                </Button>
+                                              </div>
+                                            </PopoverContent>
+                                          </Popover>
+                                        </div>
+                                      }
+                                    </div>
+                                  }
+                                </th>
+                              }
+                            </Draggable>);
+
+                        })}
+                        {provided.placeholder}
+                      </tr>
+
+                      {showSubHeaders &&
+                        <tr>
+                          {visibleColumns.map((column, colIndex) => {
+                            const subHeaderStyle = cellStyles[`subheader_${column.key}`] || {};
+                            const isSubHeaderSelected = selectedHeaders.has(`sub_${column.key}`);
+                            const canEdit = !column.required && column.key !== 'actions';
+
+                            return (
+                              <th
+                                key={`sub_${column.key}`}
+                                className={`border border-slate-200 p-2 text-right font-normal text-slate-600 text-sm ${colIndex === 0 ? 'sticky right-0 z-30 shadow-[2px_0_5px_rgba(0,0,0,0.1)]' : ''} ${isSubHeaderSelected ? 'ring-2 ring-purple-500 bg-purple-50' : ''}
+                              ${canEdit ? 'hover:bg-purple-50 hover:shadow-inner transition-all cursor-pointer' : ''}`}
+                                style={{
+                                  width: column.width,
+                                  minWidth: column.width,
+                                  backgroundColor: isSubHeaderSelected ? '#faf5ff' : subHeaderStyle.backgroundColor || (colIndex === 0 ? '#f8fafc' : '#f8fafc'),
+                                  opacity: subHeaderStyle.opacity ? subHeaderStyle.opacity / 100 : 1,
+                                  fontWeight: subHeaderStyle.fontWeight || 'normal',
+                                  borderColor: isSubHeaderSelected ? '#a855f7' : subHeaderStyle.borderColor || '#e2e8f0'
+                                }}
+                                onClick={(e) => {
+                                  if (canEdit && editingSubHeader !== column.key) {
+                                    if (e.ctrlKey || e.metaKey) {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      setPopoverOpen(`subheader_${column.key}`);
+                                    } else if (e.altKey && e.shiftKey) {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      setSelectedHeaders((prev) => {
+                                        const newSet = new Set(prev);
+                                        const subHeaderSelectionKey = `sub_${column.key}`;
+                                        if (newSet.has(subHeaderSelectionKey)) {
+                                          newSet.delete(subHeaderSelectionKey);
+                                        } else {
+                                          newSet.add(subHeaderSelectionKey);
+                                        }
+                                        return newSet;
+                                      });
+                                      setSelectionMode(true);
+                                    } else {
+                                      setEditingSubHeader(column.key);
+                                      setTempSubHeaderValue(subHeaders[column.key] || '');
+                                    }
+                                  }
+                                }}
+                                onMouseDown={(e) => {
+                                  if (e.altKey || e.ctrlKey || e.metaKey) {
+                                    e.preventDefault();
+                                  }
+                                }}>
+
+                                {editingSubHeader === column.key ?
+                                  <div className="flex items-center gap-2">
+                                    <Input
+                                      value={tempSubHeaderValue}
+                                      onChange={(e) => setTempSubHeaderValue(e.target.value)}
+                                      onBlur={() => {
+                                        updateSubHeader(column.key, tempSubHeaderValue);
+                                        setEditingSubHeader(null);
+                                      }}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                          updateSubHeader(column.key, tempSubHeaderValue);
+                                          setEditingSubHeader(null);
+                                        }
+                                        if (e.key === 'Escape') {
+                                          setEditingSubHeader(null);
+                                        }
+                                      }}
+                                      className="h-6 flex-1 text-sm"
+                                      onClick={(e) => e.stopPropagation()}
+                                      autoFocus />
+
                                   </div> :
 
-                              <div className="flex items-center justify-between group">
-                                    <span>{column.title}</span>
+                                  <div className="flex items-center justify-between group">
+                                    <span className="text-xs">{subHeaders[column.key] || 'לחץ לעריכה...'}</span>
 
-                                    {canEdit && !snapshot.isDragging &&
-                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    {canEdit &&
+                                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="h-6 w-6 p-0 hover:bg-blue-100"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setEditingColumnKey(column.key);
-                                      setEditingColumnTitle(column.title);
-                                    }}
-                                    title="ערוך שם (או לחץ על הכותרת)">
+                                          size="sm"
+                                          variant="ghost"
+                                          className="h-5 w-5 p-0 hover:bg-purple-100"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setEditingSubHeader(column.key);
+                                            setTempSubHeaderValue(subHeaders[column.key] || '');
+                                          }}
+                                          title="ערוך כותרת משנה">
 
                                           <Edit2 className="w-3 h-3 text-slate-500" />
                                         </Button>
 
                                         <Popover
-                                    open={popoverOpen === `header_${column.key}`}
-                                    onOpenChange={(open) => {
-                                      if (!open) setPopoverOpen(null);
-                                    }}>
+                                          open={popoverOpen === `subheader_${column.key}`}
+                                          onOpenChange={(open) => {
+                                            if (!open) setPopoverOpen(null);
+                                          }}>
 
                                           <PopoverTrigger asChild>
                                             <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        className="h-6 w-6 p-0 hover:bg-blue-100"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setPopoverOpen(`header_${column.key}`);
-                                        }}
-                                        title="תפריט אפשרויות (או Ctrl+Click)">
+                                              size="sm"
+                                              variant="ghost"
+                                              className="h-5 w-5 p-0 hover:bg-purple-100"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setPopoverOpen(`subheader_${column.key}`);
+                                              }}
+                                              title="אפשרויות כותרת משנה">
 
                                               <Settings className="w-3 h-3 text-slate-500" />
                                             </Button>
                                           </PopoverTrigger>
                                           <PopoverContent
-                                      className="w-64 p-2"
-                                      align="start"
-                                      side="bottom"
-                                      dir="rtl"
-                                    >
+                                            className="w-64 p-2"
+                                            align="start"
+                                            side="bottom"
+                                            dir="rtl"
+                                          >
                                             <div className="space-y-2">
                                               <div className="px-2 py-1 border-b border-slate-200">
-                                                <h4 className="font-semibold text-sm">{column.title}</h4>
-                                                <p className="text-xs text-slate-500 mt-1">אפשרויות עמודה</p>
+                                                <h4 className="font-semibold text-sm">כותרת משנה</h4>
+                                                <p className="text-xs text-slate-500 mt-1">{column.title}</p>
                                               </div>
 
                                               <Button
-                                          variant="outline"
-                                          size="sm"
-                                          className="w-full justify-start gap-2"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setEditingColumnKey(column.key);
-                                            setEditingColumnTitle(column.title);
-                                            setPopoverOpen(null);
-                                          }}>
+                                                variant="outline"
+                                                size="sm"
+                                                className="w-full justify-start gap-2"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  setEditingSubHeader(column.key);
+                                                  setTempSubHeaderValue(subHeaders[column.key] || '');
+                                                  setPopoverOpen(null);
+                                                }}>
 
                                                 <Edit2 className="w-4 h-4" />
-                                                ערוך שם
+                                                ערוך טקסט
                                               </Button>
 
                                               <Popover>
                                                 <PopoverTrigger asChild>
                                                   <Button
-                                              variant="outline"
-                                              size="sm"
-                                              className="w-full justify-start gap-2"
-                                              onClick={(e) => e.stopPropagation()}>
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="w-full justify-start gap-2"
+                                                    onClick={(e) => e.stopPropagation()}>
 
                                                     <Palette className="w-4 h-4" />
-                                                    צבע כותרת
+                                                    צבע וסגנון
                                                   </Button>
                                                 </PopoverTrigger>
                                                 <PopoverContent
-                                            side="left"
-                                            align="start"
-                                            className="w-auto p-0"
-                                          >
+                                                  side="left"
+                                                  align="start"
+                                                  className="w-auto p-0"
+                                                >
                                                   <ColorPicker
-                                              currentStyle={headerStyle}
-                                              onApply={(style) => applyHeaderStyle(column.key, style)}
-                                              onClose={() => setPopoverOpen(null)} />
-
-                                                </PopoverContent>
-                                              </Popover>
-
-                                              <Popover>
-                                                <PopoverTrigger asChild>
-                                                  <Button
-                                              variant="outline"
-                                              size="sm"
-                                              className="w-full justify-start gap-2"
-                                              onClick={(e) => e.stopPropagation()}>
-
-                                                    <Palette className="w-4 h-4" />
-                                                    צבע עמודה מלאה
-                                                  </Button>
-                                                </PopoverTrigger>
-                                                <PopoverContent
-                                            side="left"
-                                            align="start"
-                                            className="w-auto p-0"
-                                          >
-                                                  <ColorPicker
-                                              onApply={(style) => applyColumnStyle(column.key, style)}
-                                              onClose={() => setPopoverOpen(null)} />
+                                                    currentStyle={subHeaderStyle}
+                                                    onApply={(style) => applySubHeaderStyle(column.key, style)}
+                                                    onClose={() => setPopoverOpen(null)} />
 
                                                 </PopoverContent>
                                               </Popover>
 
                                               <div className="border-t border-slate-200 my-2"></div>
 
-                                              <Popover>
-                                                <PopoverTrigger asChild>
-                                                  <Button
-                                              variant="outline"
-                                              size="sm"
-                                              className="w-full justify-start gap-2"
-                                              onClick={(e) => e.stopPropagation()}>
-
-                                                    <Merge className="w-4 h-4" />
-                                                    מזג לעמודה אחרת
-                                                  </Button>
-                                                </PopoverTrigger>
-                                                <PopoverContent
-                                            side="left"
-                                            align="start"
-                                            className="w-64 p-3"
-                                          >
-                                                  <div className="space-y-3">
-                                                    <h4 className="font-semibold text-sm">מזג לעמודה אחרת</h4>
-                                                    <p className="text-xs text-slate-600">
-                                                      בחר עמודה למיזוג. הנתונים יאוחדו והעמודה הנוכחית תמחק.
-                                                    </p>
-                                                    <Select onValueChange={(targetKey) => {
-                                                mergeColumns(column.key, targetKey);
-                                                setPopoverOpen(null);
-                                              }}>
-                                                      <SelectTrigger>
-                                                        <SelectValue placeholder="בחר עמודת יעד" />
-                                                      </SelectTrigger>
-                                                      <SelectContent>
-                                                        {columns.filter((c) =>
-                                                  c.key !== column.key &&
-                                                  !c.required &&
-                                                  c.key !== 'actions'
-                                                  ).map((c) =>
-                                                  <SelectItem key={c.key} value={c.key}>
-                                                            {c.title}
-                                                          </SelectItem>
-                                                  )}
-                                                      </SelectContent>
-                                                    </Select>
-                                                  </div>
-                                                </PopoverContent>
-                                              </Popover>
-
                                               <Button
-                                          variant="outline"
-                                          size="sm"
-                                          className="w-full justify-start gap-2"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            splitColumn(column.key);
-                                          }}>
-
-                                                <Split className="w-4 h-4" />
-                                                פצל לשתי עמודות
-                                              </Button>
-
-                                              <Button
-                                          variant="outline"
-                                          size="sm"
-                                          className="w-full justify-start gap-2"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            toggleColumnVisibility(column.key);
-                                            setPopoverOpen(null);
-                                          }}>
-
-                                                {column.visible !== false ?
-                                          <>
-                                                    <Eye className="w-4 h-4" />
-                                                    הסתר עמודה
-                                                  </> :
-
-                                          <>
-                                                    <Eye className="w-4 h-4" />
-                                                    הצג עמודה
-                                                  </>
-                                          }
-                                              </Button>
-
-
-                                              <div className="border-t border-slate-200 my-2"></div>
-
-                                              <Button
-                                          variant="outline"
-                                          size="sm"
-                                          className="w-full justify-start gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            deleteColumn(column.key);
-                                          }}>
+                                                variant="outline"
+                                                size="sm"
+                                                className="w-full justify-start gap-2 text-red-600 hover:text-red-700"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  updateSubHeader(column.key, '');
+                                                  setPopoverOpen(null);
+                                                  toast.success('כותרת משנה נמחקה');
+                                                }}>
 
                                                 <Trash2 className="w-4 h-4" />
-                                                מחק עמודה
+                                                מחק כותרת משנה
                                               </Button>
                                             </div>
                                           </PopoverContent>
                                         </Popover>
                                       </div>
-                                }
-                                  </div>
-                              }
-                              </th>
-                            }
-                          </Draggable>);
-
-                      })}
-                      {provided.placeholder}
-                    </tr>
-
-                    {showSubHeaders &&
-                    <tr>
-                        {visibleColumns.map((column, colIndex) => {
-                        const subHeaderStyle = cellStyles[`subheader_${column.key}`] || {};
-                        const isSubHeaderSelected = selectedHeaders.has(`sub_${column.key}`);
-                        const canEdit = !column.required && column.key !== 'actions';
-
-                        return (
-                          <th
-                            key={`sub_${column.key}`}
-                            className={`border border-slate-200 p-2 text-right font-normal text-slate-600 text-sm ${
-                            colIndex === 0 ? 'sticky right-0 z-30 shadow-[2px_0_5px_rgba(0,0,0,0.1)]' : ''} ${
-                            isSubHeaderSelected ? 'ring-2 ring-purple-500 bg-purple-50' : ''}
-                              ${canEdit ? 'hover:bg-purple-50 hover:shadow-inner transition-all cursor-pointer' : ''}`}
-                            style={{
-                              width: column.width,
-                              minWidth: column.width,
-                              backgroundColor: isSubHeaderSelected ? '#faf5ff' : subHeaderStyle.backgroundColor || (colIndex === 0 ? '#f8fafc' : '#f8fafc'),
-                              opacity: subHeaderStyle.opacity ? subHeaderStyle.opacity / 100 : 1,
-                              fontWeight: subHeaderStyle.fontWeight || 'normal',
-                              borderColor: isSubHeaderSelected ? '#a855f7' : subHeaderStyle.borderColor || '#e2e8f0'
-                            }}
-                            onClick={(e) => {
-                              if (canEdit && editingSubHeader !== column.key) {
-                                if (e.ctrlKey || e.metaKey) {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  setPopoverOpen(`subheader_${column.key}`);
-                                } else if (e.altKey && e.shiftKey) {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  setSelectedHeaders((prev) => {
-                                    const newSet = new Set(prev);
-                                    const subHeaderSelectionKey = `sub_${column.key}`;
-                                    if (newSet.has(subHeaderSelectionKey)) {
-                                      newSet.delete(subHeaderSelectionKey);
-                                    } else {
-                                      newSet.add(subHeaderSelectionKey);
                                     }
-                                    return newSet;
-                                  });
-                                  setSelectionMode(true);
-                                } else {
-                                  setEditingSubHeader(column.key);
-                                  setTempSubHeaderValue(subHeaders[column.key] || '');
+                                  </div>
                                 }
-                              }
-                            }}
-                            onMouseDown={(e) => {
-                              if (e.altKey || e.ctrlKey || e.metaKey) {
-                                e.preventDefault();
-                              }
-                            }}>
+                              </th>);
 
-                              {editingSubHeader === column.key ?
-                            <div className="flex items-center gap-2">
-                                  <Input
-                                value={tempSubHeaderValue}
-                                onChange={(e) => setTempSubHeaderValue(e.target.value)}
-                                onBlur={() => {
-                                  updateSubHeader(column.key, tempSubHeaderValue);
-                                  setEditingSubHeader(null);
-                                }}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') {
-                                    updateSubHeader(column.key, tempSubHeaderValue);
-                                    setEditingSubHeader(null);
-                                  }
-                                  if (e.key === 'Escape') {
-                                    setEditingSubHeader(null);
-                                  }
-                                }}
-                                className="h-6 flex-1 text-sm"
-                                onClick={(e) => e.stopPropagation()}
-                                autoFocus />
-
-                                </div> :
-
-                            <div className="flex items-center justify-between group">
-                                  <span className="text-xs">{subHeaders[column.key] || 'לחץ לעריכה...'}</span>
-
-                                  {canEdit &&
-                              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                      <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-5 w-5 p-0 hover:bg-purple-100"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setEditingSubHeader(column.key);
-                                    setTempSubHeaderValue(subHeaders[column.key] || '');
-                                  }}
-                                  title="ערוך כותרת משנה">
-
-                                        <Edit2 className="w-3 h-3 text-slate-500" />
-                                      </Button>
-
-                                      <Popover
-                                  open={popoverOpen === `subheader_${column.key}`}
-                                  onOpenChange={(open) => {
-                                    if (!open) setPopoverOpen(null);
-                                  }}>
-
-                                        <PopoverTrigger asChild>
-                                          <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      className="h-5 w-5 p-0 hover:bg-purple-100"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setPopoverOpen(`subheader_${column.key}`);
-                                      }}
-                                      title="אפשרויות כותרת משנה">
-
-                                            <Settings className="w-3 h-3 text-slate-500" />
-                                          </Button>
-                                        </PopoverTrigger>
-                                        <PopoverContent
-                                    className="w-64 p-2"
-                                    align="start"
-                                    side="bottom"
-                                    dir="rtl"
-                                  >
-                                          <div className="space-y-2">
-                                            <div className="px-2 py-1 border-b border-slate-200">
-                                              <h4 className="font-semibold text-sm">כותרת משנה</h4>
-                                              <p className="text-xs text-slate-500 mt-1">{column.title}</p>
-                                            </div>
-
-                                            <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="w-full justify-start gap-2"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setEditingSubHeader(column.key);
-                                          setTempSubHeaderValue(subHeaders[column.key] || '');
-                                          setPopoverOpen(null);
-                                        }}>
-
-                                              <Edit2 className="w-4 h-4" />
-                                              ערוך טקסט
-                                            </Button>
-
-                                            <Popover>
-                                              <PopoverTrigger asChild>
-                                                <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="w-full justify-start gap-2"
-                                            onClick={(e) => e.stopPropagation()}>
-
-                                                  <Palette className="w-4 h-4" />
-                                                  צבע וסגנון
-                                                </Button>
-                                              </PopoverTrigger>
-                                              <PopoverContent
-                                          side="left"
-                                          align="start"
-                                          className="w-auto p-0"
-                                        >
-                                                <ColorPicker
-                                            currentStyle={subHeaderStyle}
-                                            onApply={(style) => applySubHeaderStyle(column.key, style)}
-                                            onClose={() => setPopoverOpen(null)} />
-
-                                              </PopoverContent>
-                                            </Popover>
-
-                                            <div className="border-t border-slate-200 my-2"></div>
-
-                                            <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="w-full justify-start gap-2 text-red-600 hover:text-red-700"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          updateSubHeader(column.key, '');
-                                          setPopoverOpen(null);
-                                          toast.success('כותרת משנה נמחקה');
-                                        }}>
-
-                                              <Trash2 className="w-4 h-4" />
-                                              מחק כותרת משנה
-                                            </Button>
-                                          </div>
-                                        </PopoverContent>
-                                      </Popover>
-                                    </div>
-                              }
-                                </div>
-                            }
-                            </th>);
-
-                      })}
-                      </tr>
-                    }
-                  </thead>
+                          })}
+                        </tr>
+                      }
+                    </thead>
                   }
-              </Droppable>
+                </Droppable>
 
-              <tbody>
-                {localClients.map((client, rowIndex) =>
-                  <tr key={client.id} className={rowIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
-                    {visibleColumns.map((column, colIndex) => {
-                      const cellKey = `${client.id}_${column.key}`;
-                      const isEditing = editingCell === cellKey;
-                      const cellStyle = cellStyles[cellKey] || {};
-                      const isSelected = selectedCells.has(cellKey);
+                <tbody>
+                  {localClients.map((client, rowIndex) =>
+                    <tr key={client.id} className={rowIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                      {visibleColumns.map((column, colIndex) => {
+                        const cellKey = `${client.id}_${column.key}`;
+                        const isEditing = editingCell === cellKey;
+                        const cellStyle = cellStyles[cellKey] || {};
+                        const isSelected = selectedCells.has(cellKey);
 
-                      if (column.type === 'actions') {
+                        if (column.type === 'actions') {
+                          return (
+                            <td
+                              key={column.key}
+                              className={`border border-slate-200 p-2 ${colIndex === 0 ? 'sticky right-0 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]' : ''}`
+                              }
+                              style={{
+                                width: column.width,
+                                minWidth: column.width,
+                                maxWidth: column.width,
+                                backgroundColor: colIndex === 0 ? rowIndex % 2 === 0 ? '#ffffff' : '#f8fafc' : 'inherit'
+                              }}>
+
+                              <div className="flex items-center gap-1 justify-center">
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-8 w-8"
+                                  onClick={() => onView(client)}>
+
+                                  <Eye className="w-4 h-4 text-blue-600" />
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-8 w-8"
+                                  onClick={() => onEdit(client)}>
+
+                                  <Edit className="w-4 h-4 text-green-600" />
+                                </Button>
+                              </div>
+                            </td>);
+
+                        }
+
+                        let cellValue = '';
+                        if (column.key.startsWith('cf:')) {
+                          const slug = column.key.slice(3);
+                          cellValue = client.custom_data?.[slug] || '';
+                        } else {
+                          cellValue = client[column.key] || '';
+                        }
+
+                        if (column.key === 'created_date' && cellValue) {
+                          try {
+                            cellValue = format(new Date(cellValue), 'dd/MM/yyyy', { locale: he });
+                          } catch (e) {
+                            cellValue = '';
+                          }
+                        }
+
+                        if (column.type === 'phone' || column.key === 'phone_secondary' || column.key === 'whatsapp') {
+                          cellValue = isValidPhone(cellValue) ? cellValue : '';
+                        }
+
                         return (
                           <td
                             key={column.key}
-                            className={`border border-slate-200 p-2 ${
-                            colIndex === 0 ? 'sticky right-0 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]' : ''}`
+                            className={`border border-slate-200 p-2 ${colIndex === 0 ? 'sticky right-0 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]' : ''} ${column.key !== 'created_date' ? 'cursor-pointer hover:bg-blue-50' : ''} ${isSelected ? 'ring-2 ring-purple-500 bg-purple-50' : ''}`
                             }
+                            onClick={(e) => handleCellClick(client.id, column.key, e)}
+                            onMouseEnter={(e) => handleCellMouseEnter(client.id, column.key, e)}
+                            onMouseDown={(e) => {
+                              if (e.altKey) {
+                                e.preventDefault();
+                              }
+                            }}
                             style={{
                               width: column.width,
                               minWidth: column.width,
                               maxWidth: column.width,
-                              backgroundColor: colIndex === 0 ? rowIndex % 2 === 0 ? '#ffffff' : '#f8fafc' : 'inherit'
+                              backgroundColor: isSelected ? '#faf5ff' : colIndex === 0 ? rowIndex % 2 === 0 ? '#ffffff' : '#f8fafc' : cellStyle.backgroundColor || 'inherit',
+                              opacity: cellStyle.opacity ? cellStyle.opacity / 100 : 1,
+                              fontWeight: cellStyle.fontWeight || 'normal',
+                              borderColor: isSelected ? '#a855f7' : cellStyle.borderColor || '#e2e8f0'
                             }}>
 
-                            <div className="flex items-center gap-1 justify-center">
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-8 w-8"
-                                onClick={() => onView(client)}>
-
-                                <Eye className="w-4 h-4 text-blue-600" />
-                              </Button>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-8 w-8"
-                                onClick={() => onEdit(client)}>
-
-                                <Edit className="w-4 h-4 text-green-600" />
-                              </Button>
-                            </div>
-                          </td>);
-
-                      }
-
-                      let cellValue = '';
-                      if (column.key.startsWith('cf:')) {
-                        const slug = column.key.slice(3);
-                        cellValue = client.custom_data?.[slug] || '';
-                      } else {
-                        cellValue = client[column.key] || '';
-                      }
-
-                      if (column.key === 'created_date' && cellValue) {
-                        try {
-                          cellValue = format(new Date(cellValue), 'dd/MM/yyyy', { locale: he });
-                        } catch (e) {
-                          cellValue = '';
-                        }
-                      }
-
-                      if (column.type === 'phone' || column.key === 'phone_secondary' || column.key === 'whatsapp') {
-                        cellValue = isValidPhone(cellValue) ? cellValue : '';
-                      }
-
-                      return (
-                        <td
-                          key={column.key}
-                          className={`border border-slate-200 p-2 ${
-                          colIndex === 0 ? 'sticky right-0 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]' : ''} ${
-
-                          column.key !== 'created_date' ? 'cursor-pointer hover:bg-blue-50' : ''} ${
-
-                          isSelected ? 'ring-2 ring-purple-500 bg-purple-50' : ''}`
-                          }
-                          onClick={(e) => handleCellClick(client.id, column.key, e)}
-                          onMouseEnter={(e) => handleCellMouseEnter(client.id, column.key, e)}
-                          onMouseDown={(e) => {
-                            if (e.altKey) {
-                              e.preventDefault();
-                            }
-                          }}
-                          style={{
-                            width: column.width,
-                            minWidth: column.width,
-                            maxWidth: column.width,
-                            backgroundColor: isSelected ? '#faf5ff' : colIndex === 0 ? rowIndex % 2 === 0 ? '#ffffff' : '#f8fafc' : cellStyle.backgroundColor || 'inherit',
-                            opacity: cellStyle.opacity ? cellStyle.opacity / 100 : 1,
-                            fontWeight: cellStyle.fontWeight || 'normal',
-                            borderColor: isSelected ? '#a855f7' : cellStyle.borderColor || '#e2e8f0'
-                          }}>
-
-                          {isEditing ?
-                          <Input
-                            ref={editInputRef}
-                            value={editValue}
-                            onChange={(e) => setEditValue(e.target.value)}
-                            onBlur={saveEdit}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') saveEdit();
-                              if (e.key === 'Escape') {
-                                setEditingCell(null);
-                                setEditValue("");
-                              }
-                            }}
-                            className="h-8 w-full"
-                            onClick={(e) => e.stopPropagation()} /> :
+                            {isEditing ?
+                              <Input
+                                ref={editInputRef}
+                                value={editValue}
+                                onChange={(e) => setEditValue(e.target.value)}
+                                onBlur={saveEdit}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') saveEdit();
+                                  if (e.key === 'Escape') {
+                                    setEditingCell(null);
+                                    setEditValue("");
+                                  }
+                                }}
+                                className="h-8 w-full"
+                                onClick={(e) => e.stopPropagation()} /> :
 
 
-                          <Popover
-                            open={popoverOpen === cellKey}
-                            onOpenChange={(open) => {
-                              if (!open) setPopoverOpen(null);
-                            }}>
-
-                              <PopoverTrigger asChild>
-                                <div className="text-sm w-full" dir="rtl">
-                                  {column.type === 'status' ?
-                                <Badge variant="outline" className={statusColors[cellValue] || 'bg-slate-100 text-slate-800'}>
-                                      {cellValue}
-                                    </Badge> :
-                                column.type === 'phone' || column.key === 'phone_secondary' || column.key === 'whatsapp' ?
-                                cellValue ?
-                                <a
-                                  href={`tel:${cellValue}`}
-                                  className="hover:underline font-medium block"
-                                  style={{ color: '#000000' }}
-                                  onClick={(e) => e.stopPropagation()}>
-
-                                        {cellValue}
-                                      </a> :
-
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleCellClick(client.id, column.key, e);
-                                  }}
-                                  className="flex items-center justify-center w-full text-slate-400 hover:text-blue-600 transition-colors"
-                                  title="לחץ להוספת מספר טלפון">
-
-                                        <PhoneIcon className="w-4 h-4" />
-                                      </button> :
-
-                                column.type === 'email' && cellValue ?
-                                <a
-                                  href={`mailto:${cellValue}`}
-                                  className="hover:underline font-medium block"
-                                  style={{ color: '#000000' }}
-                                  onClick={(e) => e.stopPropagation()}>
-
-                                      {cellValue}
-                                    </a> :
-
-                                <span style={{
-                                  color: column.type === 'email' || column.type === 'phone' ? '#000000' : 'inherit',
-                                  fontWeight: column.type === 'email' || column.type === 'phone' ? '500' : 'normal'
+                              <Popover
+                                open={popoverOpen === cellKey}
+                                onOpenChange={(open) => {
+                                  if (!open) setPopoverOpen(null);
                                 }}>
-                                      {String(cellValue)}
-                                    </span>
-                                }
-                                </div>
-                              </PopoverTrigger>
-                              <PopoverContent
-                              className="w-auto p-2"
-                              align="center"
-                              side="left"
-                              dir="rtl"
-                            >
-                                <div className="space-y-2">
-                                  <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="w-full justify-start gap-2"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setEditingCell(cellKey);
-                                    setEditValue(String(cellValue));
-                                    setPopoverOpen(null);
-                                    setTimeout(() => editInputRef.current?.focus(), 0);
-                                  }}>
 
-                                    <Edit2 className="w-4 h-4" />
-                                    ערוך
-                                  </Button>
+                                <PopoverTrigger asChild>
+                                  <div className="text-sm w-full" dir="rtl">
+                                    {column.type === 'status' ?
+                                      <Badge variant="outline" className={statusColors[cellValue] || 'bg-slate-100 text-slate-800'}>
+                                        {cellValue}
+                                      </Badge> :
+                                      column.type === 'phone' || column.key === 'phone_secondary' || column.key === 'whatsapp' ?
+                                        cellValue ?
+                                          <a
+                                            href={`tel:${cellValue}`}
+                                            className="hover:underline font-medium block"
+                                            style={{ color: '#000000' }}
+                                            onClick={(e) => e.stopPropagation()}>
 
-                                  <Popover>
-                                    <PopoverTrigger asChild>
-                                      <Button
+                                            {cellValue}
+                                          </a> :
+
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleCellClick(client.id, column.key, e);
+                                            }}
+                                            className="flex items-center justify-center w-full text-slate-400 hover:text-blue-600 transition-colors"
+                                            title="לחץ להוספת מספר טלפון">
+
+                                            <PhoneIcon className="w-4 h-4" />
+                                          </button> :
+
+                                        column.type === 'email' && cellValue ?
+                                          <a
+                                            href={`mailto:${cellValue}`}
+                                            className="hover:underline font-medium block"
+                                            style={{ color: '#000000' }}
+                                            onClick={(e) => e.stopPropagation()}>
+
+                                            {cellValue}
+                                          </a> :
+
+                                          <span style={{
+                                            color: column.type === 'email' || column.type === 'phone' ? '#000000' : 'inherit',
+                                            fontWeight: column.type === 'email' || column.type === 'phone' ? '500' : 'normal'
+                                          }}>
+                                            {String(cellValue)}
+                                          </span>
+                                    }
+                                  </div>
+                                </PopoverTrigger>
+                                <PopoverContent
+                                  className="w-auto p-2"
+                                  align="center"
+                                  side="left"
+                                  dir="rtl"
+                                >
+                                  <div className="space-y-2">
+                                    <Button
                                       variant="outline"
                                       size="sm"
                                       className="w-full justify-start gap-2"
-                                      onClick={(e) => e.stopPropagation()}>
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setEditingCell(cellKey);
+                                        setEditValue(String(cellValue));
+                                        setPopoverOpen(null);
+                                        setTimeout(() => editInputRef.current?.focus(), 0);
+                                      }}>
 
-                                        <Palette className="w-4 h-4" />
-                                        צבע ועיצוב
-                                      </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent
-                                    side="left"
-                                    align="start"
-                                    className="w-auto p-0"
-                                  >
-                                      <ColorPicker
-                                      currentStyle={cellStyle}
-                                      onApply={(style) => applyCellStyle(cellKey, style)}
-                                      onClose={() => setPopoverOpen(null)} />
+                                      <Edit2 className="w-4 h-4" />
+                                      ערוך
+                                    </Button>
 
-                                    </PopoverContent>
-                                  </Popover>
+                                    <Popover>
+                                      <PopoverTrigger asChild>
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          className="w-full justify-start gap-2"
+                                          onClick={(e) => e.stopPropagation()}>
 
-                                  <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="w-full justify-start gap-2"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    navigator.clipboard.writeText(String(cellValue));
-                                    toast.success('הועתק ללוח');
-                                    setPopoverOpen(null);
-                                  }}>
+                                          <Palette className="w-4 h-4" />
+                                          צבע ועיצוב
+                                        </Button>
+                                      </PopoverTrigger>
+                                      <PopoverContent
+                                        side="left"
+                                        align="start"
+                                        className="w-auto p-0"
+                                      >
+                                        <ColorPicker
+                                          currentStyle={cellStyle}
+                                          onApply={(style) => applyCellStyle(cellKey, style)}
+                                          onClose={() => setPopoverOpen(null)} />
 
-                                    <Copy className="w-4 h-4" />
-                                    העתק
-                                  </Button>
+                                      </PopoverContent>
+                                    </Popover>
 
-                                  <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="w-full justify-start gap-2 text-red-600 hover:text-red-700"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    deleteCell(client.id, column.key);
-                                  }}>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="w-full justify-start gap-2"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        navigator.clipboard.writeText(String(cellValue));
+                                        toast.success('הועתק ללוח');
+                                        setPopoverOpen(null);
+                                      }}>
 
-                                    <Trash2 className="w-4 h-4" />
-                                    מחק תוכן
-                                  </Button>
-                                </div>
-                              </PopoverContent>
-                            </Popover>
-                          }
-                        </td>);
+                                      <Copy className="w-4 h-4" />
+                                      העתק
+                                    </Button>
 
-                    })}
-                  </tr>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="w-full justify-start gap-2 text-red-600 hover:text-red-700"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        deleteCell(client.id, column.key);
+                                      }}>
+
+                                      <Trash2 className="w-4 h-4" />
+                                      מחק תוכן
+                                    </Button>
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
+                            }
+                          </td>);
+
+                      })}
+                    </tr>
                   )}
-              </tbody>
-            </table>
-          </DragDropContext>
-        </div>
-      </CardContent>
-    </Card>
+                </tbody>
+              </table>
+            </DragDropContext>
+          </div>
+        </CardContent>
+      </Card>
       <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
         <SheetContent side="left" className="w-[500px] p-0" dir="rtl">
           <SheetHeader className="p-6 pb-4 border-b bg-gradient-to-r from-slate-50 to-white">
@@ -2474,8 +2463,8 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
           <ScrollArea className="h-[calc(100vh-180px)]">
             <div className="p-6 space-y-4">
               {showAddInPanel ? (
-                <div className="p-4 bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl border-2 border-blue-200 space-y-3">
-                  <div className="flex items-center justify-between mb-2">
+                <Card className="p-4 bg-gradient-to-br from-blue-50 to-purple-50 border-2 border-blue-200 relative z-10">
+                  <div className="flex items-center justify-between mb-3">
                     <h3 className="font-bold text-blue-900">הוספת עמודה חדשה</h3>
                     <Button
                       variant="ghost"
@@ -2490,7 +2479,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                     </Button>
                   </div>
 
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <Input
                       placeholder="שם העמודה..."
                       value={newColumnName}
@@ -2510,7 +2499,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                       <SelectTrigger>
                         <SelectValue placeholder="סוג עמודה" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent dir="rtl">
                         <SelectItem value="text">טקסט</SelectItem>
                         <SelectItem value="number">מספר</SelectItem>
                         <SelectItem value="phone">טלפון</SelectItem>
@@ -2518,30 +2507,30 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                         <SelectItem value="date">תאריך</SelectItem>
                       </SelectContent>
                     </Select>
-                  </div>
 
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={addColumnFromPanel}
-                      className="flex-1 bg-blue-600 hover:bg-blue-700 gap-2">
-                      <Plus className="w-4 h-4" />
-                      הוסף עמודה
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setShowAddInPanel(false);
-                        setNewColumnName("");
-                        setNewColumnType("text");
-                      }}>
-                      ביטול
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={addColumnFromPanel}
+                        className="flex-1 bg-blue-600 hover:bg-blue-700 gap-2">
+                        <Plus className="w-4 h-4" />
+                        הוסף עמודה
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setShowAddInPanel(false);
+                          setNewColumnName("");
+                          setNewColumnType("text");
+                        }}>
+                        ביטול
+                      </Button>
+                    </div>
                   </div>
-                </div>
+                </Card>
               ) : (
                 <Button
                   onClick={() => setShowAddInPanel(true)}
-                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 gap-2 shadow-lg">
+                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 gap-2 shadow-lg relative z-10">
                   <Plus className="w-5 h-5" />
                   הוסף עמודה חדשה
                 </Button>
@@ -2555,9 +2544,9 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
 
                 <div className="space-y-2">
                   {columns.map((col) => (
-                    <div
+                    <Card
                       key={col.key}
-                      className="group p-4 border-2 rounded-xl hover:border-blue-300 hover:shadow-md transition-all bg-white">
+                      className="group p-4 border-2 rounded-xl hover:border-blue-300 hover:shadow-md transition-all bg-white relative z-10">
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-3 flex-1 min-w-0">
                           <Switch
@@ -2603,7 +2592,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                         </div>
 
                         {!col.required && col.key !== 'actions' && (
-                          <div className="flex items-center gap-1 transition-opacity">
+                          <div className="flex items-center gap-1 transition-opacity relative z-20">
                             <Button
                               size="icon"
                               variant="ghost"
@@ -2627,7 +2616,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                           </div>
                         )}
                       </div>
-                    </div>
+                    </Card>
                   ))}
                 </div>
               </div>
@@ -2637,7 +2626,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
       </Sheet>
 
       {showHistory &&
-      <Sheet open={showHistory} onOpenChange={setShowHistory}>
+        <Sheet open={showHistory} onOpenChange={setShowHistory}>
           <SheetContent side="left" className="w-[450px] p-0" dir="rtl">
             <SheetHeader className="p-6 pb-4 border-b">
               <SheetTitle>היסטוריית שינויים</SheetTitle>
