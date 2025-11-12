@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -518,7 +519,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     
     setHistoryIndex(historyIndex - 1);
     toast.success('✓ פעולה בוטלה');
-  }, [history, historyIndex]); // Dependencies should be specific to what state `undo` changes
+  }, [history, historyIndex, rowsData, columns, cellStyles, subHeaders, showSubHeaders]);
 
   // Redo function
   const redo = useCallback(() => {
@@ -688,7 +689,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     
     setHistoryIndex(historyIndex + 1);
     toast.success('✓ פעולה שוחזרה');
-  }, [history, historyIndex]); // Dependencies should be specific to what state `redo` changes
+  }, [history, historyIndex, rowsData, columns, cellStyles, subHeaders, showSubHeaders]);
 
   const saveToBackend = useCallback(async () => {
     if (!spreadsheet?.id) {
@@ -1669,14 +1670,74 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       return;
     }
 
+    // Capture initial state for a single history entry for this bulk operation
+    const oldColumnsInitial = [...columns];
+    const oldRowsDataInitial = JSON.parse(JSON.stringify(rowsData));
+    const oldCellStylesSnapshotInitial = JSON.parse(JSON.stringify(cellStyles));
+
+    let currentColumns = [...columns];
+    let currentRowsData = JSON.parse(JSON.stringify(rowsData));
+    let currentCellStyles = JSON.parse(JSON.stringify(cellStyles));
+
     for (let i = 1; i < actualHeaders.length; i++) {
-      // mergeColumns will add to history for each call, which is fine
-      await mergeColumns(actualHeaders[i], actualHeaders[0]);
+        const sourceKey = actualHeaders[i];
+        const sourceCol = currentColumns.find((c) => c.key === sourceKey);
+        
+        if (!sourceCol) continue;
+
+        // Apply changes for current merge step
+        const updatedRows = currentRowsData.map((row) => {
+            const sourceValue = row[sourceKey] || '';
+            const targetValue = row[targetKey] || '';
+            const mergedValue = targetValue && sourceValue ?
+                `${targetValue}, ${sourceValue}` : targetValue || sourceValue;
+
+            const { [sourceKey]: _, ...rest } = row;
+            return { ...rest, [targetKey]: mergedValue };
+        });
+
+        const newCellStylesAfterMerge = (() => {
+            const tempStyles = { ...currentCellStyles };
+            for (const key in tempStyles) {
+                if (key.endsWith(`_${sourceKey}`) || key === `header_${sourceKey}` || key === `subheader_${sourceKey}`) {
+                    delete tempStyles[key];
+                }
+            }
+            return tempStyles;
+        })();
+        const newColumnsAfterMerge = currentColumns.filter((c) => c.key !== sourceKey);
+
+        currentRowsData = updatedRows;
+        currentCellStyles = newCellStylesAfterMerge;
+        currentColumns = newColumnsAfterMerge;
     }
 
+    // Apply the final states after all merges
+    setRowsData(currentRowsData);
+    setCellStyles(currentCellStyles);
+    setColumns(currentColumns);
+
+    // Add a single history entry for the entire bulk merge operation
+    addToHistory({
+        type: ACTION_TYPES.MERGE_COLUMNS, // Using MERGE_COLUMNS type for the bulk action
+        payload: {
+            sourceKey: headersList.join(', '), // Indicate all merged keys
+            targetKey: targetKey,
+            oldColumns: oldColumnsInitial,
+            oldRowsData: oldRowsDataInitial,
+            oldCellStylesSnapshot: oldCellStylesSnapshotInitial,
+            newColumns: currentColumns,
+            newRowsData: currentRowsData,
+            newCellStyles: currentCellStyles,
+            count: actualHeaders.length - 1 // Number of merges performed
+        }
+    });
+
     setSelectedHeaders(new Set());
+    if (autoSave) saveToBackend();
     toast.success(`✓ ${actualHeaders.length} עמודות מוזגו`);
   };
+
 
   const splitColumn = (columnKey) => {
     const column = columns.find((c) => c.key === columnKey);
@@ -2385,30 +2446,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                         );
                       })
                     )}
-                        >
-                          <div className="flex items-center gap-1 justify-center">
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-7 w-7 hover:bg-blue-100"
-                              onClick={() => duplicateRow(row)}
-                              title="שכפל שורה"
-                            >
-                              <Copy className="w-3 h-3 text-blue-600" />
-                            </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-7 w-7 hover:bg-red-100"
-                              onClick={() => deleteRow(row.id)}
-                              title="מחק שורה"
-                            >
-                              <Trash2 className="w-3 h-3 text-red-600" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
                   </tbody>
                 </table>
               </DragDropContext>
