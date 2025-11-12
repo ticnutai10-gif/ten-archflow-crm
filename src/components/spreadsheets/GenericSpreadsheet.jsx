@@ -2385,8 +2385,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                         );
                       })
                     )}
-                        <td 
-                          className="border border-slate-200 p-2"
                           onContextMenu={(e) => handleRowContextMenu(row.id, e)}
                         >
                           <div className="flex items-center gap-1 justify-center">
