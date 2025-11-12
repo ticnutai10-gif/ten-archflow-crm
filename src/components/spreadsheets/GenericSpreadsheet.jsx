@@ -78,6 +78,12 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       const initialRows = spreadsheet.rows_data || [];
       const initialStyles = spreadsheet.cell_styles || {};
       
+      console.log('📊 [SPREADSHEET] Loading spreadsheet data:', {
+        id: spreadsheet.id,
+        name: spreadsheet.name,
+        theme_settings: spreadsheet.theme_settings
+      });
+      
       setColumns(initialColumns);
       setRowsData(initialRows);
       setCellStyles(initialStyles);
@@ -87,7 +93,8 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       setFreezeSettings(spreadsheet.freeze_settings || { freeze_rows: 0, freeze_columns: 1 });
       setCustomCellTypes(spreadsheet.custom_cell_types || []);
       setMergedCells(spreadsheet.merged_cells || {});
-      setThemeSettings(spreadsheet.theme_settings || {
+      
+      const loadedTheme = spreadsheet.theme_settings || {
         palette: "default",
         borderStyle: "thin",
         headerFont: "default",
@@ -99,7 +106,11 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         cellSpacing: "none",
         hoverEffect: "subtle",
         customColors: null
-      });
+      };
+      
+      console.log('🎨 [THEME] Loaded theme settings:', loadedTheme);
+      setThemeSettings(loadedTheme);
+      
       setSavedViews(spreadsheet.saved_views || []);
       setActiveViewId(spreadsheet.active_view_id || null);
       
@@ -778,11 +789,21 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   };
 
   const handleThemeApply = async (newTheme) => {
+    console.log('🎨 [THEME] Applying new theme:', newTheme);
     setThemeSettings(newTheme);
-    await base44.entities.CustomSpreadsheet.update(spreadsheet.id, {
-      theme_settings: newTheme
-    });
-    if (onUpdate) await onUpdate();
+    
+    try {
+      await base44.entities.CustomSpreadsheet.update(spreadsheet.id, {
+        theme_settings: newTheme
+      });
+      console.log('✅ [THEME] Theme saved to backend successfully');
+      toast.success('✓ עיצוב נשמר בהצלחה');
+      
+      if (onUpdate) await onUpdate();
+    } catch (error) {
+      console.error('❌ [THEME] Error saving theme:', error);
+      toast.error('שגיאה בשמירת עיצוב: ' + error.message);
+    }
   };
 
   const handleSaveView = async (view) => {
@@ -903,10 +924,20 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     customColors: null
   };
   
+  console.log('🎨 [RENDER] Current theme being applied:', {
+    currentTheme,
+    hasCustomColors: !!currentTheme.customColors,
+    palette: currentTheme.palette,
+    borderRadius: currentTheme.borderRadius,
+    shadow: currentTheme.shadow
+  });
+  
   const palette = currentTheme.customColors || COLOR_PALETTES[currentTheme.palette] || COLOR_PALETTES.default;
   const borderStyle = BORDER_STYLES[currentTheme.borderStyle] || BORDER_STYLES.thin;
   const headerFont = FONT_OPTIONS[currentTheme.headerFont] || FONT_OPTIONS.default;
   const cellFont = FONT_OPTIONS[currentTheme.cellFont] || FONT_OPTIONS.default;
+  
+  console.log('🎨 [RENDER] Computed palette:', palette);
   
   const headerFontSize = currentTheme.fontSize === 'small' ? '12px' : currentTheme.fontSize === 'large' ? '16px' : '14px';
   const cellFontSize = currentTheme.fontSize === 'small' ? '11px' : currentTheme.fontSize === 'large' ? '15px' : '13px';

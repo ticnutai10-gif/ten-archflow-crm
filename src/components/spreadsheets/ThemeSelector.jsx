@@ -149,6 +149,7 @@ export default function ThemeSelector({ open, onClose, currentTheme, onApply }) 
   }, [currentTheme, open]);
 
   const handleApply = () => {
+    console.log('🎨 [THEME SELECTOR] Applying theme:', theme);
     onApply(theme);
     toast.success("✓ עיצוב הטבלה עודכן בהצלחה");
     onClose();
