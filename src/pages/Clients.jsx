@@ -48,7 +48,7 @@ import {
   RefreshCw,
   ChevronDown,
   MoreVertical,
-  FileDown // Added this import
+  FileDown
 } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
@@ -66,7 +66,8 @@ import ClientImporter from "../components/clients/ClientImporter";
 import GoogleSheetsManager from "../components/clients/GoogleSheetsManager";
 import ClientMerger from "../components/clients/ClientMerger";
 import GoogleSheetsImporter from "../components/clients/GoogleSheetsImporter";
-import SmartClientImporter from "../components/clients/SmartClientImporter"; // Added this import
+import SmartClientImporter from "../components/clients/SmartClientImporter";
+import ClientImportWizard from "../components/clients/ClientImportWizard"; // Added this import
 import { useAccessControl, autoAssignToCreator } from "../components/access/AccessValidator";
 import { toast } from "sonner";
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
@@ -95,7 +96,8 @@ export default function ClientsPage() {
   const [showMerger, setShowMerger] = useState(false);
   const [showSheetsImporter, setShowSheetsImporter] = useState(false);
   const [isCleaningNames, setIsCleaningNames] = useState(false);
-  const [showSmartImporter, setShowSmartImporter] = useState(false); // Added this state
+  const [showSmartImporter, setShowSmartImporter] = useState(false);
+  const [showNewImporter, setShowNewImporter] = useState(false); // Added this state
 
   // scrollContainerRef is kept but its role in virtual scrolling is removed.
   // It could still be used for general layout purposes if needed, but no longer directly controls scroll behavior for DND/grid.
@@ -340,7 +342,6 @@ export default function ClientsPage() {
           client.status || '',
           client.source || '',
           client.budget_range || '',
-          client.notes || '',
           client.created_date ? new Date(client.created_date).toLocaleDateString('he-IL') : ''].
           map((field) => `"${String(field).replace(/"/g, '""')}"`).join(','))].
         join('\n');
@@ -602,6 +603,15 @@ export default function ClientsPage() {
         width: '100%' // Changed overflow to visible for scrollArea to manage
       }}>
 
+      {/* New Importer Dialog */}
+      {showNewImporter && (
+        <ClientImportWizard
+          open={showNewImporter}
+          onClose={() => setShowNewImporter(false)}
+          onSuccess={loadClients}
+        />
+      )}
+
       {/* Dialogs and imports */}
       {showImporter &&
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -854,7 +864,7 @@ export default function ClientsPage() {
               <DropdownMenuItem
                 onClick={() => setViewMode("list")}
                 className={`flex items-center gap-3 cursor-pointer ${viewMode === "list" ? "bg-blue-50 text-blue-700" : ""}`}>
-                <List className="w-4 h-4" style={{ color: viewColor === "list" ? undefined : iconColor }} />
+                <List className="w-4 h-4" style={{ color: viewMode === "list" ? undefined : iconColor }} />
                 <span className="flex-1">רשימה</span>
                 {viewMode === "list" && <Eye className="w-4 h-4 text-blue-600" />}
               </DropdownMenuItem>
@@ -911,22 +921,32 @@ export default function ClientsPage() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" dir="rtl" className="w-56">
               <DropdownMenuItem
+                onClick={() => setShowNewImporter(true)}
+                className="gap-2 cursor-pointer bg-gradient-to-r from-purple-50 to-blue-50 border-b-2 border-purple-200"
+              >
+                <Sparkles className="w-4 h-4 text-purple-600" />
+                <div className="flex-1">
+                  <div className="font-bold text-purple-900">🚀 יבוא חדש ומתקדם</div>
+                  <div className="text-xs text-purple-700">מערכת משופרת עם AI</div>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
                 onClick={() => setShowSmartImporter(true)}
                 className="gap-2 cursor-pointer"
               >
                 <Sparkles className="w-4 h-4 text-purple-600" />
                 <div className="flex-1">
-                  <div className="font-semibold">יבוא חכם עם AI</div>
-                  <div className="text-xs text-slate-500">זיהוי אוטומטי של עמודות</div>
+                  <div className="font-semibold">יבוא חכם (ישן)</div>
+                  <div className="text-xs text-slate-500">גרסה קודמת</div>
                 </div>
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={() => setShowImporter(true)}
                 className="gap-2 cursor-pointer"
               >
                 <Upload className="w-4 h-4" style={{ color: iconColor }} />
-                יבוא רגיל מקובץ
+                יבוא בסיסי
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => setShowSheetsImporter(true)}
