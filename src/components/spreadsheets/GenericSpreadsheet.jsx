@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1204,8 +1203,13 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       setEditValue("");
     }
 
-    if (autoSave) {
+    // ✅ תמיד שמור - גם אם autoSave כבוי
+    try {
       await saveToBackend();
+      console.log('✅ Cell saved successfully');
+    } catch (error) {
+      console.error('❌ Error saving cell:', error);
+      toast.error('שגיאה בשמירת התא');
     }
   };
 
