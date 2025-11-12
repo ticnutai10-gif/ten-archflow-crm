@@ -1,1398 +1,709 @@
-
-import React, { useEffect, useCallback, useMemo, useState, useRef } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { Clock, Play, Pause, Square, X, Settings, ChevronDown, Search, Sparkles, Save, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Timer as TimerIcon, Play, Pause, RefreshCcw, Square, Save, Clock, Settings, BookmarkPlus, Trash2, Plus, Loader2, Calendar, Pencil } from 'lucide-react';
-import { Client, TimeLog } from "@/entities/all";
-import { logInfo, logWarn, logError, logEntry } from "@/components/utils/debugLog";
-import { useAccessControl } from "@/components/access/AccessValidator";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { toast } from "sonner";
+import { base44 } from "@/api/base44Client";
+import { cn } from "@/lib/utils";
+import { useAccessControl } from "../access/AccessValidator";
 
-// פונקציה לבדוק אם מספר טלפון תקין
-const isValidPhone = (phone) => {
-  if (!phone) return false;
-  const cleaned = String(phone).replace(/\D/g, '');
-  if (cleaned.length < 7) return false;
-  const uniqueDigits = new Set(cleaned.split(''));
-  if (uniqueDigits.size < 2) return false;
-  return true;
-};
-
-if (typeof window !== "undefined" && !window.__patchedSafeObjectKeys) {
-  try {
-    const originalKeys = Object.keys;
-    Object.keys = function (obj) {
-      if (obj === null || obj === undefined) return [];
-      try {
-        return originalKeys.call(Object, obj);
-      } catch {
-        return [];
-      }
-    };
-    window.__patchedSafeObjectKeys = true;
-  } catch {
-    // no-op if patching fails
-  }
-}
-
-function SafeGuard({ children }) {
-  return <>{children}</>;
-}
-
-function readPrefs() {
-  try {
-    const raw = localStorage.getItem("app-preferences");
-    const p = raw ? JSON.parse(raw) : {};
-    return {
-      colorFrom: p?.timer?.colorFrom || "#8b5cf6",
-      colorTo: p?.timer?.colorTo || "#06b6d4",
-      textColor: p?.timer?.textColor || "#0f172a",
-      fontFamily: p?.timer?.fontFamily || "default",
-      scale: typeof p?.timer?.scale === "number" ? p.timer.scale : 1,
-      selectedClientId: p?.timer?.selectedClientId || "",
-      selectedClientName: p?.timer?.selectedClientName || "",
-      timerIconStyle: String(p?.timer?.timerIconStyle || "4"),
-      timerIconSize: String(p?.timer?.timerIconSize || "md"),
-      positions: p?.timer?.positions || {},
-      titleTemplates: p?.timer?.titleTemplates || [],
-      notesTemplates: p?.timer?.notesTemplates || [],
-      recentClients: p?.timer?.recentClients || [], // רשימת לקוחות אחרונים
-      quickTitlePrompts: p?.timer?.quickTitlePrompts || ["פגישת תכנון", "ייעוץ טלפוני", "עדכון פרויקט"],
-      quickNotesPrompts: p?.timer?.quickNotesPrompts || ["דנו בתכנון הכללי", "עדכון על התקדמות", "שאלות ובירורים"]
-    };
-  } catch {
-    return {
-      colorFrom: "#8b5cf6",
-      colorTo: "#06b6d4",
-      textColor: "#0f172a",
-      fontFamily: "default",
-      scale: 1,
-      selectedClientId: "",
-      selectedClientName: "",
-      timerIconStyle: "4",
-      timerIconSize: "md",
-      positions: {},
-      titleTemplates: [],
-      notesTemplates: [],
-      recentClients: [],
-      quickTitlePrompts: ["פגישת תכנון", "ייעוץ טלפוני", "עדכון פרויקט"],
-      quickNotesPrompts: ["דנו בתכנון הכללי", "עדכון על התקדמות", "שאלות ובירורים"]
-    };
-  }
-}
-
-function writePrefs(next) {
-  try {
-    const raw = localStorage.getItem("app-preferences");
-    const p = raw ? JSON.parse(raw) : {};
-    const merged = { ...(p || {}), timer: { ...(p?.timer || {}), ...next } };
-    localStorage.setItem("app-preferences", JSON.stringify(merged));
-    window.dispatchEvent(new CustomEvent("preferences:changed", { detail: merged }));
-  } catch {}
-}
-
-function useTimer(initial = 0) {
-  const [seconds, setSeconds] = React.useState(initial);
-  const [running, setRunning] = React.useState(false);
-  const [debug, setDebug] = React.useState({
-    lastDeltaMs: 0,
-    driftSec: 0,
-    corrected: false,
-    stalled: false,
-    startedAt: null,
-    resumedAt: null,
-    visibility: typeof document !== "undefined" ? document.visibilityState : "unknown"
+// ✅ Fixed: Export default component properly
+export default function FloatingTimer() {
+  const { filterClients } = useAccessControl();
+  const [seconds, setSeconds] = useState(0);
+  const [running, setRunning] = useState(false);
+  const [selectedClient, setSelectedClient] = useState(null);
+  const [clients, setClients] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showPopover, setShowPopover] = useState(false);
+  const [showDialog, setShowDialog] = useState(false);
+  const [dialogData, setDialogData] = useState({
+    date: new Date().toISOString().split('T')[0],
+    duration: '',
+    title: '',
+    notes: ''
+  });
+  const [settings, setSettings] = useState(() => {
+    try {
+      const saved = localStorage.getItem('floating-timer-settings');
+      return saved ? JSON.parse(saved) : {
+        position: { x: 20, y: window.innerHeight - 100 },
+        size: 'medium',
+        showSeconds: true,
+        color: 'blue'
+      };
+    } catch {
+      return {
+        position: { x: 20, y: window.innerHeight - 100 },
+        size: 'medium',
+        showSeconds: true,
+        color: 'blue'
+      };
+    }
+  });
+  const [showSettings, setShowSettings] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [recentClients, setRecentClients] = useState(() => {
+    try {
+      const saved = localStorage.getItem('recent-timer-clients');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [isAISuggesting, setIsAISuggesting] = useState(false);
+  const [savedTemplates, setSavedTemplates] = useState(() => {
+    try {
+      const saved = localStorage.getItem('timer-templates');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
   });
 
-  const baseSecondsRef = React.useRef(initial);
-  const resumeAtRef = React.useRef(null);
-  const lastTickRef = React.useRef(null);
-  const intervalRef = React.useRef(null);
-  const lastProgressAtRef = React.useRef(null);
+  const timerIntervalRef = useRef(null);
 
-  React.useEffect(() => {
-    const onVis = () => {
-      setDebug((d) => ({ ...d, visibility: document.visibilityState }));
+  useEffect(() => {
+    if (running) {
+      timerIntervalRef.current = setInterval(() => {
+        setSeconds(s => s + 1);
+      }, 1000);
+    } else if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+    }
+    return () => {
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
     };
-    document.addEventListener("visibilitychange", onVis);
-    return () => document.removeEventListener("visibilitychange", onVis);
-  }, []);
-
-  const computeCurrentSeconds = React.useCallback(() => {
-    if (!running || !resumeAtRef.current) return baseSecondsRef.current;
-    const now = Date.now();
-    const runChunk = Math.floor((now - resumeAtRef.current) / 1000);
-    return baseSecondsRef.current + runChunk;
   }, [running]);
 
-  React.useEffect(() => {
-    if (!running) return;
-
-    if (!resumeAtRef.current) {
-      resumeAtRef.current = Date.now();
-      lastProgressAtRef.current = Date.now();
-      setDebug((d) => ({ ...d, resumedAt: new Date(resumeAtRef.current).toISOString(), corrected: false }));
-      logInfo("timer", "resumed", "Timer resumed", { baseSeconds: baseSecondsRef.current });
-    }
-    lastTickRef.current = Date.now();
-
-    intervalRef.current = setInterval(() => {
-      const now = Date.now();
-      const delta = now - (lastTickRef.current || now);
-      lastTickRef.current = now;
-
-      const computed = computeCurrentSeconds();
-      const drift = computed - seconds;
-
-      let corrected = false;
-      if (Math.abs(drift) > 1) {
-        setSeconds(computed);
-        corrected = true;
-        logWarn("timer", "drift_corrected", `Corrected drift of ${drift}s`, { drift, deltaMs: delta, seconds: computed });
-      } else {
-        setSeconds(computed);
-      }
-
-      if (computed > seconds) {
-        lastProgressAtRef.current = now;
-      }
-
-      setDebug((prev) => ({
-        ...prev,
-        lastDeltaMs: delta,
-        driftSec: drift,
-        corrected,
-        resumedAt: new Date(resumeAtRef.current).toISOString(),
-        visibility: typeof document !== "undefined" ? document.visibilityState : "unknown"
-      }));
-    }, 1000);
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    };
-  }, [running, computeCurrentSeconds, seconds]);
-
-  React.useEffect(() => {
-    if (!running) {
-      setDebug((d) => ({ ...d, stalled: false }));
-      return;
-    }
-    const watchdog = setInterval(() => {
-      const last = lastProgressAtRef.current || Date.now();
-      const stalled = Date.now() - last > 4000;
-      setDebug((d) => ({ ...d, stalled }));
-      if (stalled) {
-        logError("timer", "watchdog_stalled", "Timer appears stalled >4s", {
-          sinceMs: Date.now() - last,
-          seconds
-        });
-      }
-    }, 1500);
-    return () => clearInterval(watchdog);
-  }, [running, seconds]);
-
-  const reset = () => {
-    logInfo("timer", "reset", "Timer reset", { seconds });
-    baseSecondsRef.current = 0;
-    resumeAtRef.current = null;
-    lastTickRef.current = null;
-    lastProgressAtRef.current = null;
-    setSeconds(0);
-    setRunning(false);
-    setDebug((d) => ({ ...d, corrected: false, stalled: false, startedAt: null, resumedAt: null }));
-  };
-
-  const toggle = () => {
-    if (running) {
-      const computed = computeCurrentSeconds();
-      baseSecondsRef.current = computed;
-      resumeAtRef.current = null;
-      setSeconds(computed);
-      setRunning(false);
-      logInfo("timer", "paused", "Timer paused", { seconds: computed });
-    } else {
-      if (!debug.startedAt) {
-        setDebug((d) => ({ ...d, startedAt: new Date().toISOString() }));
-        logInfo("timer", "started", "Timer started", { baseSeconds: baseSecondsRef.current });
-      } else {
-        logInfo("timer", "resumed_click", "Timer resumed via toggle", { baseSeconds: baseSecondsRef.current });
-      }
-      resumeAtRef.current = Date.now();
-      setRunning(true);
-    }
-  };
-
-  const stop = () => {
-    const computed = computeCurrentSeconds();
-    baseSecondsRef.current = computed;
-    resumeAtRef.current = null;
-    setSeconds(computed);
-    setRunning(false);
-    logInfo("timer", "stopped", "Timer stopped", { seconds: computed });
-  };
-
-  const h = String(Math.floor(seconds / 3600)).padStart(2, "0");
-  const m = String(Math.floor(seconds % 3600 / 60)).padStart(2, "0");
-  const s = String(seconds % 60).padStart(2, "0");
-  const display = `${h}:${m}:${s}`;
-
-  return { seconds, h, m, s, display, running, toggle, reset, stop, debug };
-}
-
-let clientsCache = null;
-let clientsCacheTime = 0;
-const CACHE_DURATION = 5 * 60 * 1000;
-
-export default function FloatingTimer() {
-  const [prefs, setPrefs] = React.useState(readPrefs());
-  const [clients, setClients] = React.useState([]);
-  const [query, setQuery] = React.useState("");
-  const [popoverOpen, setPopoverOpen] = React.useState(false);
-  const [settingsOpen, setSettingsOpen] = React.useState(false);
-  const [isDragging, setIsDragging] = React.useState(false);
-  const [dragStart, setDragStart] = React.useState({ x: 0, y: 0 });
-  const [isCtrlPressed, setIsCtrlPressed] = React.useState(false);
-
-  const [detailsOpen, setDetailsOpen] = React.useState(false);
-  const [manualH, setManualH] = React.useState("00");
-  const [manualM, setManualM] = React.useState("00");
-  const [selectedLogDate, setSelectedLogDate] = React.useState(new Date()); // ✅ תאריך נבחר
-
-  const [title, setTitle] = React.useState("");
-  const [notes, setNotes] = React.useState("");
-  const [aiSuggesting, setAiSuggesting] = React.useState(false);
-  const [aiSuggested, setAiSuggested] = React.useState(false);
-
-  const [showTitleTemplates, setShowTitleTemplates] = React.useState(false);
-  const [showNotesTemplates, setShowNotesTemplates] = React.useState(false);
-  const [newTitleTemplate, setNewTitleTemplate] = React.useState("");
-  const [newNotesTemplate, setNewNotesTemplate] = React.useState("");
-
-  const { getAllowedClientsForTimer, loading: accessLoading } = useAccessControl();
-
-  // Detect Ctrl key press/release
-  React.useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === 'Control') {
-        setIsCtrlPressed(true);
-      }
-    };
-
-    const handleKeyUp = (e) => {
-      if (e.key === 'Control') {
-        setIsCtrlPressed(false);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
-    };
+  useEffect(() => {
+    loadClients();
   }, []);
 
-  const getCurrentPageName = () => {
+  useEffect(() => {
     try {
-      const path = window.location.pathname;
-      const segments = path.split('/').filter(Boolean);
-      return segments[segments.length - 1] || 'dashboard';
-    } catch {
-      return 'dashboard';
+      localStorage.setItem('floating-timer-settings', JSON.stringify(settings));
+    } catch (e) {
+      console.error('Error saving settings:', e);
+    }
+  }, [settings]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('recent-timer-clients', JSON.stringify(recentClients));
+    } catch (e) {
+      console.error('Error saving recent clients:', e);
+    }
+  }, [recentClients]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('timer-templates', JSON.stringify(savedTemplates));
+    } catch (e) {
+      console.error('Error saving templates:', e);
+    }
+  }, [savedTemplates]);
+
+  const loadClients = async () => {
+    try {
+      const allClients = await base44.entities.Client.list();
+      const validClients = Array.isArray(allClients) ? allClients : [];
+      const accessibleClients = filterClients ? filterClients(validClients) : validClients;
+      setClients(accessibleClients);
+    } catch (error) {
+      console.error('Error loading clients:', error);
+      setClients([]);
     }
   };
 
-  const currentPage = React.useMemo(getCurrentPageName, []);
+  const filteredClients = useMemo(() => {
+    const safeClients = Array.isArray(clients) ? clients : [];
+    if (!searchTerm) return safeClients;
+    return safeClients.filter(client =>
+      client?.name?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [clients, searchTerm]);
 
-  const getCurrentPosition = () => {
-    return prefs.positions[currentPage] || { top: 24, left: 24 };
-  };
+  const displayClients = useMemo(() => {
+    if (searchTerm) return filteredClients;
+    
+    const recentIds = new Set(recentClients.map(r => r?.id).filter(Boolean));
+    const safeClients = Array.isArray(clients) ? clients : [];
+    const recentList = recentClients
+      .map(rc => safeClients.find(c => c?.id === rc?.id))
+      .filter(Boolean);
+    const otherClients = safeClients.filter(c => c && !recentIds.has(c.id));
+    
+    return [...recentList, ...otherClients];
+  }, [clients, recentClients, searchTerm, filteredClients]);
 
-  const currentPosition = getCurrentPosition();
+  const toggleTimer = useCallback(() => {
+    if (!selectedClient) {
+      toast.error('יש לבחור לקוח תחילה');
+      setShowPopover(true);
+      return;
+    }
+    setRunning(r => !r);
+  }, [selectedClient]);
 
-  const state = useTimer(0);
+  const resetTimer = useCallback(() => {
+    setSeconds(0);
+    setRunning(false);
+  }, []);
 
-  const [debugOpen, setDebugOpen] = React.useState(() => {
-    try {return JSON.parse(localStorage.getItem("timer-debug") || "false");} catch {return false;}
-  });
+  const stopAndSave = useCallback(() => {
+    if (seconds === 0) {
+      toast.error('הטיימר ריק');
+      return;
+    }
+    if (!selectedClient) {
+      toast.error('לא נבחר לקוח');
+      return;
+    }
 
-  const toggleDebug = React.useCallback(() => {
-    setDebugOpen((v) => {
-      try {localStorage.setItem("timer-debug", JSON.stringify(!v));} catch {}
-      return !v;
+    const hours = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    const formatted = `${hours}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+
+    setDialogData({
+      date: new Date().toISOString().split('T')[0],
+      duration: formatted,
+      title: '',
+      notes: ''
+    });
+    setShowDialog(true);
+    setRunning(false);
+  }, [seconds, selectedClient]);
+
+  const handleClientSelect = useCallback((client) => {
+    if (!client) return;
+    
+    setSelectedClient(client);
+    setShowPopover(false);
+
+    setRecentClients(prev => {
+      const filtered = (prev || []).filter(c => c?.id !== client.id);
+      return [{ id: client.id, name: client.name }, ...filtered].slice(0, 5);
     });
   }, []);
 
-  React.useEffect(() => {
-    const onKey = (e) => {
-      const k = (e.key || "").toLowerCase();
-      if (e.ctrlKey && e.altKey && k === "d") {
-        e.preventDefault();
-        toggleDebug();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [toggleDebug]);
+  const saveTimeLog = async () => {
+    if (!selectedClient || !dialogData.duration) {
+      toast.error('חסרים פרטים');
+      return;
+    }
 
-  const loadData = async () => {
     try {
-      console.log('⏱️ [TIMER] Loading clients...');
+      const [h, m, s] = dialogData.duration.split(':').map(Number);
+      const totalSeconds = (h || 0) * 3600 + (m || 0) * 60 + (s || 0);
 
-      const now = Date.now();
-      if (clientsCache && now - clientsCacheTime < CACHE_DURATION) {
-        console.log('✅ [TIMER] Using cached clients:', clientsCache.length);
-        setClients(clientsCache);
+      if (totalSeconds <= 0) {
+        toast.error('משך זמן לא תקין');
         return;
       }
 
-      console.log('🔄 [TIMER] Cache expired or empty, fetching from server...');
-      const allowedClients = await getAllowedClientsForTimer();
+      await base44.entities.TimeLog.create({
+        client_id: selectedClient.id,
+        client_name: selectedClient.name,
+        log_date: dialogData.date,
+        duration_seconds: totalSeconds,
+        title: dialogData.title || 'עבודה',
+        notes: dialogData.notes || ''
+      });
 
-      // ✅ הגנה על תוצאות
-      const validClients = Array.isArray(allowedClients) ? allowedClients : [];
-
-      console.log('✅ [TIMER] Received clients from server:', validClients.length);
-      console.log('📋 [TIMER] Sample clients:', validClients.slice(0, 5).map((c) => ({ name: c.name, phone: c.phone })));
-
-      // כבר לא מסננים לפי טלפון - מציגים את כל הלקוחות
-      clientsCache = validClients;
-      clientsCacheTime = now;
-
-      setClients(validClients);
-      console.log('✅ [TIMER] Loaded and cached all clients:', validClients.length);
+      toast.success('הזמן נשמר בהצלחה');
+      setShowDialog(false);
+      resetTimer();
+      setDialogData({ date: new Date().toISOString().split('T')[0], duration: '', title: '', notes: '' });
+      window.dispatchEvent(new CustomEvent('timelog:created'));
     } catch (error) {
-      console.error('❌ [TIMER] Error loading clients:', error);
-
-      if (error.response?.status === 429 && clientsCache) {
-        console.log('⚠️ [TIMER] Rate limit - using old cache');
-        setClients(clientsCache);
-      } else {
-        setClients([]);
-      }
+      console.error('Error saving time log:', error);
+      toast.error('שגיאה בשמירת הזמן');
     }
   };
 
-  useEffect(() => {
-    if (!accessLoading) {
-      loadData();
-    }
-  }, [accessLoading]);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (popoverOpen) {
-        console.log('🔄 [TIMER] Auto-refreshing cache...');
-        clientsCache = null;
-        loadData();
-      }
-    }, CACHE_DURATION);
-
-    return () => clearInterval(interval);
-  }, [popoverOpen]);
-
-  const savePrefs = React.useCallback((patch) => {
-    setPrefs((prev) => {
-      const next = { ...prev, ...patch };
-      writePrefs(patch);
-      return next;
-    });
-  }, []);
-
-  // פונקציה לשמירת לקוח אחרון שנבחר
-  const saveRecentClient = React.useCallback((clientId, clientName) => {
-    const recentClients = prefs.recentClients || [];
-    const updated = [
-    { id: clientId, name: clientName, lastUsed: new Date().toISOString() },
-    ...recentClients.filter((c) => c.id !== clientId)].
-    slice(0, 5); // שמור רק 5 אחרונים
-
-    savePrefs({ recentClients: updated });
-  }, [prefs.recentClients, savePrefs]);
-
-  // ✅ הגנה על filtered clients
-  const filtered = React.useMemo(() => {
-    const q = query.trim().toLowerCase();
-    
-    // ✅ בדיקה שclients הוא array
-    if (!Array.isArray(clients)) {
-      console.error('❌ [TIMER] clients is not an array!', clients);
-      return [];
-    }
-    
-    if (!clients || clients.length === 0) return [];
-
-    let result = clients;
-    if (q) {
-      result = clients.filter((c) =>
-        c && ( // Added safety check for 'c'
-          (c.name || "").toLowerCase().includes(q) ||
-          (c.company || "").toLowerCase().includes(q) ||
-          (c.email || "").toLowerCase().includes(q)
-        )
-      );
-    }
-
-    // מיון לפי שימוש אחרון
-    const recentIds = (prefs.recentClients || []).map((r) => r?.id).filter(Boolean); // Added ?.id and filter(Boolean)
-    const sorted = [...result].sort((a, b) => {
-      if (!a || !b) return 0; // Added safety check for 'a' and 'b'
-      
-      const aIndex = recentIds.indexOf(a.id);
-      const bIndex = recentIds.indexOf(b.id);
-
-      // אם שניהם לא בשימוש אחרון - לפי שם
-      if (aIndex === -1 && bIndex === -1) {
-        return (a.name || "").localeCompare(b.name || "");
-      }
-      // אם רק אחד בשימוש אחרון - הוא קודם
-      if (aIndex === -1) return 1;
-      if (bIndex === -1) return -1;
-      // שניהם בשימוש אחרון - לפי סדר השימוש
-      return aIndex - bIndex;
-    });
-
-    return sorted;
-  }, [clients, query, prefs.recentClients]);
-
-  const suggestTitleAndNotes = async () => {
-    if (!prefs.selectedClientName || !window.base44 || !window.base44.entities || !window.base44.integrations || !window.base44.integrations.Core) {
-      console.warn('🤖 [TIMER AI] AI suggestion skipped: missing selected client name or base44 entities/integrations.');
+  const suggestWithAI = async () => {
+    if (!selectedClient) {
+      toast.error('נא לבחור לקוח תחילה');
       return;
     }
 
-    setAiSuggesting(true);
+    setIsAISuggesting(true);
     try {
-      console.log('🤖 [TIMER AI] Starting AI suggestion for client:', prefs.selectedClientName);
-
-      // טעינת time logs קודמים של הלקוח
-      const previousLogs = await TimeLog.filter(// Assuming TimeLog is directly from base44.entities.TimeLog
-        { client_name: prefs.selectedClientName },
-        '-log_date', // Sort by log_date descending
-        20 // Limit to 20 previous logs
+      const recentLogs = await base44.entities.TimeLog.filter(
+        { client_name: selectedClient.name },
+        '-log_date',
+        10
       );
+      const validLogs = Array.isArray(recentLogs) ? recentLogs : [];
 
-      console.log('🤖 [TIMER AI] Found previous logs:', previousLogs.length);
-
-      // הכנת הקשר לבקשה
-      const context = previousLogs.length > 0 ?
-      `Time logs קודמים של לקוח "${prefs.selectedClientName}":\n${previousLogs.map((log, i) =>
-      `${i + 1}. כותרת: "${log.title || 'ללא כותרת'}", הערות: "${log.notes || 'אין'}"`
-      ).join('\n')}` :
-      `לקוח "${prefs.selectedClientName}" - זהו הרישום הראשון.`;
+      if (validLogs.length === 0) {
+        setDialogData(prev => ({
+          ...prev,
+          title: 'עבודה על פרויקט',
+          notes: 'פגישה ותכנון ראשוני'
+        }));
+        toast.success('הוצעו ברירות מחדל (אין היסטוריה)');
+        return;
+      }
 
       const prompt = `
-אתה עוזר חכם למערכת CRM אדריכלית.
-משתמש רושם זמן עבודה עבור לקוח.
+על סמך רישומי עבודה קודמים עבור הלקוח "${selectedClient.name}", הצע:
+1. כותרת קצרה (עד 5 מילים) לפעילות נוכחית
+2. הערה קצרה (עד 15 מילים) על מה נעשה
 
-${context}
+רישומים אחרונים:
+${validLogs.map(log => `- ${log.title || 'ללא כותרת'}: ${log.notes || 'ללא הערות'}`).join('\n')}
 
-המשימה שלך:
-1. הצע כותרת קצרה ומדויקת (2-5 מילים) למה המשתמש עשה (לדוגמה: "פגישת תכנון ראשונית", "עדכון שרטוטים", "תיאום עם קבלן")
-2. הצע הערות קצרות (1-2 משפטים) על מה כנראה נעשה בזמן הזה
+החזר רק JSON בפורמט:
+{"title": "...", "notes": "..."}
+`.trim();
 
-חשוב:
-- השתמש בעברית תקנית
-- התבסס על הדפוסים מהלוגים הקודמים אם יש
-- אם זה הרישום הראשון, הצע משהו כללי ומקצועי
-- היה תמציתי ומקצועי
-
-החזר רק JSON במבנה הבא:
-{
-  "title": "כותרת מוצעת",
-  "notes": "הערות מוצעות"
-}
-`;
-
-      console.log('🤖 [TIMER AI] Sending prompt to AI...');
-
-      const response = await window.base44.integrations.Core.InvokeLLM({
-        prompt: prompt,
-        add_context_from_internet: false,
+      const result = await base44.integrations.Core.InvokeLLM({
+        prompt,
         response_json_schema: {
-          type: "object",
+          type: 'object',
           properties: {
-            title: { type: "string" },
-            notes: { type: "string" }
+            title: { type: 'string' },
+            notes: { type: 'string' }
           },
-          required: ["title", "notes"]
+          required: ['title', 'notes']
         }
       });
 
-      console.log('🤖 [TIMER AI] AI response:', response);
-
-      if (response?.title) {
-        setTitle(response.title);
-        setNotes(response.notes || "");
-        setAiSuggested(true);
-        console.log('✅ [TIMER AI] Successfully set AI suggestions');
+      if (result && result.title && result.notes) {
+        setDialogData(prev => ({
+          ...prev,
+          title: result.title,
+          notes: result.notes
+        }));
+        toast.success('AI הציע כותרת והערות');
+      } else {
+        toast.error('AI לא הצליח לייצר הצעות');
       }
-
     } catch (error) {
-      console.error('❌ [TIMER AI] Error getting AI suggestions:', error);
-      // אם יש שגיאה, פשוט לא ממלאים כלום - המשתמש ימלא ידנית
+      console.error('AI suggestion error:', error);
+      toast.error('שגיאה בהפקת הצעות AI');
     } finally {
-      setAiSuggesting(false);
+      setIsAISuggesting(false);
     }
   };
 
-  const openDetailsStep = async () => {
-    setDetailsOpen(true);
-    // ✅ עדכון: רק שעות ודקות, ללא שניות
-    const h = Math.floor(state.seconds / 3600);
-    const m = Math.floor(state.seconds % 3600 / 60);
-    setManualH(String(h).padStart(2, "0"));
-    setManualM(String(m).padStart(2, "0"));
-    setSelectedLogDate(new Date()); // ✅ הגדרת ברירת מחדל לתאריך הנוכחי
-
-    // הצעת AI לכותרת והערות
-    if (prefs.selectedClientName && !aiSuggested) {
-      await suggestTitleAndNotes();
-    }
-  };
-
-  // ✅ עדכון: חישוב ללא שניות
-  const computeSecondsFromManual = () => {
-    const h = Math.max(0, parseInt(manualH || "0", 10) || 0);
-    const m = Math.max(0, Math.min(59, parseInt(manualM || "0", 10) || 0));
-    return h * 3600 + m * 60; // ללא שניות
-  };
-
-  const performSave = async () => {
-    const logDate = selectedLogDate.toISOString().slice(0, 10); // ✅ שימוש בתאריך הנבחר
-    const secondsToSave = computeSecondsFromManual();
-    await TimeLog.create({
-      client_id: prefs.selectedClientId || "",
-      client_name: prefs.selectedClientName || "",
-      log_date: logDate, // ✅ שימוש בתאריך הנבחר
-      duration_seconds: secondsToSave,
-      title: title || "",
-      notes: notes || ""
-    });
-    window.dispatchEvent(new CustomEvent('timelog:created', {
-      detail: {
-        client_name: prefs.selectedClientName,
-        duration_seconds: secondsToSave,
-        title, notes
-      }
-    }));
-    state.stop();
-    state.reset();
-    setTitle("");
-    setNotes("");
-    setSelectedLogDate(new Date()); // ✅ איפוס התאריך
-    setDetailsOpen(false);
-    setPopoverOpen(false);
-    setAiSuggested(false); // Reset AI suggestion flag on successful save
-  };
-
-  const handleSaveClick = async () => {
-    if (!detailsOpen) {
-      openDetailsStep();
+  const saveAsTemplate = () => {
+    if (!dialogData.title) {
+      toast.error('יש להזין כותרת');
       return;
     }
-    await performSave();
+
+    const newTemplate = {
+      id: Date.now(),
+      title: dialogData.title,
+      notes: dialogData.notes || ''
+    };
+
+    setSavedTemplates(prev => [newTemplate, ...(prev || [])].slice(0, 10));
+    toast.success('התבנית נשמרה');
   };
 
-  const addTitleTemplate = () => {
-    if (!newTitleTemplate.trim()) return;
-    const updated = [...prefs.titleTemplates, newTitleTemplate.trim()];
-    savePrefs({ titleTemplates: updated });
-    setNewTitleTemplate("");
+  const deleteTemplate = (id) => {
+    setSavedTemplates(prev => (prev || []).filter(t => t.id !== id));
+    toast.success('התבנית נמחקה');
   };
 
-  const deleteTitleTemplate = (index) => {
-    const updated = prefs.titleTemplates.filter((_, i) => i !== index);
-    savePrefs({ titleTemplates: updated });
+  const applyTemplate = (template) => {
+    setDialogData(prev => ({
+      ...prev,
+      title: template.title,
+      notes: template.notes
+    }));
+    toast.success('התבנית הוחלה');
   };
 
-  const addNotesTemplate = () => {
-    if (!newNotesTemplate.trim()) return;
-    const updated = [...prefs.notesTemplates, newNotesTemplate.trim()];
-    savePrefs({ notesTemplates: updated });
-    setNewNotesTemplate("");
+  const formatTime = (totalSeconds) => {
+    const h = Math.floor(totalSeconds / 3600);
+    const m = Math.floor((totalSeconds % 3600) / 60);
+    const s = totalSeconds % 60;
+
+    if (settings.showSeconds) {
+      return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
   };
 
-  const deleteNotesTemplate = (index) => {
-    const updated = prefs.notesTemplates.filter((_, i) => i !== index);
-    savePrefs({ notesTemplates: updated });
+  const sizeMap = {
+    small: 'w-12 h-12',
+    medium: 'w-16 h-16',
+    large: 'w-20 h-20'
+  };
+
+  const colorMap = {
+    blue: 'from-blue-500 to-blue-600',
+    green: 'from-green-500 to-green-600',
+    purple: 'from-purple-500 to-purple-600',
+    orange: 'from-orange-500 to-orange-600'
   };
 
   const handleMouseDown = (e) => {
-    // Only allow dragging if Ctrl is pressed
-    if (!e.ctrlKey) return;
-
-    e.preventDefault();
+    if (e.target.closest('button')) return;
     setIsDragging(true);
-    setDragStart({ x: e.clientX - currentPosition.left, y: e.clientY - currentPosition.top });
+    const rect = e.currentTarget.getBoundingClientRect();
+    setDragOffset({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    });
   };
 
-  const handleMouseMove = React.useCallback((e) => {
+  useEffect(() => {
     if (!isDragging) return;
 
-    const newPosition = {
-      left: Math.max(0, Math.min(window.innerWidth - 100, e.clientX - dragStart.x)),
-      top: Math.max(0, Math.min(window.innerHeight - 100, e.clientY - dragStart.y))
+    const handleMouseMove = (e) => {
+      setSettings(prev => ({
+        ...prev,
+        position: {
+          x: e.clientX - dragOffset.x,
+          y: e.clientY - dragOffset.y
+        }
+      }));
     };
 
-    const updatedPositions = { ...prefs.positions, [currentPage]: newPosition };
-    savePrefs({ positions: updatedPositions });
-  }, [isDragging, dragStart, savePrefs, currentPage, prefs.positions]);
-
-  const handleMouseUp = React.useCallback(() => {
-    if (isDragging) {
+    const handleMouseUp = () => {
       setIsDragging(false);
-    }
-  }, [isDragging]);
-
-  React.useEffect(() => {
-    if (isDragging) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-    }
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, handleMouseMove, handleMouseUp]);
 
-  const iconThemes = {
-    modern: [
-    { id: "1", name: "מלא כחול", bg: "bg-blue-600", text: "text-white", border: "" },
-    { id: "2", name: "ממוסגר כחול", bg: "bg-transparent", text: "text-blue-600", border: "border-2 border-blue-500" },
-    { id: "3", name: "שקוף אפור", bg: "bg-transparent", text: "text-slate-700", border: "border border-slate-300" },
-    { id: "4", name: "רק אייקון", bg: "bg-transparent", text: "text-blue-600", border: "" }],
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
 
-    colorful: [
-    { id: "5", name: "ירוק מלא", bg: "bg-green-600", text: "text-white", border: "" },
-    { id: "6", name: "סגול מלא", bg: "bg-purple-600", text: "text-white", border: "" },
-    { id: "7", name: "אדום מלא", bg: "bg-red-600", text: "text-white", border: "" },
-    { id: "8", name: "כתום מלא", bg: "bg-orange-600", text: "text-white", border: "" }],
-
-    gradient: [
-    { id: "9", name: "גרדיאנט כחול", bg: "bg-gradient-to-r from-blue-500 to-blue-700", text: "text-white", border: "" },
-    { id: "10", name: "גרדיאנט ירוק", bg: "bg-gradient-to-r from-green-500 to-green-700", text: "text-white", border: "" },
-    { id: "11", name: "גרדיאנט סגול", bg: "bg-gradient-to-r from-purple-500 to-purple-700", text: "text-white", border: "" },
-    { id: "12", name: "גרדיאנט שקיעה", bg: "bg-gradient-to-r from-orange-500 to-pink-600", text: "text-white", border: "" }],
-
-    outlined: [
-    { id: "13", name: "מסגרת ירוקה", bg: "bg-transparent", text: "text-green-600", border: "border-2 border-green-500" },
-    { id: "14", name: "מסגרת סגולה", bg: "bg-transparent", text: "text-purple-600", border: "border-2 border-purple-500" },
-    { id: "15", name: "מסגרת אדומה", bg: "bg-transparent", text: "text-red-600", border: "border-2 border-red-500" },
-    { id: "16", name: "מסגרת כתומה", bg: "bg-transparent", text: "text-orange-600", border: "border-2 border-orange-500" }]
-
-  };
-
-  const getSizeClasses = (sizeKey) => {
-    switch (sizeKey) {
-      case "sm":return { box: "w-12 h-12", icon: "w-6 h-6" };
-      case "lg":return { box: "w-20 h-20", icon: "w-10 h-10" };
-      default:return { box: "w-16 h-16", icon: "w-8 h-8" };
-    }
-  };
-
-  const getStyleFromTheme = (styleId) => {
-    for (const theme of Object.values(iconThemes)) {
-      const style = theme.find((s) => s.id === styleId);
-      if (style) return style;
-    }
-    return iconThemes.modern[3];
-  };
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, dragOffset]);
 
   return (
-    <div
-      className={`fixed z-50 ${isCtrlPressed ? 'cursor-move' : ''}`}
-      style={{
-        top: `${currentPosition.top}px`,
-        left: `${currentPosition.left}px`,
-        transform: `scale(${prefs.scale || 1})`,
-        transformOrigin: "top left"
-      }}
-      onMouseDown={handleMouseDown}
-      dir="rtl">
+    <>
+      <div
+        className={cn(
+          "fixed z-50 shadow-2xl rounded-full cursor-move select-none",
+          sizeMap[settings.size],
+          isDragging && "cursor-grabbing"
+        )}
+        style={{
+          left: `${settings.position.x}px`,
+          top: `${settings.position.y}px`
+        }}
+        onMouseDown={handleMouseDown}
+      >
+        <Popover open={showPopover} onOpenChange={setShowPopover}>
+          <PopoverTrigger asChild>
+            <button
+              className={cn(
+                "w-full h-full rounded-full bg-gradient-to-br shadow-lg hover:shadow-xl transition-all flex items-center justify-center relative overflow-hidden group",
+                colorMap[settings.color]
+              )}
+            >
+              {running && (
+                <div className="absolute inset-0 animate-ping bg-white/20 rounded-full" />
+              )}
+              <Clock className="w-1/2 h-1/2 text-white relative z-10" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-80 p-4" align="start" side="right" dir="rtl">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-lg">טיימר</h3>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setShowSettings(true)}
+                >
+                  <Settings className="w-4 h-4" />
+                </Button>
+              </div>
 
-      {isCtrlPressed &&
-      <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg whitespace-nowrap text-sm font-semibold animate-pulse">
-          ✋ גרור אותי עם העכבר!
-        </div>
-      }
-      
-      <div className="rounded-full bg-white/90 backdrop-blur-sm shadow-xl border border-white/30 p-3 min-w-[72px] min-h-[72px] flex items-center justify-center ring-1 ring-slate-200/60">
-        <SafeGuard>
-          <div className="flex items-center gap-3">
-            <Popover open={popoverOpen} onOpenChange={(open) => {setPopoverOpen(open);if (!open) {setDetailsOpen(false);setAiSuggested(false);}}}>
-              <PopoverTrigger asChild>
-                {(() => {
-                  const sz = getSizeClasses(prefs.timerIconSize || "md");
-                  const style = getStyleFromTheme(prefs.timerIconStyle || "4");
-                  return (
-                    <div
-                      className={`relative ${sz.box} rounded-full ${style.bg} ${style.text} ${style.border} flex items-center justify-center transition-all select-none cursor-pointer hover:scale-105`}
-                      role="button"
-                      tabIndex={0}
-                      aria-label="פתח טיימר"
-                      title="טיימר (Ctrl+Alt+D לדיבאג)"
-                      onDoubleClick={toggleDebug}>
-
-                      <TimerIcon className={`${sz.icon} pointer-events-none`} />
-                    </div>);
-
-                })()}
-              </PopoverTrigger>
-
-              <PopoverContent
-                side="bottom"
-                align="start"
-                sideOffset={10}
-                className="w-[420px] p-0 border border-slate-200 bg-white shadow-2xl rounded-2xl overflow-hidden"
-                dir="rtl">
-
-                <div className="max-h-[75vh] overflow-y-auto">
-                  <div className="p-4 border-b bg-gradient-to-br from-slate-50 to-white">
-                    <div className="flex items-center justify-between mb-3">
-                      <div
-                        className="font-mono text-3xl leading-none text-transparent bg-clip-text font-bold"
-                        style={{
-                          backgroundImage: `linear-gradient(to bottom right, ${prefs.colorFrom}, ${prefs.colorTo})`,
-                          fontFamily: prefs.fontFamily === "default" ? undefined : prefs.fontFamily
-                        }}>
-
-                        {state.h}:{state.m}:{state.s}
-                      </div>
-                      
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => setSettingsOpen(true)}
-                        className="h-9 w-9 hover:bg-slate-100"
-                        title="הגדרות טיימר">
-
-                        <Settings className="w-5 h-5" />
-                      </Button>
-                    </div>
-
-                    {prefs.selectedClientId ?
-                    <div className="text-sm text-slate-700 mb-3 font-medium text-right">
-                        לקוח: <span className="text-blue-600">{prefs.selectedClientName}</span>
-                      </div> :
-
-                    <div className="text-sm text-slate-500 mb-3 text-right">בחר לקוח להתחלה</div>
-                    }
-
-                    <div className="flex items-center gap-2 justify-end">
-                      <Button
-                        size="icon"
-                        onClick={() => {
-                          if (!prefs.selectedClientName && !state.running) return;
-                          state.toggle();
-                        }}
-                        disabled={!prefs.selectedClientName && !state.running}
-                        className="rounded-full h-10 w-10 shadow-md hover:shadow-lg transition-all"
-                        title={!prefs.selectedClientName && !state.running ? "בחר לקוח קודם" : state.running ? "השהה" : "התחל"}>
-
-                        {state.running ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
-                      </Button>
-                      <Button size="icon" variant="outline" onClick={state.stop} className="rounded-full h-10 w-10" title="עצור">
-                        <Square className="w-5 h-5" />
-                      </Button>
-                      <Button size="icon" variant="outline" onClick={state.reset} className="rounded-full h-10 w-10" title="איפוס">
-                        <RefreshCcw className="w-5 h-5" />
-                      </Button>
-                      {/* ✅ כפתור שמור חדש */}
-                      <Button 
-                        size="icon" 
-                        variant="outline" 
-                        onClick={handleSaveClick}
-                        disabled={!prefs.selectedClientName}
-                        className="rounded-full h-10 w-10 bg-green-50 hover:bg-green-100 border-green-300"
-                        title={!prefs.selectedClientName ? "בחר לקוח לפני שמירה" : "שמור"}>
-                        <Save className="w-5 h-5 text-green-600" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* סעיף בחירת לקוח - מוצג רק כש-detailsOpen הוא false */}
-                  {!detailsOpen &&
-                  <div className="p-4">
-                      <div className="text-base font-bold text-slate-800 mb-3 text-right">בחר לקוח</div>
-                      <Input
-                      placeholder="חיפוש לקוח..."
-                      value={query}
-                      onChange={(e) => setQuery(e.target.value)}
-                      className="bg-white/70 h-10 text-sm text-right mb-2"
-                      dir="rtl" />
-
-                      
-                      {/* מספר תוצאות */}
-                      {query &&
-                    <div className="text-xs text-slate-500 mb-2 px-1 text-right">
-                          {filtered.length} תוצאות
-                        </div>
-                    }
-                      
-                      <div className="max-h-64 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-sm">
-                        <div className="py-1">
-                          {filtered.length === 0 ?
-                        <div className="text-sm text-slate-600 p-6 text-center">
-                              {query ? 'לא נמצאו לקוחות תואמים' : 'לא נמצאו לקוחות'}
-                            </div> :
-
-                        filtered.map((c) => {
-                          const isRecent = !query && (prefs.recentClients || []).some((r) => r.id === c.id);
-                          return (
-                            <button
-                              key={c.id}
-                              className={`w-full text-right px-4 py-3 hover:bg-blue-50 transition flex flex-col border-b border-slate-100 last:border-b-0 ${isRecent ? 'bg-blue-50/50' : ''}`}
-                              onClick={() => {
-                                savePrefs({ selectedClientId: c.id, selectedClientName: c.name || "" });
-                                saveRecentClient(c.id, c.name || "");
-                                if (!state.running) {
-                                  state.toggle();
-                                }
-                                logInfo("timer", "client_selected", "Client selected and timer auto-started", { clientId: c.id, clientName: c.name });
-                              }}>
-
-                                  <div className="flex items-center justify-between w-full">
-                                    <span className="text-sm text-slate-900 truncate font-semibold">{c.name || "ללא שם"}</span>
-                                    {isRecent && <span className="text-[10px] text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full mr-2 font-medium">אחרון</span>}
-                                  </div>
-                                  {(c.company || c.email || c.phone) &&
-                              <span className="text-xs text-slate-500 truncate mt-1">
-                                      {(c.company || c.email || c.phone || "").toString()}
-                                    </span>
-                              }
-                                </button>);
-
-                        })
-                        }
-                        </div>
-                      </div>
-                      
-                      {filtered.length > 8 &&
-                    <div className="text-xs text-slate-400 mt-2 px-1 flex items-center gap-1 justify-center">
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                          </svg>
-                          גלול למטה לעוד לקוחות
-                        </div>
-                    }
-                    </div>
-                  }
-
-                  {detailsOpen &&
-                    <div className="p-4">
-                      <div className="space-y-4">
-                        {aiSuggesting &&
-                          <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-200 rounded-xl p-4 flex items-center gap-3 shadow-sm">
-                            <Loader2 className="w-5 h-5 animate-spin text-blue-600 flex-shrink-0" />
-                            <span className="text-sm text-blue-900 font-medium">AI מציע כותרת והערות מותאמות...</span>
-                          </div>
-                        }
-
-                        {aiSuggested && !aiSuggesting &&
-                          <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-3 flex items-center gap-2 shadow-sm">
-                            <span className="text-xl">✨</span>
-                            <div className="text-xs text-green-800 font-medium">
-                              AI הציע תוכן - ניתן לערוך ולהתאים
-                            </div>
-                          </div>
-                        }
-
-                        {/* 📝 סקשן פרטי הפעילות */}
-                        <div className="bg-gradient-to-br from-slate-50 to-white p-5 rounded-xl border-2 border-slate-200 shadow-sm">
-                          <h3 className="font-bold text-slate-900 mb-4 flex items-center gap-2 text-right text-lg">
-                            <Pencil className="w-5 h-5 text-blue-600" />
-                            פרטי הפעילות
-                          </h3>
-                          
-                          <div className="space-y-4">
-                            <div>
-                              <label className="text-sm font-semibold text-slate-700 mb-2 block text-right">
-                                כותרת <span className="text-xs text-slate-500 font-normal">(אופציונלי)</span>
-                              </label>
-                              <div className="relative">
-                                <Input
-                                  placeholder="למשל: פגישת תכנון, ייעוץ טלפוני..."
-                                  value={title}
-                                  onChange={(e) => setTitle(e.target.value)}
-                                  className="bg-white h-10 text-sm pr-10 text-right border-slate-300 focus:border-blue-500"
-                                  dir="rtl"
-                                  disabled={aiSuggesting}
-                                />
-                                <button
-                                  onClick={() => setShowTitleTemplates(!showTitleTemplates)}
-                                  className="absolute left-2 top-2 hover:bg-slate-100 rounded p-1.5 transition-colors"
-                                  title="תבניות כותרת"
-                                  disabled={aiSuggesting}>
-                                  <BookmarkPlus className="w-4 h-4 text-slate-600" />
-                                </button>
-                              </div>
-
-                              <div className="bg-white rounded-lg p-3 mt-2 border border-slate-200">
-                                <div className="text-[11px] text-slate-600 mb-2 font-semibold text-right">בחר כותרת מהירה:</div>
-                                <div className="flex flex-wrap gap-2 justify-end">
-                                  {(prefs.quickTitlePrompts || []).map((prompt, idx) => (
-                                    <button
-                                      key={idx}
-                                      onClick={() => setTitle(prompt)}
-                                      className="text-xs px-3 py-1.5 bg-gradient-to-r from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200 border border-blue-300 rounded-lg transition-all font-medium text-blue-700"
-                                      disabled={aiSuggesting}>
-                                      {prompt}
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-
-                              {showTitleTemplates && (
-                                <div className="bg-white rounded-lg border-2 border-slate-300 p-3 mt-2 shadow-md">
-                                  <div className="text-sm font-bold text-slate-800 mb-2 text-right">תבניות כותרת שמורות</div>
-                                  <ScrollArea className="max-h-32">
-                                    <div className="space-y-1">
-                                      {prefs.titleTemplates.length === 0 ? (
-                                        <div className="text-xs text-slate-500 text-center py-3">אין תבניות שמורות</div>
-                                      ) : (
-                                        prefs.titleTemplates.map((template, idx) => (
-                                          <div key={idx} className="flex items-center gap-2 group">
-                                            <button
-                                              onClick={() => {
-                                                setTitle(template);
-                                                setShowTitleTemplates(false);
-                                              }}
-                                              className="flex-1 text-right text-xs px-3 py-2 hover:bg-slate-100 rounded-lg truncate transition-colors"
-                                              disabled={aiSuggesting}>
-                                              {template}
-                                            </button>
-                                            <button
-                                              onClick={() => deleteTitleTemplate(idx)}
-                                              className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-red-50 rounded transition-all"
-                                              disabled={aiSuggesting}>
-                                              <Trash2 className="w-3.5 h-3.5 text-red-600" />
-                                            </button>
-                                          </div>
-                                        ))
-                                      )}
-                                    </div>
-                                  </ScrollArea>
-                                  <div className="flex gap-2 mt-3">
-                                    <Input
-                                      placeholder="הוסף תבנית חדשה..."
-                                      value={newTitleTemplate}
-                                      onChange={(e) => setNewTitleTemplate(e.target.value)}
-                                      className="h-8 text-xs text-right"
-                                      dir="rtl"
-                                      onKeyDown={(e) => {
-                                        if (e.key === 'Enter') {
-                                          e.preventDefault();
-                                          addTitleTemplate();
-                                        }
-                                      }}
-                                      disabled={aiSuggesting}
-                                    />
-                                    <Button size="sm" onClick={addTitleTemplate} className="h-8 px-3" disabled={aiSuggesting}>
-                                      <Plus className="w-3.5 h-3.5" />
-                                    </Button>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-
-                            <div>
-                              <label className="text-sm font-semibold text-slate-700 mb-2 block text-right">
-                                הערות <span className="text-xs text-slate-500 font-normal">(אופציונלי)</span>
-                              </label>
-                              <div className="relative">
-                                <Textarea
-                                  placeholder="הוסף פרטים והערות על הפעילות..."
-                                  value={notes}
-                                  onChange={(e) => setNotes(e.target.value)}
-                                  className="bg-white min-h-[90px] text-sm pr-10 text-right border-slate-300 focus:border-blue-500 resize-none"
-                                  dir="rtl"
-                                  disabled={aiSuggesting}
-                                />
-                                <button
-                                  onClick={() => setShowNotesTemplates(!showNotesTemplates)}
-                                  className="absolute left-2 top-2 hover:bg-slate-100 rounded p-1.5 transition-colors"
-                                  title="תבניות הערות"
-                                  disabled={aiSuggesting}>
-                                  <BookmarkPlus className="w-4 h-4 text-slate-600" />
-                                </button>
-                              </div>
-
-                              <div className="bg-white rounded-lg p-3 mt-2 border border-slate-200">
-                                <div className="text-[11px] text-slate-600 mb-2 font-semibold text-right">בחר הערה מהירה:</div>
-                                <div className="flex flex-wrap gap-2 justify-end">
-                                  {(prefs.quickNotesPrompts || []).map((prompt, idx) => (
-                                    <button
-                                      key={idx}
-                                      onClick={() => setNotes(prompt)}
-                                      className="text-xs px-3 py-1.5 bg-gradient-to-r from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200 border border-purple-300 rounded-lg transition-all font-medium text-purple-700"
-                                      disabled={aiSuggesting}>
-                                      {prompt}
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-
-                              {showNotesTemplates && (
-                                <div className="bg-white rounded-lg border-2 border-slate-300 p-3 mt-2 shadow-md">
-                                  <div className="text-sm font-bold text-slate-800 mb-2 text-right">תבניות הערות שמורות</div>
-                                  <ScrollArea className="max-h-32">
-                                    <div className="space-y-1">
-                                      {prefs.notesTemplates.length === 0 ? (
-                                        <div className="text-xs text-slate-500 text-center py-3">אין תבניות שמורות</div>
-                                      ) : (
-                                        prefs.notesTemplates.map((template, idx) => (
-                                          <div key={idx} className="flex items-center gap-2 group">
-                                            <button
-                                              onClick={() => {
-                                                setNotes(template);
-                                                setShowNotesTemplates(false);
-                                              }}
-                                              className="flex-1 text-right text-xs px-3 py-2 hover:bg-slate-100 rounded-lg truncate transition-colors"
-                                              disabled={aiSuggesting}>
-                                              {template}
-                                            </button>
-                                            <button
-                                              onClick={() => deleteNotesTemplate(idx)}
-                                              className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-red-50 rounded transition-all"
-                                              disabled={aiSuggesting}>
-                                              <Trash2 className="w-3.5 h-3.5 text-red-600" />
-                                            </button>
-                                          </div>
-                                        ))
-                                      )}
-                                    </div>
-                                  </ScrollArea>
-                                  <div className="flex gap-2 mt-3">
-                                    <Input
-                                      placeholder="הוסף תבנית חדשה..."
-                                      value={newNotesTemplate}
-                                      onChange={(e) => setNewNotesTemplate(e.target.value)}
-                                      className="h-8 text-xs text-right"
-                                      dir="rtl"
-                                      onKeyDown={(e) => {
-                                        if (e.key === 'Enter') {
-                                          e.preventDefault();
-                                          addNotesTemplate();
-                                        }
-                                      }}
-                                      disabled={aiSuggesting}
-                                    />
-                                    <Button size="sm" onClick={addNotesTemplate} className="h-8 px-3" disabled={aiSuggesting}>
-                                      <Plus className="w-3.5 h-3.5" />
-                                    </Button>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* ⏰ סקשן תאריך וזמן */}
-                        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-5 rounded-xl border-2 border-blue-200 shadow-sm">
-                          <h3 className="font-bold text-slate-900 mb-4 flex items-center gap-2 text-right text-lg">
-                            <Clock className="w-5 h-5 text-blue-600" />
-                            תאריך וזמן
-                          </h3>
-                          
-                          <div className="space-y-4">
-                            <div>
-                              <label className="text-sm font-semibold text-slate-700 mb-2 block text-right flex items-center gap-2">
-                                <Calendar className="w-4 h-4 text-blue-600" />
-                                תאריך הפעילות
-                              </label>
-                              <Input
-                                type="date"
-                                value={selectedLogDate ? selectedLogDate.toISOString().split('T')[0] : ''}
-                                onChange={(e) => setSelectedLogDate(new Date(e.target.value))}
-                                className="bg-white h-10 text-sm text-right border-blue-300 focus:border-blue-500 font-medium"
-                                dir="rtl"
-                              />
-                              <div className="text-xs text-slate-600 mt-2 text-right">
-                                📅 {selectedLogDate.toLocaleDateString('he-IL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-                              </div>
-                            </div>
-
-                            <div>
-                              <label className="text-sm font-semibold text-slate-700 mb-2 block text-right">
-                                משך זמן (שעות:דקות)
-                              </label>
-                              <div className="flex items-center gap-3 justify-center">
-                                <div className="flex flex-col items-center">
-                                  <Input
-                                    value={manualH}
-                                    onChange={(e) => setManualH(e.target.value.replace(/\D/g, "").slice(0, 2))}
-                                    className="w-20 h-12 text-center text-lg font-bold bg-white border-blue-300"
-                                    placeholder="00"
-                                    dir="ltr"
-                                    disabled={aiSuggesting}
-                                  />
-                                  <span className="text-xs text-slate-600 mt-1 font-medium">שעות</span>
-                                </div>
-                                <span className="text-2xl font-bold text-blue-600 mt-[-20px]">:</span>
-                                <div className="flex flex-col items-center">
-                                  <Input
-                                    value={manualM}
-                                    onChange={(e) => setManualM(e.target.value.replace(/\D/g, "").slice(0, 2))}
-                                    className="w-20 h-12 text-center text-lg font-bold bg-white border-blue-300"
-                                    placeholder="00"
-                                    dir="ltr"
-                                    disabled={aiSuggesting}
-                                  />
-                                  <span className="text-xs text-slate-600 mt-1 font-medium">דקות</span>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* כפתורי פעולה */}
-                        <div className="flex items-center gap-3 pt-2">
-                          <Button
-                            variant="outline"
-                            size="lg"
-                            className="flex-1 rounded-xl h-12 font-bold border-2"
-                            onClick={() => {setDetailsOpen(false);setAiSuggested(false);}}
-                            disabled={aiSuggesting}>
-                            ביטול
-                          </Button>
-                          <Button
-                            size="lg"
-                            className="flex-1 rounded-xl h-12 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 shadow-lg font-bold text-white"
-                            onClick={handleSaveClick}
-                            disabled={!prefs.selectedClientName || aiSuggesting}>
-                            <Save className="w-5 h-5 ml-2" />
-                            אשר ושמור
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  }
+              <div className="text-center">
+                <div className="text-3xl font-bold text-slate-900 mb-2">
+                  {formatTime(seconds)}
                 </div>
-              </PopoverContent>
-            </Popover>
+                {selectedClient && (
+                  <div className="text-sm text-slate-600 bg-slate-100 px-3 py-1 rounded-full inline-block">
+                    {selectedClient.name}
+                  </div>
+                )}
+              </div>
 
-            {state.running &&
-            <div className="flex items-center gap-2 bg-white/80 border border-slate-200 rounded-xl px-2 py-1 shadow-sm">
-                <span className="font-mono text-xs text-slate-700">{state.h}:{state.m}:{state.s}</span>
-                <span
-                className={`h-2 w-2 rounded-full ${
-                state.debug?.stalled ? 'bg-red-500' : state.debug?.corrected ? 'bg-amber-500' : 'bg-green-500'}`
-                }
-                title={state.debug?.stalled ? 'הטיימר נראה תקוע' : state.debug?.corrected ? 'תיקון סטייה בוצע' : 'עובד תקין'} />
-
-                <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 max-w-[180px] truncate" title={prefs.selectedClientName || "ללא לקוח"}>
-                  {prefs.selectedClientName || 'ללא לקוח'}
-                </span>
+              <div className="flex gap-2 justify-center">
                 <Button
-                variant="ghost"
-                size="icon"
-                onClick={state.toggle}
-                title="השהה"
-                className="h-7 w-7">
-
-                  <Pause className="w-4 h-4" />
+                  onClick={toggleTimer}
+                  size="sm"
+                  className={running ? "bg-amber-500 hover:bg-amber-600" : "bg-green-500 hover:bg-green-600"}
+                >
+                  {running ? <Pause className="w-4 h-4 ml-1" /> : <Play className="w-4 h-4 ml-1" />}
+                  {running ? 'עצור' : 'התחל'}
+                </Button>
+                <Button onClick={resetTimer} size="sm" variant="outline">
+                  <X className="w-4 h-4 ml-1" />
+                  אפס
                 </Button>
                 <Button
-                variant="ghost"
-                size="icon"
-                onClick={state.stop}
-                title="עצור"
-                className="h-7 w-7">
-
-                  <Square className="w-4 h-4" />
-                </Button>
-                <Button
-                variant="outline"
-                size="icon"
-                onClick={() => {
-                  setPopoverOpen(true);
-                  if (!detailsOpen) {
-                    setManualH(state.h);
-                    setManualM(state.m);
-                    setDetailsOpen(true);
-                  }
-                }}
-                title="שמור"
-                className="h-7 w-7">
-
-                  <Save className="w-4 h-4" />
+                  onClick={stopAndSave}
+                  size="sm"
+                  className="bg-blue-600 hover:bg-blue-700"
+                  disabled={seconds === 0}
+                >
+                  <Square className="w-4 h-4 ml-1" />
+                  שמור
                 </Button>
               </div>
-            }
-          </div>
 
-          {debugOpen &&
-          <div className="mt-2 text-[11px] leading-5 bg-slate-50 border border-slate-200 rounded-lg p-2 text-right">
-              <div className="flex flex-wrap gap-x-4 gap-y-1">
-                <div><span className="text-slate-500">Running:</span> <span className="font-mono">{String(state.running)}</span></div>
-                <div><span className="text-slate-500">Time:</span> <span className="font-mono">{state.h}:{state.m}:{state.s} ({state.seconds}s)</span></div>
-                <div><span className="text-slate-500">Last Δ:</span> <span className="font-mono">{state.debug.lastDeltaMs}ms</span></div>
-                <div><span className="text-slate-500">Drift:</span> <span className="font-mono">{state.debug.driftSec}</span></div>
-                <div><span className="text-slate-500">Corrected:</span> <span className="font-mono">{String(state.debug.corrected)}</span></div>
-                <div><span className="text-slate-500">Stalled:</span> <span className="font-mono">{String(state.debug.stalled)}</span></div>
-                <div><span className="text-slate-500">Visibility:</span> <span className="font-mono">{state.debug.visibility}</span></div>
-              </div>
-              <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1">
-                <div><span className="text-slate-500">Page:</span> <span className="font-mono">{currentPage}</span></div>
-                <div><span className="text-slate-500">Position:</span> <span className="font-mono">{currentPosition.top},{currentPosition.left}</span></div>
+              <Separator />
+
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Search className="w-4 h-4 text-slate-400" />
+                  <Input
+                    placeholder="חיפוש לקוח..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="flex-1"
+                  />
+                </div>
+
+                <div className="max-h-48 overflow-y-auto space-y-1">
+                  {displayClients.length === 0 ? (
+                    <div className="text-center py-4 text-slate-500 text-sm">
+                      אין לקוחות זמינים
+                    </div>
+                  ) : (
+                    displayClients.map((client) => {
+                      if (!client) return null;
+                      const isRecent = recentClients.some(r => r?.id === client.id);
+                      return (
+                        <button
+                          key={client.id}
+                          onClick={() => handleClientSelect(client)}
+                          className={cn(
+                            "w-full text-right px-3 py-2 rounded-lg hover:bg-slate-100 transition-colors",
+                            selectedClient?.id === client.id && "bg-blue-50 border border-blue-200"
+                          )}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium text-sm">{client.name}</span>
+                            {isRecent && (
+                              <Badge variant="secondary" className="text-xs">
+                                אחרון
+                              </Badge>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
               </div>
             </div>
-          }
-        </SafeGuard>
+          </PopoverContent>
+        </Popover>
       </div>
 
-      {/* דיאלוג הגדרות */}
-      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-        <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-hidden flex flex-col" dir="rtl">
-          <DialogHeader className="flex-shrink-0">
-            <DialogTitle>הגדרות טיימר</DialogTitle>
+      <Dialog open={showDialog} onOpenChange={setShowDialog}>
+        <DialogContent className="sm:max-w-xl" dir="rtl">
+          <DialogHeader>
+            <DialogTitle>שמירת זמן עבודה</DialogTitle>
           </DialogHeader>
-          
-          <ScrollArea className="flex-1 pr-4">
-            <div className="space-y-6 py-4">
-              {/* מיקום */}
-              <div>
-                <h3 className="text-sm font-semibold mb-3">מיקום הטיימר</h3>
-                <div className="text-xs text-blue-800 bg-blue-50 p-3 rounded border border-blue-200">
-                  <p className="font-semibold mb-1">כדי לשנות מיקום: לחץ והחזק את מקש <kbd>Ctrl</kbd> במקלדת,</p>
-                  <p>ולאחר מכן גרור את אייקון הטיימר למיקום הרצוי עם העכבר.</p>
-                  <p className="mt-1 text-blue-600">המיקום ישמר אוטומטית לעמוד הנוכחי: <span className="font-bold">{currentPage}</span></p>
-                </div>
-                <div className="text-xs text-slate-600 bg-slate-50 p-2 rounded mt-3">
-                  מיקום נוכחי: עמוד <strong>{currentPage}</strong> • X: {currentPosition.left}px, Y: {currentPosition.top}px
-                </div>
-              </div>
 
-              {/* גודל */}
-              <div>
-                <h3 className="text-sm font-semibold mb-3">גודל</h3>
-                <div className="flex items-center gap-4">
-                  <span className="text-xs text-slate-600">קטן</span>
-                  <input
-                    type="range"
-                    min={0.7}
-                    max={1.5}
-                    step={0.05}
-                    value={prefs.scale || 1}
-                    onChange={(e) => savePrefs({ scale: parseFloat(e.target.value) })}
-                    className="accent-blue-600 flex-1" />
+          <Tabs defaultValue="details" dir="rtl">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="details">פרטים</TabsTrigger>
+              <TabsTrigger value="templates">תבניות</TabsTrigger>
+            </TabsList>
 
-                  <span className="text-xs text-slate-600">גדול</span>
-                  <span className="text-xs text-slate-500 w-12">{Math.round((prefs.scale || 1) * 100)}%</span>
+            <TabsContent value="details" className="space-y-4 mt-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium mb-1 block text-right">תאריך</label>
+                  <Input
+                    type="date"
+                    value={dialogData.date}
+                    onChange={(e) => setDialogData(prev => ({ ...prev, date: e.target.value }))}
+                    dir="rtl"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-1 block text-right">משך (HH:MM:SS)</label>
+                  <Input
+                    value={dialogData.duration}
+                    onChange={(e) => setDialogData(prev => ({ ...prev, duration: e.target.value }))}
+                    placeholder="00:00:00"
+                    dir="ltr"
+                  />
                 </div>
               </div>
 
-              {/* ערכות נושא */}
               <div>
-                <h3 className="text-sm font-semibold mb-3">ערכות נושא</h3>
-                <div className="space-y-4">
-                  {Object.entries(iconThemes).map(([themeKey, styles]) =>
-                  <div key={themeKey}>
-                      <h4 className="text-xs font-medium text-slate-600 mb-2 capitalize">
-                        {themeKey === 'modern' ? 'מודרני' :
-                      themeKey === 'colorful' ? 'צבעוני' :
-                      themeKey === 'gradient' ? 'גרדיאנט' : 'מסגרות'}
-                      </h4>
-                      <div className="grid grid-cols-4 gap-2">
-                        {styles.map((style) =>
-                      <button
-                        key={style.id}
-                        onClick={() => savePrefs({ timerIconStyle: style.id })}
-                        className={`p-2 rounded-lg border-2 transition-all ${
-                        prefs.timerIconStyle === style.id ? 'border-blue-500' : 'border-slate-200 hover:border-slate-300'}`
-                        }
-                        title={style.name}>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-sm font-medium text-right">כותרת</label>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={suggestWithAI}
+                    disabled={isAISuggesting}
+                    className="h-7 text-xs gap-1"
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    {isAISuggesting ? 'מייצר...' : 'הצע עם AI'}
+                  </Button>
+                </div>
+                <Input
+                  value={dialogData.title}
+                  onChange={(e) => setDialogData(prev => ({ ...prev, title: e.target.value }))}
+                  placeholder="תיאור קצר של העבודה"
+                  dir="rtl"
+                />
+              </div>
 
-                            <div className={`w-8 h-8 rounded-full ${style.bg} ${style.text} ${style.border} flex items-center justify-center mx-auto`}>
-                              <TimerIcon className="w-full h-full" />
-                            </div>
-                            <div className="text-xs text-slate-600 mt-1 truncate">{style.name}</div>
-                          </button>
-                      )}
+              <div>
+                <label className="text-sm font-medium mb-1 block text-right">הערות</label>
+                <Textarea
+                  value={dialogData.notes}
+                  onChange={(e) => setDialogData(prev => ({ ...prev, notes: e.target.value }))}
+                  placeholder="פירוט נוסף על העבודה שבוצעה..."
+                  rows={4}
+                  dir="rtl"
+                />
+              </div>
+
+              <div className="flex gap-2">
+                <Button onClick={saveAsTemplate} variant="outline" className="gap-2" size="sm">
+                  <Save className="w-4 h-4" />
+                  שמור כתבנית
+                </Button>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="templates" className="mt-4">
+              <div className="space-y-2">
+                {(!savedTemplates || savedTemplates.length === 0) ? (
+                  <div className="text-center py-8 text-slate-500 text-sm">
+                    אין תבניות שמורות
+                  </div>
+                ) : (
+                  savedTemplates.map((template) => (
+                    <div
+                      key={template.id}
+                      className="p-3 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="font-medium text-sm mb-1">{template.title}</div>
+                          {template.notes && (
+                            <div className="text-xs text-slate-600">{template.notes}</div>
+                          )}
+                        </div>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => applyTemplate(template)}
+                          >
+                            <ChevronDown className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-red-600 hover:text-red-700"
+                            onClick={() => deleteTemplate(template.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                  )}
-                </div>
+                  ))
+                )}
               </div>
+            </TabsContent>
+          </Tabs>
 
-              {/* גודל אייקון */}
-              <div>
-                <h3 className="text-sm font-semibold mb-3">גודל אייקון</h3>
-                <div className="flex gap-3">
-                  {[
-                  { key: "sm", label: "קטן", size: "w-6 h-6" },
-                  { key: "md", label: "בינוני", label: "בינוני", size: "w-8 h-8" },
-                  { key: "lg", label: "גדול", size: "w-10 h-10" }].
-                  map(({ key, label, size }) =>
-                  <button
-                    key={key}
-                    onClick={() => savePrefs({ timerIconSize: key })}
-                    className={`p-3 rounded-lg border-2 transition-all ${
-                    prefs.timerIconSize === key ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-slate-300'}`
-                    }>
-
-                      <div className={`${size} text-blue-600 mx-auto mb-2`}>
-                        <TimerIcon className="w-full h-full" />
-                      </div>
-                      <div className="text-xs text-slate-600">{label}</div>
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* צבעי גרדיאנט */}
-              <div>
-                <h3 className="text-sm font-semibold mb-3">צבעי הצגת זמן</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs text-slate-600 mb-1 block">צבע התחלה</label>
-                    <input
-                      type="color"
-                      value={prefs.colorFrom}
-                      onChange={(e) => savePrefs({ colorFrom: e.target.value })}
-                      className="w-full h-10 rounded border" />
-
-                  </div>
-                  <div>
-                    <label className="text-xs text-slate-600 mb-1 block">צבע סיום</label>
-                    <input
-                      type="color"
-                      value={prefs.colorTo}
-                      onChange={(e) => savePrefs({ colorTo: e.target.value })}
-                      className="w-full h-10 rounded border" />
-
-                  </div>
-                </div>
-                <div className="mt-3 p-3 bg-slate-50 rounded-lg">
-                  <div className="text-xs text-slate-600 mb-2">תצוגה מקדימה:</div>
-                  <div
-                    className="text-2xl font-mono text-transparent bg-clip-text inline-block"
-                    style={{
-                      backgroundImage: `linear-gradient(to bottom right, ${prefs.colorFrom}, ${prefs.colorTo})`
-                    }}>
-
-                    12:34:56
-                  </div>
-                </div>
-              </div>
-            </div>
-          </ScrollArea>
-
-          <div className="flex justify-end gap-2 pt-4 flex-shrink-0">
-            <Button variant="outline" onClick={() => setSettingsOpen(false)}>
-              סגור
+          <DialogFooter className="gap-2" dir="rtl">
+            <Button variant="outline" onClick={() => setShowDialog(false)}>
+              ביטול
             </Button>
-          </div>
+            <Button onClick={saveTimeLog} className="bg-blue-600 hover:bg-blue-700">
+              שמור זמן
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>);
 
+      <Dialog open={showSettings} onOpenChange={setShowSettings}>
+        <DialogContent className="sm:max-w-md" dir="rtl">
+          <DialogHeader>
+            <DialogTitle>הגדרות טיימר</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium mb-2 block text-right">גודל</label>
+              <Select
+                value={settings.size}
+                onValueChange={(value) => setSettings(prev => ({ ...prev, size: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="small">קטן</SelectItem>
+                  <SelectItem value="medium">בינוני</SelectItem>
+                  <SelectItem value="large">גדול</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-2 block text-right">צבע</label>
+              <Select
+                value={settings.color}
+                onValueChange={(value) => setSettings(prev => ({ ...prev, color: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="blue">כחול</SelectItem>
+                  <SelectItem value="green">ירוק</SelectItem>
+                  <SelectItem value="purple">סגול</SelectItem>
+                  <SelectItem value="orange">כתום</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-right">הצג שניות</label>
+              <input
+                type="checkbox"
+                checked={settings.showSeconds}
+                onChange={(e) => setSettings(prev => ({ ...prev, showSeconds: e.target.checked }))}
+                className="rounded"
+              />
+            </div>
+          </div>
+
+          <DialogFooter dir="rtl">
+            <Button onClick={() => setShowSettings(false)}>סגור</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
 }
