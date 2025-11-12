@@ -23,6 +23,7 @@ import UserApprovals from './pages/UserApprovals';
 import Meetings from './pages/Meetings';
 import Tasks from './pages/Tasks';
 import DailyReports from './pages/DailyReports';
+import SpreadsheetDetails from './pages/SpreadsheetDetails';
 import Layout from './Layout.jsx';
 
 
@@ -52,6 +53,7 @@ export const PAGES = {
     "Meetings": Meetings,
     "Tasks": Tasks,
     "DailyReports": DailyReports,
+    "SpreadsheetDetails": SpreadsheetDetails,
 }
 
 export const pagesConfig = {
