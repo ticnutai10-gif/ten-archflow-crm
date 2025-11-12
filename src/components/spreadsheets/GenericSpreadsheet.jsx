@@ -251,10 +251,27 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     toast.success(`✓ יובאו ${allRows.length} שורות בהצלחה`);
   };
 
-  // גרירת שורות
+  // גרירת שורות ועמודות
   const handleDragEnd = (result) => {
     if (!result.destination) return;
 
+    // גרירת עמודות
+    if (result.type === 'column') {
+      const sourceIndex = result.source.index;
+      const destIndex = result.destination.index;
+      
+      const reorderedColumns = Array.from(columns);
+      const [movedColumn] = reorderedColumns.splice(sourceIndex, 1);
+      reorderedColumns.splice(destIndex, 0, movedColumn);
+      
+      setColumns(reorderedColumns);
+      saveToHistory(reorderedColumns, rowsData, cellStyles);
+      saveToBackend(reorderedColumns, rowsData, cellStyles);
+      toast.success('✓ סדר העמודות עודכן');
+      return;
+    }
+
+    // גרירת שורות
     const items = Array.from(filteredAndSortedData);
     const [reorderedItem] = items.splice(result.source.index, 1);
     items.splice(result.destination.index, 0, reorderedItem);
@@ -525,7 +542,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       
       if (resizeStartRef.current.type === 'column') {
         const diff = e.clientX - resizeStartRef.current.startX;
-        const newWidth = Math.max(50, resizeStartRef.current.startWidth + diff);
+        const newWidth = Math.max(50, resizeStartRef.current.startWidth + diff); // מינימום 50px
         
         const updated = columns.map(col => 
           col.key === resizeStartRef.current.key ? { ...col, width: `${newWidth}px` } : col
@@ -911,34 +928,45 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
           >
             <DragDropContext onDragEnd={handleDragEnd}>
               <table className="w-full border-collapse" dir="rtl" style={{ position: 'relative' }}>
-                <thead className="bg-slate-100" style={{ position: 'sticky', top: 0, zIndex: 25 }}>
-                  <tr>
-                    <th className="border border-slate-200 p-3 w-12 bg-slate-200 sticky right-0 shadow-[2px_0_5px_rgba(0,0,0,0.1)]" style={{ zIndex: 35 }}>
-                      <GripVertical className="w-4 h-4 mx-auto text-slate-400" />
-                    </th>
-                    {visibleColumns.map((col, colIndex) => {
+                <Droppable droppableId="spreadsheet-columns" direction="horizontal" type="column">
+                  {(provided) => (
+                    <thead 
+                      className="bg-slate-100" 
+                      style={{ position: 'sticky', top: 0, zIndex: 25 }}
+                      ref={provided.innerRef}
+                      {...provided.droppableProps}
+                    >
+                      <tr>
+                        <th className="border border-slate-200 p-3 w-12 bg-slate-200 sticky right-0 shadow-[2px_0_5px_rgba(0,0,0,0.1)]" style={{ zIndex: 35 }}>
+                          <GripVertical className="w-4 h-4 mx-auto text-slate-400" />
+                        </th>
+                        {visibleColumns.map((col, colIndex) => {
                       const isEditing = editingColumnKey === col.key;
                       const isSorted = sortColumn === col.key;
                       const hasFilter = columnFilters[col.key];
                       
                       return (
-                        <th
-                          key={col.key}
-                          className={`border border-slate-200 p-3 text-right font-semibold hover:bg-blue-50 cursor-pointer group relative ${
-                            colIndex === 0 ? 'sticky shadow-[2px_0_5px_rgba(0,0,0,0.1)] bg-slate-100' : ''
-                          }`}
-                          style={{ 
-                            width: col.width,
-                            minWidth: col.width,
-                            maxWidth: col.width,
-                            position: colIndex === 0 ? 'sticky' : 'relative',
-                            right: colIndex === 0 ? '48px' : undefined,
-                            backgroundColor: colIndex === 0 ? '#f1f5f9' : '#f1f5f9',
-                            zIndex: colIndex === 0 ? 30 : 25,
-                            overflow: editingColumnKey === col.key ? 'visible' : 'hidden'
-                          }}
-                          onClick={(e) => handleColumnHeaderClick(col.key, e)}
-                        >
+                        <Draggable key={col.key} draggableId={col.key} index={colIndex} type="column">
+                          {(provided, snapshot) => (
+                            <th
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              className={`border border-slate-200 p-3 text-right font-semibold hover:bg-blue-50 cursor-pointer group relative ${
+                                colIndex === 0 ? 'sticky shadow-[2px_0_5px_rgba(0,0,0,0.1)] bg-slate-100' : ''
+                              } ${snapshot.isDragging ? 'opacity-50 bg-blue-100 shadow-2xl z-50' : ''}`}
+                              style={{ 
+                                width: col.width,
+                                minWidth: col.width,
+                                maxWidth: col.width,
+                                position: colIndex === 0 ? 'sticky' : 'relative',
+                                right: colIndex === 0 ? '48px' : undefined,
+                                backgroundColor: snapshot.isDragging ? '#dbeafe' : (colIndex === 0 ? '#f1f5f9' : '#f1f5f9'),
+                                zIndex: snapshot.isDragging ? 50 : (colIndex === 0 ? 30 : 25),
+                                overflow: editingColumnKey === col.key ? 'visible' : 'hidden',
+                                ...provided.draggableProps.style
+                              }}
+                              onClick={(e) => !snapshot.isDragging && handleColumnHeaderClick(col.key, e)}
+                            >
                           {isEditing ? (
                             <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                               <Input
@@ -961,6 +989,14 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                           ) : (
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
+                                {/* ידית גרירה לעמודה */}
+                                <div 
+                                  {...provided.dragHandleProps}
+                                  className="cursor-grab active:cursor-grabbing p-1 hover:bg-blue-100 rounded"
+                                  title="גרור לשינוי סדר"
+                                >
+                                  <GripVertical className="w-4 h-4 text-slate-400" />
+                                </div>
                                 <span>{col.title}</span>
                                 {hasFilter && (
                                   <Badge variant="outline" className="h-5 px-1 text-xs bg-blue-50">
@@ -1073,27 +1109,42 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                             </div>
                           )}
                           
-                          {/* Column Resizer - ידית גרירה */}
+                          {/* Column Resizer - ידית גרירה משופרת */}
                           <div
                             onMouseDown={(e) => handleColumnResizeStart(e, col.key)}
-                            className="absolute top-0 bottom-0 hover:bg-blue-300 active:bg-blue-500 cursor-col-resize"
+                            className="absolute top-0 bottom-0 cursor-col-resize group/resizer transition-all"
                             style={{ 
-                              right: '-4px',
-                              width: '8px',
-                              backgroundColor: resizingColumn === col.key ? '#3b82f6' : '#e2e8f0',
-                              zIndex: 999,
-                              opacity: resizingColumn === col.key ? 1 : 0.3
+                              right: '-6px',
+                              width: '12px',
+                              zIndex: 999
                             }}
-                            title="גרור לשינוי רוחב"
-                          />
-                        </th>
+                            title="גרור לשינוי רוחב (מינימום 50px)"
+                          >
+                            {/* קו ויזואלי */}
+                            <div 
+                              className="absolute inset-y-0 right-1/2 -translate-x-1/2 transition-all"
+                              style={{
+                                width: resizingColumn === col.key ? '4px' : '2px',
+                                backgroundColor: resizingColumn === col.key ? '#3b82f6' : '#cbd5e1',
+                                boxShadow: resizingColumn === col.key ? '0 0 8px rgba(59, 130, 246, 0.5)' : 'none'
+                              }}
+                            />
+                            {/* אזור hover מורחב */}
+                            <div className="absolute inset-0 group-hover/resizer:bg-blue-200/30" />
+                          </div>
+                            </th>
+                          )}
+                        </Draggable>
                       );
                     })}
+                    {provided.placeholder}
                     <th className="border border-slate-200 p-3" style={{ width: '120px' }}>
                       פעולות
                     </th>
                   </tr>
-                </thead>
+                    </thead>
+                  )}
+                </Droppable>
 
                 <Droppable droppableId="spreadsheet-rows">
                   {(provided) => (
@@ -1707,8 +1758,9 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                 <li>• <kbd className="px-2 py-1 bg-white rounded text-xs">Ctrl+Click</kbd> על כותרת = תפריט עמודה</li>
                 <li>• <kbd className="px-2 py-1 bg-white rounded text-xs">Ctrl+Z</kbd> = בטל פעולה</li>
                 <li>• <kbd className="px-2 py-1 bg-white rounded text-xs">Ctrl+Y</kbd> = שחזר פעולה</li>
-                <li>• <kbd className="px-2 py-1 bg-white rounded text-xs">גרור ידית ≡</kbd> = שנה סדר שורות</li>
-                <li>• <kbd className="px-2 py-1 bg-white rounded text-xs">גרור קו בין עמודות</kbd> = שנה רוחב (העבר עכבר בין הכותרות)</li>
+                <li>• <kbd className="px-2 py-1 bg-white rounded text-xs">גרור ידית ≡ בכותרת</kbd> = שנה סדר עמודות</li>
+                <li>• <kbd className="px-2 py-1 bg-white rounded text-xs">גרור ידית ≡ בשורה</kbd> = שנה סדר שורות</li>
+                <li>• <kbd className="px-2 py-1 bg-white rounded text-xs">גרור קו בין עמודות</kbd> = שנה רוחב (מינימום 50px)</li>
                 <li>• <kbd className="px-2 py-1 bg-white rounded text-xs">גרור קו מתחת לידית ≡</kbd> = שנה גובה שורה</li>
               </ul>
             </div>
