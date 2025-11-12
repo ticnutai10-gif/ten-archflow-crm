@@ -69,6 +69,22 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const [customCellTypes, setCustomCellTypes] = useState([]);
   const [showCellTypesDialog, setShowCellTypesDialog] = useState(false);
   
+  // Find & Replace
+  const [showFindReplaceDialog, setShowFindReplaceDialog] = useState(false);
+  const [findText, setFindText] = useState("");
+  const [replaceText, setReplaceText] = useState("");
+  const [caseSensitive, setCaseSensitive] = useState(false);
+  
+  // Merge cells
+  const [mergedCells, setMergedCells] = useState({});
+  const [showMergeDialog, setShowMergeDialog] = useState(false);
+  
+  // Templates
+  const [showTemplatesDialog, setShowTemplatesDialog] = useState(false);
+  
+  // Print & Export
+  const [showPrintPreview, setShowPrintPreview] = useState(false);
+  
   const editInputRef = useRef(null);
   const columnEditRef = useRef(null);
 
@@ -100,6 +116,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       setConditionalFormats(spreadsheet.conditional_formats || []);
       setFreezeSettings(spreadsheet.freeze_settings || { freeze_rows: 0, freeze_columns: 1 });
       setCustomCellTypes(spreadsheet.custom_cell_types || []);
+      setMergedCells(spreadsheet.merged_cells || {});
       
       // אתחול ההיסטוריה
       setHistory([{
@@ -659,6 +676,175 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     toast.success('✓ הקובץ יוצא בהצלחה');
   };
 
+  const exportToPDF = () => {
+    const printWindow = window.open('', '_blank');
+    const visibleCols = columns.filter(col => col.visible !== false);
+    
+    const html = `
+      <!DOCTYPE html>
+      <html dir="rtl">
+      <head>
+        <meta charset="utf-8">
+        <title>${spreadsheet.name}</title>
+        <style>
+          body { font-family: Arial, sans-serif; direction: rtl; padding: 20px; }
+          h1 { text-align: center; margin-bottom: 20px; }
+          table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+          th, td { border: 1px solid #ccc; padding: 8px; text-align: right; }
+          th { background-color: #f1f5f9; font-weight: bold; }
+          tr:nth-child(even) { background-color: #f8fafc; }
+          .footer { text-align: center; margin-top: 30px; font-size: 12px; color: #666; }
+        </style>
+      </head>
+      <body>
+        <h1>${spreadsheet.name}</h1>
+        <p style="text-align: center; color: #666; margin-bottom: 20px;">
+          נוצר ב-${new Date().toLocaleDateString('he-IL')} | ${filteredAndSortedData.length} שורות
+        </p>
+        <table>
+          <thead>
+            <tr>
+              ${visibleCols.map(col => `<th>${col.title}</th>`).join('')}
+            </tr>
+          </thead>
+          <tbody>
+            ${filteredAndSortedData.map(row => `
+              <tr>
+                ${visibleCols.map(col => {
+                  const cellKey = `${row.id}_${col.key}`;
+                  const cellStyle = cellStyles[cellKey] || {};
+                  const conditionalStyle = getConditionalStyle(col.key, row[col.key]);
+                  const mergedStyle = { ...conditionalStyle, ...cellStyle };
+                  
+                  return `<td style="${
+                    mergedStyle.backgroundColor ? `background-color: ${mergedStyle.backgroundColor};` : ''
+                  }${
+                    mergedStyle.color ? `color: ${mergedStyle.color};` : ''
+                  }${
+                    mergedStyle.fontWeight ? `font-weight: ${mergedStyle.fontWeight};` : ''
+                  }${
+                    mergedStyle.opacity ? `opacity: ${mergedStyle.opacity / 100};` : ''
+                  }">${row[col.key] || ''}</td>`;
+                }).join('')}
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+        <div class="footer">
+          ${spreadsheet.description || ''}
+        </div>
+      </body>
+      </html>
+    `;
+    
+    printWindow.document.write(html);
+    printWindow.document.close();
+    setTimeout(() => {
+      printWindow.print();
+      toast.success('✓ מוכן להדפסה/שמירה כ-PDF');
+    }, 250);
+  };
+
+  const applyTemplate = (template) => {
+    const newColumns = template.columns.map((col, idx) => ({
+      ...col,
+      key: `col${Date.now()}_${idx}`
+    }));
+    
+    const newRows = template.sampleData.map((rowData, idx) => ({
+      id: `row_${Date.now()}_${idx}`,
+      ...rowData
+    }));
+    
+    setColumns(newColumns);
+    setRowsData(newRows);
+    setCellStyles({});
+    saveToHistory(newColumns, newRows, {});
+    saveToBackend(newColumns, newRows, {});
+    setShowTemplatesDialog(false);
+    toast.success('✓ תבנית הוחלה בהצלחה');
+  };
+
+  // Find & Replace logic
+  const handleFindReplace = (replaceAll = false) => {
+    if (!findText) {
+      toast.error('הזן טקסט לחיפוש');
+      return;
+    }
+
+    let replacedCount = 0;
+    const updatedRows = rowsData.map(row => {
+      const newRow = { ...row };
+      columns.forEach(col => {
+        const cellValue = String(row[col.key] || '');
+        const searchValue = caseSensitive ? findText : findText.toLowerCase();
+        const compareValue = caseSensitive ? cellValue : cellValue.toLowerCase();
+        
+        if (replaceAll ? compareValue.includes(searchValue) : compareValue === searchValue) {
+          if (replaceAll) {
+            newRow[col.key] = caseSensitive 
+              ? cellValue.replaceAll(findText, replaceText)
+              : cellValue.replace(new RegExp(findText, 'gi'), replaceText);
+          } else {
+            newRow[col.key] = replaceText;
+          }
+          replacedCount++;
+        }
+      });
+      return newRow;
+    });
+
+    if (replacedCount > 0) {
+      setRowsData(updatedRows);
+      saveToHistory(columns, updatedRows, cellStyles);
+      saveToBackend(columns, updatedRows, cellStyles);
+      toast.success(`✓ ${replacedCount} תאים עודכנו`);
+    } else {
+      toast.error('לא נמצאו תוצאות');
+    }
+  };
+
+  // Auto-complete suggestions
+  const getAutoCompleteSuggestions = (columnKey) => {
+    const values = new Set();
+    rowsData.forEach(row => {
+      const val = row[columnKey];
+      if (val && String(val).trim()) {
+        values.add(String(val).trim());
+      }
+    });
+    return Array.from(values).sort();
+  };
+
+  // Merge cells
+  const mergeCells = () => {
+    if (selectedCells.size < 2) {
+      toast.error('בחר לפחות 2 תאים למיזוג');
+      return;
+    }
+
+    const cellsArray = Array.from(selectedCells);
+    const mergeKey = cellsArray.sort().join('|');
+    
+    setMergedCells(prev => ({
+      ...prev,
+      [mergeKey]: cellsArray
+    }));
+    
+    toast.success(`✓ ${cellsArray.length} תאים אוחדו`);
+    setSelectedCells(new Set());
+    saveToBackend(columns, rowsData, cellStyles);
+  };
+
+  const unmergeCells = (mergeKey) => {
+    setMergedCells(prev => {
+      const { [mergeKey]: removed, ...rest } = prev;
+      return rest;
+    });
+    toast.success('✓ תאים הופרדו');
+    saveToBackend(columns, rowsData, cellStyles);
+  };
+
   const handleCellClick = (rowId, columnKey, event) => {
     if (event?.altKey) {
       event.preventDefault();
@@ -874,7 +1060,8 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         validation_rules: validationRules,
         conditional_formats: conditionalFormats,
         freeze_settings: freezeSettings,
-        custom_cell_types: customCellTypes
+        custom_cell_types: customCellTypes,
+        merged_cells: mergedCells
       });
 
       console.log('✅ Saved successfully');
@@ -968,6 +1155,17 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                       <ColorPicker onApply={applyStyleToSelection} />
                     </PopoverContent>
                   </Popover>
+                  {selectedCells.size >= 2 && (
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={mergeCells}
+                      className="gap-2"
+                    >
+                      <Grid className="w-4 h-4" />
+                      מזג
+                    </Button>
+                  )}
                   <Button 
                     size="sm" 
                     variant="ghost"
@@ -995,6 +1193,46 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                 <Upload className="w-4 h-4" />
                 ייבוא
               </Button>
+              
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button size="sm" variant="outline" className="gap-2">
+                    <Download className="w-4 h-4" />
+                    ייצוא
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-48" align="end" dir="rtl">
+                  <div className="space-y-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full justify-start gap-2"
+                      onClick={exportToCSV}
+                    >
+                      <Download className="w-4 h-4" />
+                      ייצא ל-CSV
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full justify-start gap-2"
+                      onClick={() => exportToPDF()}
+                    >
+                      <Download className="w-4 h-4" />
+                      ייצא ל-PDF
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full justify-start gap-2"
+                      onClick={() => setShowPrintPreview(true)}
+                    >
+                      <Eye className="w-4 h-4" />
+                      תצוגת הדפסה
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
               
               <Button 
                 onClick={() => setShowFilterDialog(true)} 
@@ -2539,9 +2777,290 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* דיאלוג חיפוש והחלפה */}
+      <Dialog open={showFindReplaceDialog} onOpenChange={setShowFindReplaceDialog}>
+        <DialogContent className="max-w-md" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl flex items-center gap-2">
+              <Search className="w-6 h-6" />
+              חיפוש והחלפה
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 mt-4">
+            <div>
+              <label className="text-sm font-medium mb-2 block">חפש טקסט</label>
+              <Input
+                placeholder="מה לחפש..."
+                value={findText}
+                onChange={(e) => setFindText(e.target.value)}
+                className="h-10"
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-2 block">החלף ב</label>
+              <Input
+                placeholder="טקסט חדש..."
+                value={replaceText}
+                onChange={(e) => setReplaceText(e.target.value)}
+                className="h-10"
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Switch
+                checked={caseSensitive}
+                onCheckedChange={setCaseSensitive}
+              />
+              <label className="text-sm">התאם אותיות גדולות/קטנות</label>
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
+              💡 החיפוש יתבצע בכל התאים בטבלה
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => handleFindReplace(false)}
+              disabled={!findText}
+            >
+              החלף התאמה מדויקת
+            </Button>
+            <Button 
+              onClick={() => handleFindReplace(true)}
+              disabled={!findText}
+            >
+              החלף הכל
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* דיאלוג תבניות */}
+      <Dialog open={showTemplatesDialog} onOpenChange={setShowTemplatesDialog}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl flex items-center gap-2">
+              <Table className="w-6 h-6" />
+              תבניות טבלאות מוכנות
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 mt-4">
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+              <p className="text-sm text-amber-800">
+                ⚠️ שים לב: בחירת תבנית תחליף את כל הנתונים הקיימים בטבלה!
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {TEMPLATES.map(template => (
+                <div key={template.id} className="border rounded-lg p-4 bg-white hover:shadow-md transition-shadow">
+                  <h3 className="font-bold text-lg mb-2">{template.name}</h3>
+                  <p className="text-sm text-slate-600 mb-3">{template.description}</p>
+                  <div className="text-xs text-slate-500 mb-3">
+                    {template.columns.length} עמודות • {template.sampleData.length} שורות לדוגמה
+                  </div>
+                  <Button
+                    size="sm"
+                    className="w-full"
+                    onClick={() => {
+                      if (confirm(`להחליף את הטבלה הנוכחית בתבנית "${template.name}"?`)) {
+                        applyTemplate(template);
+                      }
+                    }}
+                  >
+                    החל תבנית
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowTemplatesDialog(false)}>
+              סגור
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* תצוגת הדפסה */}
+      <Dialog open={showPrintPreview} onOpenChange={setShowPrintPreview}>
+        <DialogContent className="max-w-6xl max-h-[95vh] overflow-y-auto" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl flex items-center gap-2">
+              <Eye className="w-6 h-6" />
+              תצוגת הדפסה
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="mt-4 bg-white p-8 shadow-lg" style={{ direction: 'rtl' }}>
+            <div className="text-center mb-6">
+              <h1 className="text-3xl font-bold mb-2">{spreadsheet.name}</h1>
+              {spreadsheet.description && (
+                <p className="text-slate-600">{spreadsheet.description}</p>
+              )}
+              <p className="text-sm text-slate-500 mt-2">
+                {new Date().toLocaleDateString('he-IL', { year: 'numeric', month: 'long', day: 'numeric' })}
+              </p>
+            </div>
+
+            <table className="w-full border-collapse border border-slate-300">
+              <thead className="bg-slate-100">
+                <tr>
+                  {visibleColumns.map(col => (
+                    <th key={col.key} className="border border-slate-300 p-2 text-right font-bold">
+                      {col.title}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filteredAndSortedData.map((row, idx) => (
+                  <tr key={row.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                    {visibleColumns.map(col => {
+                      const cellKey = `${row.id}_${col.key}`;
+                      const cellStyle = cellStyles[cellKey] || {};
+                      const conditionalStyle = getConditionalStyle(col.key, row[col.key]);
+                      const mergedStyle = { ...conditionalStyle, ...cellStyle };
+                      
+                      return (
+                        <td 
+                          key={col.key} 
+                          className="border border-slate-300 p-2 text-sm"
+                          style={mergedStyle}
+                        >
+                          {row[col.key] || ''}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            <div className="text-center mt-6 text-sm text-slate-500">
+              סה"כ {filteredAndSortedData.length} שורות • {visibleColumns.length} עמודות
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setShowPrintPreview(false)}>
+              סגור
+            </Button>
+            <Button onClick={() => {
+              window.print();
+              toast.success('✓ פתח תיבת הדפסה');
+            }}>
+              הדפס
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
+// תבניות מוכנות
+const TEMPLATES = [
+  {
+    id: 'budget',
+    name: '🏦 תקציב פרויקט',
+    description: 'מעקב אחר הוצאות והכנסות',
+    columns: [
+      { title: 'פריט', width: '200px', type: 'text', visible: true },
+      { title: 'קטגוריה', width: '150px', type: 'text', visible: true },
+      { title: 'סכום מתוכנן', width: '120px', type: 'number', visible: true },
+      { title: 'סכום בפועל', width: '120px', type: 'number', visible: true },
+      { title: 'הערות', width: '250px', type: 'text', visible: true }
+    ],
+    sampleData: [
+      { col0: 'חומרי בניין', col1: 'בנייה', col2: '50000', col3: '48500', col4: 'במסגרת התקציב' },
+      { col0: 'שכר עובדים', col1: 'כוח אדם', col2: '80000', col3: '82000', col4: 'חריגה קלה' }
+    ]
+  },
+  {
+    id: 'tasks',
+    name: '✅ ניהול משימות',
+    description: 'מעקב אחר משימות ותהליכים',
+    columns: [
+      { title: 'משימה', width: '200px', type: 'text', visible: true },
+      { title: 'אחראי', width: '150px', type: 'text', visible: true },
+      { title: 'סטטוס', width: '120px', type: 'text', visible: true },
+      { title: 'עדיפות', width: '100px', type: 'text', visible: true },
+      { title: 'תאריך יעד', width: '120px', type: 'date', visible: true }
+    ],
+    sampleData: [
+      { col0: 'הכנת תכנון', col1: 'יוסי', col2: 'בתהליך', col3: 'גבוהה', col4: '2025-12-01' },
+      { col0: 'אישור היתרים', col1: 'מיכל', col2: 'חדש', col3: 'בינונית', col4: '2025-12-15' }
+    ]
+  },
+  {
+    id: 'inventory',
+    name: '📦 מלאי וציוד',
+    description: 'ניהול מלאי חומרים',
+    columns: [
+      { title: 'פריט', width: '200px', type: 'text', visible: true },
+      { title: 'כמות במלאי', width: '120px', type: 'number', visible: true },
+      { title: 'מינימום', width: '100px', type: 'number', visible: true },
+      { title: 'ספק', width: '150px', type: 'text', visible: true },
+      { title: 'מחיר יחידה', width: '120px', type: 'number', visible: true }
+    ],
+    sampleData: [
+      { col0: 'בטון', col1: '150', col2: '100', col3: 'רדימיקס', col4: '450' },
+      { col0: 'ברזל', col1: '80', col2: '50', col3: 'מפעל הברזל', col4: '12' }
+    ]
+  },
+  {
+    id: 'schedule',
+    name: '📅 לוח זמנים',
+    description: 'תכנון פרויקט ומועדים',
+    columns: [
+      { title: 'שלב', width: '200px', type: 'text', visible: true },
+      { title: 'תאריך התחלה', width: '120px', type: 'date', visible: true },
+      { title: 'תאריך סיום', width: '120px', type: 'date', visible: true },
+      { title: 'משך (ימים)', width: '100px', type: 'number', visible: true },
+      { title: 'סטטוס', width: '120px', type: 'text', visible: true }
+    ],
+    sampleData: [
+      { col0: 'תכנון', col1: '2025-11-01', col2: '2025-11-30', col3: '30', col4: 'הושלם' },
+      { col0: 'בנייה', col1: '2025-12-01', col2: '2026-03-31', col3: '120', col4: 'בתהליך' }
+    ]
+  },
+  {
+    id: 'contacts',
+    name: '👥 אנשי קשר',
+    description: 'רשימת לקוחות וספקים',
+    columns: [
+      { title: 'שם', width: '180px', type: 'text', visible: true },
+      { title: 'תפקיד', width: '150px', type: 'text', visible: true },
+      { title: 'טלפון', width: '120px', type: 'text', visible: true },
+      { title: 'אימייל', width: '200px', type: 'text', visible: true },
+      { title: 'חברה', width: '150px', type: 'text', visible: true }
+    ],
+    sampleData: [
+      { col0: 'דני כהן', col1: 'אדריכל', col2: '050-1234567', col3: 'danny@example.com', col4: 'אדריכלים בע"מ' }
+    ]
+  },
+  {
+    id: 'blank',
+    name: '📄 טבלה ריקה',
+    description: 'התחל מאפס עם 3 עמודות',
+    columns: [
+      { title: 'עמודה 1', width: '200px', type: 'text', visible: true },
+      { title: 'עמודה 2', width: '200px', type: 'text', visible: true },
+      { title: 'עמודה 3', width: '200px', type: 'text', visible: true }
+    ],
+    sampleData: []
+  }
+];
+
+// רכיב עזר לבחירת צבעים
 
 // רכיב עזר לבחירת צבעים
 function ColorPicker({ onApply, currentStyle = {} }) {
