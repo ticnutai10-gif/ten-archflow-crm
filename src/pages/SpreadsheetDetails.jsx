@@ -21,34 +21,13 @@ export default function SpreadsheetDetailsPage() {
       const urlParams = new URLSearchParams(window.location.search);
       const spreadsheetId = urlParams.get('id');
 
-      console.log('🔍🔍🔍 [LOAD] Loading spreadsheet ID:', spreadsheetId);
-
       if (!spreadsheetId) {
         toast.error('לא נמצא מזהה טבלה');
         navigate(createPageUrl('Tasks'));
         return;
       }
 
-      console.log('🔍🔍🔍 [LOAD] Calling base44.entities.CustomSpreadsheet.get()...');
       const data = await base44.entities.CustomSpreadsheet.get(spreadsheetId);
-      
-      console.log('🔍🔍🔍 [LOAD] ========== SPREADSHEET DATA ==========');
-      console.log('🔍🔍🔍 [LOAD] Full object:', JSON.stringify(data, null, 2));
-      console.log('🔍🔍🔍 [LOAD] Name:', data?.name);
-      console.log('🔍🔍🔍 [LOAD] Columns count:', data?.columns?.length);
-      console.log('🔍🔍🔍 [LOAD] rows_data type:', typeof data?.rows_data);
-      console.log('🔍🔍🔍 [LOAD] rows_data isArray:', Array.isArray(data?.rows_data));
-      console.log('🔍🔍🔍 [LOAD] rows_data length:', data?.rows_data?.length);
-      console.log('🔍🔍🔍 [LOAD] rows_data content:', data?.rows_data);
-      console.log('🔍🔍🔍 [LOAD] ========================================');
-      
-      if (data?.rows_data?.length > 0) {
-        console.log('✅✅✅ [LOAD] ROWS_DATA EXISTS! Sample rows:', JSON.stringify(data.rows_data.slice(0, 3), null, 2));
-      } else {
-        console.error('❌❌❌ [LOAD] NO ROWS_DATA! The table is empty!');
-        console.log('🔍 [LOAD] Full data keys:', Object.keys(data || {}));
-      }
-      
       setSpreadsheet(data);
     } catch (error) {
       console.error("Error loading spreadsheet:", error);
