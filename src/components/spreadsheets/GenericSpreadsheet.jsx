@@ -550,6 +550,22 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     return () => window.removeEventListener('mouseup', handleMouseUp);
   }, [isDraggingSelection]);
 
+  const handleCheckmarkClick = async (rowId, columnKey, event) => {
+    if (event?.altKey || event?.ctrlKey || event?.metaKey) return;
+    event.preventDefault();
+    const row = rowsData.find(r => r.id === rowId);
+    if (!row) return;
+    const currentValue = row[columnKey];
+    let nextValue = '';
+    if (currentValue === '✓') nextValue = '✗';
+    else if (currentValue === '✗') nextValue = '';
+    else nextValue = '✓';
+    const updatedRows = rowsData.map(r => r.id === rowId ? { ...r, [columnKey]: nextValue } : r);
+    setRowsData(updatedRows);
+    saveToHistory(columns, updatedRows, cellStyles);
+    await saveToBackend(columns, updatedRows, cellStyles);
+  };
+
   const handleCellClick = (rowId, columnKey, event) => {
     if (event?.altKey) {
       event.preventDefault();
@@ -796,8 +812,12 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                     const cellStyle = cellStyles[cellKey] || {};
                                     const colIndex = visibleColumns.findIndex(c => c.key === column.key);
                                     return (
-                                      <td key={column.key} className={`border border-slate-200 p-2 hover:bg-blue-50 ${isSelected ? 'ring-2 ring-purple-500 bg-purple-50' : ''} ${colIndex === 0 ? 'sticky shadow-[2px_0_5px_rgba(0,0,0,0.05)]' : ''} ${isDraggingSelection ? 'cursor-crosshair' : 'cursor-pointer'}`} style={{ backgroundColor: isSelected ? '#faf5ff' : colIndex === 0 ? (rowIndex % 2 === 0 ? '#ffffff' : '#f8fafc') : cellStyle.backgroundColor, opacity: cellStyle.opacity ? cellStyle.opacity / 100 : 1, fontWeight: cellStyle.fontWeight || 'normal', height: `${rowHeight}px`, maxHeight: `${rowHeight}px`, overflow: 'hidden', position: colIndex === 0 ? 'sticky' : 'relative', right: colIndex === 0 ? '48px' : undefined, zIndex: colIndex === 0 ? 10 : 1, userSelect: isDraggingSelection ? 'none' : 'auto' }} onClick={(e) => !isEditing && handleCellClick(row.id, column.key, e)} onMouseDown={(e) => !isEditing && handleCellMouseDown(row.id, column.key, e)} onMouseEnter={() => handleCellMouseEnter(row.id, column.key)}>
-                                        {isEditing ? (
+                                      <td key={column.key} className={`border border-slate-200 p-2 hover:bg-blue-50 ${isSelected ? 'ring-2 ring-purple-500 bg-purple-50' : ''} ${colIndex === 0 ? 'sticky shadow-[2px_0_5px_rgba(0,0,0,0.05)]' : ''} ${isDraggingSelection ? 'cursor-crosshair' : 'cursor-pointer'}`} style={{ backgroundColor: isSelected ? '#faf5ff' : colIndex === 0 ? (rowIndex % 2 === 0 ? '#ffffff' : '#f8fafc') : cellStyle.backgroundColor, opacity: cellStyle.opacity ? cellStyle.opacity / 100 : 1, fontWeight: cellStyle.fontWeight || 'normal', height: `${rowHeight}px`, maxHeight: `${rowHeight}px`, overflow: 'hidden', position: colIndex === 0 ? 'sticky' : 'relative', right: colIndex === 0 ? '48px' : undefined, zIndex: colIndex === 0 ? 10 : 1, userSelect: isDraggingSelection ? 'none' : 'auto' }} onClick={(e) => !isEditing && (column.type === 'checkmark' ? handleCheckmarkClick(row.id, column.key, e) : handleCellClick(row.id, column.key, e))} onMouseDown={(e) => !isEditing && handleCellMouseDown(row.id, column.key, e)} onMouseEnter={() => handleCellMouseEnter(row.id, column.key)}>
+                                        {column.type === 'checkmark' ? (
+                                          <div className="flex items-center justify-center text-2xl font-bold select-none" style={{ userSelect: 'none' }}>
+                                            {cellValue === '✓' ? <span className="text-green-600">✓</span> : cellValue === '✗' ? <span className="text-red-600">✗</span> : <span className="text-slate-300">○</span>}
+                                          </div>
+                                        ) : isEditing ? (
                                           <div className="relative">
                                             <Input ref={editInputRef} value={editValue} onChange={(e) => setEditValue(e.target.value)} onBlur={saveEdit} onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') { setEditingCell(null); setEditValue(""); } }} className="h-8" autoFocus dir="rtl" list={`autocomplete-${column.key}`} />
                                             <datalist id={`autocomplete-${column.key}`}>{getAutoCompleteSuggestions(column.key).map((suggestion, idx) => <option key={idx} value={suggestion} />)}</datalist>
