@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { TimeLog, Client } from "@/entities/all";
 import { User } from "@/entities/User";
@@ -294,11 +293,16 @@ function CalendarView({ timeLogs, onDateClick, clients }) {
 
   // קבלת ימי החודש הנוכחי
   const getDaysInMonth = () => {
-    const start = startOfWeek(startOfMonth(currentMonth), { weekStartsOn: 0 }); // Start from Sunday
-    const end = endOfWeek(endOfMonth(currentMonth), { weekStartsOn: 0 });   // End on Saturday
-    const days = [];
+    const monthStart = startOfMonth(currentMonth);
+    const monthEnd = endOfMonth(currentMonth);
     
-    let current = start;
+    // התחל מהראשון ביום ראשון של השבוע
+    const start = startOfWeek(monthStart, { weekStartsOn: 0 });
+    const end = endOfWeek(monthEnd, { weekStartsOn: 0 });
+    
+    const days = [];
+    let current = new Date(start);
+    
     while (current <= end) {
       days.push(new Date(current));
       current = addDays(current, 1);
