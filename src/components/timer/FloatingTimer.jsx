@@ -803,6 +803,16 @@ ${context}
                       <Button size="icon" variant="outline" onClick={state.reset} className="rounded-full h-8 w-8" title="איפוס">
                         <RefreshCcw className="w-4 h-4" />
                       </Button>
+                      {/* ✅ כפתור שמור חדש */}
+                      <Button 
+                        size="icon" 
+                        variant="outline" 
+                        onClick={handleSaveClick}
+                        disabled={!prefs.selectedClientName}
+                        className="rounded-full h-8 w-8"
+                        title={!prefs.selectedClientName ? "בחר לקוח לפני שמירה" : "שמור"}>
+                        <Save className="w-4 h-4" />
+                      </Button>
                     </div>
                   </div>
 
