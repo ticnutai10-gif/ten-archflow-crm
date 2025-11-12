@@ -21,7 +21,6 @@ import {
   Wand2
 } from 'lucide-react';
 import { base44 } from "@/api/base44Client";
-import * as XLSX from 'xlsx';
 
 // שדות אפשריים בישות Client
 const CLIENT_FIELDS = [
@@ -42,6 +41,50 @@ const CLIENT_FIELDS = [
   { value: 'preferred_contact', label: 'אמצעי תקשורת מועדף', required: false, example: 'אימייל' },
   { value: '', label: '⚠️ דלג על עמודה זו', required: false }
 ];
+
+// פונקציה לקריאת CSV
+const parseCSV = (text) => {
+  const lines = text.split('\n').filter(line => line.trim());
+  return lines.map(line => {
+    const values = [];
+    let current = '';
+    let inQuotes = false;
+    
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      
+      if (char === '"') {
+        inQuotes = !inQuotes;
+      } else if (char === ',' && !inQuotes) {
+        values.push(current.trim());
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    values.push(current.trim());
+    return values;
+  });
+};
+
+// פונקציה לקריאת Excel באמצעות parseSpreadsheet function
+const parseExcelFile = async (file) => {
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const response = await base44.functions.invoke('parseSpreadsheet', { file });
+    
+    if (response?.data?.rows) {
+      return response.data.rows;
+    }
+    
+    throw new Error('לא ניתן לקרוא את הקובץ');
+  } catch (error) {
+    console.error('Error parsing Excel:', error);
+    throw error;
+  }
+};
 
 export default function SmartClientImporter({ open, onClose, onSuccess }) {
   const [step, setStep] = useState(1); // 1: upload, 2: mapping, 3: preview, 4: import
@@ -64,40 +107,38 @@ export default function SmartClientImporter({ open, onClose, onSuccess }) {
     setFile(uploadedFile);
 
     try {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        try {
-          const data = new Uint8Array(event.target.result);
-          const workbook = XLSX.read(data, { type: 'array' });
-          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-          const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+      let parsedData;
+      
+      // בדיקה אם זה CSV או Excel
+      if (uploadedFile.name.toLowerCase().endsWith('.csv')) {
+        // קריאת CSV
+        const text = await uploadedFile.text();
+        parsedData = parseCSV(text);
+      } else {
+        // קריאת Excel באמצעות backend function
+        parsedData = await parseExcelFile(uploadedFile);
+      }
 
-          if (!jsonData || jsonData.length === 0) {
-            setError('הקובץ ריק או לא תקין');
-            return;
-          }
+      if (!parsedData || parsedData.length === 0) {
+        setError('הקובץ ריק או לא תקין');
+        return;
+      }
 
-          // השורה הראשונה היא כותרות
-          const headerRow = jsonData[0];
-          const dataRows = jsonData.slice(1).filter(row => 
-            row && row.some(cell => cell !== null && cell !== undefined && cell !== '')
-          );
+      // השורה הראשונה היא כותרות
+      const headerRow = parsedData[0];
+      const dataRows = parsedData.slice(1).filter(row => 
+        row && Array.isArray(row) && row.some(cell => cell !== null && cell !== undefined && cell !== '')
+      );
 
-          setHeaders(headerRow.map(h => String(h || '')));
-          setRawData(dataRows);
-          setStep(2);
+      setHeaders(headerRow.map(h => String(h || '')));
+      setRawData(dataRows);
+      setStep(2);
 
-          // הפעלת AI אוטומטית
-          setTimeout(() => suggestMappingWithAI(headerRow, dataRows.slice(0, 5)), 500);
-        } catch (err) {
-          console.error('Error parsing file:', err);
-          setError('שגיאה בקריאת הקובץ: ' + err.message);
-        }
-      };
-      reader.readAsArrayBuffer(uploadedFile);
+      // הפעלת AI אוטומטית
+      setTimeout(() => suggestMappingWithAI(headerRow, dataRows.slice(0, 5)), 500);
     } catch (err) {
-      console.error('Error reading file:', err);
-      setError('שגיאה בטעינת הקובץ');
+      console.error('Error parsing file:', err);
+      setError('שגיאה בקריאת הקובץ: ' + err.message);
     }
   };
 
