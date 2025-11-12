@@ -897,9 +897,17 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         </CardHeader>
 
         <CardContent className="p-0">
-          <div className="overflow-auto" style={{ maxHeight: fullScreenMode ? '85vh' : '60vh', position: 'relative' }}>
+          <div 
+            className="overflow-auto" 
+            style={{ 
+              maxHeight: fullScreenMode ? '85vh' : '60vh', 
+              position: 'relative',
+              overflowX: 'auto',
+              overflowY: 'auto'
+            }}
+          >
             <DragDropContext onDragEnd={handleDragEnd}>
-              <table className="w-full border-collapse" dir="rtl">
+              <table className="w-full border-collapse" dir="rtl" style={{ position: 'relative' }}>
                 <thead className="bg-slate-100" style={{ position: 'sticky', top: 0, zIndex: 25 }}>
                   <tr>
                     <th className="border border-slate-200 p-3 w-12 bg-slate-200 sticky right-0 shadow-[2px_0_5px_rgba(0,0,0,0.1)]" style={{ zIndex: 35 }}>
@@ -1060,15 +1068,23 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                           
                           {/* Column Resizer - ידית גרירה לשינוי רוחב */}
                           <div
-                            className="absolute left-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500 hover:w-1 z-30 transition-colors"
+                            className="absolute top-0 bottom-0 cursor-col-resize transition-all"
                             style={{ 
+                              left: '-6px',
+                              width: '12px',
                               backgroundColor: resizingColumn === col.key ? '#3b82f6' : 'transparent',
-                              width: resizingColumn === col.key ? '3px' : '8px',
-                              marginLeft: '-4px'
+                              zIndex: 100,
+                              pointerEvents: 'auto'
                             }}
                             onMouseDown={(e) => handleColumnResizeStart(e, col.key)}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#93c5fd'}
+                            onMouseLeave={(e) => {
+                              if (resizingColumn !== col.key) {
+                                e.currentTarget.style.backgroundColor = 'transparent';
+                              }
+                            }}
                             onClick={(e) => e.stopPropagation()}
-                            title="גרור לשינוי רוחב עמודה"
+                            title="⬌ גרור לשינוי רוחב עמודה"
                           />
                         </th>
                       );
@@ -1115,15 +1131,23 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                     
                                     {/* Row Resizer - ידית גרירה לשינוי גובה */}
                                     <div
-                                      className="absolute bottom-0 left-0 right-0 h-2 cursor-row-resize hover:bg-blue-500 z-30 transition-colors"
+                                      className="absolute left-0 right-0 cursor-row-resize transition-all"
                                       style={{ 
+                                        bottom: '-6px',
+                                        height: '12px',
                                         backgroundColor: resizingRow === row.id ? '#3b82f6' : 'transparent',
-                                        height: resizingRow === row.id ? '3px' : '8px',
-                                        marginBottom: '-4px'
+                                        zIndex: 100,
+                                        pointerEvents: 'auto'
                                       }}
                                       onMouseDown={(e) => handleRowResizeStart(e, row.id)}
+                                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#93c5fd'}
+                                      onMouseLeave={(e) => {
+                                        if (resizingRow !== row.id) {
+                                          e.currentTarget.style.backgroundColor = 'transparent';
+                                        }
+                                      }}
                                       onClick={(e) => e.stopPropagation()}
-                                      title="גרור לשינוי גובה שורה"
+                                      title="⬍ גרור לשינוי גובה שורה"
                                     />
                                   </td>
                                   {visibleColumns.map(column => {
@@ -1691,7 +1715,8 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                 <li>• <kbd className="px-2 py-1 bg-white rounded text-xs">Ctrl+Z</kbd> = בטל פעולה</li>
                 <li>• <kbd className="px-2 py-1 bg-white rounded text-xs">Ctrl+Y</kbd> = שחזר פעולה</li>
                 <li>• <kbd className="px-2 py-1 bg-white rounded text-xs">גרור ידית ≡</kbd> = שנה סדר שורות</li>
-                <li>• <kbd className="px-2 py-1 bg-white rounded text-xs">גרור קו כחול</kbd> = שנה גודל עמודה/שורה</li>
+                <li>• <kbd className="px-2 py-1 bg-white rounded text-xs">גרור קו בין עמודות</kbd> = שנה רוחב (העבר עכבר בין הכותרות)</li>
+                <li>• <kbd className="px-2 py-1 bg-white rounded text-xs">גרור קו מתחת לידית ≡</kbd> = שנה גובה שורה</li>
               </ul>
             </div>
           </div>
