@@ -1,5 +1,6 @@
+
 import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -550,6 +551,9 @@ ${CLIENT_FIELDS.filter(f => f.value).map(f =>
             <Sparkles className="w-7 h-7 text-purple-600" />
             יבוא לקוחות חכם
           </DialogTitle>
+          <DialogDescription className="text-slate-600">
+            העלה קובץ Excel או CSV והמערכת תזהה אוטומטית את העמודות בעברית
+          </DialogDescription>
         </DialogHeader>
 
         {/* Debug Panel */}
