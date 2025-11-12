@@ -3,8 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Save, Table, Copy, Settings, Palette, Eye, EyeOff, Edit2, X } from "lucide-react";
+import { Plus, Trash2, Save, Table, Copy, Settings, Palette, Eye, EyeOff, Edit2, X, Download, Upload, Grid, List } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
 
@@ -24,7 +28,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const [popoverOpen, setPopoverOpen] = useState(null);
   const [editingColumnKey, setEditingColumnKey] = useState(null);
   const [editingColumnTitle, setEditingColumnTitle] = useState("");
-  const [showColumnSettings, setShowColumnSettings] = useState(false);
+  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
   
   const editInputRef = useRef(null);
   const columnEditRef = useRef(null);
@@ -47,6 +51,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       
       setColumns(spreadsheet.columns || []);
       setRowsData(spreadsheet.rows_data || []);
+      setCellStyles(spreadsheet.cell_styles || {});
       
       console.log('✅ [GenericSpreadsheet] State updated with new data');
     } else {
@@ -61,7 +66,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     const updated = [...rowsData, newRow];
     setRowsData(updated);
     
-    await saveToBackend(columns, updated);
+    await saveToBackend(columns, updated, cellStyles);
     toast.success('✓ שורה נוספה');
   };
 
@@ -71,7 +76,16 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     const updated = rowsData.filter(r => r.id !== rowId);
     setRowsData(updated);
     
-    await saveToBackend(columns, updated);
+    // מחיקת סגנונות של התאים בשורה
+    const newStyles = { ...cellStyles };
+    Object.keys(newStyles).forEach(key => {
+      if (key.startsWith(`${rowId}_`)) {
+        delete newStyles[key];
+      }
+    });
+    setCellStyles(newStyles);
+    
+    await saveToBackend(columns, updated, newStyles);
     toast.success('✓ שורה נמחקה');
   };
 
@@ -82,7 +96,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     const updated = [...rowsData, newRow];
     setRowsData(updated);
     
-    await saveToBackend(columns, updated);
+    await saveToBackend(columns, updated, cellStyles);
     toast.success('✓ שורה הועתקה');
   };
 
@@ -91,15 +105,16 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     if (!columnName) return;
 
     const newColumn = {
-      key: `col${Date.now()}`,  // ללא קו תחתון!
+      key: `col${Date.now()}`,
       title: columnName,
       width: '150px',
+      type: 'text',
       visible: true
     };
 
     const updated = [...columns, newColumn];
     setColumns(updated);
-    await saveToBackend(updated, rowsData);
+    await saveToBackend(updated, rowsData, cellStyles);
     toast.success('✓ עמודה נוספה');
   };
 
@@ -116,7 +131,16 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     });
     setRowsData(updatedRows);
     
-    await saveToBackend(updated, updatedRows);
+    // מחיקת סגנונות של התאים בעמודה
+    const newStyles = { ...cellStyles };
+    Object.keys(newStyles).forEach(key => {
+      if (key.endsWith(`_${columnKey}`)) {
+        delete newStyles[key];
+      }
+    });
+    setCellStyles(newStyles);
+    
+    await saveToBackend(updated, updatedRows, newStyles);
     toast.success('✓ עמודה נמחקה');
   };
 
@@ -125,7 +149,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       col.key === columnKey ? { ...col, visible: !col.visible } : col
     );
     setColumns(updated);
-    await saveToBackend(updated, rowsData);
+    await saveToBackend(updated, rowsData, cellStyles);
     toast.success('✓ נראות עמודה שונתה');
   };
 
@@ -136,27 +160,78 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       col.key === columnKey ? { ...col, title: newTitle.trim() } : col
     );
     setColumns(updated);
-    await saveToBackend(updated, rowsData);
+    await saveToBackend(updated, rowsData, cellStyles);
     toast.success('✓ שם עמודה עודכן');
   };
 
+  const changeColumnType = async (columnKey, newType) => {
+    const updated = columns.map(col => 
+      col.key === columnKey ? { ...col, type: newType } : col
+    );
+    setColumns(updated);
+    await saveToBackend(updated, rowsData, cellStyles);
+    toast.success('✓ סוג עמודה עודכן');
+  };
+
+  const changeColumnWidth = async (columnKey, newWidth) => {
+    const updated = columns.map(col => 
+      col.key === columnKey ? { ...col, width: newWidth } : col
+    );
+    setColumns(updated);
+    await saveToBackend(updated, rowsData, cellStyles);
+  };
+
   const applyCellStyle = (cellKey, style) => {
-    setCellStyles(prev => ({
-      ...prev,
+    const newStyles = {
+      ...cellStyles,
       [cellKey]: style
-    }));
+    };
+    setCellStyles(newStyles);
+    saveToBackend(columns, rowsData, newStyles);
     toast.success('✓ סגנון הותקן');
   };
 
   const applyStyleToSelection = (style) => {
-    setCellStyles(prev => {
-      const newStyles = { ...prev };
-      selectedCells.forEach(cellKey => {
-        newStyles[cellKey] = style;
-      });
-      return newStyles;
+    const newStyles = { ...cellStyles };
+    selectedCells.forEach(cellKey => {
+      newStyles[cellKey] = style;
     });
+    setCellStyles(newStyles);
+    saveToBackend(columns, rowsData, newStyles);
     toast.success(`✓ סגנון הותקן ל-${selectedCells.size} תאים`);
+  };
+
+  const clearAllStyles = async () => {
+    if (!confirm('למחוק את כל העיצובים והצבעים?')) return;
+    
+    setCellStyles({});
+    await saveToBackend(columns, rowsData, {});
+    toast.success('✓ כל העיצובים נמחקו');
+  };
+
+  const exportToCSV = () => {
+    const visibleColumns = columns.filter(col => col.visible !== false);
+    
+    // כותרות
+    const headers = visibleColumns.map(col => col.title).join(',');
+    
+    // שורות
+    const rows = rowsData.map(row => {
+      return visibleColumns.map(col => {
+        const value = row[col.key] || '';
+        // Escape commas and quotes
+        return `"${String(value).replace(/"/g, '""')}"`;
+      }).join(',');
+    }).join('\n');
+    
+    const csv = headers + '\n' + rows;
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${spreadsheet.name || 'spreadsheet'}.csv`;
+    link.click();
+    
+    toast.success('✓ הקובץ יוצא בהצלחה');
   };
 
   const handleCellClick = (rowId, columnKey, event) => {
@@ -225,8 +300,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const saveEdit = async () => {
     if (!editingCell) return;
 
-    // Fix: Split correctly when cell key is "rowId_columnKey"
-    // Example: "row_1762974168484_col1" should split to rowId="row_1762974168484", columnKey="col1"
     const lastUnderscoreIndex = editingCell.lastIndexOf('_');
     const rowId = editingCell.substring(0, lastUnderscoreIndex);
     const columnKey = editingCell.substring(lastUnderscoreIndex + 1);
@@ -253,11 +326,11 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     setEditingCell(null);
     setEditValue("");
 
-    await saveToBackend(columns, updatedRows);
+    await saveToBackend(columns, updatedRows, cellStyles);
     toast.success('✓ התא נשמר');
   };
 
-  const saveToBackend = async (cols, rows) => {
+  const saveToBackend = async (cols, rows, styles) => {
     if (!spreadsheet?.id) return;
 
     try {
@@ -265,12 +338,14 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         id: spreadsheet.id,
         columnsCount: cols.length,
         rowsCount: rows.length,
+        stylesCount: Object.keys(styles).length,
         rows
       });
 
       await base44.entities.CustomSpreadsheet.update(spreadsheet.id, {
         columns: cols,
-        rows_data: rows
+        rows_data: rows,
+        cell_styles: styles
       });
 
       console.log('✅ Saved successfully');
@@ -303,6 +378,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
               <Table className="w-6 h-6 text-purple-600" />
               <CardTitle className="text-xl">{spreadsheet.name}</CardTitle>
               <Badge variant="outline">{rowsData.length} שורות</Badge>
+              <Badge variant="outline">{visibleColumns.length}/{columns.length} עמודות</Badge>
             </div>
             
             <div className="flex gap-2">
@@ -342,14 +418,15 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                 </>
               )}
               <Button 
-                onClick={() => setShowColumnSettings(!showColumnSettings)} 
+                onClick={() => setShowSettingsDialog(true)} 
                 size="sm" 
                 variant="ghost"
                 className="gap-2"
               >
                 <Settings className="w-4 h-4" />
+                הגדרות
               </Button>
-              <Button onClick={() => saveToBackend(columns, rowsData)} size="sm" variant="outline" className="gap-2">
+              <Button onClick={() => saveToBackend(columns, rowsData, cellStyles)} size="sm" variant="outline" className="gap-2">
                 <Save className="w-4 h-4" />
                 שמור
               </Button>
@@ -360,7 +437,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         <CardContent className="p-0">
           <div className="overflow-auto" style={{ maxHeight: fullScreenMode ? '85vh' : '60vh' }}>
             <table className="w-full border-collapse" dir="rtl">
-              <thead className="bg-slate-100 sticky top-0">
+              <thead className="bg-slate-100 sticky top-0 z-10">
                 <tr>
                   {visibleColumns.map(col => {
                     const isEditing = editingColumnKey === col.key;
@@ -581,65 +658,201 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         </CardContent>
 
         <div className="px-6 py-3 border-t bg-slate-50 text-xs text-slate-600">
-          {rowsData.length} שורות • {visibleColumns.length} עמודות
+          {rowsData.length} שורות • {visibleColumns.length} עמודות גלויות • {Object.keys(cellStyles).length} תאים מעוצבים
         </div>
       </Card>
 
-      {/* הגדרות עמודות */}
-      {showColumnSettings && (
-        <Card className="mt-4">
-          <CardHeader>
-            <CardTitle className="text-lg">הגדרות עמודות</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {columns.map(col => (
-                <div key={col.key} className="flex items-center justify-between p-2 border rounded hover:bg-slate-50">
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8"
-                      onClick={() => toggleColumnVisibility(col.key)}
-                    >
-                      {col.visible !== false ? (
-                        <Eye className="w-4 h-4 text-green-600" />
-                      ) : (
-                        <EyeOff className="w-4 h-4 text-slate-400" />
-                      )}
-                    </Button>
-                    <span className={col.visible === false ? 'text-slate-400' : ''}>
-                      {col.title}
-                    </span>
+      {/* דיאלוג הגדרות מתקדם */}
+      <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl flex items-center gap-2">
+              <Settings className="w-6 h-6" />
+              הגדרות וניהול טבלה
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-6 mt-4">
+            {/* ניהול עמודות */}
+            <div className="space-y-3">
+              <h3 className="font-bold text-lg flex items-center gap-2">
+                <Grid className="w-5 h-5" />
+                ניהול עמודות
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {columns.map(col => (
+                  <div key={col.key} className="border rounded-lg p-4 space-y-3 hover:shadow-md transition-shadow">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={col.visible !== false}
+                          onCheckedChange={() => toggleColumnVisibility(col.key)}
+                        />
+                        <span className="font-semibold">{col.title}</span>
+                      </div>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => deleteColumn(col.key)}
+                        className="h-8 w-8 text-red-600"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div>
+                        <label className="text-xs text-slate-600 mb-1 block">שם העמודה</label>
+                        <Input
+                          value={col.title}
+                          onChange={(e) => renameColumn(col.key, e.target.value)}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-xs text-slate-600 mb-1 block">סוג</label>
+                          <Select value={col.type || 'text'} onValueChange={(val) => changeColumnType(col.key, val)}>
+                            <SelectTrigger className="h-8 text-sm">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="text">טקסט</SelectItem>
+                              <SelectItem value="number">מספר</SelectItem>
+                              <SelectItem value="date">תאריך</SelectItem>
+                              <SelectItem value="checkbox">תיבת סימון</SelectItem>
+                              <SelectItem value="select">בחירה</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div>
+                          <label className="text-xs text-slate-600 mb-1 block">רוחב</label>
+                          <Select value={col.width} onValueChange={(val) => changeColumnWidth(col.key, val)}>
+                            <SelectTrigger className="h-8 text-sm">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="100px">צר (100px)</SelectItem>
+                              <SelectItem value="150px">רגיל (150px)</SelectItem>
+                              <SelectItem value="200px">רחב (200px)</SelectItem>
+                              <SelectItem value="300px">רחב מאוד (300px)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex gap-1">
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8"
-                      onClick={() => {
-                        setEditingColumnKey(col.key);
-                        setEditingColumnTitle(col.title);
-                        setShowColumnSettings(false);
-                      }}
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8 text-red-600"
-                      onClick={() => deleteColumn(col.key)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </CardContent>
-        </Card>
-      )}
+
+            <Separator />
+
+            {/* פעולות כלליות */}
+            <div className="space-y-3">
+              <h3 className="font-bold text-lg flex items-center gap-2">
+                <List className="w-5 h-5" />
+                פעולות כלליות
+              </h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <Button 
+                  variant="outline" 
+                  className="justify-start gap-2 h-auto py-3"
+                  onClick={exportToCSV}
+                >
+                  <Download className="w-5 h-5" />
+                  <div className="text-right">
+                    <div className="font-semibold">ייצא לקובץ CSV</div>
+                    <div className="text-xs text-slate-500">שמור את הטבלה כקובץ אקסל</div>
+                  </div>
+                </Button>
+
+                <Button 
+                  variant="outline" 
+                  className="justify-start gap-2 h-auto py-3"
+                  onClick={addColumn}
+                >
+                  <Plus className="w-5 h-5" />
+                  <div className="text-right">
+                    <div className="font-semibold">הוסף עמודה חדשה</div>
+                    <div className="text-xs text-slate-500">צור שדה חדש בטבלה</div>
+                  </div>
+                </Button>
+
+                <Button 
+                  variant="outline" 
+                  className="justify-start gap-2 h-auto py-3"
+                  onClick={addNewRow}
+                >
+                  <Plus className="w-5 h-5" />
+                  <div className="text-right">
+                    <div className="font-semibold">הוסף שורה חדשה</div>
+                    <div className="text-xs text-slate-500">צור רשומה חדשה</div>
+                  </div>
+                </Button>
+
+                <Button 
+                  variant="outline" 
+                  className="justify-start gap-2 h-auto py-3 text-red-600 hover:text-red-700 hover:bg-red-50"
+                  onClick={clearAllStyles}
+                >
+                  <Palette className="w-5 h-5" />
+                  <div className="text-right">
+                    <div className="font-semibold">נקה את כל העיצובים</div>
+                    <div className="text-xs text-slate-500">הסר צבעים וסגנונות מהטבלה</div>
+                  </div>
+                </Button>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* מידע על הטבלה */}
+            <div className="space-y-3">
+              <h3 className="font-bold text-lg">מידע על הטבלה</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-slate-50 p-4 rounded-lg">
+                <div>
+                  <div className="text-xs text-slate-600">שם הטבלה</div>
+                  <div className="font-bold text-lg">{spreadsheet.name}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-slate-600">סה"כ שורות</div>
+                  <div className="font-bold text-lg text-blue-600">{rowsData.length}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-slate-600">סה"כ עמודות</div>
+                  <div className="font-bold text-lg text-purple-600">{columns.length}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-slate-600">תאים מעוצבים</div>
+                  <div className="font-bold text-lg text-green-600">{Object.keys(cellStyles).length}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* טיפים מהירים */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h4 className="font-bold mb-2 text-blue-900">💡 טיפים מהירים</h4>
+              <ul className="text-sm space-y-1 text-blue-800">
+                <li>• <kbd className="px-2 py-1 bg-white rounded text-xs">Click</kbd> על תא = עריכה</li>
+                <li>• <kbd className="px-2 py-1 bg-white rounded text-xs">Ctrl+Click</kbd> על תא = תפריט צבעים</li>
+                <li>• <kbd className="px-2 py-1 bg-white rounded text-xs">Alt+Click</kbd> על תא = בחירה מרובה</li>
+                <li>• <kbd className="px-2 py-1 bg-white rounded text-xs">Click</kbd> על כותרת = שינוי שם</li>
+                <li>• <kbd className="px-2 py-1 bg-white rounded text-xs">Ctrl+Click</kbd> על כותרת = תפריט עמודה</li>
+              </ul>
+            </div>
+          </div>
+
+          <DialogFooter className="mt-6">
+            <Button onClick={() => setShowSettingsDialog(false)} className="w-full">
+              סגור
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
