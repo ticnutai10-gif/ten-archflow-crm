@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -104,7 +105,10 @@ export default function SmartAIPage() {
       const convs = await base44.agents.listConversations({
         agent_name: "smart_assistant"
       });
-      setConversations(convs || []);
+      
+      // סינון שיחות שלא נמחקו
+      const activeConvs = (convs || []).filter(conv => !conv.metadata?.deleted);
+      setConversations(activeConvs);
     } catch (error) {
       console.error('Error loading conversations:', error);
       toast.error('שגיאה בטעינת השיחות');
@@ -117,7 +121,8 @@ export default function SmartAIPage() {
         agent_name: "smart_assistant",
         metadata: {
           name: `שיחה חדשה - ${new Date().toLocaleString('he-IL')}`,
-          description: "שיחה עם העוזר החכם"
+          description: "שיחה עם העוזר החכם",
+          deleted: false
         }
       });
       
@@ -150,28 +155,20 @@ export default function SmartAIPage() {
       e.stopPropagation();
     }
     
-    if (!confirm('למחוק את השיחה? פעולה זו אינה הפיכה.')) return;
+    if (!confirm('להסתיר את השיחה? תוכל למצוא אותה בדשבורד אם תצטרך.')) return;
     
     try {
-      console.log('🗑️ [AI] Deleting conversation:', convId);
+      console.log('🗑️ [AI] Hiding conversation:', convId);
       
-      // נסיון ראשון - דרך ה-API של agents
-      try {
-        await base44.agents.deleteConversation(convId);
-        console.log('✅ [AI] Deleted via agents API');
-      } catch (agentError) {
-        console.warn('⚠️ [AI] Agent API delete failed, trying direct entity delete:', agentError);
-        
-        // נסיון שני - מחיקה ישירה של ה-entity
-        // צריך למצוא את שם ה-entity של conversations
-        try {
-          await base44.entities.Conversation.delete(convId);
-          console.log('✅ [AI] Deleted via entity API');
-        } catch (entityError) {
-          console.error('❌ [AI] Entity delete also failed:', entityError);
-          throw new Error('לא הצלחנו למחוק את השיחה');
+      // סימון השיחה כמחוקה ב-metadata
+      await base44.agents.updateConversation(convId, {
+        metadata: {
+          deleted: true,
+          deleted_at: new Date().toISOString()
         }
-      }
+      });
+      
+      console.log('✅ [AI] Conversation marked as deleted');
       
       // עדכון ה-UI
       if (currentConversation?.id === convId) {
@@ -179,13 +176,13 @@ export default function SmartAIPage() {
         setMessages([]);
       }
       
-      // טעינת השיחות מחדש
-      await loadConversations();
+      // הסרה מהרשימה מיידית
+      setConversations(prev => prev.filter(c => c.id !== convId));
       
-      toast.success('השיחה נמחקה בהצלחה');
+      toast.success('השיחה הוסתרה בהצלחה');
     } catch (error) {
-      console.error('❌ [AI] Error deleting conversation:', error);
-      toast.error('שגיאה במחיקת השיחה: ' + (error.message || 'נסה שוב'));
+      console.error('❌ [AI] Error hiding conversation:', error);
+      toast.error('שגיאה בהסתרת השיחה: ' + (error.message || 'נסה שוב'));
     }
   };
 
@@ -367,11 +364,11 @@ export default function SmartAIPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="opacity-0 group-hover:opacity-100 h-6 w-6 hover:bg-red-100 hover:text-red-600 transition-all"
+                          className="opacity-0 group-hover:opacity-100 h-7 w-7 hover:bg-red-50 hover:text-red-600 transition-all flex-shrink-0"
                           onClick={(e) => deleteConversation(conv.id, e)}
-                          title="מחק שיחה"
+                          title="הסתר שיחה"
                         >
-                          <Trash2 className="w-3 h-3" />
+                          <Trash2 className="w-3.5 h-3.5" />
                         </Button>
                       </div>
                     </div>
@@ -385,7 +382,7 @@ export default function SmartAIPage() {
           <div className="flex-1 flex flex-col min-w-0">
             <Card className="flex-1 shadow-lg border-0 bg-white/80 backdrop-blur-sm flex flex-col overflow-hidden">
               {!currentConversation ? (
-                /* Welcome Screen */
+                {/* Welcome Screen */}
                 <div className="flex-1 flex flex-col items-center justify-center p-8">
                   <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center mb-6 shadow-xl">
                     <Sparkles className="w-12 h-12 text-white" />
