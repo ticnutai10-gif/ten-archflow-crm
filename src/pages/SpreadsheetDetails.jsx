@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import GenericSpreadsheet from "@/components/spreadsheets/GenericSpreadsheetSimple";
+import GenericSpreadsheet from "@/components/spreadsheets/GenericSpreadsheet";
 import { toast } from "sonner";
 
 export default function SpreadsheetDetailsPage() {
