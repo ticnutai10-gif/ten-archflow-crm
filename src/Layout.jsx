@@ -6,13 +6,12 @@ import {
   BarChart3, Archive, FolderOpen, MessageSquare,
   Calculator, Pin, PinOff, ChevronRight, Home,
   Briefcase, CheckSquare2, Timer, Receipt,
-  Calendar, Mail, Brain
+  Calendar, Mail
 } from "lucide-react";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import FloatingTimer from "@/components/timer/FloatingTimer";
 import ReminderPopup from "@/components/reminders/ReminderPopup";
 import FloatingDebugPanel from "@/components/debug/FloatingDebugPanel";
-import FloatingChatButton from "@/components/chat/FloatingChatButton";
 import { base44 } from "@/api/base44Client";
 
 const ACCENT_COLOR = "#2C3A50";
@@ -29,7 +28,6 @@ const THEMES = {
 
 const MENU_ITEMS = [
   { name: "Dashboard", icon: Home, path: "Dashboard" },
-  { name: "צ'אט AI חכם", icon: Brain, path: "AIChat" },
   { name: "לקוחות", icon: Users, path: "Clients" },
   { name: "פרויקטים", icon: Briefcase, path: "Projects" },
   { name: "הצעות מחיר", icon: Calculator, path: "Quotes" },
@@ -483,7 +481,6 @@ export default function Layout({ children, currentPageName }) {
         <FloatingTimer />
         <ReminderPopup />
         <FloatingDebugPanel />
-        <FloatingChatButton />
       </div>
     </SidebarProvider>
   );
