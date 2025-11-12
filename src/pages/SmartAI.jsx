@@ -8,7 +8,6 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Sparkles,
   Send,
-  Trash2,
   BarChart3,
   Users,
   FolderOpen,
@@ -19,8 +18,7 @@ import {
   Zap,
   Brain,
   Target,
-  Plus,
-  RefreshCw
+  Plus
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import ReactMarkdown from 'react-markdown';
@@ -105,8 +103,7 @@ export default function SmartAIPage() {
         agent_name: "smart_assistant"
       });
       
-      const activeConvs = (convs || []).filter(conv => !conv.metadata?.deleted);
-      setConversations(activeConvs);
+      setConversations(convs || []);
     } catch (error) {
       console.error('Error loading conversations:', error);
       toast.error('שגיאה בטעינת השיחות');
@@ -119,8 +116,7 @@ export default function SmartAIPage() {
         agent_name: "smart_assistant",
         metadata: {
           name: `שיחה חדשה - ${new Date().toLocaleString('he-IL')}`,
-          description: "שיחה עם העוזר החכם",
-          deleted: false
+          description: "שיחה עם העוזר החכם"
         }
       });
       
@@ -144,40 +140,6 @@ export default function SmartAIPage() {
     } catch (error) {
       console.error('Error loading conversation:', error);
       toast.error('שגיאה בטעינת השיחה');
-    }
-  };
-
-  const deleteConversation = async (convId, e) => {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-    
-    if (!confirm('להסתיר את השיחה? תוכל למצוא אותה בדשבורד אם תצטרך.')) return;
-    
-    try {
-      console.log('🗑️ [AI] Hiding conversation:', convId);
-      
-      await base44.agents.updateConversation(convId, {
-        metadata: {
-          deleted: true,
-          deleted_at: new Date().toISOString()
-        }
-      });
-      
-      console.log('✅ [AI] Conversation marked as deleted');
-      
-      if (currentConversation?.id === convId) {
-        setCurrentConversation(null);
-        setMessages([]);
-      }
-      
-      setConversations(prev => prev.filter(c => c.id !== convId));
-      
-      toast.success('השיחה הוסתרה בהצלחה');
-    } catch (error) {
-      console.error('❌ [AI] Error hiding conversation:', error);
-      toast.error('שגיאה בהסתרת השיחה: ' + (error.message || 'נסה שוב'));
     }
   };
 
@@ -213,7 +175,6 @@ export default function SmartAIPage() {
 
   const MessageBubble = ({ message }) => {
     const isUser = message.role === 'user';
-    const isAssistant = message.role === 'assistant';
     
     return (
       <div className={`flex gap-3 ${isUser ? 'justify-end' : 'justify-start'} mb-4`}>
@@ -337,32 +298,19 @@ export default function SmartAIPage() {
                   conversations.map((conv) => (
                     <div
                       key={conv.id}
-                      className={`p-3 rounded-lg cursor-pointer transition-all group relative ${
+                      className={`p-3 rounded-lg cursor-pointer transition-all ${
                         currentConversation?.id === conv.id
                           ? 'bg-blue-50 border-2 border-blue-500'
                           : 'bg-slate-50 border border-slate-200 hover:bg-slate-100'
                       }`}
                       onClick={() => selectConversation(conv)}
                     >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-sm truncate">
-                            {conv.metadata?.name || 'שיחה'}
-                          </h3>
-                          <p className="text-xs text-slate-500 truncate mt-1">
-                            {new Date(conv.created_date).toLocaleDateString('he-IL')}
-                          </p>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="opacity-0 group-hover:opacity-100 h-7 w-7 hover:bg-red-50 hover:text-red-600 transition-all flex-shrink-0"
-                          onClick={(e) => deleteConversation(conv.id, e)}
-                          title="הסתר שיחה"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
+                      <h3 className="font-semibold text-sm truncate">
+                        {conv.metadata?.name || 'שיחה'}
+                      </h3>
+                      <p className="text-xs text-slate-500 truncate mt-1">
+                        {new Date(conv.created_date).toLocaleDateString('he-IL')}
+                      </p>
                     </div>
                   ))
                 )}
