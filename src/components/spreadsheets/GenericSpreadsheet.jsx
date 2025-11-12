@@ -2385,7 +2385,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                         );
                       })
                     )}
-                          onContextMenu={(e) => handleRowContextMenu(row.id, e)}
                         >
                           <div className="flex items-center gap-1 justify-center">
                             <Button
