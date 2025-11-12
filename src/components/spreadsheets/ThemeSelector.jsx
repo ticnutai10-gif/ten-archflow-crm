@@ -128,8 +128,15 @@ export default function ThemeSelector({ open, onClose, currentTheme, onApply }) 
     headerFont: "default",
     cellFont: "default",
     fontSize: "medium",
-    density: "comfortable"
+    density: "comfortable",
+    borderRadius: "none",
+    shadow: "none",
+    cellSpacing: "none",
+    hoverEffect: "subtle",
+    customColors: null
   });
+  
+  const [showCustomColors, setShowCustomColors] = React.useState(false);
 
   React.useEffect(() => {
     if (currentTheme) {
@@ -150,14 +157,86 @@ export default function ThemeSelector({ open, onClose, currentTheme, onApply }) 
       headerFont: "default",
       cellFont: "default",
       fontSize: "medium",
-      density: "comfortable"
+      density: "comfortable",
+      borderRadius: "none",
+      shadow: "none",
+      cellSpacing: "none",
+      hoverEffect: "subtle",
+      customColors: null
     };
     setTheme(defaultTheme);
+    setShowCustomColors(false);
     toast.success("✓ עיצוב אופס לברירת מחדל");
   };
+  
+  const handleCreateCustomPalette = () => {
+    const customPalette = {
+      name: "מותאם אישית",
+      headerBg: selectedPalette.headerBg,
+      headerText: selectedPalette.headerText,
+      cellBg: selectedPalette.cellBg,
+      cellAltBg: selectedPalette.cellAltBg,
+      cellText: selectedPalette.cellText,
+      border: selectedPalette.border,
+      hover: selectedPalette.hover,
+      selected: selectedPalette.selected
+    };
+    setTheme({ ...theme, customColors: customPalette, palette: "custom" });
+    setShowCustomColors(true);
+  };
+  
+  const updateCustomColor = (key, value) => {
+    if (!theme.customColors) return;
+    setTheme({
+      ...theme,
+      customColors: {
+        ...theme.customColors,
+        [key]: value
+      }
+    });
+  };
 
-  const selectedPalette = COLOR_PALETTES[theme.palette] || COLOR_PALETTES.default;
+  const selectedPalette = theme.customColors || COLOR_PALETTES[theme.palette] || COLOR_PALETTES.default;
   const selectedBorder = BORDER_STYLES[theme.borderStyle] || BORDER_STYLES.thin;
+  
+  // הגדרות רדיוס פינות
+  const borderRadiusOptions = {
+    none: { name: "ללא", value: "0px" },
+    small: { name: "קטן", value: "4px" },
+    medium: { name: "בינוני", value: "8px" },
+    large: { name: "גדול", value: "12px" },
+    xlarge: { name: "מאוד גדול", value: "16px" }
+  };
+  
+  // הגדרות צללים
+  const shadowOptions = {
+    none: { name: "ללא", value: "none" },
+    subtle: { name: "עדין", value: "0 1px 3px rgba(0,0,0,0.1)" },
+    medium: { name: "בינוני", value: "0 4px 6px rgba(0,0,0,0.1)" },
+    strong: { name: "חזק", value: "0 10px 15px rgba(0,0,0,0.15)" },
+    glow: { name: "זוהר", value: "0 0 10px rgba(147, 51, 234, 0.3)" }
+  };
+  
+  // הגדרות רווחים
+  const cellSpacingOptions = {
+    none: { name: "ללא", value: "0px" },
+    small: { name: "קטן", value: "2px" },
+    medium: { name: "בינוני", value: "4px" },
+    large: { name: "גדול", value: "8px" }
+  };
+  
+  // הגדרות אפקט Hover
+  const hoverEffectOptions = {
+    none: { name: "ללא" },
+    subtle: { name: "עדין" },
+    medium: { name: "בינוני" },
+    strong: { name: "חזק" }
+  };
+  
+  const currentRadius = borderRadiusOptions[theme.borderRadius || "none"];
+  const currentShadow = shadowOptions[theme.shadow || "none"];
+  const currentSpacing = cellSpacingOptions[theme.cellSpacing || "none"];
+  const currentHover = hoverEffectOptions[theme.hoverEffect || "subtle"];
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -203,37 +282,246 @@ export default function ThemeSelector({ open, onClose, currentTheme, onApply }) 
             </div>
           </div>
 
+          {/* כפתור צבעים מותאמים */}
+          {!showCustomColors && (
+            <div className="text-center">
+              <Button
+                variant="outline"
+                onClick={handleCreateCustomPalette}
+                className="gap-2 border-2 border-dashed border-purple-300 hover:border-purple-500 hover:bg-purple-50"
+              >
+                <Palette className="w-4 h-4" />
+                צור פלטת צבעים מותאמת אישית
+              </Button>
+            </div>
+          )}
+
+          {/* עורך צבעים מותאם אישית */}
+          {showCustomColors && theme.customColors && (
+            <div className="space-y-3 bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-xl border-2 border-purple-200">
+              <div className="flex items-center justify-between mb-2">
+                <Label className="text-base font-bold flex items-center gap-2">
+                  <Palette className="w-5 h-5 text-purple-600" />
+                  עריכת צבעים מותאמים
+                </Label>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setTheme({ ...theme, customColors: null, palette: "default" });
+                    setShowCustomColors(false);
+                  }}
+                  className="text-xs"
+                >
+                  ביטול התאמה אישית
+                </Button>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 mb-1 block">רקע כותרות</label>
+                  <input
+                    type="color"
+                    value={theme.customColors.headerBg}
+                    onChange={(e) => updateCustomColor('headerBg', e.target.value)}
+                    className="w-full h-10 rounded border-2 border-purple-300 cursor-pointer"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 mb-1 block">טקסט כותרות</label>
+                  <input
+                    type="color"
+                    value={theme.customColors.headerText}
+                    onChange={(e) => updateCustomColor('headerText', e.target.value)}
+                    className="w-full h-10 rounded border-2 border-purple-300 cursor-pointer"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 mb-1 block">רקע תאים</label>
+                  <input
+                    type="color"
+                    value={theme.customColors.cellBg}
+                    onChange={(e) => updateCustomColor('cellBg', e.target.value)}
+                    className="w-full h-10 rounded border-2 border-purple-300 cursor-pointer"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 mb-1 block">רקע תאים לסירוגין</label>
+                  <input
+                    type="color"
+                    value={theme.customColors.cellAltBg}
+                    onChange={(e) => updateCustomColor('cellAltBg', e.target.value)}
+                    className="w-full h-10 rounded border-2 border-purple-300 cursor-pointer"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 mb-1 block">טקסט תאים</label>
+                  <input
+                    type="color"
+                    value={theme.customColors.cellText}
+                    onChange={(e) => updateCustomColor('cellText', e.target.value)}
+                    className="w-full h-10 rounded border-2 border-purple-300 cursor-pointer"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 mb-1 block">גבולות</label>
+                  <input
+                    type="color"
+                    value={theme.customColors.border}
+                    onChange={(e) => updateCustomColor('border', e.target.value)}
+                    className="w-full h-10 rounded border-2 border-purple-300 cursor-pointer"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 mb-1 block">Hover</label>
+                  <input
+                    type="color"
+                    value={theme.customColors.hover}
+                    onChange={(e) => updateCustomColor('hover', e.target.value)}
+                    className="w-full h-10 rounded border-2 border-purple-300 cursor-pointer"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 mb-1 block">בחירה</label>
+                  <input
+                    type="color"
+                    value={theme.customColors.selected}
+                    onChange={(e) => updateCustomColor('selected', e.target.value)}
+                    className="w-full h-10 rounded border-2 border-purple-300 cursor-pointer"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* עיגול פינות */}
+          <div className="space-y-3">
+            <Label className="text-base font-bold flex items-center gap-2">
+              <Grid className="w-5 h-5" />
+              עיגול פינות
+            </Label>
+            <div className="grid grid-cols-5 gap-2">
+              {Object.entries(borderRadiusOptions).map(([key, option]) => (
+                <button
+                  key={key}
+                  onClick={() => setTheme({ ...theme, borderRadius: key })}
+                  className={`p-3 rounded-lg border-2 transition-all ${
+                    theme.borderRadius === key ? 'border-purple-500 bg-purple-50' : 'border-slate-200 hover:border-slate-300'
+                  }`}
+                >
+                  <div className="text-xs font-semibold mb-2">{option.name}</div>
+                  <div 
+                    className="h-8 bg-gradient-to-r from-blue-400 to-purple-400"
+                    style={{ borderRadius: option.value }}
+                  />
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* צללים */}
+          <div className="space-y-3">
+            <Label className="text-base font-bold">צללים ואפקטים</Label>
+            <div className="grid grid-cols-5 gap-2">
+              {Object.entries(shadowOptions).map(([key, option]) => (
+                <button
+                  key={key}
+                  onClick={() => setTheme({ ...theme, shadow: key })}
+                  className={`p-3 rounded-lg border-2 transition-all ${
+                    theme.shadow === key ? 'border-purple-500 bg-purple-50' : 'border-slate-200 hover:border-slate-300'
+                  }`}
+                >
+                  <div className="text-xs font-semibold mb-2">{option.name}</div>
+                  <div 
+                    className="h-8 bg-white"
+                    style={{ boxShadow: option.value }}
+                  />
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* רווחים בין תאים */}
+          <div className="space-y-3">
+            <Label className="text-base font-bold">רווחים בין תאים</Label>
+            <div className="grid grid-cols-4 gap-2">
+              {Object.entries(cellSpacingOptions).map(([key, option]) => (
+                <button
+                  key={key}
+                  onClick={() => setTheme({ ...theme, cellSpacing: key })}
+                  className={`p-3 rounded-lg border-2 transition-all ${
+                    theme.cellSpacing === key ? 'border-purple-500 bg-purple-50' : 'border-slate-200 hover:border-slate-300'
+                  }`}
+                >
+                  <div className="text-xs font-semibold mb-2">{option.name}</div>
+                  <div className="grid grid-cols-2 gap-0.5" style={{ gap: option.value }}>
+                    <div className="h-4 bg-blue-400 rounded-sm" />
+                    <div className="h-4 bg-blue-400 rounded-sm" />
+                    <div className="h-4 bg-blue-400 rounded-sm" />
+                    <div className="h-4 bg-blue-400 rounded-sm" />
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* אפקט Hover */}
+          <div className="space-y-3">
+            <Label className="text-base font-bold">עוצמת אפקט Hover</Label>
+            <div className="grid grid-cols-4 gap-2">
+              {Object.entries(hoverEffectOptions).map(([key, option]) => (
+                <button
+                  key={key}
+                  onClick={() => setTheme({ ...theme, hoverEffect: key })}
+                  className={`p-3 rounded-lg border-2 transition-all ${
+                    theme.hoverEffect === key ? 'border-purple-500 bg-purple-50' : 'border-slate-200 hover:border-slate-300'
+                  }`}
+                >
+                  <div className="text-xs font-semibold">{option.name}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* תצוגה מקדימה */}
           <div className="space-y-3">
             <Label className="text-base font-bold">תצוגה מקדימה</Label>
-            <div className="border-2 border-slate-300 rounded-lg overflow-hidden">
-              <table className="w-full border-collapse" dir="rtl">
+            <div 
+              className="border-2 border-slate-300 overflow-hidden"
+              style={{ 
+                borderRadius: currentRadius.value,
+                boxShadow: currentShadow.value
+              }}
+            >
+              <table className="w-full" dir="rtl" style={{ borderCollapse: theme.cellSpacing === 'none' ? 'collapse' : 'separate', borderSpacing: currentSpacing.value }}>
                 <thead>
                   <tr>
                     <th 
-                      className="p-3 text-right border"
+                      className="p-3 text-right transition-all duration-200"
                       style={{
                         backgroundColor: selectedPalette.headerBg,
                         color: selectedPalette.headerText,
-                        borderWidth: selectedBorder.width,
+                        borderWidth: theme.cellSpacing === 'none' ? selectedBorder.width : '0',
                         borderStyle: selectedBorder.style,
                         borderColor: selectedPalette.border,
                         fontFamily: FONT_OPTIONS[theme.headerFont]?.value,
-                        fontSize: theme.fontSize === 'small' ? '12px' : theme.fontSize === 'large' ? '16px' : '14px'
+                        fontSize: theme.fontSize === 'small' ? '12px' : theme.fontSize === 'large' ? '16px' : '14px',
+                        borderRadius: theme.cellSpacing !== 'none' ? currentRadius.value : '0'
                       }}
                     >
                       כותרת 1
                     </th>
                     <th 
-                      className="p-3 text-right border"
+                      className="p-3 text-right transition-all duration-200"
                       style={{
                         backgroundColor: selectedPalette.headerBg,
                         color: selectedPalette.headerText,
-                        borderWidth: selectedBorder.width,
+                        borderWidth: theme.cellSpacing === 'none' ? selectedBorder.width : '0',
                         borderStyle: selectedBorder.style,
                         borderColor: selectedPalette.border,
                         fontFamily: FONT_OPTIONS[theme.headerFont]?.value,
-                        fontSize: theme.fontSize === 'small' ? '12px' : theme.fontSize === 'large' ? '16px' : '14px'
+                        fontSize: theme.fontSize === 'small' ? '12px' : theme.fontSize === 'large' ? '16px' : '14px',
+                        borderRadius: theme.cellSpacing !== 'none' ? currentRadius.value : '0'
                       }}
                     >
                       כותרת 2
@@ -241,65 +529,69 @@ export default function ThemeSelector({ open, onClose, currentTheme, onApply }) 
                   </tr>
                 </thead>
                 <tbody>
-                  <tr>
+                  <tr className="preview-row">
                     <td 
-                      className="p-2 border"
+                      className="p-2 transition-all duration-200"
                       style={{
                         backgroundColor: selectedPalette.cellBg,
                         color: selectedPalette.cellText,
-                        borderWidth: selectedBorder.width,
+                        borderWidth: theme.cellSpacing === 'none' ? selectedBorder.width : '0',
                         borderStyle: selectedBorder.style,
                         borderColor: selectedPalette.border,
                         fontFamily: FONT_OPTIONS[theme.cellFont]?.value,
                         fontSize: theme.fontSize === 'small' ? '11px' : theme.fontSize === 'large' ? '15px' : '13px',
-                        padding: theme.density === 'compact' ? '4px 8px' : theme.density === 'spacious' ? '12px 16px' : '8px 12px'
+                        padding: theme.density === 'compact' ? '4px 8px' : theme.density === 'spacious' ? '12px 16px' : '8px 12px',
+                        borderRadius: theme.cellSpacing !== 'none' ? currentRadius.value : '0'
                       }}
                     >
                       נתון 1
                     </td>
                     <td 
-                      className="p-2 border"
+                      className="p-2 transition-all duration-200"
                       style={{
                         backgroundColor: selectedPalette.cellBg,
                         color: selectedPalette.cellText,
-                        borderWidth: selectedBorder.width,
+                        borderWidth: theme.cellSpacing === 'none' ? selectedBorder.width : '0',
                         borderStyle: selectedBorder.style,
                         borderColor: selectedPalette.border,
                         fontFamily: FONT_OPTIONS[theme.cellFont]?.value,
                         fontSize: theme.fontSize === 'small' ? '11px' : theme.fontSize === 'large' ? '15px' : '13px',
-                        padding: theme.density === 'compact' ? '4px 8px' : theme.density === 'spacious' ? '12px 16px' : '8px 12px'
+                        padding: theme.density === 'compact' ? '4px 8px' : theme.density === 'spacious' ? '12px 16px' : '8px 12px',
+                        borderRadius: theme.cellSpacing !== 'none' ? currentRadius.value : '0'
                       }}
                     >
                       נתון 2
                     </td>
                   </tr>
-                  <tr>
+                  <tr className="preview-row">
                     <td 
-                      className="p-2 border"
+                      className="p-2 transition-all duration-200"
                       style={{
                         backgroundColor: selectedPalette.cellAltBg,
                         color: selectedPalette.cellText,
-                        borderWidth: selectedBorder.width,
+                        borderWidth: theme.cellSpacing === 'none' ? selectedBorder.width : '0',
                         borderStyle: selectedBorder.style,
                         borderColor: selectedPalette.border,
                         fontFamily: FONT_OPTIONS[theme.cellFont]?.value,
                         fontSize: theme.fontSize === 'small' ? '11px' : theme.fontSize === 'large' ? '15px' : '13px',
-                        padding: theme.density === 'compact' ? '4px 8px' : theme.density === 'spacious' ? '12px 16px' : '8px 12px'
+                        padding: theme.density === 'compact' ? '4px 8px' : theme.density === 'spacious' ? '12px 16px' : '8px 12px',
+                        borderRadius: theme.cellSpacing !== 'none' ? currentRadius.value : '0'
                       }}
                     >
                       נתון 3
                     </td>
                     <td 
-                      className="p-2 border"
+                      className="p-2 transition-all duration-200"
                       style={{
                         backgroundColor: selectedPalette.cellAltBg,
                         color: selectedPalette.cellText,
-                        borderWidth: selectedBorder.width,
+                        borderWidth: theme.cellSpacing === 'none' ? selectedBorder.width : '0',
                         borderStyle: selectedBorder.style,
                         borderColor: selectedPalette.border,
                         fontFamily: FONT_OPTIONS[theme.cellFont]?.value,
                         fontSize: theme.fontSize === 'small' ? '11px' : theme.fontSize === 'large' ? '15px' : '13px',
-                        padding: theme.density === 'compact' ? '4px 8px' : theme.density === 'spacious' ? '12px 16px' : '8px 12px'
+                        padding: theme.density === 'compact' ? '4px 8px' : theme.density === 'spacious' ? '12px 16px' : '8px 12px',
+                        borderRadius: theme.cellSpacing !== 'none' ? currentRadius.value : '0'
                       }}
                     >
                       נתון 4
@@ -307,6 +599,14 @@ export default function ThemeSelector({ open, onClose, currentTheme, onApply }) 
                   </tr>
                 </tbody>
               </table>
+              
+              <style>{`
+                .preview-row:hover td {
+                  background-color: ${selectedPalette.hover} !important;
+                  transform: ${theme.hoverEffect === 'strong' ? 'scale(1.02)' : theme.hoverEffect === 'medium' ? 'translateY(-1px)' : theme.hoverEffect === 'subtle' ? 'none' : 'none'};
+                  box-shadow: ${theme.hoverEffect === 'strong' ? '0 4px 6px rgba(0,0,0,0.1)' : theme.hoverEffect === 'medium' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none'};
+                }
+              `}</style>
             </div>
           </div>
 
