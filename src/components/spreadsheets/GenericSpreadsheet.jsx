@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Table, Copy, Settings, Palette, Eye, EyeOff, Edit2, X, Download, Upload, Grid, List, Search, Filter, ArrowUp, ArrowDown, ArrowUpDown, XCircle, Undo, Redo, GripVertical } from "lucide-react";
+import { Plus, Trash2, Table, Copy, Settings, Palette, Eye, EyeOff, Edit2, X, Download, Upload, Grid, List, Search, Filter, ArrowUp, ArrowDown, ArrowUpDown, XCircle, Undo, Redo, GripVertical, BarChart3, TrendingUp, Calculator } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -58,9 +58,12 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const [showPrintPreview, setShowPrintPreview] = useState(false);
   const [isDraggingSelection, setIsDraggingSelection] = useState(false);
   const [dragStartCell, setDragStartCell] = useState(null);
+  const [copiedCells, setCopiedCells] = useState(null);
+  const [showColumnStats, setShowColumnStats] = useState(false);
   
   const editInputRef = useRef(null);
   const columnEditRef = useRef(null);
+  const tableRef = useRef(null);
 
   useEffect(() => {
     if (spreadsheet) {
@@ -124,10 +127,66 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     const handleKeyDown = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); handleUndo(); }
       if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); handleRedo(); }
+      
+      // Copy (Ctrl+C)
+      if ((e.ctrlKey || e.metaKey) && e.key === 'c' && selectedCells.size > 0) {
+        e.preventDefault();
+        const cellsData = Array.from(selectedCells).map(cellKey => {
+          const [rowId, colKey] = cellKey.split('_');
+          const row = rowsData.find(r => r.id === rowId);
+          return { cellKey, value: row?.[colKey] || '' };
+        });
+        setCopiedCells(cellsData);
+        toast.success(`✓ הועתקו ${cellsData.length} תאים`);
+      }
+      
+      // Paste (Ctrl+V)
+      if ((e.ctrlKey || e.metaKey) && e.key === 'v' && copiedCells && selectedCells.size > 0) {
+        e.preventDefault();
+        const targetCell = Array.from(selectedCells)[0];
+        const [targetRowId, targetColKey] = targetCell.split('_');
+        
+        const updatedRows = [...rowsData];
+        copiedCells.forEach((copiedCell, idx) => {
+          if (idx < selectedCells.size) {
+            const cellKey = Array.from(selectedCells)[idx];
+            const [rowId, colKey] = cellKey.split('_');
+            const rowIndex = updatedRows.findIndex(r => r.id === rowId);
+            if (rowIndex >= 0) {
+              updatedRows[rowIndex] = { ...updatedRows[rowIndex], [colKey]: copiedCell.value };
+            }
+          }
+        });
+        
+        setRowsData(updatedRows);
+        saveToHistory(columns, updatedRows, cellStyles);
+        saveToBackend(columns, updatedRows, cellStyles);
+        toast.success(`✓ הודבקו ${Math.min(copiedCells.length, selectedCells.size)} תאים`);
+      }
+      
+      // Delete (Delete key)
+      if (e.key === 'Delete' && selectedCells.size > 0 && !editingCell) {
+        e.preventDefault();
+        const updatedRows = rowsData.map(row => {
+          const newRow = { ...row };
+          selectedCells.forEach(cellKey => {
+            const [rowId, colKey] = cellKey.split('_');
+            if (row.id === rowId) {
+              newRow[colKey] = '';
+            }
+          });
+          return newRow;
+        });
+        
+        setRowsData(updatedRows);
+        saveToHistory(columns, updatedRows, cellStyles);
+        saveToBackend(columns, updatedRows, cellStyles);
+        toast.success(`✓ נמחקו ${selectedCells.size} תאים`);
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleUndo, handleRedo]);
+  }, [handleUndo, handleRedo, selectedCells, copiedCells, rowsData, columns, cellStyles, editingCell]);
 
   const handleFileSelect = async (e) => {
     const file = e.target.files[0];
@@ -701,6 +760,26 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const hasActiveFilters = globalFilter || Object.keys(columnFilters).length > 0 || sortColumn;
   const canUndo = historyIndex > 0;
   const canRedo = historyIndex < history.length - 1;
+  
+  // חישוב סטטיסטיקות עמודות
+  const columnStats = useMemo(() => {
+    const stats = {};
+    visibleColumns.forEach(col => {
+      if (col.type === 'number') {
+        const values = filteredAndSortedData.map(row => Number(row[col.key])).filter(v => !isNaN(v));
+        if (values.length > 0) {
+          stats[col.key] = {
+            sum: values.reduce((a, b) => a + b, 0),
+            avg: values.reduce((a, b) => a + b, 0) / values.length,
+            min: Math.min(...values),
+            max: Math.max(...values),
+            count: values.length
+          };
+        }
+      }
+    });
+    return stats;
+  }, [visibleColumns, filteredAndSortedData]);
 
   return (
     <div className="w-full" dir="rtl">
@@ -715,8 +794,12 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
               {hasActiveFilters && <Badge className="bg-blue-600 text-white"><Filter className="w-3 h-3 ml-1" />פעיל</Badge>}
             </div>
             <div className="flex gap-2 flex-wrap">
-              <Button onClick={handleUndo} size="sm" variant="outline" disabled={!canUndo} title="בטל פעולה (Ctrl+Z)" className="gap-2"><Undo className="w-4 h-4" /></Button>
-              <Button onClick={handleRedo} size="sm" variant="outline" disabled={!canRedo} title="שחזר פעולה (Ctrl+Y)" className="gap-2"><Redo className="w-4 h-4" /></Button>
+              <Button onClick={handleUndo} size="sm" variant="outline" disabled={!canUndo} title="בטל פעולה (Ctrl+Z)" className="gap-2 hover:bg-blue-50 transition-all"><Undo className="w-4 h-4" /></Button>
+              <Button onClick={handleRedo} size="sm" variant="outline" disabled={!canRedo} title="שחזר פעולה (Ctrl+Y)" className="gap-2 hover:bg-blue-50 transition-all"><Redo className="w-4 h-4" /></Button>
+              <Button onClick={() => setShowColumnStats(!showColumnStats)} size="sm" variant="outline" className="gap-2 hover:bg-purple-50 transition-all" title="הצג סטטיסטיקות">
+                <BarChart3 className="w-4 h-4" />
+                {showColumnStats ? 'הסתר סטטיסטיקות' : 'סטטיסטיקות'}
+              </Button>
               <Button onClick={addNewRow} size="sm" className="gap-2"><Plus className="w-4 h-4" />שורה</Button>
               <Button onClick={addColumn} size="sm" variant="outline" className="gap-2"><Plus className="w-4 h-4" />עמודה</Button>
               {selectedCells.size > 0 && (
@@ -743,9 +826,45 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
           </div>
         </CardHeader>
         <CardContent className="p-0">
+          {showColumnStats && Object.keys(columnStats).length > 0 && (
+            <div className="bg-gradient-to-r from-purple-50 to-blue-50 border-b-2 border-purple-200 p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Calculator className="w-5 h-5 text-purple-600" />
+                <h3 className="font-bold text-purple-900">סטטיסטיקות עמודות</h3>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {Object.entries(columnStats).map(([colKey, stats]) => {
+                  const col = visibleColumns.find(c => c.key === colKey);
+                  return (
+                    <div key={colKey} className="bg-white rounded-lg p-3 border border-purple-200 shadow-sm hover:shadow-md transition-all">
+                      <div className="font-semibold text-sm text-slate-700 mb-2">{col?.title}</div>
+                      <div className="space-y-1 text-xs">
+                        <div className="flex justify-between"><span className="text-slate-500">סכום:</span><span className="font-bold text-blue-600">{stats.sum.toFixed(2)}</span></div>
+                        <div className="flex justify-between"><span className="text-slate-500">ממוצע:</span><span className="font-bold text-green-600">{stats.avg.toFixed(2)}</span></div>
+                        <div className="flex justify-between"><span className="text-slate-500">מינימום:</span><span className="font-bold text-orange-600">{stats.min}</span></div>
+                        <div className="flex justify-between"><span className="text-slate-500">מקסימום:</span><span className="font-bold text-red-600">{stats.max}</span></div>
+                        <div className="flex justify-between"><span className="text-slate-500">כמות:</span><span className="font-bold text-purple-600">{stats.count}</span></div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          
+          {copiedCells && (
+            <div className="bg-green-50 border-b border-green-200 px-4 py-2 text-sm flex items-center gap-2">
+              <Copy className="w-4 h-4 text-green-600" />
+              <span className="text-green-800">הועתקו <strong>{copiedCells.length}</strong> תאים - לחץ Ctrl+V להדבקה</span>
+              <button onClick={() => setCopiedCells(null)} className="mr-auto text-green-600 hover:text-green-800">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+          
           <div className="overflow-auto" style={{ maxHeight: fullScreenMode ? '85vh' : '60vh', position: 'relative', overflowX: 'auto', overflowY: 'auto' }}>
             <DragDropContext onDragEnd={handleDragEnd}>
-              <table className="w-full border-collapse" dir="rtl" style={{ position: 'relative' }}>
+              <table ref={tableRef} className="w-full border-collapse" dir="rtl" style={{ position: 'relative' }}>
                 <Droppable droppableId="spreadsheet-columns" direction="horizontal" type="column">
                   {(provided) => (
                     <thead className="bg-slate-100" style={{ position: 'sticky', top: 0, zIndex: 25 }} ref={provided.innerRef} {...provided.droppableProps}>
@@ -758,7 +877,15 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                           return (
                             <Draggable key={col.key} draggableId={col.key} index={colIndex} type="column">
                               {(provided, snapshot) => (
-                                <th ref={provided.innerRef} {...provided.draggableProps} className={`border border-slate-200 p-3 text-right font-semibold hover:bg-blue-50 cursor-pointer group ${snapshot.isDragging ? 'opacity-50 bg-blue-100 shadow-2xl z-50' : ''}`} style={{ width: col.width, minWidth: col.width, maxWidth: col.width, position: 'relative', backgroundColor: snapshot.isDragging ? '#dbeafe' : '#f1f5f9', zIndex: snapshot.isDragging ? 50 : 10, overflow: editingColumnKey === col.key ? 'visible' : 'hidden', ...provided.draggableProps.style }} onClick={(e) => !snapshot.isDragging && handleColumnHeaderClick(col.key, e)}>
+                                <th ref={provided.innerRef} {...provided.draggableProps} className={`border border-slate-200 p-3 text-right font-semibold hover:bg-blue-50 cursor-pointer group transition-all duration-150 ${snapshot.isDragging ? 'opacity-50 bg-blue-100 shadow-2xl z-50' : ''}`} style={{ width: col.width, minWidth: col.width, maxWidth: col.width, position: 'relative', backgroundColor: snapshot.isDragging ? '#dbeafe' : '#f1f5f9', zIndex: snapshot.isDragging ? 50 : 10, overflow: editingColumnKey === col.key ? 'visible' : 'hidden', ...provided.draggableProps.style }} onClick={(e) => !snapshot.isDragging && handleColumnHeaderClick(col.key, e)} onDoubleClick={(e) => {
+                                  e.stopPropagation();
+                                  // Auto-fit column width based on content
+                                  const cells = filteredAndSortedData.map(row => String(row[col.key] || ''));
+                                  const maxLength = Math.max(col.title.length, ...cells.map(c => c.length));
+                                  const newWidth = Math.max(100, Math.min(400, maxLength * 8 + 40));
+                                  changeColumnWidth(col.key, `${newWidth}px`);
+                                  toast.success('✓ רוחב עמודה הותאם אוטומטית');
+                                }}>
                                   {isEditing ? (
                                     <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                                       <Input ref={columnEditRef} value={editingColumnTitle} onChange={(e) => setEditingColumnTitle(e.target.value)} onBlur={saveColumnTitle} onKeyDown={(e) => { if (e.key === 'Enter') saveColumnTitle(); if (e.key === 'Escape') { setEditingColumnKey(null); setEditingColumnTitle(""); } }} className="h-8 min-w-[200px]" style={{ width: 'auto', minWidth: '200px' }} autoFocus />
@@ -799,7 +926,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                           return (
                             <Draggable key={row.id} draggableId={row.id} index={rowIndex}>
                               {(provided, snapshot) => (
-                                <tr ref={provided.innerRef} {...provided.draggableProps} className={`${rowIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50'} ${snapshot.isDragging ? 'opacity-70' : ''} relative`} style={{ height: `${rowHeight}px` }}>
+                                <tr ref={provided.innerRef} {...provided.draggableProps} className={`${rowIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50'} ${snapshot.isDragging ? 'opacity-70 shadow-lg' : ''} relative hover:bg-blue-50/30 transition-colors duration-100`} style={{ height: `${rowHeight}px` }}>
                                   <td {...provided.dragHandleProps} className="border border-slate-200 p-2 cursor-grab active:cursor-grabbing bg-slate-100 hover:bg-slate-200 relative sticky right-0 shadow-[2px_0_5px_rgba(0,0,0,0.1)]" style={{ height: `${rowHeight}px`, zIndex: 15 }}>
                                     <GripVertical className="w-4 h-4 mx-auto text-slate-500" />
                                     <div onMouseDown={(e) => handleRowResizeStart(e, row.id)} className="absolute left-0 right-0 hover:bg-blue-300 active:bg-blue-500 cursor-row-resize" style={{ bottom: '-4px', height: '8px', backgroundColor: resizingRow === row.id ? '#3b82f6' : '#e2e8f0', zIndex: 999, opacity: resizingRow === row.id ? 1 : 0.3 }} title="גרור לשינוי גובה" />
@@ -812,7 +939,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                     const cellStyle = cellStyles[cellKey] || {};
                                     const colIndex = visibleColumns.findIndex(c => c.key === column.key);
                                     return (
-                                      <td key={column.key} className={`border border-slate-200 p-2 hover:bg-blue-50 ${isSelected ? 'ring-2 ring-purple-500 bg-purple-50' : ''} ${isDraggingSelection ? 'cursor-crosshair' : 'cursor-pointer'}`} style={{ backgroundColor: isSelected ? '#faf5ff' : colIndex === 0 ? (rowIndex % 2 === 0 ? '#ffffff' : '#f8fafc') : cellStyle.backgroundColor, opacity: cellStyle.opacity ? cellStyle.opacity / 100 : 1, fontWeight: cellStyle.fontWeight || 'normal', height: `${rowHeight}px`, maxHeight: `${rowHeight}px`, overflow: 'hidden', position: colIndex === 0 ? 'sticky' : 'relative', right: colIndex === 0 ? '48px' : 'auto', zIndex: colIndex === 0 ? 10 : 1, userSelect: isDraggingSelection ? 'none' : 'auto', boxShadow: colIndex === 0 ? '2px 0 5px rgba(0,0,0,0.05)' : 'none' }} onClick={(e) => !isEditing && (column.type === 'checkmark' ? handleCheckmarkClick(row.id, column.key, e) : handleCellClick(row.id, column.key, e))} onMouseDown={(e) => !isEditing && handleCellMouseDown(row.id, column.key, e)} onMouseEnter={() => handleCellMouseEnter(row.id, column.key)}>
+                                      <td key={column.key} className={`border border-slate-200 p-2 hover:bg-blue-50 transition-colors duration-100 ${isSelected ? 'ring-2 ring-purple-500 bg-purple-50 animate-pulse' : ''} ${isDraggingSelection ? 'cursor-crosshair' : 'cursor-pointer'} ${copiedCells?.some(c => c.cellKey === cellKey) ? 'ring-2 ring-green-400 bg-green-50' : ''}`} style={{ backgroundColor: isSelected ? '#faf5ff' : colIndex === 0 ? (rowIndex % 2 === 0 ? '#ffffff' : '#f8fafc') : cellStyle.backgroundColor, opacity: cellStyle.opacity ? cellStyle.opacity / 100 : 1, fontWeight: cellStyle.fontWeight || 'normal', height: `${rowHeight}px`, maxHeight: `${rowHeight}px`, overflow: 'hidden', position: colIndex === 0 ? 'sticky' : 'relative', right: colIndex === 0 ? '48px' : 'auto', zIndex: colIndex === 0 ? 10 : 1, userSelect: isDraggingSelection ? 'none' : 'auto', boxShadow: colIndex === 0 ? '2px 0 5px rgba(0,0,0,0.05)' : 'none' }} onClick={(e) => !isEditing && (column.type === 'checkmark' ? handleCheckmarkClick(row.id, column.key, e) : handleCellClick(row.id, column.key, e))} onMouseDown={(e) => !isEditing && handleCellMouseDown(row.id, column.key, e)} onMouseEnter={() => handleCellMouseEnter(row.id, column.key)}>
                                         {column.type === 'checkmark' ? (
                                           <div className="flex items-center justify-center text-2xl font-bold select-none" style={{ userSelect: 'none' }}>
                                             {cellValue === '✓' ? <span className="text-green-600">✓</span> : cellValue === '✗' ? <span className="text-red-600">✗</span> : <span className="text-slate-300">○</span>}
@@ -852,12 +979,23 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
             </DragDropContext>
           </div>
         </CardContent>
-        <div className="px-6 py-3 border-t bg-slate-50 text-xs text-slate-600 flex items-center justify-between">
-          <div>{filteredAndSortedData.length} מתוך {rowsData.length} שורות • {visibleColumns.length} עמודות גלויות • {Object.keys(cellStyles).length} תאים מעוצבים{validationRules.length > 0 && ` • ${validationRules.length} כללי ולידציה`}{conditionalFormats.filter(f => f.active !== false).length > 0 && ` • ${conditionalFormats.filter(f => f.active !== false).length} עיצובים מותנים`}</div>
-          <div className="flex items-center gap-3">
-            {Object.keys(validationErrors).length > 0 && <div className="flex items-center gap-2 text-red-600"><span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" /><span>{Object.keys(validationErrors).length} שגיאות ולידציה</span></div>}
-            {hasActiveFilters && <div className="flex items-center gap-2 text-blue-600"><Filter className="w-3 h-3" /><span>סינון פעיל</span></div>}
-            {(canUndo || canRedo) && <div className="flex items-center gap-2 text-slate-500"><span>{historyIndex + 1}/{history.length}</span></div>}
+        <div className="px-6 py-3 border-t bg-gradient-to-r from-slate-50 to-slate-100 text-xs text-slate-600 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <span className="font-semibold">{filteredAndSortedData.length} מתוך {rowsData.length} שורות</span>
+            <span>•</span>
+            <span>{visibleColumns.length} עמודות גלויות</span>
+            {Object.keys(cellStyles).length > 0 && <><span>•</span><span className="text-purple-600 font-medium">{Object.keys(cellStyles).length} תאים מעוצבים</span></>}
+            {validationRules.length > 0 && <><span>•</span><span className="text-blue-600 font-medium">{validationRules.length} כללי ולידציה</span></>}
+            {conditionalFormats.filter(f => f.active !== false).length > 0 && <><span>•</span><span className="text-green-600 font-medium">{conditionalFormats.filter(f => f.active !== false).length} עיצובים מותנים</span></>}
+          </div>
+          <div className="flex items-center gap-4">
+            {selectedCells.size > 0 && <div className="flex items-center gap-2 text-purple-600 bg-purple-50 px-3 py-1 rounded-full"><span className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" /><span className="font-semibold">{selectedCells.size} נבחרו</span></div>}
+            {Object.keys(validationErrors).length > 0 && <div className="flex items-center gap-2 text-red-600 bg-red-50 px-3 py-1 rounded-full"><span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" /><span className="font-semibold">{Object.keys(validationErrors).length} שגיאות</span></div>}
+            {hasActiveFilters && <div className="flex items-center gap-2 text-blue-600 bg-blue-50 px-3 py-1 rounded-full"><Filter className="w-3 h-3" /><span className="font-semibold">סינון פעיל</span></div>}
+            {(canUndo || canRedo) && <div className="flex items-center gap-2 text-slate-500 bg-slate-100 px-3 py-1 rounded-full"><span className="font-semibold">{historyIndex + 1}/{history.length}</span></div>}
+            <div className="text-slate-400 text-[10px] bg-slate-100 px-2 py-1 rounded">
+              💡 Ctrl+C להעתקה • Ctrl+V להדבקה • Delete למחיקה • Double-click להתאמת רוחב
+            </div>
           </div>
         </div>
       </Card>
