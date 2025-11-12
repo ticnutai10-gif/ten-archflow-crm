@@ -1693,12 +1693,70 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                           overflow: 'hidden',
                                           position: colIndex === 0 ? 'sticky' : 'relative',
                                           right: colIndex === 0 ? '48px' : undefined,
-                                          zIndex: colIndex === 0 ? 10 : 1
+                                          zIndex: colIndex === 0 ? 10 : 1,
+                                          userSelect: isDraggingSelection ? 'none' : 'auto'
                                         }}
                                         onClick={(e) => !isEditing && handleCellClick(row.id, column.key, e)}
+                                        onMouseDown={(e) => !isEditing && handleCellMouseDown(row.id, column.key, e)}
+                                        onMouseEnter={() => handleCellMouseEnter(row.id, column.key)}
                                       >
                                         {isEditing ? (
-                                          <Input
+                                          <div className="relative">
+                                            <Input
+                                              ref={editInputRef}
+                                              value={editValue}
+                                              onChange={(e) => setEditValue(e.target.value)}
+                                              onBlur={saveEdit}
+                                              onKeyDown={(e) => {
+                                                if (e.key === 'Enter') saveEdit();
+                                                if (e.key === 'Escape') {
+                                                  setEditingCell(null);
+                                                  setEditValue("");
+                                                }
+                                              }}
+                                              className="h-8"
+                                              autoFocus
+                                              dir="rtl"
+                                              list={`autocomplete-${column.key}`}
+                                            />
+                                            <datalist id={`autocomplete-${column.key}`}>
+                                              {getAutoCompleteSuggestions(column.key).map((suggestion, idx) => (
+                                                <option key={idx} value={suggestion} />
+                                              ))}
+                                            </datalist>
+                                          </div>
+                                        ) : (
+                                          <div className="text-sm w-full relative">
+                                            {String(cellValue)}
+                                            {validationErrors[cellKey] && (
+                                              <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse" 
+                                                title={validationErrors[cellKey]}
+                                              />
+                                            )}
+                                            {popoverOpen === cellKey && (
+                                              <Popover
+                                                open={true}
+                                                onOpenChange={(open) => !open && setPopoverOpen(null)}
+                                              >
+                                                <PopoverContent className="w-64" align="start">
+                                                  <ColorPicker 
+                                                    onApply={(style) => {
+                                                      applyCellStyle(cellKey, style);
+                                                      setPopoverOpen(null);
+                                                    }}
+                                                    currentStyle={cellStyle}
+                                                  />
+                                                </PopoverContent>
+                                              </Popover>
+                                            )}
+                                          </div>
+                                        )}
+                                      </td>
+                                    );
+                                  })}                        
+                                  <td className="border border-slate-200 p-2 bg-white" style={{ height: `${rowHeight}px` }}>
+                                    <div className="flex gap-1 justify-center">
+                                      <Button
                                             ref={editInputRef}
                                             value={editValue}
                                             onChange={(e) => setEditValue(e.target.value)}
