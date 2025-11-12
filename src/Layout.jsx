@@ -183,9 +183,18 @@ export default function Layout({ children, currentPageName }) {
 
   const handleLogin = useCallback(async () => {
     try {
-      await base44.auth.redirectToLogin();
+      console.log('🔑 [LOGIN] Redirecting to login page...');
+      const currentUrl = window.location.href;
+      console.log('🔑 [LOGIN] Current URL:', currentUrl);
+      
+      // נסה להתחבר עם URL נוכחי כ-redirect
+      await base44.auth.redirectToLogin(currentUrl);
     } catch (e) {
+      console.error('🔑 [LOGIN] Error:', e);
       alert('שגיאה בהתחברות: ' + e.message);
+      
+      // Fallback - רענון הדף לעמוד הבית
+      window.location.href = '/';
     }
   }, []);
 
@@ -435,9 +444,10 @@ export default function Layout({ children, currentPageName }) {
               ) : (
                 <button
                   onClick={handleLogin}
-                  className="text-xs text-slate-600 hover:text-blue-600 transition-colors duration-200"
+                  className="px-3 py-1.5 text-xs font-semibold text-white rounded-lg transition-all duration-200 shadow-md hover:shadow-lg"
+                  style={{ backgroundColor: ACCENT_COLOR }}
                 >
-                  התחבר
+                  🔑 התחבר למערכת
                 </button>
               )}
             </div>
@@ -469,6 +479,29 @@ export default function Layout({ children, currentPageName }) {
           )}
           
           <div dir="rtl">
+            {!user && (
+              <div className="fixed inset-0 bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center z-50">
+                <div className="bg-white rounded-2xl shadow-2xl p-12 text-center max-w-md">
+                  <div className="w-20 h-20 rounded-full mx-auto mb-6 flex items-center justify-center shadow-lg" style={{ backgroundColor: ACCENT_COLOR }}>
+                    <Building2 className="w-12 h-12 text-white" />
+                  </div>
+                  <h2 className="text-3xl font-bold mb-2" style={{ color: ACCENT_COLOR }}>טננבאום</h2>
+                  <p className="text-slate-600 mb-8">אדריכלות מתקדמת</p>
+                  
+                  <button
+                    onClick={handleLogin}
+                    className="w-full py-4 text-lg font-bold text-white rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105"
+                    style={{ backgroundColor: ACCENT_COLOR }}
+                  >
+                    🔑 כניסה למערכת
+                  </button>
+                  
+                  <p className="text-xs text-slate-500 mt-6">
+                    התחבר עם חשבון Google שלך
+                  </p>
+                </div>
+              </div>
+            )}
             {children}
           </div>
         </div>
