@@ -18,7 +18,8 @@ import {
   FileText,
   Grid3x3,
   Check,
-  X
+  X,
+  Zap
 } from 'lucide-react';
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
@@ -69,7 +70,7 @@ export default function TableManager({ open, onClose, onTableSelect }) {
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-5xl max-h-[90vh]" dir="rtl">
+      <DialogContent className="max-w-5xl max-h-[90vh] z-50" dir="rtl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3 text-2xl">
             <Database className="w-7 h-7 text-blue-600" />
@@ -229,6 +230,8 @@ function CreateTableDialog({ open, onClose, onSuccess }) {
     { key: 'col_1', title: 'עמודה 1', type: 'text', visible: true }
   ]);
   const [isCreating, setIsCreating] = useState(false);
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [quickColumnName, setQuickColumnName] = useState('');
 
   const addColumn = () => {
     const newColNum = columns.length + 1;
@@ -238,6 +241,26 @@ function CreateTableDialog({ open, onClose, onSuccess }) {
       type: 'text',
       visible: true
     }]);
+    toast.success('עמודה נוספה');
+  };
+
+  const addQuickColumn = () => {
+    if (!quickColumnName.trim()) {
+      toast.error('נא להזין שם לעמודה');
+      return;
+    }
+
+    const newColNum = columns.length + 1;
+    setColumns([...columns, {
+      key: `col_${newColNum}`,
+      title: quickColumnName.trim(),
+      type: 'text',
+      visible: true
+    }]);
+    
+    setQuickColumnName('');
+    setShowQuickAdd(false);
+    toast.success(`עמודה "${quickColumnName}" נוספה`);
   };
 
   const removeColumn = (index) => {
@@ -246,6 +269,7 @@ function CreateTableDialog({ open, onClose, onSuccess }) {
       return;
     }
     setColumns(columns.filter((_, i) => i !== index));
+    toast.success('עמודה הוסרה');
   };
 
   const updateColumn = (index, field, value) => {
@@ -286,7 +310,7 @@ function CreateTableDialog({ open, onClose, onSuccess }) {
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl" dir="rtl">
+      <DialogContent className="max-w-3xl z-[60]" dir="rtl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3 text-xl">
             <Sparkles className="w-6 h-6 text-green-600" />
@@ -332,21 +356,80 @@ function CreateTableDialog({ open, onClose, onSuccess }) {
               <label className="text-sm font-semibold text-slate-900">
                 עמודות ({columns.length})
               </label>
-              <Button
-                onClick={addColumn}
-                variant="outline"
-                size="sm"
-                className="gap-2"
-              >
-                <Plus className="w-4 h-4" />
-                הוסף עמודה
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => setShowQuickAdd(!showQuickAdd)}
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 border-purple-300 hover:bg-purple-50"
+                >
+                  <Zap className="w-4 h-4" />
+                  הוספה מהירה
+                </Button>
+                <Button
+                  onClick={addColumn}
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  הוסף עמודה
+                </Button>
+              </div>
             </div>
+
+            {/* Quick Add Panel */}
+            {showQuickAdd && (
+              <Card className="p-4 mb-3 bg-gradient-to-br from-purple-50 to-blue-50 border-2 border-purple-200 relative z-[70]">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-semibold text-purple-900 flex items-center gap-2">
+                    <Zap className="w-4 h-4" />
+                    הוספה מהירה
+                  </h4>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={() => {
+                      setShowQuickAdd(false);
+                      setQuickColumnName('');
+                    }}
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    value={quickColumnName}
+                    onChange={(e) => setQuickColumnName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') addQuickColumn();
+                      if (e.key === 'Escape') {
+                        setShowQuickAdd(false);
+                        setQuickColumnName('');
+                      }
+                    }}
+                    placeholder="שם העמודה החדשה..."
+                    className="flex-1"
+                    autoFocus
+                  />
+                  <Button
+                    onClick={addQuickColumn}
+                    className="bg-purple-600 hover:bg-purple-700"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+                <p className="text-xs text-purple-700 mt-2">
+                  💡 רק תכתוב שם ותלחץ Enter - העמודה תתוסף אוטומטית כטקסט
+                </p>
+              </Card>
+            )}
 
             <ScrollArea className="h-64">
               <div className="space-y-3 pr-2">
                 {columns.map((col, index) => (
-                  <Card key={index} className="p-3">
+                  <Card key={index} className="p-3 relative z-[65]">
                     <div className="flex items-center gap-3">
                       <div className="flex-1 grid grid-cols-2 gap-3">
                         <Input
@@ -375,7 +458,7 @@ function CreateTableDialog({ open, onClose, onSuccess }) {
                         variant="ghost"
                         size="icon"
                         onClick={() => removeColumn(index)}
-                        className="text-red-600 hover:text-red-700"
+                        className="text-red-600 hover:text-red-700 relative z-[70]"
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
