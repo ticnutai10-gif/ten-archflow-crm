@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,7 +25,6 @@ import {
   Sparkles
 } from "lucide-react";
 import { toast } from "sonner";
-import { base44 } from "@/api/base44Client";
 
 const STEP = {
   UPLOAD: 1,
@@ -45,6 +43,24 @@ export default function SpreadsheetImporter({ spreadsheet, columns, onImportComp
   const [importProgress, setImportProgress] = useState(0);
   const [importResults, setImportResults] = useState(null);
 
+  // Parse CSV file
+  const parseCSV = (text) => {
+    const lines = text.split('\n').filter(line => line.trim());
+    if (lines.length === 0) return { headers: [], rows: [] };
+
+    const headers = lines[0].split(',').map(h => h.trim().replace(/^["']|["']$/g, ''));
+    const rows = lines.slice(1).map(line => {
+      const values = line.split(',').map(v => v.trim().replace(/^["']|["']$/g, ''));
+      const row = {};
+      headers.forEach((header, index) => {
+        row[header] = values[index] || '';
+      });
+      return row;
+    });
+
+    return { headers, rows };
+  };
+
   // Handle file upload
   const handleFileUpload = async (e) => {
     const uploadedFile = e.target.files?.[0];
@@ -52,60 +68,42 @@ export default function SpreadsheetImporter({ spreadsheet, columns, onImportComp
 
     const fileName = uploadedFile.name.toLowerCase();
     if (!fileName.endsWith('.csv') && !fileName.endsWith('.xlsx') && !fileName.endsWith('.xls')) {
-      toast.error('נא להעלות קובץ CSV או Excel (.xlsx, .xls, .csv)');
+      toast.error('נא להעלות קובץ CSV או Excel');
       return;
     }
 
     setFile(uploadedFile);
-    setIsProcessing(true);
     
     try {
-      // ✅ העלאת הקובץ תחילה
-      const { file_url } = await base44.integrations.Core.UploadFile({ file: uploadedFile });
+      const text = await uploadedFile.text();
+      const { headers, rows } = parseCSV(text);
       
-      console.log('📤 קובץ הועלה:', file_url);
-      
-      // ✅ שימוש בפונקציית parseSpreadsheet שתומכת בעברית
-      const result = await base44.functions.invoke('parseSpreadsheet', { file_url });
-      
-      console.log('📊 תוצאת פענוח:', result);
-      
-      if (result.data.status === 'success') {
-        const rows = result.data.rows || [];
-        const headers = result.data.headers || [];
-        
-        if (rows.length === 0) {
-          toast.error('הקובץ ריק או לא נמצאו נתונים');
-          return;
-        }
-
-        setParsedData(rows);
-        
-        // Auto-map columns based on similar names
-        const autoMapping = {};
-        headers.forEach(header => {
-          const normalizedHeader = header.toLowerCase().trim();
-          const matchedColumn = columns.find(col => 
-            col.title.toLowerCase().includes(normalizedHeader) ||
-            normalizedHeader.includes(col.title.toLowerCase())
-          );
-          if (matchedColumn) {
-            autoMapping[header] = matchedColumn.key;
-          }
-        });
-        
-        setColumnMapping(autoMapping);
-        setCurrentStep(STEP.MAP_COLUMNS);
-        toast.success(`✅ נטענו ${rows.length} שורות בהצלחה`);
-      } else {
-        console.error('שגיאה בפענוח:', result.data);
-        toast.error('שגיאה בקריאת הקובץ: ' + (result.data.error || 'לא ידוע'));
+      if (rows.length === 0) {
+        toast.error('הקובץ ריק');
+        return;
       }
+
+      setParsedData(rows);
+      
+      // Auto-map columns based on similar names
+      const autoMapping = {};
+      headers.forEach(header => {
+        const normalizedHeader = header.toLowerCase().trim();
+        const matchedColumn = columns.find(col => 
+          col.title.toLowerCase().includes(normalizedHeader) ||
+          normalizedHeader.includes(col.title.toLowerCase())
+        );
+        if (matchedColumn) {
+          autoMapping[header] = matchedColumn.key;
+        }
+      });
+      
+      setColumnMapping(autoMapping);
+      setCurrentStep(STEP.MAP_COLUMNS);
+      toast.success(`✓ נטענו ${rows.length} שורות`);
     } catch (error) {
-      console.error('❌ שגיאה בטעינת הקובץ:', error);
-      toast.error('שגיאה בטעינת הקובץ: ' + error.message);
-    } finally {
-      setIsProcessing(false);
+      console.error('Error parsing file:', error);
+      toast.error('שגיאה בקריאת הקובץ');
     }
   };
 
@@ -266,50 +264,39 @@ export default function SpreadsheetImporter({ spreadsheet, columns, onImportComp
         {/* Step 1: Upload */}
         {currentStep === STEP.UPLOAD && (
           <div className="space-y-6">
-            {isProcessing ? (
-              <div className="text-center py-12">
-                <RefreshCw className="w-16 h-16 mx-auto mb-4 text-blue-600 animate-spin" />
-                <h3 className="text-xl font-semibold text-slate-900 mb-2">מעלה ומעבד קובץ...</h3>
-                <p className="text-sm text-slate-600">אנא המתן, זה עשוי לקחת כמה שניות</p>
-              </div>
-            ) : (
-              <>
-                <div className="text-center py-12 border-2 border-dashed border-blue-300 rounded-xl bg-blue-50/30 hover:bg-blue-50/50 transition-all">
-                  <FileSpreadsheet className="w-16 h-16 mx-auto mb-4 text-blue-600" />
-                  <h3 className="text-lg font-semibold text-slate-900 mb-2">העלה קובץ CSV או Excel</h3>
-                  <p className="text-sm text-slate-600 mb-4">תומך בעברית ובכל שפות אחרות</p>
-                  
-                  <label htmlFor="file-upload" className="cursor-pointer">
-                    <div className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg">
-                      <Upload className="w-5 h-5" />
-                      בחר קובץ
-                    </div>
-                    <input
-                      id="file-upload"
-                      type="file"
-                      accept=".csv,.xlsx,.xls"
-                      onChange={handleFileUpload}
-                      className="hidden"
-                    />
-                  </label>
+            <div className="text-center py-12 border-2 border-dashed border-blue-300 rounded-xl bg-blue-50/30 hover:bg-blue-50/50 transition-all">
+              <FileSpreadsheet className="w-16 h-16 mx-auto mb-4 text-blue-600" />
+              <h3 className="text-lg font-semibold text-slate-900 mb-2">העלה קובץ CSV או Excel</h3>
+              <p className="text-sm text-slate-600 mb-4">גרור קובץ לכאן או לחץ לבחירה</p>
+              
+              <label htmlFor="file-upload" className="cursor-pointer">
+                <div className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg">
+                  <Upload className="w-5 h-5" />
+                  בחר קובץ
                 </div>
+                <input
+                  id="file-upload"
+                  type="file"
+                  accept=".csv,.xlsx,.xls"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+              </label>
+            </div>
 
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <div className="flex items-start gap-3">
-                    <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                    <div className="text-sm text-blue-900">
-                      <p className="font-semibold mb-2">פורמטים נתמכים:</p>
-                      <ul className="list-disc list-inside space-y-1 text-blue-800">
-                        <li>קבצי CSV (כולל תמיכה מלאה בעברית)</li>
-                        <li>Microsoft Excel (.xlsx, .xls)</li>
-                        <li>השורה הראשונה חייבת להכיל כותרות עמודות</li>
-                        <li>הקידוד מזוהה אוטומטית (UTF-8, Windows-1255, וכו')</li>
-                      </ul>
-                    </div>
-                  </div>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                <div className="text-sm text-blue-900">
+                  <p className="font-semibold mb-2">פורמט נתמך:</p>
+                  <ul className="list-disc list-inside space-y-1 text-blue-800">
+                    <li>קבצי CSV (UTF-8)</li>
+                    <li>Microsoft Excel (.xlsx, .xls)</li>
+                    <li>השורה הראשונה חייבת להכיל כותרות עמודות</li>
+                  </ul>
                 </div>
-              </>
-            )}
+              </div>
+            </div>
           </div>
         )}
 
