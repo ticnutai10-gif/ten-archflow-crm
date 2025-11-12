@@ -479,9 +479,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     await saveToBackend(updated, rowsData, cellStyles);
   };
 
-  // Resizing
-  const [resizingColumn, setResizingColumn] = useState(null);
-  const [resizingRow, setResizingRow] = useState(null);
+  // Resizing handlers
   const resizeStartRef = useRef(null);
   
   const handleColumnResizeStart = (e, columnKey) => {
