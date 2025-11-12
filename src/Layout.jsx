@@ -6,12 +6,13 @@ import {
   BarChart3, Archive, FolderOpen, MessageSquare,
   Calculator, Pin, PinOff, ChevronRight, Home,
   Briefcase, CheckSquare2, Timer, Receipt,
-  Calendar, Mail
+  Calendar, Mail, Brain
 } from "lucide-react";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import FloatingTimer from "@/components/timer/FloatingTimer";
 import ReminderPopup from "@/components/reminders/ReminderPopup";
 import FloatingDebugPanel from "@/components/debug/FloatingDebugPanel";
+import FloatingAIButton from "@/components/ai/FloatingAIButton";
 import { base44 } from "@/api/base44Client";
 
 const ACCENT_COLOR = "#2C3A50";
@@ -28,6 +29,7 @@ const THEMES = {
 
 const MENU_ITEMS = [
   { name: "Dashboard", icon: Home, path: "Dashboard" },
+  { name: "עוזר AI חכם", icon: Brain, path: "SmartAI", highlight: true },
   { name: "לקוחות", icon: Users, path: "Clients" },
   { name: "פרויקטים", icon: Briefcase, path: "Projects" },
   { name: "הצעות מחיר", icon: Calculator, path: "Quotes" },
@@ -62,7 +64,6 @@ export default function Layout({ children, currentPageName }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const loadedRef = useRef(false);
 
-  // Save pinned state
   useEffect(() => {
     try {
       localStorage.setItem('sidebar-pinned', pinned.toString());
@@ -71,7 +72,6 @@ export default function Layout({ children, currentPageName }) {
     }
   }, [pinned]);
 
-  // Theme event listener
   useEffect(() => {
     const handleThemeChange = () => {
       const event = new Event('resize');
@@ -82,7 +82,6 @@ export default function Layout({ children, currentPageName }) {
     return () => window.removeEventListener('theme:changed', handleThemeChange);
   }, []);
 
-  // Initial theme load
   useEffect(() => {
     if (loadedRef.current) return;
     loadedRef.current = true;
@@ -112,7 +111,6 @@ export default function Layout({ children, currentPageName }) {
     loadTheme();
   }, []);
 
-  // Load user
   useEffect(() => {
     let mounted = true;
     
@@ -129,7 +127,6 @@ export default function Layout({ children, currentPageName }) {
     };
   }, []);
 
-  // Update expanded state
   useEffect(() => {
     const newExpanded = pinned || hovered;
     if (newExpanded !== isExpanded) {
@@ -370,21 +367,28 @@ export default function Layout({ children, currentPageName }) {
                         transition-colors duration-200 ease-in-out
                         ${isActive
                           ? `text-white shadow-md border border-white/20`
-                          : "text-slate-600 hover:text-slate-900"
+                          : item.highlight 
+                            ? "text-purple-600 hover:text-purple-700 bg-gradient-to-r from-purple-50 to-blue-50 hover:from-purple-100 hover:to-blue-100"
+                            : "text-slate-600 hover:text-slate-900"
                         }
                         justify-start group relative
                         transform-none
-                        ${!isActive ? "hover:bg-slate-50/80" : ""}
+                        ${!isActive && !item.highlight ? "hover:bg-slate-50/80" : ""}
                       `}
-                      style={isActive ? { background: ACCENT_COLOR } : undefined}
+                      style={isActive ? { background: item.highlight ? 'linear-gradient(to right, #9333ea, #3b82f6)' : ACCENT_COLOR } : undefined}
                     >
                       <Icon 
-                        className={`w-5 h-5 flex-shrink-0 transition-colors duration-200`} 
-                        style={{ color: isActive ? 'white' : ICON_COLOR }}
+                        className={`w-5 h-5 flex-shrink-0 transition-colors duration-200 ${item.highlight && !isActive ? 'animate-pulse' : ''}`} 
+                        style={{ color: isActive ? 'white' : item.highlight ? '#9333ea' : ICON_COLOR }}
                       />
                       <span className="font-medium">
                         {item.name}
                       </span>
+                      {item.highlight && !isActive && (
+                        <span className="mr-auto text-xs bg-purple-600 text-white px-2 py-0.5 rounded-full">
+                          חדש
+                        </span>
+                      )}
                       {isActive && (
                         <ChevronRight className="w-4 h-4 text-white/70 mr-auto flex-shrink-0" />
                       )}
@@ -481,6 +485,7 @@ export default function Layout({ children, currentPageName }) {
         <FloatingTimer />
         <ReminderPopup />
         <FloatingDebugPanel />
+        <FloatingAIButton />
       </div>
     </SidebarProvider>
   );
