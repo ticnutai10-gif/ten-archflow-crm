@@ -228,6 +228,7 @@ export default function Dashboard() {
         timeLogsPromise.catch(() => [])
       ]);
 
+      // ✅ הגנה מלאה על כל המערכים
       const validClients = Array.isArray(clientsData) ? clientsData : [];
       const validProjects = Array.isArray(projectsData) ? projectsData : [];
       const validQuotes = Array.isArray(quotesData) ? quotesData : [];
@@ -236,8 +237,8 @@ export default function Dashboard() {
 
       setStats({
         clients: validClients.length,
-        projects: validProjects.filter((p) => p?.status !== 'הושלם').length,
-        quotes: validQuotes.filter((q) => q?.status === 'בהמתנה').length,
+        projects: validProjects.filter((p) => p && p.status !== 'הושלם').length,
+        quotes: validQuotes.filter((q) => q && q.status === 'בהמתנה').length,
         tasks: validTasks.length
       });
 
@@ -248,6 +249,12 @@ export default function Dashboard() {
       setUpcomingMeetings(futureMeetings.slice(0, 10));
     } catch (error) {
       console.error('Error loading dashboard data:', error);
+      // ✅ הגדרת ברירת מחדל במקרה של שגיאה
+      setRecentProjects([]);
+      setUpcomingTasks([]);
+      setQuotes([]);
+      setTimeLogs([]);
+      setUpcomingMeetings([]);
     }
     setLoading(false);
   }, []);
@@ -279,6 +286,13 @@ export default function Dashboard() {
 
   const currentViewOption = VIEW_MODE_OPTIONS.find(opt => opt.value === viewMode) || VIEW_MODE_OPTIONS[2];
   const CurrentViewIcon = currentViewOption.icon;
+
+  // ✅ הגנה על כל המערכים לפני השימוש
+  const safeRecentProjects = Array.isArray(recentProjects) ? recentProjects : [];
+  const safeUpcomingTasks = Array.isArray(upcomingTasks) ? upcomingTasks : [];
+  const safeQuotes = Array.isArray(quotes) ? quotes : [];
+  const safeTimeLogs = Array.isArray(timeLogs) ? timeLogs : [];
+  const safeUpcomingMeetings = Array.isArray(upcomingMeetings) ? upcomingMeetings : [];
 
   return (
     <div className="p-6 min-h-screen" dir="rtl" style={{ backgroundColor: '#FCF6E3' }}>
@@ -461,7 +475,7 @@ export default function Dashboard() {
                     <span className="text-right">פרויקטים אחרונים</span>
                     <div className="flex items-center gap-2">
                       <span className={`text-slate-500 ${compactHeaders ? 'text-xs' : 'text-sm'}`}>
-                        {recentProjects.length}
+                        {safeRecentProjects.length}
                       </span>
                       {expandedCards.projects ? (
                         <ChevronUp className="w-5 h-5 text-slate-400" />
@@ -473,7 +487,7 @@ export default function Dashboard() {
                 </CardHeader>
                 {expandedCards.projects && (
                   <CardContent className="p-0">
-                    <RecentProjects projects={recentProjects} isLoading={loading} onUpdate={loadDashboardData} />
+                    <RecentProjects projects={safeRecentProjects} isLoading={loading} onUpdate={loadDashboardData} />
                   </CardContent>
                 )}
               </Card>
@@ -489,7 +503,7 @@ export default function Dashboard() {
                     <span className="text-right">משימות קרובות</span>
                     <div className="flex items-center gap-2">
                       <span className={`text-slate-500 ${compactHeaders ? 'text-xs' : 'text-sm'}`}>
-                        {upcomingTasks.length}
+                        {safeUpcomingTasks.length}
                       </span>
                       {expandedCards.tasks ? (
                         <ChevronUp className="w-5 h-5 text-slate-400" />
@@ -501,7 +515,7 @@ export default function Dashboard() {
                 </CardHeader>
                 {expandedCards.tasks && (
                   <CardContent className="p-0">
-                    <UpcomingTasks tasks={upcomingTasks} isLoading={loading} onUpdate={loadDashboardData} />
+                    <UpcomingTasks tasks={safeUpcomingTasks} isLoading={loading} onUpdate={loadDashboardData} />
                   </CardContent>
                 )}
               </Card>
@@ -517,7 +531,7 @@ export default function Dashboard() {
                     <span className="text-right">הצעות מחיר</span>
                     <div className="flex items-center gap-2">
                       <span className={`text-slate-500 ${compactHeaders ? 'text-xs' : 'text-sm'}`}>
-                        {quotes.length}
+                        {safeQuotes.length}
                       </span>
                       {expandedCards.quotes ? (
                         <ChevronUp className="w-5 h-5 text-slate-400" />
@@ -529,7 +543,7 @@ export default function Dashboard() {
                 </CardHeader>
                 {expandedCards.quotes && (
                   <CardContent className="p-0">
-                    <QuoteStatus quotes={quotes} isLoading={loading} />
+                    <QuoteStatus quotes={safeQuotes} isLoading={loading} />
                   </CardContent>
                 )}
               </Card>
@@ -545,7 +559,7 @@ export default function Dashboard() {
                     <span className="text-right">לוגי זמן</span>
                     <div className="flex items-center gap-2">
                       <span className={`text-slate-500 ${compactHeaders ? 'text-xs' : 'text-sm'}`}>
-                        {timeLogs.length}
+                        {safeTimeLogs.length}
                       </span>
                       {expandedCards.timeLogs ? (
                         <ChevronUp className="w-5 h-5 text-slate-400" />
@@ -557,7 +571,7 @@ export default function Dashboard() {
                 </CardHeader>
                 {expandedCards.timeLogs && (
                   <CardContent className="p-0">
-                    <TimerLogs timeLogs={timeLogs} isLoading={loading} onUpdate={loadDashboardData} />
+                    <TimerLogs timeLogs={safeTimeLogs} isLoading={loading} onUpdate={loadDashboardData} />
                   </CardContent>
                 )}
               </Card>
@@ -573,7 +587,7 @@ export default function Dashboard() {
                     <span className="text-right">פגישות קרובות</span>
                     <div className="flex items-center gap-2">
                       <span className={`text-slate-500 ${compactHeaders ? 'text-xs' : 'text-sm'}`}>
-                        {upcomingMeetings.length}
+                        {safeUpcomingMeetings.length}
                       </span>
                       {expandedCards.meetings ? (
                         <ChevronUp className="w-5 h-5 text-slate-400" />
@@ -585,7 +599,7 @@ export default function Dashboard() {
                 </CardHeader>
                 {expandedCards.meetings && (
                   <CardContent className="p-0">
-                    <UpcomingMeetings meetings={upcomingMeetings} isLoading={loading} onUpdate={loadDashboardData} />
+                    <UpcomingMeetings meetings={safeUpcomingMeetings} isLoading={loading} onUpdate={loadDashboardData} />
                   </CardContent>
                 )}
               </Card>
