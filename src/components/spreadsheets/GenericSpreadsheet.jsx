@@ -85,6 +85,10 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   // Print & Export
   const [showPrintPreview, setShowPrintPreview] = useState(false);
   
+  // Mouse drag selection
+  const [isDraggingSelection, setIsDraggingSelection] = useState(false);
+  const [dragStartCell, setDragStartCell] = useState(null);
+  
   const editInputRef = useRef(null);
   const columnEditRef = useRef(null);
 
@@ -844,6 +848,64 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     toast.success('✓ תאים הופרדו');
     saveToBackend(columns, rowsData, cellStyles);
   };
+
+  // Mouse drag selection handlers
+  const handleCellMouseDown = (rowId, columnKey, event) => {
+    if (event?.shiftKey) {
+      event.preventDefault();
+      const cellKey = `${rowId}_${columnKey}`;
+      setIsDraggingSelection(true);
+      setDragStartCell(cellKey);
+      setSelectedCells(new Set([cellKey]));
+      return;
+    }
+  };
+
+  const handleCellMouseEnter = (rowId, columnKey) => {
+    if (!isDraggingSelection || !dragStartCell) return;
+    
+    const cellKey = `${rowId}_${columnKey}`;
+    
+    // מצא את כל התאים בין התא ההתחלתי לתא הנוכחי
+    const startParts = dragStartCell.split('_');
+    const startRowId = startParts[0];
+    const startColKey = startParts[1];
+    
+    const startRowIndex = filteredAndSortedData.findIndex(r => r.id === startRowId);
+    const endRowIndex = filteredAndSortedData.findIndex(r => r.id === rowId);
+    const startColIndex = visibleColumns.findIndex(c => c.key === startColKey);
+    const endColIndex = visibleColumns.findIndex(c => c.key === columnKey);
+    
+    const minRow = Math.min(startRowIndex, endRowIndex);
+    const maxRow = Math.max(startRowIndex, endRowIndex);
+    const minCol = Math.min(startColIndex, endColIndex);
+    const maxCol = Math.max(startColIndex, endColIndex);
+    
+    const newSelected = new Set();
+    for (let r = minRow; r <= maxRow; r++) {
+      for (let c = minCol; c <= maxCol; c++) {
+        const row = filteredAndSortedData[r];
+        const col = visibleColumns[c];
+        if (row && col) {
+          newSelected.add(`${row.id}_${col.key}`);
+        }
+      }
+    }
+    
+    setSelectedCells(newSelected);
+  };
+
+  useEffect(() => {
+    const handleMouseUp = () => {
+      if (isDraggingSelection) {
+        setIsDraggingSelection(false);
+        setDragStartCell(null);
+      }
+    };
+
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => window.removeEventListener('mouseup', handleMouseUp);
+  }, [isDraggingSelection]);
 
   const handleCellClick = (rowId, columnKey, event) => {
     if (event?.altKey) {
@@ -2175,6 +2237,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                 <li>• <kbd className="px-2 py-1 bg-white rounded text-xs">Click</kbd> על תא = עריכה</li>
                 <li>• <kbd className="px-2 py-1 bg-white rounded text-xs">Ctrl+Click</kbd> על תא = תפריט צבעים</li>
                 <li>• <kbd className="px-2 py-1 bg-white rounded text-xs">Alt+Click</kbd> על תא = בחירה מרובה</li>
+                <li>• <kbd className="px-2 py-1 bg-white rounded text-xs">Shift+גרור עכבר</kbd> על תאים = בחירה מהירה</li>
                 <li>• <kbd className="px-2 py-1 bg-white rounded text-xs">Click</kbd> על כותרת = שינוי שם</li>
                 <li>• <kbd className="px-2 py-1 bg-white rounded text-xs">חץ בכותרת</kbd> = מיון מהיר</li>
                 <li>• <kbd className="px-2 py-1 bg-white rounded text-xs">Ctrl+Click</kbd> על כותרת = תפריט עמודה</li>
