@@ -7,9 +7,15 @@ import { toast } from "sonner";
 
 const FunctionDisplay = ({ toolCall }) => {
     const [expanded, setExpanded] = useState(false);
-    const name = toolCall?.name || 'Function';
-    const status = toolCall?.status || 'pending';
-    const results = toolCall?.results;
+    
+    // ✅ הגנה על toolCall
+    if (!toolCall || typeof toolCall !== 'object') {
+        return null;
+    }
+    
+    const name = toolCall.name || 'Function';
+    const status = toolCall.status || 'pending';
+    const results = toolCall.results;
     
     const parsedResults = (() => {
         if (!results) return null;
@@ -95,7 +101,18 @@ const FunctionDisplay = ({ toolCall }) => {
 };
 
 export default function MessageBubble({ message }) {
+    // ✅ הגנה על message
+    if (!message || typeof message !== 'object') {
+        console.warn('⚠️ [MessageBubble] Invalid message:', message);
+        return null;
+    }
+    
     const isUser = message.role === 'user';
+    
+    // ✅ הגנה על tool_calls
+    const safeToolCalls = Array.isArray(message.tool_calls) 
+        ? message.tool_calls.filter(tc => tc && typeof tc === 'object')
+        : [];
     
     return (
         <div className={cn("flex gap-3", isUser ? "justify-end" : "justify-start")}>
@@ -164,9 +181,9 @@ export default function MessageBubble({ message }) {
                     </div>
                 )}
                 
-                {message.tool_calls?.length > 0 && (
+                {safeToolCalls.length > 0 && (
                     <div className="space-y-1 mt-2">
-                        {message.tool_calls.map((toolCall, idx) => (
+                        {safeToolCalls.map((toolCall, idx) => (
                             <FunctionDisplay key={idx} toolCall={toolCall} />
                         ))}
                     </div>

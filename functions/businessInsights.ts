@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.7.1';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.4';
 
 Deno.serve(async (req) => {
     try {
@@ -67,6 +67,15 @@ Deno.serve(async (req) => {
 function analyzeBusinessData(data) {
     const { clients, projects, tasks, timeLogs, meetings, invoices, quotes } = data;
     
+    // ✅ הגנה על arrays
+    const safeClients = Array.isArray(clients) ? clients : [];
+    const safeProjects = Array.isArray(projects) ? projects : [];
+    const safeTasks = Array.isArray(tasks) ? tasks : [];
+    const safeTimeLogs = Array.isArray(timeLogs) ? timeLogs : [];
+    const safeMeetings = Array.isArray(meetings) ? meetings : [];
+    const safeInvoices = Array.isArray(invoices) ? invoices : [];
+    const safeQuotes = Array.isArray(quotes) ? quotes : [];
+    
     const today = new Date();
     const thisMonth = today.getMonth();
     const thisYear = today.getFullYear();
@@ -78,22 +87,22 @@ function analyzeBusinessData(data) {
     const sevenDaysAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
 
     // 1. ניתוח לקוחות
-    const clientInsights = analyzeClients(clients, timeLogs, projects, thirtyDaysAgo);
+    const clientInsights = analyzeClients(safeClients, safeTimeLogs, safeProjects, thirtyDaysAgo);
     
     // 2. ניתוח פרויקטים
-    const projectInsights = analyzeProjects(projects, tasks, timeLogs, today);
+    const projectInsights = analyzeProjects(safeProjects, safeTasks, safeTimeLogs, today);
     
     // 3. ניתוח כספי
-    const financialInsights = analyzeFinancials(invoices, timeLogs, thisMonth, thisYear, lastMonth, lastMonthYear);
+    const financialInsights = analyzeFinancials(safeInvoices, safeTimeLogs, thisMonth, thisYear, lastMonth, lastMonthYear);
     
     // 4. ניתוח משימות
-    const taskInsights = analyzeTasks(tasks, today);
+    const taskInsights = analyzeTasks(safeTasks, today);
     
     // 5. הזדמנויות עסקיות
-    const opportunities = findOpportunities(clients, projects, quotes, timeLogs, thirtyDaysAgo);
+    const opportunities = findOpportunities(safeClients, safeProjects, safeQuotes, safeTimeLogs, thirtyDaysAgo);
     
     // 6. ניתוח פרודוקטיביות
-    const productivityInsights = analyzeProductivity(timeLogs, thisMonth, thisYear);
+    const productivityInsights = analyzeProductivity(safeTimeLogs, thisMonth, thisYear);
 
     return {
         summary: generateSummary({
@@ -114,18 +123,19 @@ function analyzeBusinessData(data) {
 }
 
 function analyzeClients(clients, timeLogs, projects, thirtyDaysAgo) {
-    const activeClients = clients.filter(c => c.status === 'פעיל');
-    const potentialClients = clients.filter(c => c.status === 'פוטנציאלי');
+    const activeClients = clients.filter(c => c && c.status === 'פעיל');
+    const potentialClients = clients.filter(c => c && c.status === 'פוטנציאלי');
     
     // לקוחות ללא פעילות
     const inactiveClients = activeClients.filter(client => {
+        if (!client) return false;
         const clientLogs = timeLogs.filter(log => 
-            log.client_id === client.id && new Date(log.log_date) > thirtyDaysAgo
+            log && log.client_id === client.id && new Date(log.log_date) > thirtyDaysAgo
         );
         return clientLogs.length === 0;
     }).map(c => ({
         id: c.id,
-        name: c.name,
+        name: c.name || 'ללא שם',
         email: c.email,
         daysSinceActivity: Math.floor((new Date() - new Date(c.updated_date)) / (1000 * 60 * 60 * 24))
     }));
@@ -133,6 +143,7 @@ function analyzeClients(clients, timeLogs, projects, thirtyDaysAgo) {
     // לקוחות VIP (הכי הרבה שעות)
     const clientHours = {};
     timeLogs.forEach(log => {
+        if (!log) return;
         const clientName = log.client_name || 'לא משויך';
         clientHours[clientName] = (clientHours[clientName] || 0) + (log.duration_seconds || 0);
     });
@@ -147,11 +158,12 @@ function analyzeClients(clients, timeLogs, projects, thirtyDaysAgo) {
 
     // לקוחות פוטנציאליים ישנים (יותר מחודש)
     const oldPotentialClients = potentialClients.filter(c => {
+        if (!c || !c.created_date) return false;
         const daysSince = Math.floor((new Date() - new Date(c.created_date)) / (1000 * 60 * 60 * 24));
         return daysSince > 30;
     }).map(c => ({
         id: c.id,
-        name: c.name,
+        name: c.name || 'ללא שם',
         daysSince: Math.floor((new Date() - new Date(c.created_date)) / (1000 * 60 * 60 * 24))
     }));
 
@@ -166,11 +178,11 @@ function analyzeClients(clients, timeLogs, projects, thirtyDaysAgo) {
 }
 
 function analyzeProjects(projects, tasks, timeLogs, today) {
-    const activeProjects = projects.filter(p => p.status === 'בביצוע' || p.status === 'תכנון');
+    const activeProjects = projects.filter(p => p && (p.status === 'בביצוע' || p.status === 'תכנון'));
     
     // פרויקטים בסיכון (קרובים לדדלין ללא עדכונים)
     const riskyProjects = activeProjects.filter(project => {
-        if (!project.end_date) return false;
+        if (!project || !project.end_date) return false;
         
         const endDate = new Date(project.end_date);
         const daysUntil = Math.ceil((endDate - today) / (1000 * 60 * 60 * 24));
@@ -180,37 +192,38 @@ function analyzeProjects(projects, tasks, timeLogs, today) {
         // בדיקה אם יש time logs בשבוע האחרון
         const sevenDaysAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
         const recentLogs = timeLogs.filter(log => 
-            log.project_id === project.id && new Date(log.log_date) > sevenDaysAgo
+            log && log.project_id === project.id && new Date(log.log_date) > sevenDaysAgo
         );
         
         return recentLogs.length === 0;
     }).map(p => ({
         id: p.id,
-        name: p.name,
-        clientName: p.client_name,
+        name: p.name || 'ללא שם',
+        clientName: p.client_name || 'לקוח לא ידוע',
         daysUntilDeadline: Math.ceil((new Date(p.end_date) - today) / (1000 * 60 * 60 * 24)),
         status: p.status
     }));
 
     // פרויקטים שעברו דדלין
     const overdueProjects = activeProjects.filter(p => {
-        if (!p.end_date) return false;
+        if (!p || !p.end_date) return false;
         return new Date(p.end_date) < today;
     }).map(p => ({
         id: p.id,
-        name: p.name,
-        clientName: p.client_name,
+        name: p.name || 'ללא שם',
+        clientName: p.client_name || 'לקוח לא ידוע',
         daysOverdue: Math.floor((today - new Date(p.end_date)) / (1000 * 60 * 60 * 24))
     }));
 
     // פרויקטים ללא משימות פתוחות (חשוד)
     const projectsWithoutTasks = activeProjects.filter(project => {
-        const projectTasks = tasks.filter(t => t.project_id === project.id && t.status !== 'הושלמה');
+        if (!project) return false;
+        const projectTasks = tasks.filter(t => t && t.project_id === project.id && t.status !== 'הושלמה');
         return projectTasks.length === 0;
     }).map(p => ({
         id: p.id,
-        name: p.name,
-        clientName: p.client_name,
+        name: p.name || 'ללא שם',
+        clientName: p.client_name || 'לקוח לא ידוע',
         status: p.status
     }));
 
@@ -226,6 +239,7 @@ function analyzeProjects(projects, tasks, timeLogs, today) {
 function analyzeFinancials(invoices, timeLogs, thisMonth, thisYear, lastMonth, lastMonthYear) {
     // הכנסות החודש
     const thisMonthInvoices = invoices.filter(inv => {
+        if (!inv || !inv.created_date) return false;
         const d = new Date(inv.created_date);
         return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
     });
@@ -234,6 +248,7 @@ function analyzeFinancials(invoices, timeLogs, thisMonth, thisYear, lastMonth, l
 
     // הכנסות חודש שעבר
     const lastMonthInvoices = invoices.filter(inv => {
+        if (!inv || !inv.created_date) return false;
         const d = new Date(inv.created_date);
         return d.getMonth() === lastMonth && d.getFullYear() === lastMonthYear;
     });
@@ -242,18 +257,19 @@ function analyzeFinancials(invoices, timeLogs, thisMonth, thisYear, lastMonth, l
 
     // חשבוניות שלא שולמו
     const unpaidInvoices = invoices.filter(inv => 
-        inv.status !== 'paid' && inv.status !== 'canceled'
+        inv && inv.status !== 'paid' && inv.status !== 'canceled'
     ).map(inv => ({
         id: inv.id,
         number: inv.number,
-        clientName: inv.client_name,
-        amount: inv.amount,
+        clientName: inv.client_name || 'לא ידוע',
+        amount: inv.amount || 0,
         daysOverdue: Math.floor((new Date() - new Date(inv.due_date || inv.created_date)) / (1000 * 60 * 60 * 24))
     })).sort((a, b) => b.daysOverdue - a.daysOverdue);
 
     // לקוחות לפי הכנסות
     const revenueByClient = {};
     invoices.forEach(inv => {
+        if (!inv) return;
         const clientName = inv.client_name || 'לא ידוע';
         revenueByClient[clientName] = (revenueByClient[clientName] || 0) + (inv.amount || 0);
     });
@@ -264,8 +280,8 @@ function analyzeFinancials(invoices, timeLogs, thisMonth, thisYear, lastMonth, l
         .map(([name, amount]) => ({ name, amount }));
 
     // ניתוח שעות לעומת הכנסות
-    const totalHours = timeLogs.reduce((sum, log) => sum + (log.duration_seconds || 0), 0) / 3600;
-    const totalRevenue = invoices.reduce((sum, inv) => sum + (inv.amount || 0), 0);
+    const totalHours = timeLogs.reduce((sum, log) => sum + ((log && log.duration_seconds) || 0), 0) / 3600;
+    const totalRevenue = invoices.reduce((sum, inv) => sum + ((inv && inv.amount) || 0), 0);
     const revenuePerHour = totalHours > 0 ? totalRevenue / totalHours : 0;
 
     return {
@@ -288,16 +304,16 @@ function analyzeFinancials(invoices, timeLogs, thisMonth, thisYear, lastMonth, l
 }
 
 function analyzeTasks(tasks, today) {
-    const openTasks = tasks.filter(t => t.status !== 'הושלמה');
-    const highPriorityTasks = openTasks.filter(t => t.priority === 'גבוהה');
+    const openTasks = tasks.filter(t => t && t.status !== 'הושלמה');
+    const highPriorityTasks = openTasks.filter(t => t && t.priority === 'גבוהה');
     
     // משימות שעברו דדלין
     const overdueTasks = openTasks.filter(t => {
-        if (!t.due_date) return false;
+        if (!t || !t.due_date) return false;
         return new Date(t.due_date) < today;
     }).map(t => ({
         id: t.id,
-        title: t.title,
+        title: t.title || 'ללא כותרת',
         projectName: t.project_name,
         daysOverdue: Math.floor((today - new Date(t.due_date)) / (1000 * 60 * 60 * 24))
     }));
@@ -314,8 +330,9 @@ function findOpportunities(clients, projects, quotes, timeLogs, thirtyDaysAgo) {
     const opportunities = [];
 
     // פרויקטים שהסתיימו - הצע המשך
-    const completedProjects = projects.filter(p => p.status === 'הושלם');
+    const completedProjects = projects.filter(p => p && p.status === 'הושלם');
     completedProjects.forEach(project => {
+        if (!project || !project.updated_date) return;
         const completionDate = new Date(project.updated_date);
         const daysSince = Math.floor((new Date() - completionDate) / (1000 * 60 * 60 * 24));
         
@@ -323,25 +340,26 @@ function findOpportunities(clients, projects, quotes, timeLogs, thirtyDaysAgo) {
             opportunities.push({
                 type: 'follow_up_project',
                 priority: 'high',
-                client: project.client_name,
-                projectName: project.name,
-                suggestion: `פרויקט '${project.name}' הושלם לפני ${daysSince} ימים. הצע שירותי תחזוקה, שדרוג או פרויקט המשך ללקוח ${project.client_name}.`
+                client: project.client_name || 'לקוח לא ידוע',
+                projectName: project.name || 'ללא שם',
+                suggestion: `פרויקט '${project.name || 'ללא שם'}' הושלם לפני ${daysSince} ימים. הצע שירותי תחזוקה, שדרוג או פרויקט המשך ללקוח ${project.client_name || 'לקוח לא ידוע'}.`
             });
         }
     });
 
     // לקוחות פוטנציאליים ללא הצעת מחיר
-    const potentialClients = clients.filter(c => c.status === 'פוטנציאלי');
+    const potentialClients = clients.filter(c => c && c.status === 'פוטנציאלי');
     potentialClients.forEach(client => {
-        const clientQuotes = quotes.filter(q => q.client_id === client.id);
-        if (clientQuotes.length === 0) {
+        if (!client) return;
+        const clientQuotes = quotes.filter(q => q && q.client_id === client.id);
+        if (clientQuotes.length === 0 && client.created_date) {
             const daysSince = Math.floor((new Date() - new Date(client.created_date)) / (1000 * 60 * 60 * 24));
             if (daysSince > 7) {
                 opportunities.push({
                     type: 'missing_quote',
                     priority: 'medium',
-                    client: client.name,
-                    suggestion: `לקוח פוטנציאלי '${client.name}' (${daysSince} ימים) ללא הצעת מחיר. שלח הצעה או פנה לבירור צרכים.`
+                    client: client.name || 'ללא שם',
+                    suggestion: `לקוח פוטנציאלי '${client.name || 'ללא שם'}' (${daysSince} ימים) ללא הצעת מחיר. שלח הצעה או פנה לבירור צרכים.`
                 });
             }
         }
@@ -349,7 +367,7 @@ function findOpportunities(clients, projects, quotes, timeLogs, thirtyDaysAgo) {
 
     // לקוחות עם הרבה שעות - הצע שירותים נוספים
     const clientHours = {};
-    timeLogs.filter(log => new Date(log.log_date) > thirtyDaysAgo).forEach(log => {
+    timeLogs.filter(log => log && log.log_date && new Date(log.log_date) > thirtyDaysAgo).forEach(log => {
         const clientName = log.client_name;
         if (clientName) {
             clientHours[clientName] = (clientHours[clientName] || 0) + (log.duration_seconds || 0);
@@ -368,11 +386,12 @@ function findOpportunities(clients, projects, quotes, timeLogs, thirtyDaysAgo) {
         }
     });
 
-    return opportunities.slice(0, 10); // מגביל ל-10 הזדמנויות מובילות
+    return opportunities.slice(0, 10);
 }
 
 function analyzeProductivity(timeLogs, thisMonth, thisYear) {
     const thisMonthLogs = timeLogs.filter(log => {
+        if (!log || !log.log_date) return false;
         const d = new Date(log.log_date);
         return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
     });
@@ -384,6 +403,7 @@ function analyzeProductivity(timeLogs, thisMonth, thisYear) {
     // פילוח לפי לקוח
     const byClient = {};
     thisMonthLogs.forEach(log => {
+        if (!log) return;
         const name = log.client_name || 'לא משויך';
         byClient[name] = (byClient[name] || 0) + (log.duration_seconds || 0);
     });
@@ -411,27 +431,27 @@ function generateSummary(data) {
     const highlights = [];
     
     // סיכונים
-    if (projects.risky.length > 0) {
+    if (projects.risky && projects.risky.length > 0) {
         risks.push(`${projects.risky.length} פרויקטים בסיכון (קרובים לדדלין ללא עדכונים)`);
     }
-    if (projects.overdue.length > 0) {
+    if (projects.overdue && projects.overdue.length > 0) {
         risks.push(`${projects.overdue.length} פרויקטים עברו דדלין`);
     }
-    if (clients.inactive.length > 0) {
+    if (clients.inactive && clients.inactive.length > 0) {
         risks.push(`${clients.inactive.length} לקוחות פעילים ללא פעילות 30+ ימים`);
     }
-    if (financials.unpaidInvoices.length > 0) {
+    if (financials.unpaidInvoices && financials.unpaidInvoices.length > 0) {
         risks.push(`${financials.unpaidInvoices.length} חשבוניות ממתינות לתשלום`);
     }
-    if (tasks.overdue.length > 0) {
+    if (tasks.overdue && tasks.overdue.length > 0) {
         risks.push(`${tasks.overdue.length} משימות עברו דדלין`);
     }
 
     // הדגשים חיוביים
-    if (financials.change.amount > 0) {
+    if (financials.change && financials.change.amount > 0) {
         highlights.push(`הכנסות עלו ב-${financials.change.percentage}% מול חודש שעבר`);
     }
-    if (opportunities.length > 0) {
+    if (opportunities && opportunities.length > 0) {
         highlights.push(`${opportunities.length} הזדמנויות עסקיות זוהו`);
     }
     if (productivity.totalHours > 100) {
@@ -449,15 +469,15 @@ function calculateHealthScore(data) {
     let score = 100;
     
     // הפחתות
-    score -= data.projects.risky.length * 5;
-    score -= data.projects.overdue.length * 10;
-    score -= data.clients.inactive.length * 2;
-    score -= data.financials.unpaidInvoices.length * 3;
-    score -= data.tasks.overdue.length * 2;
+    if (data.projects.risky) score -= data.projects.risky.length * 5;
+    if (data.projects.overdue) score -= data.projects.overdue.length * 10;
+    if (data.clients.inactive) score -= data.clients.inactive.length * 2;
+    if (data.financials.unpaidInvoices) score -= data.financials.unpaidInvoices.length * 3;
+    if (data.tasks.overdue) score -= data.tasks.overdue.length * 2;
     
     // בונוסים
-    if (data.financials.change.amount > 0) score += 10;
-    if (data.opportunities.length > 5) score += 5;
+    if (data.financials.change && data.financials.change.amount > 0) score += 10;
+    if (data.opportunities && data.opportunities.length > 5) score += 5;
     
     return Math.max(0, Math.min(100, score));
 }

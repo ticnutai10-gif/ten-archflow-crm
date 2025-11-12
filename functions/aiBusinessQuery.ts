@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.7.1';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.4';
 
 Deno.serve(async (req) => {
     try {
@@ -163,50 +163,62 @@ ${context}
 function calculateStats(data) {
     const { clients, projects, tasks, timeLogs, meetings, invoices } = data;
     
+    // ✅ הגנה על arrays
+    const safeClients = Array.isArray(clients) ? clients : [];
+    const safeProjects = Array.isArray(projects) ? projects : [];
+    const safeTasks = Array.isArray(tasks) ? tasks : [];
+    const safeTimeLogs = Array.isArray(timeLogs) ? timeLogs : [];
+    const safeMeetings = Array.isArray(meetings) ? meetings : [];
+    const safeInvoices = Array.isArray(invoices) ? invoices : [];
+    
     const today = new Date();
     const thisMonth = today.getMonth();
     const thisYear = today.getFullYear();
 
     return {
         clients: {
-            total: clients.length,
-            active: clients.filter(c => c.status === 'פעיל').length,
-            potential: clients.filter(c => c.status === 'פוטנציאלי').length,
-            inactive: clients.filter(c => c.status === 'לא פעיל').length
+            total: safeClients.length,
+            active: safeClients.filter(c => c && c.status === 'פעיל').length,
+            potential: safeClients.filter(c => c && c.status === 'פוטנציאלי').length,
+            inactive: safeClients.filter(c => c && c.status === 'לא פעיל').length
         },
         projects: {
-            total: projects.length,
-            inProgress: projects.filter(p => p.status === 'בביצוע').length,
-            planning: projects.filter(p => p.status === 'תכנון').length,
-            completed: projects.filter(p => p.status === 'הושלם').length
+            total: safeProjects.length,
+            inProgress: safeProjects.filter(p => p && p.status === 'בביצוע').length,
+            planning: safeProjects.filter(p => p && p.status === 'תכנון').length,
+            completed: safeProjects.filter(p => p && p.status === 'הושלם').length
         },
         tasks: {
-            total: tasks.length,
-            open: tasks.filter(t => t.status === 'חדשה').length,
-            inProgress: tasks.filter(t => t.status === 'בתהליך').length,
-            completed: tasks.filter(t => t.status === 'הושלמה').length
+            total: safeTasks.length,
+            open: safeTasks.filter(t => t && t.status === 'חדשה').length,
+            inProgress: safeTasks.filter(t => t && t.status === 'בתהליך').length,
+            completed: safeTasks.filter(t => t && t.status === 'הושלמה').length
         },
         meetings: {
-            total: meetings.length,
-            thisMonth: meetings.filter(m => {
+            total: safeMeetings.length,
+            thisMonth: safeMeetings.filter(m => {
+                if (!m || !m.created_date) return false;
                 const d = new Date(m.created_date);
                 return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
             }).length
         },
         timeLogs: {
-            total: timeLogs.length,
-            hoursThisMonth: (timeLogs.filter(tl => {
+            total: safeTimeLogs.length,
+            hoursThisMonth: (safeTimeLogs.filter(tl => {
+                if (!tl || !tl.log_date) return false;
                 const d = new Date(tl.log_date);
                 return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
             }).reduce((s, t) => s + (t.duration_seconds || 0), 0) / 3600).toFixed(1)
         },
         invoices: {
-            total: invoices.length,
-            thisMonth: invoices.filter(inv => {
+            total: safeInvoices.length,
+            thisMonth: safeInvoices.filter(inv => {
+                if (!inv || !inv.created_date) return false;
                 const d = new Date(inv.created_date);
                 return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
             }).length,
-            totalThisMonth: invoices.filter(inv => {
+            totalThisMonth: safeInvoices.filter(inv => {
+                if (!inv || !inv.created_date) return false;
                 const d = new Date(inv.created_date);
                 return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
             }).reduce((s, i) => s + (i.amount || 0), 0)
@@ -218,6 +230,14 @@ function calculateStats(data) {
 function buildCompactContext(data) {
     const { clients, projects, tasks, timeLogs, meetings, invoices, question, stats } = data;
     
+    // ✅ הגנה על arrays
+    const safeClients = Array.isArray(clients) ? clients : [];
+    const safeProjects = Array.isArray(projects) ? projects : [];
+    const safeTasks = Array.isArray(tasks) ? tasks : [];
+    const safeTimeLogs = Array.isArray(timeLogs) ? timeLogs : [];
+    const safeMeetings = Array.isArray(meetings) ? meetings : [];
+    const safeInvoices = Array.isArray(invoices) ? invoices : [];
+    
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
     const thisMonth = today.getMonth();
@@ -226,8 +246,9 @@ function buildCompactContext(data) {
     let context = '';
 
     // פעילות היום
-    const todayTimeLogs = timeLogs.filter(tl => tl.log_date === todayStr);
-    const todayMeetings = meetings.filter(m => {
+    const todayTimeLogs = safeTimeLogs.filter(tl => tl && tl.log_date === todayStr);
+    const todayMeetings = safeMeetings.filter(m => {
+        if (!m || !m.meeting_date) return false;
         const mDate = new Date(m.meeting_date);
         return mDate.toISOString().split('T')[0] === todayStr;
     });
@@ -239,13 +260,13 @@ function buildCompactContext(data) {
             context += `שעות עבודה: ${hours}h\n`;
         }
         if (todayMeetings.length > 0) {
-            context += `פגישות: ${todayMeetings.map(m => m.title).join(', ')}\n`;
+            context += `פגישות: ${todayMeetings.map(m => m.title || 'ללא שם').join(', ')}\n`;
         }
         context += '\n';
     }
 
     // לקוחות - אם השאלה קשורה ללקוחות
-    const lowerQuestion = question.toLowerCase();
+    const lowerQuestion = (question || '').toLowerCase();
     const isClientQuery = lowerQuestion.includes('לקוח') || 
                           lowerQuestion.includes('client') ||
                           lowerQuestion.includes('כמה') ||
@@ -254,16 +275,17 @@ function buildCompactContext(data) {
     if (isClientQuery) {
         context += `## 👥 לקוחות מפורטים\n\n`;
         
-        const activeClients = clients.filter(c => c.status === 'פעיל');
-        const potentialClients = clients.filter(c => c.status === 'פוטנציאלי');
+        const activeClients = safeClients.filter(c => c && c.status === 'פעיל');
+        const potentialClients = safeClients.filter(c => c && c.status === 'פוטנציאלי');
         
         if (activeClients.length > 0) {
             context += `### לקוחות פעילים (${activeClients.length}):\n`;
             activeClients.slice(0, 50).forEach(c => {
-                context += `- ${c.name}`;
+                if (!c) return;
+                context += `- ${c.name || 'ללא שם'}`;
                 if (c.email) context += ` | ${c.email}`;
                 if (c.phone) context += ` | ${c.phone}`;
-                const clientProjects = projects.filter(p => p.client_id === c.id);
+                const clientProjects = safeProjects.filter(p => p && p.client_id === c.id);
                 if (clientProjects.length > 0) {
                     context += ` | פרויקטים: ${clientProjects.length}`;
                 }
@@ -278,7 +300,8 @@ function buildCompactContext(data) {
         if (potentialClients.length > 0) {
             context += `### לקוחות פוטנציאליים (${potentialClients.length}):\n`;
             potentialClients.slice(0, 30).forEach(c => {
-                context += `- ${c.name}`;
+                if (!c) return;
+                context += `- ${c.name || 'ללא שם'}`;
                 if (c.email) context += ` | ${c.email}`;
                 context += '\n';
             });
@@ -290,31 +313,31 @@ function buildCompactContext(data) {
     }
 
     // פרויקטים דחופים
-    const urgentProjects = projects.filter(p => {
-        if (p.end_date && (p.status === 'בביצוע' || p.status === 'תכנון')) {
-            const days = Math.ceil((new Date(p.end_date) - today) / (1000 * 60 * 60 * 24));
-            return days <= 30 && days >= 0;
-        }
-        return false;
+    const urgentProjects = safeProjects.filter(p => {
+        if (!p || !p.end_date) return false;
+        if (p.status !== 'בביצוע' && p.status !== 'תכנון') return false;
+        const days = Math.ceil((new Date(p.end_date) - today) / (1000 * 60 * 60 * 24));
+        return days <= 30 && days >= 0;
     });
 
     if (urgentProjects.length > 0) {
         context += `## ⚠️ פרויקטים דחופים (${urgentProjects.length})\n`;
         urgentProjects.slice(0, 15).forEach(p => {
             const days = Math.ceil((new Date(p.end_date) - today) / (1000 * 60 * 60 * 24));
-            context += `- ${p.name} (${p.client_name}): ${days} ימים | ${p.status}\n`;
+            context += `- ${p.name || 'ללא שם'} (${p.client_name || 'לקוח לא ידוע'}): ${days} ימים | ${p.status}\n`;
         });
         context += '\n';
     }
 
     // משימות פתוחות
-    const openTasks = tasks.filter(t => t.status !== 'הושלמה');
+    const openTasks = safeTasks.filter(t => t && t.status !== 'הושלמה');
     if (openTasks.length > 0) {
-        const highPriority = openTasks.filter(t => t.priority === 'גבוהה');
+        const highPriority = openTasks.filter(t => t && t.priority === 'גבוהה');
         if (highPriority.length > 0) {
             context += `## ✅ משימות דחופות (${highPriority.length})\n`;
             highPriority.slice(0, 15).forEach(t => {
-                context += `- ${t.title}`;
+                if (!t) return;
+                context += `- ${t.title || 'ללא כותרת'}`;
                 if (t.project_name) context += ` | ${t.project_name}`;
                 context += ` | ${t.status}`;
                 if (t.due_date) {
@@ -329,7 +352,8 @@ function buildCompactContext(data) {
     }
 
     // שעות עבודה לפי לקוח החודש
-    const thisMonthLogs = timeLogs.filter(tl => {
+    const thisMonthLogs = safeTimeLogs.filter(tl => {
+        if (!tl || !tl.log_date) return false;
         const d = new Date(tl.log_date);
         return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
     });
@@ -337,6 +361,7 @@ function buildCompactContext(data) {
     if (thisMonthLogs.length > 0) {
         const byClient = {};
         thisMonthLogs.forEach(t => {
+            if (!t) return;
             const name = t.client_name || 'לא משויך';
             byClient[name] = (byClient[name] || 0) + (t.duration_seconds || 0);
         });

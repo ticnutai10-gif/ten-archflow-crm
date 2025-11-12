@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
@@ -89,12 +90,15 @@ export default function AIChatPage() {
   const sendingRef = useRef(false);
 
   const loadBusinessInsights = useCallback(async () => {
+    console.log('📊 [AIChat] Loading business insights...');
     setLoadingInsights(true);
     try {
       const response = await base44.functions.invoke('businessInsights');
+      console.log('✅ [AIChat] Insights loaded:', response);
       setBusinessInsights(response?.data?.insights || null);
     } catch (error) {
-      console.error('Error loading insights:', error);
+      console.error('❌ [AIChat] Error loading insights:', error);
+      toast.error('שגיאה בטעינת תובנות');
     }
     setLoadingInsights(false);
   }, []);
@@ -102,36 +106,59 @@ export default function AIChatPage() {
   const generateWhatsAppUrl = useCallback(() => {
     try {
       const url = base44.agents.getWhatsAppConnectURL(AGENT_NAME);
+      console.log('✅ [AIChat] WhatsApp URL generated:', url);
       setWhatsappUrl(url);
     } catch (error) {
-      console.error('Error generating WhatsApp URL:', error);
+      console.error('❌ [AIChat] Error generating WhatsApp URL:', error);
     }
   }, []);
 
   const loadConversations = useCallback(async () => {
+    console.log('💬 [AIChat] Loading conversations...');
     setLoadingConversations(true);
     try {
       const convs = await base44.agents.listConversations({ agent_name: AGENT_NAME });
-      setConversations(convs || []);
       
-      if (convs?.length > 0 && !currentConversationId) {
-        await loadConversation(convs[0].id);
+      // ✅ הגנה על תוצאות
+      const safeConvs = Array.isArray(convs) ? convs : [];
+      const activeConvs = safeConvs.filter(c => c && !c.metadata?.deleted);
+      
+      console.log('✅ [AIChat] Conversations loaded:', {
+        total: safeConvs.length,
+        active: activeConvs.length
+      });
+      
+      setConversations(activeConvs);
+      
+      // טען את השיחה הראשונה אם אין שיחה פעילה
+      if (activeConvs.length > 0 && !currentConversationId) {
+        await loadConversation(activeConvs[0].id);
       }
     } catch (error) {
-      console.error('Error loading conversations:', error);
+      console.error('❌ [AIChat] Error loading conversations:', error);
       toast.error('שגיאה בטעינת שיחות');
+      setConversations([]);
     }
     setLoadingConversations(false);
-  }, [currentConversationId]);
+  }, [currentConversationId, loadConversation]);
 
   const loadConversation = useCallback(async (convId) => {
+    console.log('📖 [AIChat] Loading conversation:', convId);
     try {
       const conv = await base44.agents.getConversation(convId);
       
       if (conv) {
+        console.log('✅ [AIChat] Conversation loaded:', {
+          id: conv.id,
+          messages: conv.messages?.length || 0
+        });
+        
         setCurrentConversationId(convId);
         setCurrentConversation(conv);
-        setMessages([...(conv.messages || [])]);
+        
+        // ✅ הגנה על messages
+        const safeMessages = Array.isArray(conv.messages) ? conv.messages : [];
+        setMessages([...safeMessages]);
         
         setTimeout(() => {
           if (scrollRef.current) {
@@ -140,14 +167,18 @@ export default function AIChatPage() {
         }, 50);
         
         toast.success(`נטענה: ${conv.metadata?.name || 'שיחה'}`);
+      } else {
+        console.warn('⚠️ [AIChat] Conversation not found');
+        toast.error('השיחה לא נמצאה');
       }
     } catch (error) {
-      console.error('Error loading conversation:', error);
-      toast.error('השיחה לא נמצאה');
+      console.error('❌ [AIChat] Error loading conversation:', error);
+      toast.error('שגיאה בטעינת שיחה');
     }
   }, []);
 
   const handleNewConversation = useCallback(async () => {
+    console.log('➕ [AIChat] Creating new conversation...');
     try {
       const newConv = await base44.agents.createConversation({
         agent_name: AGENT_NAME,
@@ -162,13 +193,16 @@ export default function AIChatPage() {
         }
       });
       
+      console.log('✅ [AIChat] Conversation created:', newConv.id);
+      
+      // ✅ טען מחדש את רשימת השיחות
       await loadConversations();
       await loadConversation(newConv.id);
       
       toast.success('🎉 שיחה חדשה נוצרה!');
       return newConv.id;
     } catch (error) {
-      console.error('Error creating conversation:', error);
+      console.error('❌ [AIChat] Error creating conversation:', error);
       toast.error('שגיאה ביצירת שיחה');
       return null;
     }
@@ -179,6 +213,8 @@ export default function AIChatPage() {
       e.preventDefault();
       e.stopPropagation();
     }
+    
+    console.log('✏️ [AIChat] Editing conversation:', conv.id);
     
     setEditingConv(conv);
     setEditForm({
@@ -194,6 +230,8 @@ export default function AIChatPage() {
       return;
     }
 
+    console.log('💾 [AIChat] Saving conversation edit:', editingConv.id);
+    
     try {
       await base44.agents.updateConversation(editingConv.id, {
         metadata: {
@@ -203,19 +241,28 @@ export default function AIChatPage() {
         }
       });
 
+      // ✅ טען מחדש את רשימת השיחות
       await loadConversations();
+      
+      // ✅ עדכן את השיחה הנוכחית אם זו השיחה שנערכה
+      if (currentConversationId === editingConv.id) {
+        await loadConversation(editingConv.id);
+      }
+      
       setEditDialogOpen(false);
       setEditingConv(null);
       
       toast.success('✅ השיחה עודכנה!');
     } catch (error) {
-      console.error('Error updating conversation:', error);
+      console.error('❌ [AIChat] Error updating conversation:', error);
       toast.error('שגיאה בעדכון השיחה');
     }
-  }, [editingConv, editForm, loadConversations]);
+  }, [editingConv, editForm, loadConversations, loadConversation, currentConversationId]);
 
   const handleSendMessage = useCallback(async (messageText = null) => {
     const text = messageText || inputMessage.trim();
+    
+    console.log('📤 [AIChat] Sending message:', { text, loading, sendingRef: sendingRef.current });
     
     if (!text || loading || sendingRef.current) return;
 
@@ -224,7 +271,9 @@ export default function AIChatPage() {
     let convId = currentConversationId;
     let conv = currentConversation;
     
+    // אם אין שיחה פעילה, צור חדשה
     if (!convId) {
+      console.log('➕ [AIChat] No active conversation, creating new one...');
       convId = await handleNewConversation();
       if (!convId) {
         sendingRef.current = false;
@@ -238,12 +287,14 @@ export default function AIChatPage() {
     setLoading(true);
 
     try {
+      console.log('📨 [AIChat] Adding message to conversation...');
       await base44.agents.addMessage(conv, {
         role: "user",
         content: text
       });
+      console.log('✅ [AIChat] Message sent successfully');
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error('❌ [AIChat] Error sending message:', error);
       toast.error(`שגיאה: ${error.message}`);
     } finally {
       setLoading(false);
@@ -257,23 +308,37 @@ export default function AIChatPage() {
       e.stopPropagation();
     }
     
-    if (!confirm('❓ למחוק את השיחה? לא ניתן לשחזר!')) return;
+    console.log('🗑️ [AIChat] Deleting conversation:', convId);
+    
+    if (!confirm('❓ למחוק את השיחה? לא ניתן לשחזר!')) {
+      console.log('⚠️ [AIChat] Delete cancelled by user');
+      return;
+    }
     
     try {
-      const conv = conversations.find(c => c.id === convId);
+      const conv = conversations.find(c => c && c.id === convId);
       if (conv) {
+        // סמן כמחוק
         await base44.agents.updateConversation(convId, {
           metadata: {
             ...conv.metadata,
             deleted: true
           }
         });
+        console.log('✅ [AIChat] Conversation marked as deleted');
       }
       
+      // ✅ טען מחדש את רשימת השיחות
       await loadConversations();
       
+      // אם מחקנו את השיחה הנוכחית, עבור לשיחה אחרת או נקה
       if (currentConversationId === convId) {
-        const remaining = conversations.filter(c => c.id !== convId && !c.metadata?.deleted);
+        const remaining = conversations.filter(c => c && c.id !== convId && !c.metadata?.deleted);
+        console.log('🔄 [AIChat] Switching conversation:', {
+          remaining: remaining.length,
+          currentDeleted: convId
+        });
+        
         if (remaining.length > 0) {
           await loadConversation(remaining[0].id);
         } else {
@@ -285,8 +350,8 @@ export default function AIChatPage() {
       
       toast.success('🗑️ השיחה נמחקה');
     } catch (error) {
-      console.error('Error deleting conversation:', error);
-      toast.error('שגיאה במחיקה');
+      console.error('❌ [AIChat] Error deleting conversation:', error);
+      toast.error('שגיאה במחיקת שיחה');
     }
   }, [conversations, currentConversationId, loadConversations, loadConversation]);
 
@@ -298,6 +363,7 @@ export default function AIChatPage() {
   }, [whatsappUrl]);
 
   useEffect(() => {
+    console.log('🎬 [AIChat] Component mounted, loading initial data...');
     loadConversations();
     generateWhatsAppUrl();
     loadBusinessInsights();
@@ -310,7 +376,12 @@ export default function AIChatPage() {
   }, [messages]);
 
   useEffect(() => {
-    if (!currentConversationId) return;
+    if (!currentConversationId) {
+      console.log('⏭️ [AIChat] No conversation ID, skipping subscription');
+      return;
+    }
+    
+    console.log('🔌 [AIChat] Subscribing to conversation:', currentConversationId);
     
     let unsubscribe;
     
@@ -318,19 +389,28 @@ export default function AIChatPage() {
       unsubscribe = base44.agents.subscribeToConversation(
         currentConversationId,
         (data) => {
-          setMessages([...(data.messages || [])]);
+          console.log('📨 [AIChat] Received update:', {
+            conversationId: currentConversationId,
+            messages: data?.messages?.length || 0
+          });
+          
+          // ✅ הגנה על messages
+          const safeMessages = Array.isArray(data?.messages) ? data.messages : [];
+          setMessages([...safeMessages]);
         }
       );
+      console.log('✅ [AIChat] Subscription established');
     } catch (error) {
-      console.error('WebSocket subscription error:', error);
+      console.error('❌ [AIChat] WebSocket subscription error:', error);
     }
     
     return () => {
       if (unsubscribe && typeof unsubscribe === 'function') {
         try {
+          console.log('🔌 [AIChat] Unsubscribing from conversation');
           unsubscribe();
         } catch (error) {
-          console.error('WebSocket unsubscribe error:', error);
+          console.error('❌ [AIChat] WebSocket unsubscribe error:', error);
         }
       }
     };
@@ -347,7 +427,16 @@ export default function AIChatPage() {
     );
   }
 
-  const activeConversations = conversations.filter(c => !c.metadata?.deleted);
+  // ✅ הגנה על conversations
+  const safeConversations = Array.isArray(conversations) ? conversations : [];
+  const activeConversations = safeConversations.filter(c => c && !c.metadata?.deleted);
+
+  console.log('🎨 [AIChat] Rendering with:', {
+    totalConversations: safeConversations.length,
+    activeConversations: activeConversations.length,
+    currentConversationId,
+    messages: messages.length
+  });
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-slate-50 to-slate-100" dir="rtl">
@@ -381,6 +470,8 @@ export default function AIChatPage() {
               </div>
             ) : (
               activeConversations.map((conv) => {
+                if (!conv) return null; // Defensive check for null/undefined conv
+                
                 const isActive = currentConversationId === conv.id;
                 const messageCount = conv.messages?.length || 0;
                 const convName = conv.metadata?.name || 'שיחה';
@@ -544,7 +635,7 @@ export default function AIChatPage() {
           ) : (
             <div className="max-w-4xl mx-auto space-y-4">
               {messages.map((msg, i) => (
-                <MessageBubble key={`${i}-${msg.timestamp || i}`} message={msg} />
+                <MessageBubble key={`${msg?.id || i}-${msg?.timestamp || i}`} message={msg} />
               ))}
               
               {loading && (

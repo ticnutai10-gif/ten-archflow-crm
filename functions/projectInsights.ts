@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.7.1';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.4';
 
 Deno.serve(async (req) => {
     try {
@@ -54,28 +54,35 @@ Deno.serve(async (req) => {
 
 function analyzeProjects(data) {
     const { projects, tasks, timeLogs, clients } = data;
+    
+    // ✅ הגנה על arrays
+    const safeProjects = Array.isArray(projects) ? projects : [];
+    const safeTasks = Array.isArray(tasks) ? tasks : [];
+    const safeTimeLogs = Array.isArray(timeLogs) ? timeLogs : [];
+    const safeClients = Array.isArray(clients) ? clients : [];
+    
     const today = new Date();
 
-    const activeProjects = projects.filter(p => 
-        p.status === 'בביצוע' || p.status === 'תכנון' || p.status === 'היתרים'
+    const activeProjects = safeProjects.filter(p => 
+        p && (p.status === 'בביצוע' || p.status === 'תכנון' || p.status === 'היתרים')
     );
 
     const projectAnalysis = activeProjects.map(project => {
-        const analysis = analyzeProject(project, tasks, timeLogs, today);
+        const analysis = analyzeProject(project, safeTasks, safeTimeLogs, today);
         return {
             projectId: project.id,
-            projectName: project.name,
-            clientName: project.client_name,
+            projectName: project.name || 'ללא שם',
+            clientName: project.client_name || 'לקוח לא ידוע',
             status: project.status,
             ...analysis
         };
     });
 
-    // מיון לפי רמת סיכון (הכי מסוכן ראשון) - FIX: access risk.riskScore correctly
+    // מיון לפי רמת סיכון (הכי מסוכן ראשון)
     const sortedByRisk = [...projectAnalysis].sort((a, b) => (b.risk?.riskScore || 0) - (a.risk?.riskScore || 0));
 
     return {
-        total: projects.length,
+        total: safeProjects.length,
         active: activeProjects.length,
         atRisk: projectAnalysis.filter(p => p.risk?.riskLevel === 'high').length,
         projects: sortedByRisk,
@@ -84,12 +91,21 @@ function analyzeProjects(data) {
 }
 
 function analyzeProject(project, allTasks, allTimeLogs, today) {
+    if (!project) {
+        return {
+            metrics: {},
+            timeline: {},
+            risk: { riskScore: 0, riskLevel: 'low', riskFactors: [] },
+            recommendations: []
+        };
+    }
+
     // משימות הפרויקט
-    const projectTasks = allTasks.filter(t => t.project_id === project.id);
-    const completedTasks = projectTasks.filter(t => t.status === 'הושלמה');
-    const openTasks = projectTasks.filter(t => t.status !== 'הושלמה');
+    const projectTasks = allTasks.filter(t => t && t.project_id === project.id);
+    const completedTasks = projectTasks.filter(t => t && t.status === 'הושלמה');
+    const openTasks = projectTasks.filter(t => t && t.status !== 'הושלמה');
     const overdueTasks = openTasks.filter(t => {
-        if (!t.due_date) return false;
+        if (!t || !t.due_date) return false;
         return new Date(t.due_date) < today;
     });
 
@@ -99,16 +115,16 @@ function analyzeProject(project, allTasks, allTimeLogs, today) {
         : 0;
 
     // ניתוח time logs
-    const projectLogs = allTimeLogs.filter(log => log.project_id === project.id);
+    const projectLogs = allTimeLogs.filter(log => log && log.project_id === project.id);
     const totalHours = projectLogs.reduce((sum, log) => sum + (log.duration_seconds || 0), 0) / 3600;
     
     // שעות בשבועיים האחרונים
     const twoWeeksAgo = new Date(today.getTime() - 14 * 24 * 60 * 60 * 1000);
-    const recentLogs = projectLogs.filter(log => new Date(log.log_date) > twoWeeksAgo);
+    const recentLogs = projectLogs.filter(log => log && log.log_date && new Date(log.log_date) > twoWeeksAgo);
     const recentHours = recentLogs.reduce((sum, log) => sum + (log.duration_seconds || 0), 0) / 3600;
 
     // ניתוח משאבים (מי עובד על הפרויקט)
-    const contributors = new Set(projectLogs.map(log => log.created_by).filter(Boolean));
+    const contributors = new Set(projectLogs.map(log => log && log.created_by).filter(Boolean));
     const contributorCount = contributors.size;
 
     // חישוב מהירות עבודה (tasks per week)
@@ -281,7 +297,7 @@ function generateRecommendations(data) {
     }
 
     // המלצה 3: הגבר פעילות
-    if (data.recentHours < 5 && data.project.status === 'בביצוע') {
+    if (data.recentHours < 5 && data.project && data.project.status === 'בביצוע') {
         recommendations.push({
             priority: 'high',
             category: 'activity',
@@ -303,7 +319,7 @@ function generateRecommendations(data) {
     }
 
     // המלצה 5: הוסף משימות
-    if (data.project.status === 'בביצוע' && data.openTasks === 0) {
+    if (data.project && data.project.status === 'בביצוע' && data.openTasks === 0) {
         recommendations.push({
             priority: 'medium',
             category: 'planning',
@@ -368,14 +384,15 @@ function generateProjectSummary(projectAnalysis) {
 }
 
 function calculateHealthScore(projectAnalysis) {
-    if (projectAnalysis.length === 0) return 100;
+    if (!projectAnalysis || projectAnalysis.length === 0) return 100;
 
     let score = 100;
 
     projectAnalysis.forEach(project => {
-        if (project.risk?.riskLevel === 'high') {
+        if (!project || !project.risk) return;
+        if (project.risk.riskLevel === 'high') {
             score -= 15;
-        } else if (project.risk?.riskLevel === 'medium') {
+        } else if (project.risk.riskLevel === 'medium') {
             score -= 5;
         }
     });
