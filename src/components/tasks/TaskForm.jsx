@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -7,15 +6,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { User } from '@/entities/User'; // תיקון הייבוא
-import { Clock } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import ReminderTimePicker from "./ReminderTimePicker"; // Added import
+import { User } from '@/entities/User';
+import ReminderTimePicker from "./ReminderTimePicker";
 
 export default function TaskForm({ task, clients, projects, onSubmit, onCancel, initialData = {} }) {
   const [formData, setFormData] = useState(task || {
@@ -37,6 +29,42 @@ export default function TaskForm({ task, clients, projects, onSubmit, onCancel, 
   const [user, setUser] = useState(null);
   const [customRingtones, setCustomRingtones] = useState([]);
 
+  // ✅ הגנה מלאה על clients prop
+  const safeClients = useMemo(() => {
+    if (!clients) {
+      console.warn('⚠️ [TaskForm] clients is null/undefined');
+      return [];
+    }
+    if (!Array.isArray(clients)) {
+      console.error('❌ [TaskForm] clients is not an array!', {
+        type: typeof clients,
+        value: clients
+      });
+      return [];
+    }
+    const valid = clients.filter(c => c && typeof c === 'object' && c.name);
+    console.log('✅ [TaskForm] safeClients:', valid.length);
+    return valid;
+  }, [clients]);
+
+  // ✅ הגנה מלאה על projects prop
+  const safeProjects = useMemo(() => {
+    if (!projects) {
+      console.warn('⚠️ [TaskForm] projects is null/undefined');
+      return [];
+    }
+    if (!Array.isArray(projects)) {
+      console.error('❌ [TaskForm] projects is not an array!', {
+        type: typeof projects,
+        value: projects
+      });
+      return [];
+    }
+    const valid = projects.filter(p => p && typeof p === 'object' && p.name);
+    console.log('✅ [TaskForm] safeProjects:', valid.length);
+    return valid;
+  }, [projects]);
+
   useEffect(() => {
     const loadUserData = async () => {
       try {
@@ -55,16 +83,12 @@ export default function TaskForm({ task, clients, projects, onSubmit, onCancel, 
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  // Handler for client selection changes
   const handleClientChange = (newClientName) => {
     setFormData(prev => {
       const updatedFormData = { ...prev, client_name: newClientName };
 
-      // Check if the current project is valid for the newly selected client
-      // If client is "none", or if the previously selected project does not belong to the new client,
-      // reset the project_name.
       const currentProjectName = updatedFormData.project_name;
-      const selectedClientProjects = projects?.filter(p => p.client_name === newClientName) || [];
+      const selectedClientProjects = safeProjects.filter(p => p.client_name === newClientName);
       const isCurrentProjectValidForNewClient = selectedClientProjects.some(p => p.name === currentProjectName);
 
       if (newClientName === "" || !isCurrentProjectValidForNewClient) {
@@ -74,58 +98,32 @@ export default function TaskForm({ task, clients, projects, onSubmit, onCancel, 
     });
   };
 
-  // Filter projects based on the selected client
+  // ✅ Filter projects based on the selected client - with protection
   const filteredProjects = useMemo(() => {
-    if (!projects || projects.length === 0) {
+    if (safeProjects.length === 0) {
       return [];
     }
     if (formData.client_name) {
-      return projects.filter(project => project.client_name === formData.client_name);
+      return safeProjects.filter(project => project.client_name === formData.client_name);
     }
-    return projects; // If no client is selected, show all projects
-  }, [projects, formData.client_name]);
+    return safeProjects;
+  }, [safeProjects, formData.client_name]);
 
-  // Helper function to format time for display (not directly used here, but included as per outline)
-  // eslint-disable-next-line no-unused-vars
-  const formatTimeForDisplay = (hour, minute) => {
-    const h = hour.toString().padStart(2, '0');
-    const m = minute.toString().padStart(2, '0');
-    return `${h}:${m}`;
-  };
-
-  // Helper function to set reminder time with specific hour/minute
   const setReminderTime = (hour, minute) => {
     let reminderDate;
     if (formData.due_date) {
-      // Use the due date for the reminder date if available
       reminderDate = new Date(formData.due_date);
     } else if (formData.reminder_at) {
-      // If no due date but a reminder_at exists, use that date
       reminderDate = new Date(formData.reminder_at);
     } else {
-      // Default to tomorrow if neither due_date nor reminder_at is set
       reminderDate = new Date();
       reminderDate.setDate(reminderDate.getDate() + 1); 
     }
     reminderDate.setHours(hour, minute, 0, 0);
-    // use local datetime format expected by input[type=datetime-local]
     const pad = (n) => String(n).padStart(2, "0");
     const toLocal = (d) => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
     updateField('reminder_at', toLocal(reminderDate));
   };
-
-  // Quick time options - No longer used directly by DropdownMenu, but can be passed to ReminderTimePicker if needed.
-  // Kept for now as it was in the original code, but the outline suggests it's not needed for this component.
-  // The ReminderTimePicker component will handle its own quick times.
-  const quickTimes = [
-    { hour: 8, minute: 0, label: '08:00 בבוקר' },
-    { hour: 9, minute: 0, label: '09:00 בבוקר' },
-    { hour: 12, minute: 0, label: '12:00 צהריים' },
-    { hour: 14, minute: 0, label: '14:00 אחה״צ' },
-    { hour: 16, minute: 0, label: '16:00 אחה״צ' },
-    { hour: 18, minute: 0, label: '18:00 ערב' },
-    { hour: 20, minute: 0, label: '20:00 ערב' },
-  ];
 
   return (
     <Dialog open={true} onOpenChange={onCancel}>
@@ -153,9 +151,13 @@ export default function TaskForm({ task, clients, projects, onSubmit, onCancel, 
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">ללא לקוח</SelectItem>
-                  {clients?.map(client => (
-                    <SelectItem key={client.id} value={client.name}>{client.name}</SelectItem>
-                  ))}
+                  {safeClients.length === 0 ? (
+                    <SelectItem value={null} disabled>אין לקוחות זמינים</SelectItem>
+                  ) : (
+                    safeClients.map(client => (
+                      <SelectItem key={client.id} value={client.name}>{client.name}</SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -168,9 +170,13 @@ export default function TaskForm({ task, clients, projects, onSubmit, onCancel, 
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">ללא פרויקט</SelectItem>
-                  {filteredProjects.map(project => (
-                    <SelectItem key={project.id} value={project.name}>{project.name}</SelectItem>
-                  ))}
+                  {filteredProjects.length === 0 ? (
+                    <SelectItem value={null} disabled>אין פרויקטים זמינים</SelectItem>
+                  ) : (
+                    filteredProjects.map(project => (
+                      <SelectItem key={project.id} value={project.name}>{project.name}</SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -223,7 +229,6 @@ export default function TaskForm({ task, clients, projects, onSubmit, onCancel, 
             <Input type="date" value={formData.due_date} onChange={(e) => updateField('due_date', e.target.value)} />
           </div>
 
-          {/* תזכורות */}
           <div className="mt-2 p-3 rounded-lg border bg-slate-50 space-y-3">
             <div className="flex items-center justify-between">
               <Label className="font-semibold">תזכורת</Label>
@@ -237,7 +242,6 @@ export default function TaskForm({ task, clients, projects, onSubmit, onCancel, 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label>מועד התזכורת</Label>
-                  {/* Replace absolute icon with inline button so it won't overlap ringtone section */}
                   <div className="flex items-center gap-2">
                     <Input
                       type="datetime-local"
