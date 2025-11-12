@@ -13,7 +13,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger
+  DropdownMenuTrigger,
+  DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -46,7 +47,8 @@ import {
   Sparkles,
   RefreshCw,
   ChevronDown,
-  MoreVertical
+  MoreVertical,
+  FileDown // Added this import
 } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
@@ -64,6 +66,7 @@ import ClientImporter from "../components/clients/ClientImporter";
 import GoogleSheetsManager from "../components/clients/GoogleSheetsManager";
 import ClientMerger from "../components/clients/ClientMerger";
 import GoogleSheetsImporter from "../components/clients/GoogleSheetsImporter";
+import SmartClientImporter from "../components/clients/SmartClientImporter"; // Added this import
 import { useAccessControl, autoAssignToCreator } from "../components/access/AccessValidator";
 import { toast } from "sonner";
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
@@ -92,6 +95,7 @@ export default function ClientsPage() {
   const [showMerger, setShowMerger] = useState(false);
   const [showSheetsImporter, setShowSheetsImporter] = useState(false);
   const [isCleaningNames, setIsCleaningNames] = useState(false);
+  const [showSmartImporter, setShowSmartImporter] = useState(false); // Added this state
 
   // scrollContainerRef is kept but its role in virtual scrolling is removed.
   // It could still be used for general layout purposes if needed, but no longer directly controls scroll behavior for DND/grid.
@@ -598,6 +602,54 @@ export default function ClientsPage() {
         width: '100%' // Changed overflow to visible for scrollArea to manage
       }}>
 
+      {/* Dialogs and imports */}
+      {showImporter &&
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <ClientImporter
+            open={showImporter}
+            onClose={() => setShowImporter(false)}
+            onDone={() => {
+              setShowImporter(false);
+              loadClients();
+            }} />
+        </div>
+      }
+
+      {showSheetsImporter &&
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <GoogleSheetsImporter
+            onImportComplete={() => {
+              setShowSheetsImporter(false);
+              loadClients();
+            }}
+            onClose={() => setShowSheetsImporter(false)} />
+        </div>
+      }
+
+      {showSmartImporter &&
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <SmartClientImporter
+            open={showSmartImporter}
+            onClose={() => setShowSmartImporter(false)}
+            onSuccess={loadClients} // Using loadClients as the equivalent of loadData
+          />
+        </div>
+      }
+
+      {/* Client Form */}
+      {showForm &&
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <ClientForm
+            client={editingClient}
+            onSubmit={handleSubmit}
+            onCancel={() => {
+              setShowForm(false);
+              setEditingClient(null);
+            }} />
+        </div>
+      }
+
+
       {/* כותרת העמוד */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-4 gap-4">
         <div className="text-right">
@@ -611,10 +663,72 @@ export default function ClientsPage() {
         <ClientStats clients={clients} isLoading={isLoading} />
       </div>
 
-      {/* כפתורי הפעולה (Toolbar) */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
-        {/* Left group of buttons */}
-        <div className="flex flex-wrap gap-3">
+      {/* Toolbar - Combined search, filters and buttons */}
+      <div className="mb-6 flex flex-col lg:flex-row items-center justify-between bg-white rounded-xl shadow-sm p-4 border border-slate-200" dir="rtl">
+        {/* Search and Filters group */}
+        <div className="flex flex-wrap items-center gap-4 w-full lg:w-auto mb-4 lg:mb-0">
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5" style={{ color: iconColor }} />
+            <Input
+              placeholder="חיפוש לקוח (שם, טלפון, אימייל)..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pr-10 text-right" />
+          </div>
+
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full lg:w-40">
+              <SelectValue placeholder="סטטוס" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">כל הסטטוסים</SelectItem>
+              <SelectItem value="פוטנציאלי">פוטנציאלי</SelectItem>
+              <SelectItem value="פעיל">פעיל</SelectItem>
+              <SelectItem value="לא פעיל">לא פעיל</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={sourceFilter} onValueChange={setSourceFilter}>
+            <SelectTrigger className="w-full lg:w-40">
+              <SelectValue placeholder="מקור הגעה" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">כל המקורות</SelectItem>
+              <SelectItem value="הפניה">הפניה</SelectItem>
+              <SelectItem value="אתר אינטרנט">אתר אינטרנט</SelectItem>
+              <SelectItem value="מדיה חברתית">מדיה חברתית</SelectItem>
+              <SelectItem value="פרסומת">פרסומת</SelectItem>
+              <SelectItem value="אחר">אחר</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={budgetFilter} onValueChange={setBudgetFilter}>
+            <SelectTrigger className="w-full lg:w-40">
+              <SelectValue placeholder="טווח תקציב" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">כל התקציבים</SelectItem>
+              <SelectItem value="עד 5,000 ש״ח">עד 5,000 ש״ח</SelectItem>
+              <SelectItem value="5,000 - 10,000 ש״ח">5,000 - 10,000 ש״ח</SelectItem>
+              <SelectItem value="10,000 - 20,000 ש״ח">10,000 - 20,000 ש״ח</SelectItem>
+              <SelectItem value="מעל 20,000 ש״ח">מעל 20,000 ש״ח</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="w-full lg:w-40">
+              <SelectValue placeholder="מיון" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="name">לפי שם</SelectItem>
+              <SelectItem value="created_date">לפי תאריך</SelectItem>
+              <SelectItem value="status">לפי סטטוס</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Buttons group */}
+        <div className="flex flex-wrap items-center gap-3">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="bg-background text-slate-800 px-4 py-2 text-sm font-medium rounded-md inline-flex items-center justify-center whitespace-nowrap ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border hover:text-accent-foreground h-10 gap-2 border-slate-200 hover:bg-slate-50">
@@ -624,7 +738,6 @@ export default function ClientsPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-80 max-h-96 overflow-y-auto" dir="rtl">
-              {/* Google Sheets Manager בתוך התפריט */}
               <div className="p-4 border-b border-slate-200">
                 <GoogleSheetsManager
                   clients={filteredAndSortedClients}
@@ -634,11 +747,6 @@ export default function ClientsPage() {
               <DropdownMenuItem onClick={openGoogleSheet} className="gap-3">
                 <FileSpreadsheet className="w-4 h-4" style={{ color: iconColor }} />
                 פתח Google Sheets
-              </DropdownMenuItem>
-
-              <DropdownMenuItem onClick={() => setShowSheetsImporter(true)} className="gap-3">
-                <Upload className="w-4 h-4" style={{ color: iconColor }} />
-                ייבא מ-Google Sheets
               </DropdownMenuItem>
 
               <div className="px-2 py-1.5 hover:bg-slate-50 rounded-sm">
@@ -686,11 +794,6 @@ export default function ClientsPage() {
                 </div>
               </div>
 
-              <DropdownMenuItem onClick={() => setShowImporter(true)} className="gap-3">
-                <FileText className="w-4 h-4" style={{ color: iconColor }} />
-                ייבא לקוחות מקובץ
-              </DropdownMenuItem>
-
               <div className="my-1 h-px bg-slate-200"></div>
 
               <DropdownMenuItem onClick={deleteUnnamedClients} className="gap-3 text-red-600 focus:text-red-700">
@@ -727,10 +830,7 @@ export default function ClientsPage() {
               </>
             )}
           </Button>
-        </div>
 
-        {/* Right group of buttons */}
-        <div className="flex items-center gap-3">
           {/* View Mode Selector */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -754,7 +854,7 @@ export default function ClientsPage() {
               <DropdownMenuItem
                 onClick={() => setViewMode("list")}
                 className={`flex items-center gap-3 cursor-pointer ${viewMode === "list" ? "bg-blue-50 text-blue-700" : ""}`}>
-                <List className="w-4 h-4" style={{ color: viewMode === "list" ? undefined : iconColor }} />
+                <List className="w-4 h-4" style={{ color: viewColor === "list" ? undefined : iconColor }} />
                 <span className="flex-1">רשימה</span>
                 {viewMode === "list" && <Eye className="w-4 h-4 text-blue-600" />}
               </DropdownMenuItem>
@@ -801,6 +901,43 @@ export default function ClientsPage() {
             </DropdownMenuContent>
           </DropdownMenu>
 
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2 bg-white border-slate-200 hover:bg-slate-50">
+                <FileDown className="w-4 h-4" style={{ color: iconColor }} />
+                ייבוא
+                <ChevronDown className="w-4 h-4" style={{ color: iconColor }} />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" dir="rtl" className="w-56">
+              <DropdownMenuItem
+                onClick={() => setShowSmartImporter(true)}
+                className="gap-2 cursor-pointer"
+              >
+                <Sparkles className="w-4 h-4 text-purple-600" />
+                <div className="flex-1">
+                  <div className="font-semibold">יבוא חכם עם AI</div>
+                  <div className="text-xs text-slate-500">זיהוי אוטומטי של עמודות</div>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => setShowImporter(true)}
+                className="gap-2 cursor-pointer"
+              >
+                <Upload className="w-4 h-4" style={{ color: iconColor }} />
+                יבוא רגיל מקובץ
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setShowSheetsImporter(true)}
+                className="gap-2 cursor-pointer"
+              >
+                <TableIcon className="w-4 h-4" style={{ color: iconColor }} />
+                ייבוא מ-Google Sheets
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           <Button
             onClick={() => {
               console.log('🖱️ [UI] Clean Names button clicked!');
@@ -833,97 +970,6 @@ export default function ClientsPage() {
         </div>
       </div>
 
-
-      {/* שורת החיפוש והפילטרים */}
-      <Card className="mb-6 shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-        <CardContent className="p-6">
-          <div className="flex flex-col lg:flex-row gap-4" dir="rtl">
-            <div className="relative flex-1">
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5" style={{ color: iconColor }} />
-              <Input
-                placeholder="חיפוש לקוח (שם, טלפון, אימייל)..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pr-10 text-right" />
-            </div>
-
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full lg:w-40">
-                <SelectValue placeholder="סטטוס" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">כל הסטטוסים</SelectItem>
-                <SelectItem value="פוטנציאלי">פוטנציאלי</SelectItem>
-                <SelectItem value="פעיל">פעיל</SelectItem>
-                <SelectItem value="לא פעיל">לא פעיל</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select value={sourceFilter} onValueChange={setSourceFilter}>
-              <SelectTrigger className="w-full lg:w-40">
-                <SelectValue placeholder="מקור הגעה" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">כל המקורות</SelectItem>
-                <SelectItem value="הפניה">הפניה</SelectItem>
-                <SelectItem value="אתר אינטרנט">אתר אינטרנט</SelectItem>
-                <SelectItem value="מדיה חברתית">מדיה חברתית</SelectItem>
-                <SelectItem value="פרסומת">פרסומת</SelectItem>
-                <SelectItem value="אחר">אחר</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select value={budgetFilter} onValueChange={setBudgetFilter}>
-              <SelectTrigger className="w-full lg:w-40">
-                <SelectValue placeholder="טווח תקציב" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">כל התקציבים</SelectItem>
-                <SelectItem value="עד 5,000 ש״ח">עד 5,000 ש״ח</SelectItem>
-                <SelectItem value="5,000 - 10,000 ש״ח">5,000 - 10,000 ש״ח</SelectItem>
-                <SelectItem value="10,000 - 20,000 ש״ח">10,000 - 20,000 ש״ח</SelectItem>
-                <SelectItem value="מעל 20,000 ש״ח">מעל 20,000 ש״ח</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-full lg:w-40">
-                <SelectValue placeholder="מיון" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="name">לפי שם</SelectItem>
-                <SelectItem value="created_date">לפי תאריך</SelectItem>
-                <SelectItem value="status">לפי סטטוס</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Dialogs and imports */}
-      {showImporter &&
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <ClientImporter
-            open={showImporter}
-            onClose={() => setShowImporter(false)}
-            onDone={() => {
-              setShowImporter(false);
-              loadClients();
-            }} />
-        </div>
-      }
-
-      {showSheetsImporter &&
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <GoogleSheetsImporter
-            onImportComplete={() => {
-              setShowSheetsImporter(false);
-              loadClients();
-            }}
-            onClose={() => setShowSheetsImporter(false)} />
-        </div>
-      }
-
       {/* Selection toolbar */}
       {selectionMode && selectedIds.length > 0 &&
         <div className="mb-4 bg-white border rounded-xl p-3 flex items-center justify-between animate-in slide-in-from-top-2">
@@ -949,19 +995,6 @@ export default function ClientsPage() {
               מחק
             </Button>
           </div>
-        </div>
-      }
-
-      {/* Client Form */}
-      {showForm &&
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <ClientForm
-            client={editingClient}
-            onSubmit={handleSubmit}
-            onCancel={() => {
-              setShowForm(false);
-              setEditingClient(null);
-            }} />
         </div>
       }
 
