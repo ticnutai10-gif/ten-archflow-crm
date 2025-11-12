@@ -685,9 +685,19 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   }, [history, historyIndex]); // Dependencies should be specific to what state `redo` changes
 
   const saveToBackend = useCallback(async () => {
-    if (!spreadsheet?.id) return;
+    if (!spreadsheet?.id) {
+      console.warn('⚠️ Cannot save - no spreadsheet ID');
+      return;
+    }
     
     try {
+      console.log('💾 [GenericSpreadsheet] Saving to backend:', {
+        id: spreadsheet.id,
+        rowsCount: rowsData.length,
+        columnsCount: columns.length,
+        rows: rowsData
+      });
+      
       await base44.entities.CustomSpreadsheet.update(spreadsheet.id, {
         columns,
         rows_data: rowsData,
@@ -696,11 +706,17 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         sub_headers: subHeaders
       });
       
-      if (onUpdate) onUpdate();
+      console.log('✅ [GenericSpreadsheet] Saved successfully');
+      
+      if (onUpdate) {
+        console.log('🔄 [GenericSpreadsheet] Calling onUpdate...');
+        await onUpdate();
+      }
+      
       toast.success('✓ הטבלה נשמרה');
     } catch (error) {
-      console.error('Error saving spreadsheet:', error);
-      toast.error('שגיאה בשמירה');
+      console.error('❌ [GenericSpreadsheet] Error saving spreadsheet:', error);
+      toast.error('שגיאה בשמירה: ' + error.message);
     }
   }, [spreadsheet, columns, rowsData, cellStyles, showSubHeaders, subHeaders, onUpdate]);
 
@@ -735,6 +751,13 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
 
   useEffect(() => {
     if (spreadsheet) {
+      console.log('📊 [GenericSpreadsheet] Loading spreadsheet data:', {
+        name: spreadsheet.name,
+        columnsCount: spreadsheet.columns?.length,
+        rowsCount: spreadsheet.rows_data?.length,
+        rows: spreadsheet.rows_data
+      });
+      
       setColumns(spreadsheet.columns || []);
       setRowsData(spreadsheet.rows_data || []);
       setCellStyles(spreadsheet.cell_styles || {});

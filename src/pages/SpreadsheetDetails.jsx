@@ -23,16 +23,25 @@ export default function SpreadsheetDetailsPage() {
 
       if (!spreadsheetId) {
         toast.error('לא נמצא מזהה טבלה');
-        navigate(createPageUrl('Tasks'));
+        navigate(createPageUrl('CustomSpreadsheets'));
         return;
       }
 
+      console.log('📊 [SpreadsheetDetails] Loading spreadsheet:', spreadsheetId);
       const data = await base44.entities.CustomSpreadsheet.get(spreadsheetId);
+      
+      console.log('✅ [SpreadsheetDetails] Spreadsheet loaded:', {
+        name: data.name,
+        columnsCount: data.columns?.length,
+        rowsCount: data.rows_data?.length,
+        rows: data.rows_data
+      });
+      
       setSpreadsheet(data);
     } catch (error) {
-      console.error("Error loading spreadsheet:", error);
-      toast.error('שגיאה בטעינת הטבלה');
-      navigate(createPageUrl('Tasks'));
+      console.error("❌ [SpreadsheetDetails] Error loading spreadsheet:", error);
+      toast.error('שגיאה בטעינת הטבלה: ' + error.message);
+      navigate(createPageUrl('CustomSpreadsheets'));
     } finally {
       setLoading(false);
     }
