@@ -42,10 +42,13 @@ const CLIENT_FIELDS = [
   { value: '', label: '⚠️ דלג על עמודה זו', required: false }
 ];
 
-// פונקציה לקריאת CSV
+// פונקציה לקריאת CSV פשוט
 const parseCSV = (text) => {
   const lines = text.split('\n').filter(line => line.trim());
-  return lines.map(line => {
+  if (lines.length === 0) return [];
+  
+  const result = [];
+  for (const line of lines) {
     const values = [];
     let current = '';
     let inQuotes = false;
@@ -63,25 +66,41 @@ const parseCSV = (text) => {
       }
     }
     values.push(current.trim());
-    return values;
-  });
+    result.push(values);
+  }
+  
+  return result;
 };
 
 // פונקציה לקריאת Excel באמצעות parseSpreadsheet function
 const parseExcelFile = async (file) => {
   try {
-    const formData = new FormData();
-    formData.append('file', file);
+    console.log('📤 Uploading file to parseSpreadsheet...', file.name);
     
-    const response = await base44.functions.invoke('parseSpreadsheet', { file });
+    // שלב 1: העלאת הקובץ
+    const uploadResult = await base44.integrations.Core.UploadFile({ file });
+    const fileUrl = uploadResult.file_url;
     
-    if (response?.data?.rows) {
-      return response.data.rows;
+    console.log('✅ File uploaded:', fileUrl);
+    
+    // שלב 2: קריאת הקובץ
+    const response = await base44.functions.invoke('parseSpreadsheet', { file_url: fileUrl });
+    
+    console.log('📊 Parse response:', response);
+    
+    if (response?.data?.status === 'success' && response.data.rows) {
+      // המרה לפורמט של מערך דו-ממדי
+      const headers = response.data.headers || [];
+      const rows = response.data.rows.map(row => 
+        headers.map(h => row[h] !== undefined ? String(row[h]) : '')
+      );
+      
+      return [headers, ...rows];
     }
     
-    throw new Error('לא ניתן לקרוא את הקובץ');
+    throw new Error(response?.data?.error || 'לא ניתן לקרוא את הקובץ');
   } catch (error) {
-    console.error('Error parsing Excel:', error);
+    console.error('❌ Error parsing Excel:', error);
     throw error;
   }
 };
@@ -109,15 +128,21 @@ export default function SmartClientImporter({ open, onClose, onSuccess }) {
     try {
       let parsedData;
       
+      console.log('📂 Processing file:', uploadedFile.name, 'Type:', uploadedFile.type);
+      
       // בדיקה אם זה CSV או Excel
       if (uploadedFile.name.toLowerCase().endsWith('.csv')) {
+        console.log('📄 Reading as CSV...');
         // קריאת CSV
         const text = await uploadedFile.text();
         parsedData = parseCSV(text);
       } else {
+        console.log('📊 Reading as Excel...');
         // קריאת Excel באמצעות backend function
         parsedData = await parseExcelFile(uploadedFile);
       }
+
+      console.log('✅ Parsed data:', parsedData?.length, 'rows');
 
       if (!parsedData || parsedData.length === 0) {
         setError('הקובץ ריק או לא תקין');
@@ -130,6 +155,9 @@ export default function SmartClientImporter({ open, onClose, onSuccess }) {
         row && Array.isArray(row) && row.some(cell => cell !== null && cell !== undefined && cell !== '')
       );
 
+      console.log('✅ Headers:', headerRow);
+      console.log('✅ Data rows:', dataRows.length);
+
       setHeaders(headerRow.map(h => String(h || '')));
       setRawData(dataRows);
       setStep(2);
@@ -137,7 +165,7 @@ export default function SmartClientImporter({ open, onClose, onSuccess }) {
       // הפעלת AI אוטומטית
       setTimeout(() => suggestMappingWithAI(headerRow, dataRows.slice(0, 5)), 500);
     } catch (err) {
-      console.error('Error parsing file:', err);
+      console.error('❌ Error parsing file:', err);
       setError('שגיאה בקריאת הקובץ: ' + err.message);
     }
   };
