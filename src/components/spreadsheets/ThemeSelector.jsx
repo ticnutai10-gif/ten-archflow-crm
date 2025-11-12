@@ -141,6 +141,10 @@ export default function ThemeSelector({ open, onClose, currentTheme, onApply }) 
   React.useEffect(() => {
     if (currentTheme) {
       setTheme(currentTheme);
+      // אם יש customColors, הצג את העורך המותאם
+      if (currentTheme.customColors) {
+        setShowCustomColors(true);
+      }
     }
   }, [currentTheme, open]);
 
@@ -170,7 +174,8 @@ export default function ThemeSelector({ open, onClose, currentTheme, onApply }) 
   };
   
   const handleCreateCustomPalette = () => {
-    const customPalette = {
+    // אם יש כבר customColors, השתמש בהם. אחרת צור חדשים מהפלטה הנוכחית
+    const basePalette = theme.customColors || {
       name: "מותאם אישית",
       headerBg: selectedPalette.headerBg,
       headerText: selectedPalette.headerText,
@@ -181,7 +186,7 @@ export default function ThemeSelector({ open, onClose, currentTheme, onApply }) 
       hover: selectedPalette.hover,
       selected: selectedPalette.selected
     };
-    setTheme({ ...theme, customColors: customPalette, palette: "custom" });
+    setTheme({ ...theme, customColors: basePalette, palette: "custom" });
     setShowCustomColors(true);
   };
   
@@ -251,50 +256,55 @@ export default function ThemeSelector({ open, onClose, currentTheme, onApply }) 
         <div className="space-y-6 py-4">
           {/* פלטת צבעים */}
           <div className="space-y-3">
-            <Label className="text-base font-bold flex items-center gap-2">
-              <Palette className="w-5 h-5" />
-              פלטת צבעים
-            </Label>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {Object.entries(COLOR_PALETTES).map(([key, palette]) => (
-                <button
-                  key={key}
-                  onClick={() => setTheme({ ...theme, palette: key })}
-                  className={`relative p-3 rounded-xl border-2 transition-all hover:scale-105 ${
-                    theme.palette === key ? 'border-purple-500 shadow-lg' : 'border-slate-200 hover:border-slate-300'
-                  }`}
+            <div className="flex items-center justify-between">
+              <Label className="text-base font-bold flex items-center gap-2">
+                <Palette className="w-5 h-5" />
+                פלטת צבעים
+              </Label>
+              {!showCustomColors && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCreateCustomPalette}
+                  className="gap-2 border-dashed border-purple-300 hover:border-purple-500 hover:bg-purple-50"
                 >
-                  <div className="space-y-2">
-                    <div className="flex gap-1 h-6">
-                      <div className="flex-1 rounded" style={{ backgroundColor: palette.headerBg }} />
-                      <div className="flex-1 rounded" style={{ backgroundColor: palette.cellBg }} />
-                      <div className="flex-1 rounded" style={{ backgroundColor: palette.cellAltBg }} />
-                    </div>
-                    <div className="text-xs font-semibold text-center">{palette.name}</div>
-                  </div>
-                  {theme.palette === key && (
-                    <div className="absolute -top-2 -right-2 w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center">
-                      <span className="text-white text-xs">✓</span>
-                    </div>
-                  )}
-                </button>
-              ))}
+                  <Palette className="w-4 h-4" />
+                  התאמה אישית
+                </Button>
+              )}
             </div>
+            
+            {!showCustomColors && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {Object.entries(COLOR_PALETTES).map(([key, palette]) => (
+                  <button
+                    key={key}
+                    onClick={() => {
+                      setTheme({ ...theme, palette: key, customColors: null });
+                      setShowCustomColors(false);
+                    }}
+                    className={`relative p-3 rounded-xl border-2 transition-all hover:scale-105 ${
+                      theme.palette === key && !theme.customColors ? 'border-purple-500 shadow-lg' : 'border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    <div className="space-y-2">
+                      <div className="flex gap-1 h-6">
+                        <div className="flex-1 rounded" style={{ backgroundColor: palette.headerBg }} />
+                        <div className="flex-1 rounded" style={{ backgroundColor: palette.cellBg }} />
+                        <div className="flex-1 rounded" style={{ backgroundColor: palette.cellAltBg }} />
+                      </div>
+                      <div className="text-xs font-semibold text-center">{palette.name}</div>
+                    </div>
+                    {theme.palette === key && !theme.customColors && (
+                      <div className="absolute -top-2 -right-2 w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center">
+                        <span className="text-white text-xs">✓</span>
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-
-          {/* כפתור צבעים מותאמים */}
-          {!showCustomColors && (
-            <div className="text-center">
-              <Button
-                variant="outline"
-                onClick={handleCreateCustomPalette}
-                className="gap-2 border-2 border-dashed border-purple-300 hover:border-purple-500 hover:bg-purple-50"
-              >
-                <Palette className="w-4 h-4" />
-                צור פלטת צבעים מותאמת אישית
-              </Button>
-            </div>
-          )}
 
           {/* עורך צבעים מותאם אישית */}
           {showCustomColors && theme.customColors && (
@@ -303,15 +313,18 @@ export default function ThemeSelector({ open, onClose, currentTheme, onApply }) 
                 <Label className="text-base font-bold flex items-center gap-2">
                   <Palette className="w-5 h-5 text-purple-600" />
                   עריכת צבעים מותאמים
+                  <Badge className="bg-purple-600 text-white">פעיל</Badge>
                 </Label>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => {
-                    setTheme({ ...theme, customColors: null, palette: "default" });
-                    setShowCustomColors(false);
+                    if (confirm('האם לבטל את ההתאמה האישית ולחזור לפלטת צבעים רגילה?')) {
+                      setTheme({ ...theme, customColors: null, palette: "default" });
+                      setShowCustomColors(false);
+                    }
                   }}
-                  className="text-xs"
+                  className="text-xs hover:bg-red-50 hover:text-red-600"
                 >
                   ביטול התאמה אישית
                 </Button>
