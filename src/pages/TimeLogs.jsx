@@ -307,8 +307,9 @@ export default function TimeLogsPage() {
       let canSeeAll = me?.role === 'admin';
       if (!canSeeAll && me?.email) {
         try {
-          const rows = await AccessControl.filter({ email: me.email, active: true });
-          const rule = rows?.[0];
+          const rows = await AccessControl.filter({ email: me.email, active: true }).catch(() => []);
+          const validRows = Array.isArray(rows) ? rows : [];
+          const rule = validRows?.[0];
           if (rule?.role === 'manager_plus') canSeeAll = true;
         } catch (e) {
           console.warn('Access control check failed:', e);
@@ -317,70 +318,108 @@ export default function TimeLogsPage() {
 
       // Load time logs based on permissions
       const timeLogsData = canSeeAll
-        ? await TimeLog.filter({}, '-log_date', 1000)
-        : await TimeLog.filter({ created_by: me.email }, '-log_date', 1000);
+        ? await TimeLog.filter({}, '-log_date', 1000).catch(() => [])
+        : await TimeLog.filter({ created_by: me.email }, '-log_date', 1000).catch(() => []);
 
-      const clientsData = await Client.list();
+      const clientsData = await Client.list().catch(() => []);
 
-      setTimeLogs(timeLogsData);
-      setClients(clientsData);
+      // ✅ הגנה על התוצאות
+      const validTimeLogs = Array.isArray(timeLogsData) ? timeLogsData : [];
+      const validClients = Array.isArray(clientsData) ? clientsData : [];
+
+      console.log('✅ [TimeLogsPage] Loaded data:', {
+        timeLogs: validTimeLogs.length,
+        clients: validClients.length
+      });
+
+      setTimeLogs(validTimeLogs);
+      setClients(validClients);
     } catch (error) {
-      console.error('Error loading time logs:', error);
+      console.error('❌ [TimeLogsPage] Error loading time logs:', error);
+      setTimeLogs([]);
+      setClients([]);
     }
     setIsLoading(false);
   };
 
-  // Get unique employees
-  const uniqueEmployees = [...new Set(timeLogs.map(log => log.created_by))].filter(Boolean);
+  // ✅ הגנה על uniqueEmployees
+  const uniqueEmployees = React.useMemo(() => {
+    if (!Array.isArray(timeLogs)) {
+      console.error('❌ [TimeLogsPage] timeLogs is not an array for uniqueEmployees!', timeLogs);
+      return [];
+    }
+    return [...new Set(timeLogs.map(log => log?.created_by))].filter(Boolean);
+  }, [timeLogs]);
 
   // Filter logs
-  const filteredLogs = timeLogs.filter(log => {
-    const matchesSearch = log.client_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         log.title?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesClient = clientFilter === "all" || log.client_name === clientFilter;
-    const matchesEmployee = employeeFilter === "all" || log.created_by === employeeFilter;
-
-    let matchesTime = true;
-    if (timeFilter !== "all") {
-      const logDate = new Date(log.log_date);
-      const now = new Date();
-
-      switch (timeFilter) {
-        case 'today':
-          matchesTime = logDate.toDateString() === now.toDateString();
-          break;
-        case 'week':
-          matchesTime = isWithinInterval(logDate, {
-            start: startOfWeek(now, { weekStartsOn: 0 }),
-            end: endOfWeek(now, { weekStartsOn: 0 })
-          });
-          break;
-        case 'month':
-          matchesTime = isWithinInterval(logDate, {
-            start: startOfMonth(now),
-            end: endOfMonth(now)
-          });
-          break;
-        default:
-          break;
-      }
+  // ✅ הגנה על filteredLogs
+  const filteredLogs = React.useMemo(() => {
+    if (!Array.isArray(timeLogs)) {
+      console.error('❌ [TimeLogsPage] timeLogs is not an array for filtering!', timeLogs);
+      return [];
     }
+    
+    return timeLogs.filter(log => {
+      if (!log || typeof log !== 'object') return false; // Ensure log is a valid object
+      
+      const matchesSearch = log.client_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           log.title?.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesClient = clientFilter === "all" || log.client_name === clientFilter;
+      const matchesEmployee = employeeFilter === "all" || log.created_by === employeeFilter;
 
-    return matchesSearch && matchesClient && matchesEmployee && matchesTime;
-  });
+      let matchesTime = true;
+      if (timeFilter !== "all" && log.log_date) {
+        try {
+          const logDate = new Date(log.log_date);
+          const now = new Date();
+
+          switch (timeFilter) {
+            case 'today':
+              matchesTime = logDate.toDateString() === now.toDateString();
+              break;
+            case 'week':
+              matchesTime = isWithinInterval(logDate, {
+                start: startOfWeek(now, { weekStartsOn: 0 }),
+                end: endOfWeek(now, { weekStartsOn: 0 })
+              });
+              break;
+            case 'month':
+              matchesTime = isWithinInterval(logDate, {
+                start: startOfMonth(now),
+                end: endOfMonth(now)
+              });
+              break;
+            default:
+              break;
+          }
+        } catch (e) {
+          console.warn('Invalid log_date for filtering:', log.log_date, e);
+          matchesTime = false; // If date is invalid, it doesn't match
+        }
+      }
+
+      return matchesSearch && matchesClient && matchesEmployee && matchesTime;
+    });
+  }, [timeLogs, searchTerm, clientFilter, employeeFilter, timeFilter]);
 
   // Analytics data
-  const totalHours = filteredLogs.reduce((sum, log) => sum + (log.duration_seconds || 0), 0) / 3600;
+  // ✅ הגנה על totalHours
+  const totalHours = React.useMemo(() => {
+    return filteredLogs.reduce((sum, log) => sum + (log?.duration_seconds || 0), 0) / 3600;
+  }, [filteredLogs]);
+
   const avgSessionTime = filteredLogs.length > 0 ? totalHours / filteredLogs.length : 0;
-  const totalSecondsFiltered = filteredLogs.reduce((sum, log) => sum + (log.duration_seconds || 0), 0);
+  const totalSecondsFiltered = filteredLogs.reduce((sum, log) => sum + (log?.duration_seconds || 0), 0);
 
 
   // Client distribution for pie chart
+  // ✅ הגנה על clientDistribution
   const clientDistribution = () => {
     const clientHours = {};
     filteredLogs.forEach(log => {
+      if (!log) return; // Skip if log is null/undefined
       const client = log.client_name || 'ללא לקוח';
-      const hours = (log.duration_seconds || 0) / 3600;
+      const hours = (log?.duration_seconds || 0) / 3600;
       clientHours[client] = (clientHours[client] || 0) + hours;
     });
     
@@ -391,21 +430,28 @@ export default function TimeLogsPage() {
   };
 
   // Heat map data for daily patterns
+  // ✅ הגנה על heatMapData
   const heatMapData = () => {
     const patterns = {};
     filteredLogs.forEach(log => {
-      const date = new Date(log.log_date);
-      const dayOfWeek = getDay(date);
-      const hour = getHours(date); // Changed from getHour to getHours
-      const key = `${dayOfWeek}-${hour}`;
-      const hours = (log.duration_seconds || 0) / 3600;
-      patterns[key] = (patterns[key] || 0) + hours;
+      if (!log || !log.log_date) return;
+      try {
+        const date = new Date(log.log_date);
+        const dayOfWeek = getDay(date);
+        const hour = getHours(date); // Changed from getHour to getHours
+        const key = `${dayOfWeek}-${hour}`;
+        const hours = (log?.duration_seconds || 0) / 3600;
+        patterns[key] = (patterns[key] || 0) + hours;
+      } catch (e) {
+        console.error('Error processing log date for heat map:', e, log);
+      }
     });
     
     return Object.entries(patterns).map(([key, hours]) => ({ key, hours }));
   };
 
   // Daily activity data for last 30 days
+  // ✅ הגנה על dailyActivity
   const dailyActivity = () => {
     const days = {};
     const now = new Date();
@@ -418,10 +464,15 @@ export default function TimeLogsPage() {
     }
     
     filteredLogs.forEach(log => {
-      const dateKey = format(new Date(log.log_date), 'yyyy-MM-dd');
-      if (days[dateKey]) {
-        days[dateKey].hours += (log.duration_seconds || 0) / 3600;
-        days[dateKey].sessions += 1;
+      if (!log || !log.log_date) return;
+      try {
+        const dateKey = format(new Date(log.log_date), 'yyyy-MM-dd');
+        if (days[dateKey]) {
+          days[dateKey].hours += (log?.duration_seconds || 0) / 3600;
+          days[dateKey].sessions += 1;
+        }
+      } catch (e) {
+        console.error('Error processing log date for daily activity:', e, log);
       }
     });
     
@@ -433,18 +484,26 @@ export default function TimeLogsPage() {
   };
 
   // Productivity rings data
+  // ✅ הגנה על productivityData
   const productivityData = () => {
     const totalPossibleHours = 8 * 5; // 8 hours * 5 days
+    const now = new Date();
+    
     const thisWeekHours = filteredLogs
       .filter(log => {
-        const logDate = new Date(log.log_date);
-        const now = new Date();
-        return isWithinInterval(logDate, {
-          start: startOfWeek(now, { weekStartsOn: 0 }),
-          end: endOfWeek(now, { weekStartsOn: 0 })
-        });
+        if (!log || !log.log_date) return false;
+        try {
+          const logDate = new Date(log.log_date);
+          return isWithinInterval(logDate, {
+            start: startOfWeek(now, { weekStartsOn: 0 }),
+            end: endOfWeek(now, { weekStartsOn: 0 })
+          });
+        } catch (e) {
+          console.warn('Invalid log_date for weekly productivity filter:', log.log_date, e);
+          return false;
+        }
       })
-      .reduce((sum, log) => sum + (log.duration_seconds || 0), 0) / 3600;
+      .reduce((sum, log) => sum + (log?.duration_seconds || 0), 0) / 3600;
     
     const productivity = Math.min((thisWeekHours / totalPossibleHours) * 100, 100);
     
@@ -456,6 +515,7 @@ export default function TimeLogsPage() {
   };
 
   // Weekly hours trend
+  // ✅ הגנה על weeklyTrend
   const weeklyTrend = () => {
     const weeks = {};
     const now = new Date();
@@ -468,10 +528,16 @@ export default function TimeLogsPage() {
       
       const weekHours = filteredLogs
         .filter(log => {
-          const logDate = new Date(log.log_date);
-          return isWithinInterval(logDate, { start: weekStart, end: weekEnd });
+          if (!log || !log.log_date) return false;
+          try {
+            const logDate = new Date(log.log_date);
+            return isWithinInterval(logDate, { start: weekStart, end: weekEnd });
+          } catch (e) {
+            console.warn('Invalid log_date for weekly trend filter:', log.log_date, e);
+            return false;
+          }
         })
-        .reduce((sum, log) => sum + (log.duration_seconds || 0), 0) / 3600;
+        .reduce((sum, log) => sum + (log?.duration_seconds || 0), 0) / 3600;
       
       weeks[weekLabel] = Math.round(weekHours * 10) / 10;
     }
@@ -480,11 +546,13 @@ export default function TimeLogsPage() {
   };
 
   // Employee hours distribution
+  // ✅ הגנה על employeeHours
   const employeeHours = () => {
     const empHours = {};
     filteredLogs.forEach(log => {
+      if (!log) return; // Skip if log is null/undefined
       const emp = log.created_by || 'לא ידוע';
-      const hours = (log.duration_seconds || 0) / 3600;
+      const hours = (log?.duration_seconds || 0) / 3600;
       empHours[emp] = (empHours[emp] || 0) + hours;
     });
     
@@ -528,7 +596,7 @@ export default function TimeLogsPage() {
           log.log_date ? format(new Date(log.log_date), 'dd/MM/yyyy') : '',
           log.title || '',
           log.notes ? log.notes.replace(/\n/g, ' ') : '', // Replace newlines in notes for CSV compatibility
-          Math.round((log.duration_seconds || 0) / 60),
+          Math.round((log?.duration_seconds || 0) / 60),
           log.created_by || ''
         ].map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))
       ].join('\n');
@@ -544,7 +612,7 @@ export default function TimeLogsPage() {
       if (sendMethod === 'whatsapp') {
         const logsSummary = filteredLogs
           .slice(0, 5) // Only 5 first to prevent overwhelming message length
-          .map(log => `${log.client_name || 'ללא לקוח'}: ${formatDuration(log.duration_seconds)} - ${format(new Date(log.log_date), 'dd/MM')}`)
+          .map(log => `${log.client_name || 'ללא לקוח'}: ${formatDuration(log?.duration_seconds)} - ${format(new Date(log.log_date), 'dd/MM')}`)
           .join('\n');
 
         if (confirm(`האם לשלוח סיכום רישומי זמן לוואטסאפ?\n(${filteredLogs.length} רישומים בסך הכל)`)) {
@@ -679,7 +747,7 @@ export default function TimeLogsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">כל הלקוחות</SelectItem>
-                  {[...new Set(timeLogs.map(log => log.client_name))].filter(Boolean).map(client => (
+                  {[...new Set(timeLogs.map(log => log?.client_name))].filter(Boolean).map(client => (
                     <SelectItem key={client} value={client}>{client}</SelectItem>
                   ))}
                 </SelectContent>
@@ -813,7 +881,7 @@ export default function TimeLogsPage() {
               </CardHeader>
               <CardContent className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={employeeHours()} layout="horizontal">
+                  <BarChart data={employeeHours()} layout="vertical"> {/* Changed layout to vertical for better employee display */}
                     <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                     <XAxis type="number" tick={{ fontSize: 11 }} />
                     <YAxis dataKey="name" type="category" width={60} tick={{ fontSize: 11 }} />

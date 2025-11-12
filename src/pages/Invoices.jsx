@@ -39,23 +39,38 @@ export default function InvoicesPage() {
 
   const load = React.useCallback(async () => {
     setLoading(true);
-    const list = await Invoice.list("-created_date", 500);
-    setItems(list || []);
+    const list = await Invoice.list("-created_date", 500).catch(() => []);
+    
+    // ✅ הגנה על התוצאות
+    const validList = Array.isArray(list) ? list : [];
+    console.log("✅ [Invoices] Loaded invoices:", validList.length);
+    
+    setItems(validList);
     setLoading(false);
   }, []);
 
   React.useEffect(() => { load(); }, [load]);
 
-  const filtered = items.filter(inv => {
+  // ✅ הגנה על filtered
+  const filtered = React.useMemo(() => {
+    if (!Array.isArray(items)) {
+      console.error("❌ [Invoices] items is not an array!", items);
+      return [];
+    }
+    
     const s = q.trim().toLowerCase();
-    if (!s) return true;
-    return (
-      (inv.number || "").toLowerCase().includes(s) ||
-      (inv.client_name || "").toLowerCase().includes(s) ||
-      (inv.project_name || "").toLowerCase().includes(s) ||
-      (inv.status || "").toLowerCase().includes(s)
-    );
-  });
+    if (!s) return items;
+    
+    return items.filter(inv => {
+      if (!inv || typeof inv !== "object") return false;
+      return (
+        (inv.number || "").toLowerCase().includes(s) ||
+        (inv.client_name || "").toLowerCase().includes(s) ||
+        (inv.project_name || "").toLowerCase().includes(s) ||
+        (inv.status || "").toLowerCase().includes(s)
+      );
+    });
+  }, [items, q]);
 
   const onCreate = () => { setEditing(null); setShowForm(true); };
   const onEdit = (inv) => { setEditing(inv); setShowForm(true); };

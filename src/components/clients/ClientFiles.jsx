@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { User, ClientFile } from '@/entities/all';
 import { googleDrive } from '@/functions/googleDrive';
 import { Button } from '@/components/ui/button';
@@ -29,9 +29,19 @@ export default function ClientFiles({ client, files, onFilesUpdate }) {
       setIsLoading(true);
       const currentUser = await User.me();
       setUser(currentUser);
-      const existingFolder = files.find(f => f.type === 'folder');
+      
+      // ✅ הגנה על files prop
+      if (!Array.isArray(files)) {
+        console.error('❌ [ClientFiles] files is not an array!', files);
+        setClientFolder(null);
+        setIsLoading(false);
+        return;
+      }
+      
+      const existingFolder = files.find(f => f?.type === 'folder');
       setClientFolder(existingFolder);
-      if (existingFolder) {
+      
+      if (existingFolder?.google_file_id) {
         await fetchDriveFiles(existingFolder.google_file_id);
       }
       setIsLoading(false);
@@ -50,9 +60,14 @@ export default function ClientFiles({ client, files, onFilesUpdate }) {
   const fetchDriveFiles = async (folderId) => {
     try {
       const { data } = await googleDrive({ action: 'list_files', payload: { folderId } });
-      setDriveFiles(data);
+      
+      // ✅ הגנה על data
+      const validData = Array.isArray(data) ? data : [];
+      setDriveFiles(validData);
     } catch (error) {
+      console.error('❌ [ClientFiles] Error fetching drive files:', error);
       toast.error('שגיאה בטעינת קבצים מ-Google Drive');
+      setDriveFiles([]);
     }
   };
 
@@ -108,7 +123,14 @@ export default function ClientFiles({ client, files, onFilesUpdate }) {
   }
 
   // NEW: local uploaded files (from DB, not Drive)
-  const localFiles = files.filter(f => f.type !== 'folder' && !f.google_file_id);
+  // ✅ הגנה על localFiles
+  const localFiles = useMemo(() => {
+    if (!Array.isArray(files)) {
+      console.error('❌ [ClientFiles] files is not an array for localFiles!', files);
+      return [];
+    }
+    return files.filter(f => f && f.type !== 'folder' && !f.google_file_id);
+  }, [files]);
 
   // NEW: upload local file (no Google required)
   const inputRef = React.useRef(null);

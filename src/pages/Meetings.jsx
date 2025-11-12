@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -90,7 +90,7 @@ export default function MeetingsPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingMeeting, setEditingMeeting] = useState(null);
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [currentMonth, setCurrentMonth] = useState(new Date()); // Corrected line
+  const [currentMonth, setCurrentMonth] = useState(new Date());
   const [viewMode, setViewMode] = useState('month');
   const [isSyncing, setIsSyncing] = useState(false);
   const [isGoogleConnected, setIsGoogleConnected] = useState(false);
@@ -105,16 +105,30 @@ export default function MeetingsPage() {
     setIsLoading(true);
     try {
       const [meetingsData, clientsData, projectsData] = await Promise.all([
-        base44.entities.Meeting.list('-meeting_date'),
-        base44.entities.Client.list(),
-        base44.entities.Project.list()
+        base44.entities.Meeting.list('-meeting_date').catch(() => []),
+        base44.entities.Client.list().catch(() => []),
+        base44.entities.Project.list().catch(() => [])
       ]);
-      setMeetings(meetingsData);
-      setClients(clientsData);
-      setProjects(projectsData);
+      
+      const validMeetings = Array.isArray(meetingsData) ? meetingsData : [];
+      const validClients = Array.isArray(clientsData) ? clientsData : [];
+      const validProjects = Array.isArray(projectsData) ? projectsData : [];
+      
+      console.log('✅ [Meetings] Loaded data:', {
+        meetings: validMeetings.length,
+        clients: validClients.length,
+        projects: validProjects.length
+      });
+      
+      setMeetings(validMeetings);
+      setClients(validClients);
+      setProjects(validProjects);
     } catch (error) {
-      console.error('Error loading meetings data:', error);
+      console.error('❌ [Meetings] Error loading meetings data:', error);
       toast.error('שגיאה בטעינת הנתונים');
+      setMeetings([]);
+      setClients([]);
+      setProjects([]);
     }
     setIsLoading(false);
   };
@@ -264,10 +278,22 @@ export default function MeetingsPage() {
   const weekStart = startOfWeek(selectedDate, { weekStartsOn: 0 });
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
+  // ✅ הגנה על getMeetingsForDate
   const getMeetingsForDate = (date) => {
+    if (!Array.isArray(meetings)) {
+      console.error('❌ [Meetings] meetings is not an array!', meetings);
+      return [];
+    }
+    
     return meetings.filter(meeting => {
-      const meetingDate = parseISO(meeting.meeting_date);
-      return isSameDay(meetingDate, date);
+      if (!meeting || !meeting.meeting_date) return false;
+      try {
+        const meetingDate = parseISO(meeting.meeting_date);
+        return isSameDay(meetingDate, date);
+      } catch (e) {
+        console.error('❌ [Meetings] Error parsing meeting date:', e, meeting);
+        return false;
+      }
     });
   };
 
@@ -278,14 +304,47 @@ export default function MeetingsPage() {
     setSelectedDate(new Date());
   };
 
-  const upcomingMeetings = meetings
-    .filter(m => new Date(m.meeting_date) >= new Date() && m.status !== 'בוצעה' && m.status !== 'בוטלה')
-    .slice(0, 5);
+  // ✅ הגנה על upcomingMeetings
+  const upcomingMeetings = useMemo(() => {
+    if (!Array.isArray(meetings)) {
+      console.error('❌ [Meetings] meetings is not an array for upcomingMeetings!', meetings);
+      return [];
+    }
+    
+    const now = new Date();
+    return meetings
+      .filter(m => {
+        if (!m || !m.meeting_date) return false;
+        try {
+          return new Date(m.meeting_date) >= now && 
+                 m.status !== 'בוצעה' && 
+                 m.status !== 'בוטלה';
+        } catch (e) {
+          console.error('Error filtering upcoming meeting date:', e, m);
+          return false;
+        }
+      })
+      .slice(0, 5);
+  }, [meetings]);
 
-  const todayMeetings = meetings.filter(m => {
-    const meetingDate = parseISO(m.meeting_date);
-    return isToday(meetingDate) && m.status !== 'בוטלה';
-  });
+  // ✅ הגנה על todayMeetings
+  const todayMeetings = useMemo(() => {
+    if (!Array.isArray(meetings)) {
+      console.error('❌ [Meetings] meetings is not an array for todayMeetings!', meetings);
+      return [];
+    }
+    
+    return meetings.filter(m => {
+      if (!m || !m.meeting_date) return false;
+      try {
+        const meetingDate = parseISO(m.meeting_date);
+        return isToday(meetingDate) && m.status !== 'בוטלה';
+      } catch (e) {
+        console.error('Error filtering today meeting date:', e, m);
+        return false;
+      }
+    });
+  }, [meetings]);
 
   const handleDateClick = (date) => {
     setSelectedDate(date);
@@ -389,8 +448,13 @@ export default function MeetingsPage() {
                 <p className="text-sm text-slate-600">החודש</p>
                 <p className="text-2xl font-bold text-purple-600">
                   {meetings.filter(m => {
-                    const d = parseISO(m.meeting_date);
-                    return isSameMonth(d, currentMonth);
+                    if (!m || !m.meeting_date) return false;
+                    try {
+                      const d = parseISO(m.meeting_date);
+                      return isSameMonth(d, currentMonth);
+                    } catch (e) {
+                      return false;
+                    }
                   }).length}
                 </p>
               </div>
@@ -407,7 +471,7 @@ export default function MeetingsPage() {
               <div>
                 <p className="text-sm text-slate-600">מסונכרנות</p>
                 <p className="text-2xl font-bold text-amber-600">
-                  {meetings.filter(m => m.google_calendar_event_id).length}
+                  {meetings.filter(m => m && m.google_calendar_event_id).length}
                 </p>
               </div>
               <div className="h-12 w-12 bg-amber-100 rounded-full flex items-center justify-center">

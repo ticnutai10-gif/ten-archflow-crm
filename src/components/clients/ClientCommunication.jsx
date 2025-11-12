@@ -1,3 +1,4 @@
+
 import React from "react";
 import { CommunicationMessage } from "@/entities/CommunicationMessage";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -43,14 +44,25 @@ export default function ClientCommunication({ client, project }) {
 
   const loadMessages = React.useCallback(async () => {
     setIsLoading(true);
-    const items = await CommunicationMessage.filter(filterQuery, "-created_date", 200).catch(() => []);
-    // סדר: מוצמדים תחילה, ואז לפי תאריך ירד
-    const sorted = (items || []).slice().sort((a, b) => {
-      if (a.pinned && !b.pinned) return -1;
-      if (!a.pinned && b.pinned) return 1;
-      return new Date(b.created_date) - new Date(a.created_date);
-    });
-    setMessages(sorted);
+    try {
+      const items = await CommunicationMessage.filter(filterQuery, "-created_date", 200).catch(() => []);
+      
+      // ✅ הגנה על התוצאות
+      const validItems = Array.isArray(items) ? items : [];
+      console.log('[ClientCommunication] Loaded messages:', validItems.length);
+      
+      const sorted = validItems.slice().sort((a, b) => {
+        if (!a || !b) return 0;
+        if (a.pinned && !b.pinned) return -1;
+        if (!a.pinned && b.pinned) return 1;
+        return new Date(b.created_date) - new Date(a.created_date);
+      });
+      
+      setMessages(sorted);
+    } catch (error) {
+      console.error('[ClientCommunication] Error loading messages:', error);
+      setMessages([]);
+    }
     setIsLoading(false);
   }, [filterQuery]);
 
@@ -58,9 +70,15 @@ export default function ClientCommunication({ client, project }) {
     loadMessages();
   }, [loadMessages]);
 
+  // ✅ הגנה על filteredMessages
   const filteredMessages = React.useMemo(() => {
+    if (!Array.isArray(messages)) {
+      console.error('[ClientCommunication] messages is not an array!', messages);
+      return [];
+    }
+    
     if (activeTab === "all") return messages;
-    return messages.filter(m => m.type === activeTab);
+    return messages.filter(m => m?.type === activeTab);
   }, [messages, activeTab]);
 
   const onSend = async () => {
