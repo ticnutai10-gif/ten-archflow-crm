@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -106,7 +105,6 @@ export default function SmartAIPage() {
         agent_name: "smart_assistant"
       });
       
-      // סינון שיחות שלא נמחקו
       const activeConvs = (convs || []).filter(conv => !conv.metadata?.deleted);
       setConversations(activeConvs);
     } catch (error) {
@@ -160,7 +158,6 @@ export default function SmartAIPage() {
     try {
       console.log('🗑️ [AI] Hiding conversation:', convId);
       
-      // סימון השיחה כמחוקה ב-metadata
       await base44.agents.updateConversation(convId, {
         metadata: {
           deleted: true,
@@ -170,13 +167,11 @@ export default function SmartAIPage() {
       
       console.log('✅ [AI] Conversation marked as deleted');
       
-      // עדכון ה-UI
       if (currentConversation?.id === convId) {
         setCurrentConversation(null);
         setMessages([]);
       }
       
-      // הסרה מהרשימה מיידית
       setConversations(prev => prev.filter(c => c.id !== convId));
       
       toast.success('השיחה הוסתרה בהצלחה');
@@ -190,7 +185,6 @@ export default function SmartAIPage() {
     if (!messageText.trim()) return;
     if (!currentConversation) {
       await createNewConversation();
-      // Wait for conversation to be created
       setTimeout(() => sendMessage(messageText), 500);
       return;
     }
@@ -306,7 +300,6 @@ export default function SmartAIPage() {
   return (
     <div className="h-screen flex flex-col p-6 lg:p-8 bg-gradient-to-br from-slate-50 to-slate-100 pl-24 lg:pl-12" dir="rtl">
       <div className="max-w-7xl mx-auto w-full flex flex-col h-full">
-        {/* Header */}
         <div className="mb-6">
           <div className="flex items-center gap-3 mb-2">
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center shadow-lg">
@@ -320,7 +313,6 @@ export default function SmartAIPage() {
         </div>
 
         <div className="flex-1 flex gap-6 overflow-hidden">
-          {/* Sidebar - Conversations */}
           <Card className="w-80 flex-shrink-0 shadow-lg border-0 bg-white/80 backdrop-blur-sm flex flex-col">
             <CardHeader className="border-b">
               <div className="flex items-center justify-between">
@@ -378,11 +370,9 @@ export default function SmartAIPage() {
             </ScrollArea>
           </Card>
 
-          {/* Main Chat Area */}
           <div className="flex-1 flex flex-col min-w-0">
             <Card className="flex-1 shadow-lg border-0 bg-white/80 backdrop-blur-sm flex flex-col overflow-hidden">
               {!currentConversation ? (
-                {/* Welcome Screen */}
                 <div className="flex-1 flex flex-col items-center justify-center p-8">
                   <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center mb-6 shadow-xl">
                     <Sparkles className="w-12 h-12 text-white" />
@@ -393,7 +383,6 @@ export default function SmartAIPage() {
                     בחר באחת מההצעות המהירות או התחל שיחה חדשה!
                   </p>
 
-                  {/* Quick Prompts */}
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 w-full max-w-4xl mb-8">
                     {QUICK_PROMPTS.map((prompt, idx) => (
                       <button
@@ -420,7 +409,6 @@ export default function SmartAIPage() {
                 </div>
               ) : (
                 <>
-                  {/* Messages Area */}
                   <ScrollArea className="flex-1 p-6">
                     <div className="max-w-4xl mx-auto">
                       {messages.length === 0 ? (
@@ -429,7 +417,6 @@ export default function SmartAIPage() {
                           <h3 className="text-xl font-semibold text-slate-600 mb-2">התחל שיחה</h3>
                           <p className="text-slate-500">שאל אותי כל שאלה או בחר באחת מההצעות המהירות</p>
                           
-                          {/* Quick Prompts in Chat */}
                           <div className="grid grid-cols-2 gap-3 max-w-2xl mx-auto mt-8">
                             {QUICK_PROMPTS.slice(0, 4).map((prompt, idx) => (
                               <button
@@ -456,7 +443,6 @@ export default function SmartAIPage() {
                     </div>
                   </ScrollArea>
 
-                  {/* Input Area */}
                   <div className="border-t bg-white/50 backdrop-blur-sm p-4">
                     <div className="max-w-4xl mx-auto">
                       <div className="flex gap-3">
