@@ -922,13 +922,7 @@ export default function ThemeSelector({ open, onClose, currentTheme, onApply }) 
                       </tbody>
                     </table>
                     
-                    <style>{`
-                      .preview-row:hover td {
-                        background-color: ${selectedPalette.hover} !important;
-                        transform: ${theme.hoverEffect === 'strong' ? 'scale(1.02)' : theme.hoverEffect === 'medium' ? 'translateY(-1px)' : theme.hoverEffect === 'subtle' ? 'none' : 'none'};
-                        box-shadow: ${theme.hoverEffect === 'strong' ? '0 4px 6px rgba(0,0,0,0.1)' : theme.hoverEffect === 'medium' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none'};
-                      }
-                    `}</style>
+
                   </div>
                   
                   <div className="mt-4 text-xs text-slate-600 bg-white/80 p-3 rounded-lg border border-blue-200">
