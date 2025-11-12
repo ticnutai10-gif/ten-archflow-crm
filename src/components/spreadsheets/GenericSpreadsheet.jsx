@@ -2356,6 +2356,35 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                 </td>
                               );
                             })}
+                            <td 
+                              className="border border-slate-200 p-2"
+                              onContextMenu={(e) => handleRowContextMenu(row.id, e)}
+                            >
+                              <div className="flex items-center gap-1 justify-center">
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7 hover:bg-blue-100"
+                                  onClick={() => duplicateRow(row)}
+                                  title="שכפל שורה"
+                                >
+                                  <Copy className="w-3 h-3 text-blue-600" />
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7 hover:bg-red-100"
+                                  onClick={() => deleteRow(row.id)}
+                                  title="מחק שורה"
+                                >
+                                  <Trash2 className="w-3 h-3 text-red-600" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
                         <td 
                           className="border border-slate-200 p-2"
                           onContextMenu={(e) => handleRowContextMenu(row.id, e)}
