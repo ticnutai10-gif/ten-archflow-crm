@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2, Table, Copy, Settings, Palette, Eye, EyeOff, Edit2, X, Download, Upload, Grid, List, Search, Filter, ArrowUp, ArrowDown, ArrowUpDown, XCircle, Undo, Redo, GripVertical, BarChart3, TrendingUp, Calculator, Layers, Save, Bookmark, Users } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
@@ -71,6 +72,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const [allClients, setAllClients] = useState([]);
   const [clientSearchQuery, setClientSearchQuery] = useState("");
   const [showClientPicker, setShowClientPicker] = useState(null);
+  const [showAddFromClientDialog, setShowAddFromClientDialog] = useState(false);
   
   const editInputRef = useRef(null);
   const columnEditRef = useRef(null);
@@ -361,6 +363,50 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     saveToHistory(columns, updated, cellStyles);
     await saveToBackend(columns, updated, cellStyles);
     toast.success('✓ שורה נוספה');
+  };
+
+  const addRowFromClient = async (client) => {
+    const newRow = { id: `row_${Date.now()}` };
+    
+    // מילוי אוטומטי של כל העמודות הרלוונטיות
+    columns.forEach(col => {
+      const colKey = col.key.toLowerCase();
+      const colTitle = (col.title || '').toLowerCase();
+      
+      // התאמה חכמה של שדות
+      if (col.type === 'client' || colKey.includes('client') || colKey.includes('לקוח') || colTitle.includes('לקוח')) {
+        newRow[col.key] = client.name;
+      } else if (colKey.includes('name') || colKey.includes('שם')) {
+        newRow[col.key] = client.name;
+      } else if (colKey.includes('phone') || colKey.includes('טלפון') || colTitle.includes('טלפון')) {
+        newRow[col.key] = client.phone || '';
+      } else if (colKey.includes('email') || colKey.includes('מייל') || colTitle.includes('מייל') || colTitle.includes('אימייל')) {
+        newRow[col.key] = client.email || '';
+      } else if (colKey.includes('company') || colKey.includes('חברה') || colTitle.includes('חברה')) {
+        newRow[col.key] = client.company || '';
+      } else if (colKey.includes('address') || colKey.includes('כתובת') || colTitle.includes('כתובת')) {
+        newRow[col.key] = client.address || '';
+      } else if (colKey.includes('contact') || colKey.includes('איש') || colTitle.includes('איש קשר')) {
+        newRow[col.key] = client.name || '';
+      }
+    });
+    
+    const updated = [...rowsData, newRow];
+    setRowsData(updated);
+    saveToHistory(columns, updated, cellStyles);
+    await saveToBackend(columns, updated, cellStyles);
+    
+    setShowAddFromClientDialog(false);
+    setClientSearchQuery("");
+    
+    const filledFields = [];
+    if (newRow[columns.find(c => c.type === 'client' || c.key.includes('name'))?.key]) filledFields.push('שם');
+    if (newRow[columns.find(c => c.key.includes('phone'))?.key]) filledFields.push('טלפון');
+    if (newRow[columns.find(c => c.key.includes('email'))?.key]) filledFields.push('אימייל');
+    if (newRow[columns.find(c => c.key.includes('company'))?.key]) filledFields.push('חברה');
+    if (newRow[columns.find(c => c.key.includes('address'))?.key]) filledFields.push('כתובת');
+    
+    toast.success(`✓ שורה נוספה מלקוח "${client.name}"${filledFields.length > 0 ? ` • מולאו: ${filledFields.join(', ')}` : ''}`);
   };
 
   const deleteRow = async (rowId) => {
@@ -1138,7 +1184,36 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                   </Badge>
                 )}
               </Button>
-              <Button onClick={addNewRow} size="sm" className="gap-2"><Plus className="w-4 h-4" />שורה</Button>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button size="sm" className="gap-2">
+                    <Plus className="w-4 h-4" />
+                    שורה
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-56" align="end" dir="rtl">
+                  <div className="space-y-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full justify-start gap-2"
+                      onClick={addNewRow}
+                    >
+                      <Plus className="w-4 h-4" />
+                      שורה ריקה
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full justify-start gap-2 bg-blue-50 hover:bg-blue-100 border-blue-300"
+                      onClick={() => setShowAddFromClientDialog(true)}
+                    >
+                      <Users className="w-4 h-4 text-blue-600" />
+                      <span className="text-blue-900">מלקוח קיים</span>
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
               <Button onClick={addColumn} size="sm" variant="outline" className="gap-2"><Plus className="w-4 h-4" />עמודה</Button>
               {selectedCells.size > 0 && (
                 <>
@@ -1529,6 +1604,120 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         onDeleteView={handleDeleteView}
         onSetDefault={handleSetDefaultView}
       />
+
+      {/* דיאלוג הוספת שורה מלקוח קיים */}
+      <Dialog open={showAddFromClientDialog} onOpenChange={setShowAddFromClientDialog}>
+        <DialogContent className="sm:max-w-2xl" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="w-6 h-6 text-blue-600" />
+              בחר לקוח להוספת שורה
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
+              💡 <strong>טיפ:</strong> בחר לקוח והמערכת תמלא אוטומטית את כל השדות הרלוונטיים בטבלה
+            </div>
+            
+            <Input
+              placeholder="חפש לקוח לפי שם, חברה או אימייל..."
+              value={clientSearchQuery}
+              onChange={(e) => setClientSearchQuery(e.target.value)}
+              className="text-right"
+              dir="rtl"
+              autoFocus
+            />
+            
+            <ScrollArea className="h-96 border border-slate-200 rounded-lg">
+              <div className="p-2 space-y-1">
+                {allClients
+                  .filter(c => 
+                    !clientSearchQuery || 
+                    c.name?.toLowerCase().includes(clientSearchQuery.toLowerCase()) ||
+                    c.company?.toLowerCase().includes(clientSearchQuery.toLowerCase()) ||
+                    c.email?.toLowerCase().includes(clientSearchQuery.toLowerCase())
+                  )
+                  .map(client => (
+                    <button
+                      key={client.id}
+                      onClick={() => addRowFromClient(client)}
+                      className="w-full p-4 hover:bg-blue-50 rounded-lg text-right border border-transparent hover:border-blue-200 transition-all group"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="font-bold text-slate-900 mb-1 text-base group-hover:text-blue-700 transition-colors">
+                            {client.name}
+                          </div>
+                          <div className="space-y-0.5 text-xs text-slate-600">
+                            {client.company && (
+                              <div className="flex items-center gap-1">
+                                <span className="text-slate-400">🏢</span>
+                                <span>{client.company}</span>
+                              </div>
+                            )}
+                            {client.phone && (
+                              <div className="flex items-center gap-1">
+                                <span className="text-slate-400">📞</span>
+                                <span dir="ltr" className="text-left">{client.phone}</span>
+                              </div>
+                            )}
+                            {client.email && (
+                              <div className="flex items-center gap-1">
+                                <span className="text-slate-400">✉️</span>
+                                <span>{client.email}</span>
+                              </div>
+                            )}
+                            {client.address && (
+                              <div className="flex items-center gap-1">
+                                <span className="text-slate-400">📍</span>
+                                <span>{client.address}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-semibold">
+                            בחר
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                
+                {allClients.filter(c => 
+                  !clientSearchQuery || 
+                  c.name?.toLowerCase().includes(clientSearchQuery.toLowerCase()) ||
+                  c.company?.toLowerCase().includes(clientSearchQuery.toLowerCase()) ||
+                  c.email?.toLowerCase().includes(clientSearchQuery.toLowerCase())
+                ).length === 0 && (
+                  <div className="text-center py-12 text-slate-500">
+                    <Users className="w-16 h-16 mx-auto mb-4 text-slate-300" />
+                    <p className="text-lg font-semibold mb-2">
+                      {clientSearchQuery ? 'לא נמצאו לקוחות תואמים' : 'אין לקוחות במערכת'}
+                    </p>
+                    <p className="text-sm">
+                      {clientSearchQuery ? 'נסה לשנות את החיפוש' : 'הוסף לקוחות במערכת כדי להשתמש בתכונה זו'}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+          </div>
+          
+          <div className="flex justify-end gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setShowAddFromClientDialog(false);
+                setClientSearchQuery("");
+              }}
+            >
+              ביטול
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
