@@ -1,48 +1,34 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, AlertCircle, CheckSquare, Square, Trash2 } from "lucide-react";
-import { format } from "date-fns";
+import { Calendar, User, AlertTriangle, CheckSquare, Square, Trash2 } from "lucide-react";
+import { format, isPast } from "date-fns";
 import { he } from "date-fns/locale";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { base44 } from "@/api/base44Client";
 
 const PRIORITY_COLORS = {
-  "גבוהה": "bg-red-100 text-red-800 border-red-200",
-  "בינונית": "bg-yellow-100 text-yellow-800 border-yellow-200",
-  "נמוכה": "bg-green-100 text-green-800 border-green-200"
+  "גבוהה": "bg-red-100 text-red-800",
+  "בינונית": "bg-yellow-100 text-yellow-800",
+  "נמוכה": "bg-green-100 text-green-800"
 };
 
-export default function UpcomingTasks({ tasks = [], isLoading, onUpdate }) {
+export default function UpcomingTasks({ tasks, isLoading, onUpdate }) {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
 
-  useEffect(() => {
-    console.log('🔍 [UpcomingTasks] Received tasks:', {
-      tasksCount: tasks?.length,
-      tasksType: typeof tasks,
-      isArray: Array.isArray(tasks),
-      firstTask: tasks?.[0],
-      allTasks: tasks
-    });
-
-    if (tasks && Array.isArray(tasks)) {
-      tasks.forEach((task, index) => {
-        if (!task) {
-          console.error(`❌ [UpcomingTasks] Task at index ${index} is null/undefined!`);
-        } else if (typeof task !== 'object') {
-          console.error(`❌ [UpcomingTasks] Task at index ${index} is not an object:`, task);
-        } else {
-          console.log(`✅ [UpcomingTasks] Task ${index}:`, {
-            id: task.id,
-            title: task.title,
-            hasTitle: 'title' in task,
-            keys: Object.keys(task)
-          });
-        }
-      });
+  // ✅ הגנה מלאה על tasks
+  const safeTasks = React.useMemo(() => {
+    if (!tasks) {
+      console.warn('⚠️ [UpcomingTasks] tasks is null/undefined');
+      return [];
     }
+    if (!Array.isArray(tasks)) {
+      console.error('❌ [UpcomingTasks] tasks is not an array!', tasks);
+      return [];
+    }
+    return tasks.filter(t => t && typeof t === 'object');
   }, [tasks]);
 
   const toggleSelect = (id) => {
@@ -61,33 +47,11 @@ export default function UpcomingTasks({ tasks = [], isLoading, onUpdate }) {
       setSelectionMode(false);
       onUpdate?.();
     } catch (error) {
-      console.error('❌ [UpcomingTasks] Error deleting tasks:', error);
-    }
-  };
-
-  const getDueDateLabel = (dateString) => {
-    if (!dateString) return null;
-    try {
-      const date = new Date(dateString);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const taskDate = new Date(date);
-      taskDate.setHours(0, 0, 0, 0);
-
-      const diffTime = taskDate - today;
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-      if (diffDays === 0) return "היום";
-      if (diffDays === 1) return "מחר";
-      return format(date, 'dd/MM', { locale: he });
-    } catch (error) {
-      console.error('❌ [UpcomingTasks] Error processing date:', error, dateString);
-      return null;
+      console.error('Error deleting tasks:', error);
     }
   };
 
   if (isLoading) {
-    console.log('⏳ [UpcomingTasks] Loading...');
     return (
       <div className="p-4 space-y-3">
         {[1, 2, 3].map(i => (
@@ -97,8 +61,7 @@ export default function UpcomingTasks({ tasks = [], isLoading, onUpdate }) {
     );
   }
 
-  if (!tasks || tasks.length === 0) {
-    console.log('📭 [UpcomingTasks] No tasks to display');
+  if (safeTasks.length === 0) {
     return (
       <div className="p-8 text-center text-slate-500">
         <p className="mb-4">אין משימות קרובות</p>
@@ -108,9 +71,6 @@ export default function UpcomingTasks({ tasks = [], isLoading, onUpdate }) {
       </div>
     );
   }
-
-  const validTasks = tasks.filter(t => t && typeof t === 'object');
-  console.log('📊 [UpcomingTasks] Valid tasks:', validTasks.length, 'out of', tasks.length);
 
   return (
     <div>
@@ -125,50 +85,27 @@ export default function UpcomingTasks({ tasks = [], isLoading, onUpdate }) {
       )}
 
       <div className="p-4 space-y-3 max-h-96 overflow-y-auto">
-        {validTasks.map((task, index) => {
+        {safeTasks.map((task) => {
           if (!task || typeof task !== 'object') {
-            console.error(`❌ [UpcomingTasks] Skipping invalid task at index ${index}:`, task);
+            console.error('Invalid task:', task);
             return null;
           }
 
-          let taskTitle = 'משימה ללא כותרת';
-          let taskPriority = 'בינונית';
-          let isOverdue = false;
-
-          try {
-            taskTitle = task.title || 'משימה ללא כותרת';
-            taskPriority = task.priority || 'בינונית';
-            isOverdue = task.due_date && new Date(task.due_date) < new Date() && task.status !== 'הושלמה';
-
-            console.log(`✅ [UpcomingTasks] Rendering task ${index}:`, {
-              id: task.id,
-              taskTitle,
-              taskPriority,
-              isOverdue
-            });
-          } catch (error) {
-            console.error(`❌ [UpcomingTasks] Error processing task ${index}:`, error, task);
-            return null;
-          }
-
-          const priorityColor = PRIORITY_COLORS[taskPriority] || PRIORITY_COLORS["בינונית"];
-          const dueDateLabel = getDueDateLabel(task.due_date);
+          const isOverdue = task.due_date && isPast(new Date(task.due_date));
+          const priorityColor = PRIORITY_COLORS[task.priority || "בינונית"];
 
           return (
             <div
-              key={task.id || index}
+              key={task.id}
               className={`p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-all cursor-pointer ${
-                isOverdue ? 'border-r-4 border-r-red-500' : ''
-              } ${selectedIds.includes(task.id) ? 'ring-2 ring-blue-500' : ''}`}
-              onClick={() => selectionMode && task.id && toggleSelect(task.id)}
+                selectedIds.includes(task.id) ? 'ring-2 ring-blue-500' : ''
+              } ${isOverdue ? 'border-r-4 border-red-500' : ''}`}
+              onClick={() => selectionMode && toggleSelect(task.id)}
             >
               <div className="flex items-start gap-3">
                 {selectionMode && (
                   <button
-                    onClick={(e) => { 
-                      e.stopPropagation(); 
-                      if (task.id) toggleSelect(task.id); 
-                    }}
+                    onClick={(e) => { e.stopPropagation(); toggleSelect(task.id); }}
                     className="flex-shrink-0 mt-1"
                   >
                     {selectedIds.includes(task.id) ? (
@@ -180,30 +117,33 @@ export default function UpcomingTasks({ tasks = [], isLoading, onUpdate }) {
                 )}
 
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-1">
-                    <h4 className="font-semibold text-slate-900 truncate flex items-center gap-2">
-                      {taskTitle}
-                      {isOverdue && (
-                        <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
-                      )}
+                  <div className="flex items-start justify-between mb-2">
+                    <h4 className="font-semibold text-slate-900 truncate flex-1">
+                      {task.title || 'משימה ללא כותרת'}
                     </h4>
-                    <Badge variant="outline" className={`${priorityColor} text-xs flex-shrink-0 ml-2`}>
-                      {taskPriority}
+                    <Badge className={`${priorityColor} text-xs flex-shrink-0 ml-2`}>
+                      {task.priority || 'בינונית'}
                     </Badge>
                   </div>
-                  
-                  <div className="flex items-center gap-4 text-sm text-slate-600">
-                    {dueDateLabel && (
-                      <div className="flex items-center gap-1">
-                        <Calendar className="w-3 h-3 flex-shrink-0" />
-                        <span className={isOverdue ? 'text-red-600 font-semibold' : ''}>
-                          {dueDateLabel}
-                        </span>
+
+                  <div className="text-sm text-slate-600 space-y-1">
+                    {task.client_name && (
+                      <div className="flex items-center gap-2">
+                        <User className="w-3 h-3 flex-shrink-0" />
+                        <span className="truncate">{task.client_name}</span>
                       </div>
                     )}
                     
-                    {task.client_name && (
-                      <span className="truncate">{task.client_name}</span>
+                    {task.due_date && (
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-3 h-3 flex-shrink-0" />
+                        <span>
+                          {format(new Date(task.due_date), 'dd/MM/yyyy', { locale: he })}
+                        </span>
+                        {isOverdue && (
+                          <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0" />
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>
