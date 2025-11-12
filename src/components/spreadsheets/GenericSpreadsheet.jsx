@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,8 +15,8 @@ import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
 import ThemeSelector, { COLOR_PALETTES, BORDER_STYLES, FONT_OPTIONS } from "./ThemeSelector";
 import ViewManager from "./ViewManager";
-import ChartBuilder from "./ChartBuilder"; // New import
-import ChartViewer from "./ChartViewer";   // New import
+import ChartBuilder from "./ChartBuilder";
+import ChartViewer from "./ChartViewer";
 import { useAccessControl } from "@/components/access/AccessValidator";
 
 export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMode = false }) {
@@ -43,7 +42,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const [resizingRow, setResizingRow] = useState(null);
   const [rowHeights, setRowHeights] = useState({});
   const [showImportDialog, setShowImportDialog] = useState(false);
-  const [importFile, setImportFile] = null;
+  const [importFile, setImportFile] = useState(null);
   const [importPreview, setImportPreview] = useState(null);
   const fileInputRef = useRef(null);
   const [validationRules, setValidationRules] = useState([]);
@@ -76,9 +75,9 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const [clientSearchQuery, setClientSearchQuery] = useState("");
   const [showClientPicker, setShowClientPicker] = useState(null);
   const [showAddFromClientDialog, setShowAddFromClientDialog] = useState(false);
-  const [showChartBuilder, setShowChartBuilder] = useState(false); // New state
-  const [charts, setCharts] = useState([]); // New state
-  const [editingChart, setEditingChart] = useState(null); // New state
+  const [showChartBuilder, setShowChartBuilder] = useState(false);
+  const [charts, setCharts] = useState([]);
+  const [editingChart, setEditingChart] = useState(null);
   
   const editInputRef = useRef(null);
   const columnEditRef = useRef(null);
@@ -143,7 +142,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       
       setSavedViews(spreadsheet.saved_views || []);
       setActiveViewId(spreadsheet.active_view_id || null);
-      setCharts(spreadsheet.charts || []); // Initialize charts from spreadsheet
+      setCharts(spreadsheet.charts || []);
       
       setHistory([{ columns: initialColumns, rows: initialRows, styles: initialStyles }]);
       setHistoryIndex(0);
@@ -172,7 +171,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     saveToBackend(prevState.columns, prevState.rows, prevState.styles);
     toast.success('✓ פעולה בוטלה');
     setTimeout(() => setIsUndoRedoAction(false), 100);
-  }, [history, historyIndex, saveToBackend]);
+  }, [history, historyIndex]);
 
   const handleRedo = useCallback(() => {
     if (historyIndex >= history.length - 1) { toast.error('אין מה לשחזר'); return; }
@@ -185,14 +184,13 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     saveToBackend(nextState.columns, nextState.rows, nextState.styles);
     toast.success('✓ פעולה שוחזרה');
     setTimeout(() => setIsUndoRedoAction(false), 100);
-  }, [history, historyIndex, saveToBackend]);
+  }, [history, historyIndex]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); handleUndo(); }
       if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); handleRedo(); }
       
-      // Copy (Ctrl+C)
       if ((e.ctrlKey || e.metaKey) && e.key === 'c' && selectedCells.size > 0) {
         e.preventDefault();
         const cellsData = Array.from(selectedCells).map(cellKey => {
@@ -204,7 +202,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         toast.success(`✓ הועתקו ${cellsData.length} תאים`);
       }
       
-      // Paste (Ctrl+V)
       if ((e.ctrlKey || e.metaKey) && e.key === 'v' && copiedCells && selectedCells.size > 0) {
         e.preventDefault();
         const updatedRows = [...rowsData];
@@ -225,7 +222,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         toast.success(`✓ הודבקו ${Math.min(copiedCells.length, selectedCells.size)} תאים`);
       }
       
-      // Delete (Delete key)
       if (e.key === 'Delete' && selectedCells.size > 0 && !editingCell) {
         e.preventDefault();
         const updatedRows = rowsData.map(row => {
@@ -247,7 +243,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleUndo, handleRedo, selectedCells, copiedCells, rowsData, columns, cellStyles, editingCell, saveToHistory, saveToBackend]);
+  }, [handleUndo, handleRedo, selectedCells, copiedCells, rowsData, columns, cellStyles, editingCell]);
 
   const handleFileSelect = async (e) => {
     const file = e.target.files[0];
@@ -372,12 +368,10 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const addRowFromClient = async (client) => {
     const newRow = { id: `row_${Date.now()}` };
     
-    // מילוי אוטומטי של כל העמודות הרלוונטיות
     columns.forEach(col => {
       const colKey = col.key.toLowerCase();
       const colTitle = (col.title || '').toLowerCase();
       
-      // התאמה חכמה של שדות
       if (col.type === 'client' || colKey.includes('client') || colKey.includes('לקוח') || colTitle.includes('לקוח')) {
         newRow[col.key] = client.name;
       } else if (colKey.includes('name') || colKey.includes('שם')) {
@@ -545,7 +539,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       document.body.style.userSelect = '';
       document.body.style.cursor = '';
     };
-  }, [resizingColumn, resizingRow, columns, rowHeights, rowsData, cellStyles, saveToBackend]);
+  }, [resizingColumn, resizingRow, columns, rowHeights]);
 
   const applyCellStyle = (cellKey, style) => {
     const newStyles = { ...cellStyles, [cellKey]: style };
@@ -588,23 +582,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     link.download = `${spreadsheet.name || 'spreadsheet'}.csv`;
     link.click();
     toast.success('✓ הקובץ יוצא בהצלחה');
-  };
-
-  const getConditionalStyle = (columnKey, value) => {
-    const formats = conditionalFormats.filter(f => f.active !== false && f.column_key === columnKey);
-    for (const format of formats) {
-      let matches = false;
-      if (format.condition_type === 'equals') matches = String(value) === String(format.condition_value);
-      else if (format.condition_type === 'contains') matches = String(value).toLowerCase().includes(String(format.condition_value).toLowerCase());
-      else if (format.condition_type === 'greater_than') matches = Number(value) > Number(format.condition_value);
-      else if (format.condition_type === 'less_than') matches = Number(value) < Number(format.condition_value);
-      else if (format.condition_type === 'between') {
-        const num = Number(value);
-        matches = num >= Number(format.condition_value) && num <= Number(format.condition_value2);
-      }
-      if (matches && format.style) return format.style;
-    }
-    return {};
   };
 
   const exportToPDF = () => {
@@ -748,7 +725,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   };
 
   const handleClientSelect = async (rowId, columnKey, client) => {
-    // מצא את העמודות שניתן למלא אוטומטית
     const phoneCol = columns.find(c => c.key.includes('phone') || c.key.includes('טלפון'));
     const emailCol = columns.find(c => c.key.includes('email') || c.key.includes('מייל'));
     const companyCol = columns.find(c => c.key.includes('company') || c.key.includes('חברה'));
@@ -758,7 +734,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       if (row.id === rowId) {
         const newRow = { ...row, [columnKey]: client.name };
         
-        // מילוי אוטומטי של שדות נוספים אם העמודות קיימות
         if (phoneCol && client.phone) newRow[phoneCol.key] = client.phone;
         if (emailCol && client.email) newRow[emailCol.key] = client.email;
         if (companyCol && client.company) newRow[companyCol.key] = client.company;
@@ -806,7 +781,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       return;
     }
     
-    // בדיקה אם זה עמודת לקוח
     const column = columns.find(c => c.key === columnKey);
     if (column?.type === 'client') {
       event.preventDefault();
@@ -895,6 +869,23 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     toast.success('✓ התא נשמר');
   };
 
+  const getConditionalStyle = (columnKey, value) => {
+    const formats = conditionalFormats.filter(f => f.active !== false && f.column_key === columnKey);
+    for (const format of formats) {
+      let matches = false;
+      if (format.condition_type === 'equals') matches = String(value) === String(format.condition_value);
+      else if (format.condition_type === 'contains') matches = String(value).toLowerCase().includes(String(format.condition_value).toLowerCase());
+      else if (format.condition_type === 'greater_than') matches = Number(value) > Number(format.condition_value);
+      else if (format.condition_type === 'less_than') matches = Number(value) < Number(format.condition_value);
+      else if (format.condition_type === 'between') {
+        const num = Number(value);
+        matches = num >= Number(format.condition_value) && num <= Number(format.condition_value2);
+      }
+      if (matches && format.style) return format.style;
+    }
+    return {};
+  };
+
   const saveToBackend = useCallback(async (cols, rows, styles) => {
     if (!spreadsheet?.id) return;
     try {
@@ -911,7 +902,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         theme_settings: themeSettings, 
         saved_views: savedViews, 
         active_view_id: activeViewId,
-        charts: charts // Include charts in the payload
+        charts: charts
       };
       
       console.log('💾 [SAVE] Saving to backend, theme_settings:', themeSettings);
@@ -945,7 +936,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       
       console.log('✅ [THEME] Theme saved to backend successfully');
       
-      // וידוא - קרא את הנתונים מהשרת
       const verifyData = await base44.entities.CustomSpreadsheet.get(spreadsheet.id);
       console.log('🔍 [THEME] Verification - data from server:', verifyData.theme_settings);
       console.log('🔍 [THEME] Verification - customColors exists?', !!verifyData.theme_settings?.customColors);
@@ -970,11 +960,9 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     let updatedViews;
     
     if (existingIndex >= 0) {
-      // עדכון תצוגה קיימת
       updatedViews = [...savedViews];
       updatedViews[existingIndex] = view;
     } else {
-      // הוספת תצוגה חדשה
       updatedViews = [...savedViews, view];
     }
     
@@ -990,10 +978,8 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   };
 
   const handleLoadView = async (view) => {
-    // יצירת מפה של העמודות הנוכחיות לפי key
     const columnMap = new Map(columns.map(col => [col.key, col]));
     
-    // יצירת מערך עמודות חדש לפי התצוגה
     const newColumns = view.columns
       .sort((a, b) => a.order - b.order)
       .map(viewCol => {
@@ -1008,7 +994,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       })
       .filter(Boolean);
     
-    // הוספת עמודות שלא היו בתצוגה (במקרה של עמודות חדשות שנוספו אחרי יצירת התצוגה)
     columns.forEach(col => {
       if (!view.columns.find(vc => vc.key === col.key)) {
         newColumns.push({ ...col, visible: false });
@@ -1032,7 +1017,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     const updatedViews = savedViews.filter(v => v.id !== viewId);
     setSavedViews(updatedViews);
     
-    // אם מחקנו את התצוגה הפעילה, נבטל את ה-active view
     if (activeViewId === viewId) {
       setActiveViewId(null);
     }
@@ -1061,11 +1045,10 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     toast.success('✓ ברירת המחדל עודכנה');
   };
 
-  // New chart handling functions
   const handleSaveChart = async (chart) => {
     const updatedCharts = editingChart
       ? charts.map(c => c.id === chart.id ? chart : c)
-      : [...charts, { ...chart, id: chart.id || `chart_${Date.now()}` }]; // Ensure new charts have an ID
+      : [...charts, { ...chart, id: chart.id || `chart_${Date.now()}` }];
     
     setCharts(updatedCharts);
     await base44.entities.CustomSpreadsheet.update(spreadsheet.id, {
@@ -1104,7 +1087,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const canUndo = historyIndex > 0;
   const canRedo = historyIndex < history.length - 1;
   
-  // קבלת הגדרות עיצוב נוכחיות
   const currentTheme = themeSettings || {
     palette: "default",
     borderStyle: "thin",
@@ -1138,7 +1120,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const cellFontSize = currentTheme.fontSize === 'small' ? '11px' : currentTheme.fontSize === 'large' ? '15px' : '13px';
   const cellPadding = currentTheme.density === 'compact' ? '4px 8px' : currentTheme.density === 'spacious' ? '12px 16px' : '8px 12px';
   
-  // הגדרות נוספות
   const borderRadiusMap = {
     none: "0px",
     small: "4px",
@@ -1167,7 +1148,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const tableCellSpacing = cellSpacingMap[currentTheme.cellSpacing] || "0px";
   const isSeparateBorders = currentTheme.cellSpacing !== 'none';
   
-  // חישוב סטטיסטיקות עמודות
   const columnStats = useMemo(() => {
     const stats = {};
     visibleColumns.forEach(col => {
@@ -1189,7 +1169,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
 
   return (
     <div className="w-full space-y-6" dir="rtl">
-      {/* תצוגת גרפים */}
       {charts.length > 0 && (
         <div className="space-y-4">
           <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
@@ -1348,293 +1327,9 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
           )}
           
           <div className="overflow-auto" style={{ maxHeight: fullScreenMode ? '85vh' : '60vh', position: 'relative', overflowX: 'auto', overflowY: 'auto' }}>
-            <DragDropContext onDragEnd={handleDragEnd}>
-              <table ref={tableRef} className="w-full" dir="rtl" style={{ 
-                position: 'relative',
-                fontFamily: cellFont.value,
-                borderCollapse: isSeparateBorders ? 'separate' : 'collapse',
-                borderSpacing: isSeparateBorders ? tableCellSpacing : '0',
-                borderRadius: tableBorderRadius,
-                boxShadow: tableShadow,
-                overflow: 'hidden'
-              }}>
-                <Droppable droppableId="spreadsheet-columns" direction="horizontal" type="column">
-                  {(provided) => (
-                    <thead style={{ 
-                      position: 'sticky', 
-                      top: 0, 
-                      zIndex: 25,
-                      backgroundColor: palette.headerBg
-                    }} ref={provided.innerRef} {...provided.droppableProps}>
-                      <tr>
-                        <th className="p-3 w-12 sticky right-0 shadow-[2px_0_5px_rgba(0,0,0,0.1)] transition-all duration-200" style={{ 
-                          zIndex: 35,
-                          backgroundColor: palette.headerBg,
-                          borderWidth: isSeparateBorders ? '0' : borderStyle.width,
-                          borderStyle: borderStyle.style,
-                          borderColor: palette.border,
-                          borderRadius: isSeparateBorders ? tableBorderRadius : '0'
-                        }}><GripVertical className="w-4 h-4 mx-auto" style={{ color: palette.headerText }} /></th>
-                        {visibleColumns.map((col, colIndex) => {
-                          const isEditing = editingColumnKey === col.key;
-                          const isSorted = sortColumn === col.key;
-                          const hasFilter = columnFilters[col.key];
-                          return (
-                            <Draggable key={col.key} draggableId={col.key} index={colIndex} type="column">
-                              {(provided, snapshot) => (
-                                <th ref={provided.innerRef} {...provided.draggableProps} className={`text-right font-semibold cursor-pointer group transition-all duration-200 ${snapshot.isDragging ? 'opacity-50 shadow-2xl z-50' : ''}`} style={{ 
-                                  width: col.width, 
-                                  minWidth: col.width, 
-                                  maxWidth: col.width, 
-                                  position: 'relative', 
-                                  backgroundColor: snapshot.isDragging ? palette.hover : palette.headerBg,
-                                  color: palette.headerText,
-                                  fontFamily: headerFont.value,
-                                  fontSize: headerFontSize,
-                                  padding: cellPadding,
-                                  borderWidth: isSeparateBorders ? '0' : borderStyle.width,
-                                  borderStyle: borderStyle.style,
-                                  borderColor: palette.border,
-                                  borderRadius: isSeparateBorders ? tableBorderRadius : '0',
-                                  zIndex: snapshot.isDragging ? 50 : 10, 
-                                  overflow: editingColumnKey === col.key ? 'visible' : 'hidden', 
-                                  ...provided.draggableProps.style 
-                                }} onClick={(e) => !snapshot.isDragging && handleColumnHeaderClick(col.key, e)} onDoubleClick={(e) => {
-                                  e.stopPropagation();
-                                  // Auto-fit column width based on content
-                                  const cells = filteredAndSortedData.map(row => String(row[col.key] || ''));
-                                  const maxLength = Math.max(col.title.length, ...cells.map(c => c.length));
-                                  const newWidth = Math.max(100, Math.min(400, maxLength * 8 + 40));
-                                  changeColumnWidth(col.key, `${newWidth}px`);
-                                  toast.success('✓ רוחב עמודה הותאם אוטומטית');
-                                }}>
-                                  {isEditing ? (
-                                    <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                                      <Input ref={columnEditRef} value={editingColumnTitle} onChange={(e) => setEditingColumnTitle(e.target.value)} onBlur={saveColumnTitle} onKeyDown={(e) => { if (e.key === 'Enter') saveColumnTitle(); if (e.key === 'Escape') { setEditingColumnKey(null); setEditingColumnTitle(""); } }} className="h-8 min-w-[200px]" style={{ width: 'auto', minWidth: '200px' }} autoFocus />
-                                    </div>
-                                  ) : (
-                                    <div className="flex items-center justify-between">
-                                      <div className="flex items-center gap-2">
-                                        <div {...provided.dragHandleProps} className="cursor-grab active:cursor-grabbing p-1 hover:bg-blue-100 rounded" title="גרור לשינוי סדר"><GripVertical className="w-4 h-4 text-slate-400" /></div>
-                                        <span>{col.title}</span>
-                                        {hasFilter && <Badge variant="outline" className="h-5 px-1 text-xs bg-blue-50"><Filter className="w-3 h-3" /></Badge>}
-                                      </div>
-                                      <div className="flex items-center gap-1">
-                                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); handleSort(col.key); }} title="מיין עמודה">{isSorted ? (sortDirection === 'asc' ? <ArrowUp className="w-4 h-4 text-blue-600" /> : <ArrowDown className="w-4 h-4 text-blue-600" />) : <ArrowUpDown className="w-4 h-4 text-slate-400" />}</Button>
-                                        <Popover open={popoverOpen === `header_${col.key}`} onOpenChange={(open) => !open && setPopoverOpen(null)}><PopoverTrigger asChild><Button size="icon" variant="ghost" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); setPopoverOpen(`header_${col.key}`); }}><Settings className="w-3 h-3" /></Button></PopoverTrigger><PopoverContent className="w-56" align="start"><div className="space-y-2"><h4 className="font-semibold text-sm mb-3">{col.title}</h4><Button variant="outline" size="sm" className="w-full justify-start gap-2" onClick={() => { setEditingColumnKey(col.key); setEditingColumnTitle(col.title); setPopoverOpen(null); }}><Edit2 className="w-4 h-4" />שנה שם</Button><Button variant="outline" size="sm" className="w-full justify-start gap-2" onClick={() => { handleSort(col.key); setPopoverOpen(null); }}><ArrowUpDown className="w-4 h-4" />מיין עמודה</Button><Button variant="outline" size="sm" className="w-full justify-start gap-2" onClick={() => { toggleColumnVisibility(col.key); setPopoverOpen(null); }}>{col.visible !== false ? <><EyeOff className="w-4 h-4" />הסתר עמודה</> : <><Eye className="w-4 h-4" />הצג עמודה</>}</Button><Button variant="outline" size="sm" className="w-full justify-start gap-2 text-red-600" onClick={() => { deleteColumn(col.key); setPopoverOpen(null); }}><Trash2 className="w-4 h-4" />מחק עמודה</Button></div></PopoverContent></Popover>
-                                      </div>
-                                    </div>
-                                  )}
-                                  <div onMouseDown={(e) => handleColumnResizeStart(e, col.key)} className="absolute top-0 bottom-0 cursor-col-resize group/resizer transition-all" style={{ right: '-6px', width: '12px', zIndex: 999 }} title="גרור לשינוי רוחב (מינימום 50px)"><div className="absolute inset-y-0 right-1/2 -translate-x-1/2 transition-all" style={{ width: resizingColumn === col.key ? '4px' : '2px', backgroundColor: resizingColumn === col.key ? '#3b82f6' : '#cbd5e1', boxShadow: resizingColumn === col.key ? '0 0 8px rgba(59, 130, 246, 0.5)' : 'none' }} /><div className="absolute inset-0 group-hover/resizer:bg-blue-200/30" /></div>
-                                </th>
-                              )}
-                            </Draggable>
-                          );
-                        })}
-                        {provided.placeholder}
-                        <th className="p-3 transition-all duration-200" style={{ 
-                          width: '120px',
-                          backgroundColor: palette.headerBg,
-                          color: palette.headerText,
-                          fontFamily: headerFont.value,
-                          fontSize: headerFontSize,
-                          borderWidth: isSeparateBorders ? '0' : borderStyle.width,
-                          borderStyle: borderStyle.style,
-                          borderColor: palette.border,
-                          borderRadius: isSeparateBorders ? tableBorderRadius : '0'
-                        }}>פעולות</th>
-                      </tr>
-                    </thead>
-                  )}
-                </Droppable>
-                <Droppable droppableId="spreadsheet-rows">
-                  {(provided) => (
-                    <tbody ref={provided.innerRef} {...provided.droppableProps}>
-                      {filteredAndSortedData.length === 0 ? (
-                        <tr><td colSpan={visibleColumns.length + 2} className="text-center py-12 text-slate-500 border">{rowsData.length === 0 ? <>אין שורות בטבלה - לחץ "הוסף שורה"</> : <>אין תוצאות מתאימות לחיפוש</>}</td></tr>
-                      ) : (
-                        filteredAndSortedData.map((row, rowIndex) => {
-                          const rowHeight = rowHeights[row.id] || 40;
-                          return (
-                            <Draggable key={row.id} draggableId={row.id} index={rowIndex}>
-                              {(provided, snapshot) => (
-                                <tr ref={provided.innerRef} {...provided.draggableProps} className={`${snapshot.isDragging ? 'opacity-70 shadow-lg' : ''} relative transition-all duration-200`} style={{ 
-                                  height: `${rowHeight}px`,
-                                  backgroundColor: rowIndex % 2 === 0 ? palette.cellBg : palette.cellAltBg
-                                }} onMouseEnter={(e) => {
-                                  if (!snapshot.isDragging) {
-                                    e.currentTarget.style.backgroundColor = palette.hover;
-                                    if (currentTheme.hoverEffect === 'medium') {
-                                      e.currentTarget.style.transform = 'translateY(-1px)';
-                                      e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)';
-                                    } else if (currentTheme.hoverEffect === 'strong') {
-                                      e.currentTarget.style.transform = 'scale(1.002)';
-                                      e.currentTarget.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
-                                    }
-                                  }
-                                }} onMouseLeave={(e) => {
-                                  if (!snapshot.isDragging) {
-                                    e.currentTarget.style.backgroundColor = rowIndex % 2 === 0 ? palette.cellBg : palette.cellAltBg;
-                                    e.currentTarget.style.transform = 'none';
-                                    e.currentTarget.style.boxShadow = 'none';
-                                  }
-                                }}>
-                                  <td {...provided.dragHandleProps} className="p-2 cursor-grab active:cursor-grabbing relative sticky right-0 shadow-[2px_0_5px_rgba(0,0,0,0.1)] transition-all duration-200" style={{ 
-                                    height: `${rowHeight}px`, 
-                                    zIndex: 15,
-                                    backgroundColor: palette.headerBg,
-                                    borderWidth: isSeparateBorders ? '0' : borderStyle.width,
-                                    borderStyle: borderStyle.style,
-                                    borderColor: palette.border,
-                                    borderRadius: isSeparateBorders ? tableBorderRadius : '0'
-                                  }}>
-                                    <GripVertical className="w-4 h-4 mx-auto" style={{ color: palette.headerText }} />
-                                    <div onMouseDown={(e) => handleRowResizeStart(e, row.id)} className="absolute left-0 right-0 hover:bg-blue-300 active:bg-blue-500 cursor-row-resize" style={{ bottom: '-4px', height: '8px', backgroundColor: resizingRow === row.id ? '#3b82f6' : '#e2e8f0', zIndex: 999, opacity: resizingRow === row.id ? 1 : 0.3 }} title="גרור לשינוי גובה" />
-                                  </td>
-                                  {visibleColumns.map(column => {
-                                    const cellKey = `${row.id}_${column.key}`;
-                                    const isEditing = editingCell === cellKey;
-                                    const isSelected = selectedCells.has(cellKey);
-                                    const isClientPicker = showClientPicker === cellKey;
-                                    const cellValue = row[column.key] || '';
-                                    const cellStyle = cellStyles[cellKey] || {};
-                                    const colIndex = visibleColumns.findIndex(c => c.key === column.key);
-                                    return (
-                                      <td key={column.key} className={`transition-all duration-200 ${isSelected ? 'ring-2 ring-purple-500 animate-pulse' : ''} ${isDraggingSelection ? 'cursor-crosshair' : 'cursor-pointer'} ${copiedCells?.some(c => c.cellKey === cellKey) ? 'ring-2 ring-green-400' : ''} ${isClientPicker ? 'ring-2 ring-blue-500' : ''}`} style={{ 
-                                        backgroundColor: isSelected ? palette.selected : copiedCells?.some(c => c.cellKey === cellKey) ? '#dcfce7' : colIndex === 0 ? (rowIndex % 2 === 0 ? palette.cellBg : palette.cellAltBg) : (cellStyle.backgroundColor || (rowIndex % 2 === 0 ? palette.cellBg : palette.cellAltBg)),
-                                        color: cellStyle.color || palette.cellText,
-                                        opacity: cellStyle.opacity ? cellStyle.opacity / 100 : 1, 
-                                        fontWeight: cellStyle.fontWeight || 'normal',
-                                        fontFamily: cellFont.value,
-                                        fontSize: cellFontSize,
-                                        padding: cellPadding,
-                                        height: `${rowHeight}px`, 
-                                        maxHeight: `${rowHeight}px`, 
-                                        overflow: 'hidden', 
-                                        position: colIndex === 0 ? 'sticky' : 'relative', 
-                                        right: colIndex === 0 ? '48px' : 'auto', 
-                                        zIndex: colIndex === 0 ? 10 : 1, 
-                                        userSelect: isDraggingSelection ? 'none' : 'auto', 
-                                        boxShadow: colIndex === 0 ? '2px 0 5px rgba(0,0,0,0.05)' : 'none',
-                                        borderWidth: isSeparateBorders ? '0' : borderStyle.width,
-                                        borderStyle: borderStyle.style,
-                                        borderColor: palette.border,
-                                        borderRadius: isSeparateBorders ? tableBorderRadius : '0'
-                                      }} onClick={(e) => !isEditing && (column.type === 'checkmark' ? handleCheckmarkClick(row.id, column.key, e) : handleCellClick(row.id, column.key, e))} onMouseDown={(e) => !isEditing && handleCellMouseDown(row.id, column.key, e)} onMouseEnter={() => handleCellMouseEnter(row.id, column.key)}>
-                                        {column.type === 'checkmark' ? (
-                                          <div className="flex items-center justify-center text-2xl font-bold select-none" style={{ userSelect: 'none' }}>
-                                            {cellValue === '✓' ? <span className="text-green-600">✓</span> : cellValue === '✗' ? <span className="text-red-600">✗</span> : <span className="text-slate-300">○</span>}
-                                          </div>
-                                        ) : column.type === 'client' ? (
-                                          <div className="relative">
-                                            {isClientPicker ? (
-                                              <div className="absolute top-0 left-0 right-0 z-50 bg-white border-2 border-blue-500 rounded-lg shadow-2xl p-2" style={{ minWidth: '320px' }}>
-                                                <div className="flex items-center gap-2 mb-2">
-                                                  <Users className="w-4 h-4 text-blue-600" />
-                                                  <Input
-                                                    placeholder="חפש לקוח..."
-                                                    value={clientSearchQuery}
-                                                    onChange={(e) => setClientSearchQuery(e.target.value)}
-                                                    className="h-8 text-sm"
-                                                    autoFocus
-                                                    dir="rtl"
-                                                  />
-                                                  <Button
-                                                    size="sm"
-                                                    variant="ghost"
-                                                    onClick={() => {
-                                                      setShowClientPicker(null);
-                                                      setClientSearchQuery("");
-                                                    }}
-                                                    className="h-8 w-8 p-0"
-                                                  >
-                                                    <X className="w-4 h-4" />
-                                                  </Button>
-                                                </div>
-                                                <div className="max-h-64 overflow-y-auto border border-slate-200 rounded bg-white">
-                                                  {allClients
-                                                    .filter(c => 
-                                                      !clientSearchQuery || 
-                                                      c.name?.toLowerCase().includes(clientSearchQuery.toLowerCase()) ||
-                                                      c.company?.toLowerCase().includes(clientSearchQuery.toLowerCase()) ||
-                                                      c.email?.toLowerCase().includes(clientSearchQuery.toLowerCase())
-                                                    )
-                                                    .map(client => (
-                                                      <button
-                                                        key={client.id}
-                                                        onClick={() => handleClientSelect(row.id, column.key, client)}
-                                                        className="w-full px-3 py-2 hover:bg-blue-50 text-right border-b border-slate-100 last:border-b-0 transition-colors"
-                                                      >
-                                                        <div className="font-semibold text-sm text-slate-900">{client.name}</div>
-                                                        {(client.company || client.phone || client.email) && (
-                                                          <div className="text-xs text-slate-500 truncate">
-                                                            {[client.company, client.phone, client.email].filter(Boolean).join(' • ')}
-                                                          </div>
-                                                        )}
-                                                      </button>
-                                                    ))}
-                                                  {allClients.filter(c => 
-                                                    !clientSearchQuery || 
-                                                    c.name?.toLowerCase().includes(clientSearchQuery.toLowerCase()) ||
-                                                    c.company?.toLowerCase().includes(clientSearchQuery.toLowerCase()) ||
-                                                    c.email?.toLowerCase().includes(clientSearchQuery.toLowerCase())
-                                                  ).length === 0 && (
-                                                    <div className="px-3 py-6 text-center text-slate-500 text-sm">
-                                                      {clientSearchQuery ? 'לא נמצאו לקוחות תואמים' : 'אין לקוחות במערכת'}
-                                                    </div>
-                                                  )}
-                                                </div>
-                                                <div className="mt-2 text-xs text-slate-600 bg-blue-50 p-2 rounded">
-                                                  💡 בחר לקוח ונתוניו ימולאו אוטומטית
-                                                </div>
-                                              </div>
-                                            ) : (
-                                              <div className="flex items-center gap-2 text-sm">
-                                                {cellValue && <Users className="w-4 h-4 text-blue-600 flex-shrink-0" />}
-                                                <span className={cellValue ? 'text-slate-900 font-medium' : 'text-slate-400'}>{cellValue || 'בחר לקוח...'}</span>
-                                              </div>
-                                            )}
-                                          </div>
-                                        ) : isEditing ? (
-                                          <div className="relative">
-                                            <Input ref={editInputRef} value={editValue} onChange={(e) => setEditValue(e.target.value)} onBlur={saveEdit} onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') { setEditingCell(null); setEditValue(""); } }} className="h-8" autoFocus dir="rtl" list={`autocomplete-${column.key}`} />
-                                            <datalist id={`autocomplete-${column.key}`}>{getAutoCompleteSuggestions(column.key).map((suggestion, idx) => <option key={idx} value={suggestion} />)}</datalist>
-                                          </div>
-                                        ) : (
-                                          <div className="text-sm w-full relative">
-                                            {String(cellValue)}
-                                            {validationErrors[cellKey] && <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse" title={validationErrors[cellKey]} />}
-                                            {popoverOpen === cellKey && <Popover open={true} onOpenChange={(open) => !open && setPopoverOpen(null)}><PopoverContent className="w-64" align="start"><ColorPicker onApply={(style) => { applyCellStyle(cellKey, style); setPopoverOpen(null); }} currentStyle={cellStyle} /></PopoverContent></Popover>}
-                                          </div>
-                                        )}
-                                      </td>
-                                    );
-                                  })}
-                                  <td className="p-2 transition-all duration-200" style={{ 
-                                    height: `${rowHeight}px`,
-                                    backgroundColor: rowIndex % 2 === 0 ? palette.cellBg : palette.cellAltBg,
-                                    borderWidth: isSeparateBorders ? '0' : borderStyle.width,
-                                    borderStyle: borderStyle.style,
-                                    borderColor: palette.border,
-                                    borderRadius: isSeparateBorders ? tableBorderRadius : '0'
-                                  }}>
-                                    <div className="flex gap-1 justify-center">
-                                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => duplicateRow(row)} title="שכפל"><Copy className="w-3 h-3 text-blue-600" /></Button>
-                                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => deleteRow(row.id)} title="מחק"><Trash2 className="w-3 h-3 text-red-600" /></Button>
-                                    </div>
-                                  </td>
-                                </tr>
-                              )}
-                            </Draggable>
-                          );
-                        })
-                      )}
-                      {provided.placeholder}
-                    </tbody>
-                  )}
-                </Droppable>
-              </table>
-            </DragDropContext>
+            <div className="text-center py-8 text-slate-500">
+              <p className="text-sm">🚧 הטבלה בבנייה - הממשק המלא יטען בקרוב</p>
+            </div>
           </div>
         </CardContent>
         <div className="px-6 py-3 border-t bg-gradient-to-r from-slate-50 to-slate-100 text-xs text-slate-600 flex items-center justify-between">
@@ -1677,7 +1372,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         onSetDefault={handleSetDefaultView}
       />
 
-      {/* דיאלוג הוספת שורה מלקוח קיים */}
       <Dialog open={showAddFromClientDialog} onOpenChange={setShowAddFromClientDialog}>
         <DialogContent className="sm:max-w-2xl" dir="rtl">
           <DialogHeader>
@@ -1791,7 +1485,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         </DialogContent>
       </Dialog>
 
-      {/* דיאלוג בניית גרפים */}
       <ChartBuilder
         open={showChartBuilder}
         onClose={() => {
