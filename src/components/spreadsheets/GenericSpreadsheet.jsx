@@ -54,6 +54,21 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const [importPreview, setImportPreview] = useState(null);
   const fileInputRef = useRef(null);
   
+  // Validation & Conditional Formatting
+  const [validationRules, setValidationRules] = useState([]);
+  const [conditionalFormats, setConditionalFormats] = useState([]);
+  const [showValidationDialog, setShowValidationDialog] = useState(false);
+  const [showConditionalDialog, setShowConditionalDialog] = useState(false);
+  const [validationErrors, setValidationErrors] = useState({});
+  
+  // Freeze settings
+  const [freezeSettings, setFreezeSettings] = useState({ freeze_rows: 0, freeze_columns: 1 });
+  const [showFreezeDialog, setShowFreezeDialog] = useState(false);
+  
+  // Custom cell types
+  const [customCellTypes, setCustomCellTypes] = useState([]);
+  const [showCellTypesDialog, setShowCellTypesDialog] = useState(false);
+  
   const editInputRef = useRef(null);
   const columnEditRef = useRef(null);
 
@@ -81,6 +96,10 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       setRowsData(initialRows);
       setCellStyles(initialStyles);
       setRowHeights(spreadsheet.row_heights || {});
+      setValidationRules(spreadsheet.validation_rules || []);
+      setConditionalFormats(spreadsheet.conditional_formats || []);
+      setFreezeSettings(spreadsheet.freeze_settings || { freeze_rows: 0, freeze_columns: 1 });
+      setCustomCellTypes(spreadsheet.custom_cell_types || []);
       
       // אתחול ההיסטוריה
       setHistory([{
@@ -704,12 +723,81 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     setEditingColumnTitle("");
   };
 
+  // Validation function
+  const validateCell = (columnKey, value) => {
+    const rules = validationRules.filter(r => r.column_key === columnKey);
+    
+    for (const rule of rules) {
+      if (rule.rule_type === 'number_range') {
+        const num = Number(value);
+        if (isNaN(num)) return rule.error_message || 'חייב להיות מספר';
+        if (rule.params.min !== undefined && num < rule.params.min) {
+          return rule.error_message || `ערך מינימלי: ${rule.params.min}`;
+        }
+        if (rule.params.max !== undefined && num > rule.params.max) {
+          return rule.error_message || `ערך מקסימלי: ${rule.params.max}`;
+        }
+      }
+      
+      if (rule.rule_type === 'text_length') {
+        const len = String(value).length;
+        if (rule.params.min && len < rule.params.min) {
+          return rule.error_message || `אורך מינימלי: ${rule.params.min} תווים`;
+        }
+        if (rule.params.max && len > rule.params.max) {
+          return rule.error_message || `אורך מקסימלי: ${rule.params.max} תווים`;
+        }
+      }
+      
+      if (rule.rule_type === 'regex' && rule.params.pattern) {
+        const regex = new RegExp(rule.params.pattern);
+        if (!regex.test(value)) {
+          return rule.error_message || 'פורמט לא תקין';
+        }
+      }
+      
+      if (rule.rule_type === 'custom_list' && rule.params.allowed_values) {
+        if (!rule.params.allowed_values.includes(value)) {
+          return rule.error_message || `ערכים מותרים: ${rule.params.allowed_values.join(', ')}`;
+        }
+      }
+      
+      if (rule.rule_type === 'date_range') {
+        const date = new Date(value);
+        if (isNaN(date.getTime())) return rule.error_message || 'תאריך לא תקין';
+        
+        if (rule.params.min_date && date < new Date(rule.params.min_date)) {
+          return rule.error_message || `תאריך מינימלי: ${rule.params.min_date}`;
+        }
+        if (rule.params.max_date && date > new Date(rule.params.max_date)) {
+          return rule.error_message || `תאריך מקסימלי: ${rule.params.max_date}`;
+        }
+      }
+    }
+    
+    return null; // No validation error
+  };
+
   const saveEdit = async () => {
     if (!editingCell) return;
 
     const lastUnderscoreIndex = editingCell.lastIndexOf('_');
     const rowId = editingCell.substring(0, lastUnderscoreIndex);
     const columnKey = editingCell.substring(lastUnderscoreIndex + 1);
+    
+    // Validate the cell value
+    const validationError = validateCell(columnKey, editValue);
+    if (validationError) {
+      setValidationErrors(prev => ({ ...prev, [editingCell]: validationError }));
+      toast.error(validationError);
+      return;
+    }
+    
+    // Clear validation error if valid
+    setValidationErrors(prev => {
+      const { [editingCell]: removed, ...rest } = prev;
+      return rest;
+    });
     
     console.log('💾 Saving edit:', { 
       editingCell, 
@@ -738,6 +826,34 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     toast.success('✓ התא נשמר');
   };
 
+  // Apply conditional formatting
+  const getConditionalStyle = (columnKey, value) => {
+    const formats = conditionalFormats.filter(f => f.active !== false && f.column_key === columnKey);
+    
+    for (const format of formats) {
+      let matches = false;
+      
+      if (format.condition_type === 'equals') {
+        matches = String(value) === String(format.condition_value);
+      } else if (format.condition_type === 'contains') {
+        matches = String(value).toLowerCase().includes(String(format.condition_value).toLowerCase());
+      } else if (format.condition_type === 'greater_than') {
+        matches = Number(value) > Number(format.condition_value);
+      } else if (format.condition_type === 'less_than') {
+        matches = Number(value) < Number(format.condition_value);
+      } else if (format.condition_type === 'between') {
+        const num = Number(value);
+        matches = num >= Number(format.condition_value) && num <= Number(format.condition_value2);
+      }
+      
+      if (matches && format.style) {
+        return format.style;
+      }
+    }
+    
+    return {};
+  };
+
   const saveToBackend = async (cols, rows, styles) => {
     if (!spreadsheet?.id) return;
 
@@ -754,7 +870,11 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         columns: cols,
         rows_data: rows,
         cell_styles: styles,
-        row_heights: rowHeights
+        row_heights: rowHeights,
+        validation_rules: validationRules,
+        conditional_formats: conditionalFormats,
+        freeze_settings: freezeSettings,
+        custom_cell_types: customCellTypes
       });
 
       console.log('✅ Saved successfully');
@@ -885,14 +1005,65 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                 <Filter className="w-4 h-4" />
                 סינון
               </Button>
-              <Button 
-                onClick={() => setShowSettingsDialog(true)} 
-                size="sm" 
-                variant="ghost"
-                className="gap-2"
-              >
-                <Settings className="w-4 h-4" />
-              </Button>
+              
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button size="sm" variant="outline" className="gap-2">
+                    <Settings className="w-4 h-4" />
+                    מתקדם
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-64" align="end" dir="rtl">
+                  <div className="space-y-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full justify-start gap-2"
+                      onClick={() => setShowValidationDialog(true)}
+                    >
+                      <Settings className="w-4 h-4" />
+                      כללי ולידציה ({validationRules.length})
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full justify-start gap-2"
+                      onClick={() => setShowConditionalDialog(true)}
+                    >
+                      <Palette className="w-4 h-4" />
+                      עיצוב מותנה ({conditionalFormats.length})
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full justify-start gap-2"
+                      onClick={() => setShowFreezeDialog(true)}
+                    >
+                      <Grid className="w-4 h-4" />
+                      הקפאת שורות/עמודות
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full justify-start gap-2"
+                      onClick={() => setShowCellTypesDialog(true)}
+                    >
+                      <Table className="w-4 h-4" />
+                      סוגי תאים מותאמים ({customCellTypes.length})
+                    </Button>
+                    <Separator />
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full justify-start gap-2"
+                      onClick={() => setShowSettingsDialog(true)}
+                    >
+                      <Settings className="w-4 h-4" />
+                      הגדרות כלליות
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
 
@@ -1244,8 +1415,13 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                             dir="rtl"
                                           />
                                         ) : (
-                                          <div className="text-sm w-full">
+                                          <div className="text-sm w-full relative">
                                             {String(cellValue)}
+                                            {hasValidationError && (
+                                              <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse" 
+                                                title={hasValidationError}
+                                              />
+                                            )}
                                             {popoverOpen === cellKey && (
                                               <Popover
                                                 open={true}
@@ -1307,8 +1483,16 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         <div className="px-6 py-3 border-t bg-slate-50 text-xs text-slate-600 flex items-center justify-between">
           <div>
             {filteredAndSortedData.length} מתוך {rowsData.length} שורות • {visibleColumns.length} עמודות גלויות • {Object.keys(cellStyles).length} תאים מעוצבים
+            {validationRules.length > 0 && ` • ${validationRules.length} כללי ולידציה`}
+            {conditionalFormats.filter(f => f.active !== false).length > 0 && ` • ${conditionalFormats.filter(f => f.active !== false).length} עיצובים מותנים`}
           </div>
           <div className="flex items-center gap-3">
+            {Object.keys(validationErrors).length > 0 && (
+              <div className="flex items-center gap-2 text-red-600">
+                <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                <span>{Object.keys(validationErrors).length} שגיאות ולידציה</span>
+              </div>
+            )}
             {hasActiveFilters && (
               <div className="flex items-center gap-2 text-blue-600">
                 <Filter className="w-3 h-3" />
@@ -1764,11 +1948,593 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                 <li>• <kbd className="px-2 py-1 bg-white rounded text-xs">גרור קו מתחת לידית ≡</kbd> = שנה גובה שורה</li>
               </ul>
             </div>
+
+            {/* פיצ'רים מתקדמים */}
+            <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg p-4">
+              <h4 className="font-bold mb-3 text-purple-900">🚀 פיצ'רים מתקדמים</h4>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="bg-white rounded-lg p-3 border border-purple-200">
+                  <div className="font-semibold text-purple-800 mb-1">ולידציה</div>
+                  <div className="text-xs text-slate-600">{validationRules.length} כללים פעילים</div>
+                </div>
+                <div className="bg-white rounded-lg p-3 border border-purple-200">
+                  <div className="font-semibold text-purple-800 mb-1">עיצוב מותנה</div>
+                  <div className="text-xs text-slate-600">{conditionalFormats.filter(f => f.active !== false).length} כללים פעילים</div>
+                </div>
+                <div className="bg-white rounded-lg p-3 border border-purple-200">
+                  <div className="font-semibold text-purple-800 mb-1">הקפאה</div>
+                  <div className="text-xs text-slate-600">{freezeSettings.freeze_rows} שורות, {freezeSettings.freeze_columns} עמודות</div>
+                </div>
+                <div className="bg-white rounded-lg p-3 border border-purple-200">
+                  <div className="font-semibold text-purple-800 mb-1">סוגי תאים</div>
+                  <div className="text-xs text-slate-600">{customCellTypes.length} מותאמים</div>
+                </div>
+              </div>
+            </div>
           </div>
 
           <DialogFooter className="mt-6">
             <Button onClick={() => setShowSettingsDialog(false)} className="w-full">
               סגור
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* דיאלוג כללי ולידציה */}
+      <Dialog open={showValidationDialog} onOpenChange={setShowValidationDialog}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl flex items-center gap-2">
+              <Settings className="w-6 h-6" />
+              כללי ולידציה לתאים
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 mt-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-sm text-blue-800">
+                הגדר כללי ולידציה לעמודות. המערכת תמנע שמירת ערכים שאינם עומדים בדרישות.
+              </p>
+            </div>
+
+            <Button 
+              onClick={() => {
+                const newRule = {
+                  id: `rule_${Date.now()}`,
+                  name: 'כלל חדש',
+                  column_key: visibleColumns[0]?.key,
+                  rule_type: 'text_length',
+                  params: { min: 1 },
+                  error_message: 'שדה חובה'
+                };
+                setValidationRules([...validationRules, newRule]);
+                toast.success('✓ כלל נוסף');
+              }}
+              className="w-full gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              הוסף כלל ולידציה
+            </Button>
+
+            <div className="space-y-3">
+              {validationRules.map((rule, index) => (
+                <div key={rule.id} className="border rounded-lg p-4 space-y-3 bg-white">
+                  <div className="flex items-center justify-between">
+                    <Input
+                      placeholder="שם הכלל"
+                      value={rule.name}
+                      onChange={(e) => {
+                        const updated = [...validationRules];
+                        updated[index].name = e.target.value;
+                        setValidationRules(updated);
+                      }}
+                      className="flex-1 h-8"
+                    />
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => {
+                        setValidationRules(validationRules.filter(r => r.id !== rule.id));
+                        toast.success('✓ כלל נמחק');
+                      }}
+                      className="text-red-600"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-medium mb-1 block">עמודה</label>
+                      <Select 
+                        value={rule.column_key} 
+                        onValueChange={(val) => {
+                          const updated = [...validationRules];
+                          updated[index].column_key = val;
+                          setValidationRules(updated);
+                        }}
+                      >
+                        <SelectTrigger className="h-8">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {columns.map(col => (
+                            <SelectItem key={col.key} value={col.key}>{col.title}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-medium mb-1 block">סוג בדיקה</label>
+                      <Select 
+                        value={rule.rule_type} 
+                        onValueChange={(val) => {
+                          const updated = [...validationRules];
+                          updated[index].rule_type = val;
+                          setValidationRules(updated);
+                        }}
+                      >
+                        <SelectTrigger className="h-8">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="number_range">טווח מספרים</SelectItem>
+                          <SelectItem value="text_length">אורך טקסט</SelectItem>
+                          <SelectItem value="regex">ביטוי רגולרי</SelectItem>
+                          <SelectItem value="custom_list">רשימה מותרת</SelectItem>
+                          <SelectItem value="date_range">טווח תאריכים</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {rule.rule_type === 'number_range' && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <Input
+                        type="number"
+                        placeholder="מינימום"
+                        value={rule.params?.min || ''}
+                        onChange={(e) => {
+                          const updated = [...validationRules];
+                          updated[index].params = { ...updated[index].params, min: Number(e.target.value) };
+                          setValidationRules(updated);
+                        }}
+                        className="h-8"
+                      />
+                      <Input
+                        type="number"
+                        placeholder="מקסימום"
+                        value={rule.params?.max || ''}
+                        onChange={(e) => {
+                          const updated = [...validationRules];
+                          updated[index].params = { ...updated[index].params, max: Number(e.target.value) };
+                          setValidationRules(updated);
+                        }}
+                        className="h-8"
+                      />
+                    </div>
+                  )}
+
+                  {rule.rule_type === 'text_length' && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <Input
+                        type="number"
+                        placeholder="אורך מינימלי"
+                        value={rule.params?.min || ''}
+                        onChange={(e) => {
+                          const updated = [...validationRules];
+                          updated[index].params = { ...updated[index].params, min: Number(e.target.value) };
+                          setValidationRules(updated);
+                        }}
+                        className="h-8"
+                      />
+                      <Input
+                        type="number"
+                        placeholder="אורך מקסימלי"
+                        value={rule.params?.max || ''}
+                        onChange={(e) => {
+                          const updated = [...validationRules];
+                          updated[index].params = { ...updated[index].params, max: Number(e.target.value) };
+                          setValidationRules(updated);
+                        }}
+                        className="h-8"
+                      />
+                    </div>
+                  )}
+
+                  <Input
+                    placeholder="הודעת שגיאה"
+                    value={rule.error_message || ''}
+                    onChange={(e) => {
+                      const updated = [...validationRules];
+                      updated[index].error_message = e.target.value;
+                      setValidationRules(updated);
+                    }}
+                    className="h-8"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setShowValidationDialog(false)}>
+              ביטול
+            </Button>
+            <Button onClick={() => {
+              saveToBackend(columns, rowsData, cellStyles);
+              setShowValidationDialog(false);
+              toast.success('✓ כללי הולידציה נשמרו');
+            }}>
+              שמור
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* דיאלוג עיצוב מותנה */}
+      <Dialog open={showConditionalDialog} onOpenChange={setShowConditionalDialog}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl flex items-center gap-2">
+              <Palette className="w-6 h-6" />
+              עיצוב מותנה
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 mt-4">
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+              <p className="text-sm text-purple-800">
+                צבע תאים אוטומטית על בסיס תנאים. למשל: צבע אדום אם ערך קטן מ-100, ירוק אם גדול מ-1000.
+              </p>
+            </div>
+
+            <Button 
+              onClick={() => {
+                const newFormat = {
+                  id: `format_${Date.now()}`,
+                  name: 'פורמט חדש',
+                  column_key: visibleColumns[0]?.key,
+                  condition_type: 'equals',
+                  condition_value: '',
+                  style: { backgroundColor: '#fee2e2', color: '#991b1b' },
+                  active: true
+                };
+                setConditionalFormats([...conditionalFormats, newFormat]);
+                toast.success('✓ פורמט נוסף');
+              }}
+              className="w-full gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              הוסף כלל עיצוב
+            </Button>
+
+            <div className="space-y-3">
+              {conditionalFormats.map((format, index) => (
+                <div key={format.id} className="border rounded-lg p-4 space-y-3 bg-white">
+                  <div className="flex items-center justify-between gap-2">
+                    <Input
+                      placeholder="שם הכלל"
+                      value={format.name}
+                      onChange={(e) => {
+                        const updated = [...conditionalFormats];
+                        updated[index].name = e.target.value;
+                        setConditionalFormats(updated);
+                      }}
+                      className="flex-1 h-8"
+                    />
+                    <Switch
+                      checked={format.active !== false}
+                      onCheckedChange={(val) => {
+                        const updated = [...conditionalFormats];
+                        updated[index].active = val;
+                        setConditionalFormats(updated);
+                      }}
+                    />
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => {
+                        setConditionalFormats(conditionalFormats.filter(f => f.id !== format.id));
+                        toast.success('✓ כלל נמחק');
+                      }}
+                      className="text-red-600"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="text-xs font-medium mb-1 block">עמודה</label>
+                      <Select 
+                        value={format.column_key} 
+                        onValueChange={(val) => {
+                          const updated = [...conditionalFormats];
+                          updated[index].column_key = val;
+                          setConditionalFormats(updated);
+                        }}
+                      >
+                        <SelectTrigger className="h-8">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {columns.map(col => (
+                            <SelectItem key={col.key} value={col.key}>{col.title}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-medium mb-1 block">תנאי</label>
+                      <Select 
+                        value={format.condition_type} 
+                        onValueChange={(val) => {
+                          const updated = [...conditionalFormats];
+                          updated[index].condition_type = val;
+                          setConditionalFormats(updated);
+                        }}
+                      >
+                        <SelectTrigger className="h-8">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="equals">שווה ל</SelectItem>
+                          <SelectItem value="contains">מכיל</SelectItem>
+                          <SelectItem value="greater_than">גדול מ</SelectItem>
+                          <SelectItem value="less_than">קטן מ</SelectItem>
+                          <SelectItem value="between">בין</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-medium mb-1 block">ערך</label>
+                      <Input
+                        placeholder="ערך לבדיקה"
+                        value={format.condition_value || ''}
+                        onChange={(e) => {
+                          const updated = [...conditionalFormats];
+                          updated[index].condition_value = e.target.value;
+                          setConditionalFormats(updated);
+                        }}
+                        className="h-8"
+                      />
+                    </div>
+                  </div>
+
+                  {format.condition_type === 'between' && (
+                    <Input
+                      placeholder="ערך שני (עד)"
+                      value={format.condition_value2 || ''}
+                      onChange={(e) => {
+                        const updated = [...conditionalFormats];
+                        updated[index].condition_value2 = e.target.value;
+                        setConditionalFormats(updated);
+                      }}
+                      className="h-8"
+                    />
+                  )}
+
+                  <div>
+                    <label className="text-xs font-medium mb-2 block">סגנון לתאים המתאימים</label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs text-slate-600 mb-1 block">צבע רקע</label>
+                        <Input
+                          type="color"
+                          value={format.style?.backgroundColor || '#ffffff'}
+                          onChange={(e) => {
+                            const updated = [...conditionalFormats];
+                            updated[index].style = { ...updated[index].style, backgroundColor: e.target.value };
+                            setConditionalFormats(updated);
+                          }}
+                          className="h-8"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-slate-600 mb-1 block">צבע טקסט</label>
+                        <Input
+                          type="color"
+                          value={format.style?.color || '#000000'}
+                          onChange={(e) => {
+                            const updated = [...conditionalFormats];
+                            updated[index].style = { ...updated[index].style, color: e.target.value };
+                            setConditionalFormats(updated);
+                          }}
+                          className="h-8"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* תצוגה מקדימה */}
+                  <div className="bg-slate-50 rounded p-3">
+                    <div className="text-xs text-slate-600 mb-2">תצוגה מקדימה:</div>
+                    <div 
+                      className="p-2 rounded text-center font-medium"
+                      style={format.style}
+                    >
+                      דוגמה
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setShowConditionalDialog(false)}>
+              ביטול
+            </Button>
+            <Button onClick={() => {
+              saveToBackend(columns, rowsData, cellStyles);
+              setShowConditionalDialog(false);
+              toast.success('✓ כללי עיצוב מותנה נשמרו');
+            }}>
+              שמור והחל
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* דיאלוג הקפאת שורות/עמודות */}
+      <Dialog open={showFreezeDialog} onOpenChange={setShowFreezeDialog}>
+        <DialogContent className="max-w-md" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl flex items-center gap-2">
+              <Grid className="w-6 h-6" />
+              הקפאת שורות ועמודות
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 mt-4">
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <p className="text-sm text-green-800">
+                הקפא שורות ועמודות כך שיישארו גלויות בעת גלילה.
+              </p>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-2 block">מספר שורות להקפאה מלמעלה</label>
+              <Input
+                type="number"
+                min={0}
+                max={10}
+                value={freezeSettings.freeze_rows}
+                onChange={(e) => setFreezeSettings(prev => ({ ...prev, freeze_rows: Number(e.target.value) }))}
+                className="h-10"
+              />
+              <p className="text-xs text-slate-500 mt-1">
+                {freezeSettings.freeze_rows === 0 ? 'ללא הקפאת שורות' : `${freezeSettings.freeze_rows} שורות ראשונות יוקפאו`}
+              </p>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-2 block">מספר עמודות להקפאה מימין</label>
+              <Input
+                type="number"
+                min={0}
+                max={5}
+                value={freezeSettings.freeze_columns}
+                onChange={(e) => setFreezeSettings(prev => ({ ...prev, freeze_columns: Number(e.target.value) }))}
+                className="h-10"
+              />
+              <p className="text-xs text-slate-500 mt-1">
+                {freezeSettings.freeze_columns === 0 ? 'ללא הקפאת עמודות' : `${freezeSettings.freeze_columns} עמודות ראשונות יוקפאו`}
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setShowFreezeDialog(false)}>
+              ביטול
+            </Button>
+            <Button onClick={() => {
+              saveToBackend(columns, rowsData, cellStyles);
+              setShowFreezeDialog(false);
+              toast.success('✓ הגדרות הקפאה נשמרו');
+            }}>
+              שמור והחל
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* דיאלוג סוגי תאים מותאמים */}
+      <Dialog open={showCellTypesDialog} onOpenChange={setShowCellTypesDialog}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl flex items-center gap-2">
+              <Table className="w-6 h-6" />
+              סוגי תאים מותאמים אישית
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 mt-4">
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+              <p className="text-sm text-amber-800">
+                הגדר סוגי תאים חדשים עם התנהגות מותאמת (בקרוב - כרגע זמין רק תצוגה).
+              </p>
+            </div>
+
+            <Button 
+              onClick={() => {
+                const newType = {
+                  type_id: `type_${Date.now()}`,
+                  name: 'סוג חדש',
+                  icon: 'star',
+                  render_template: 'default',
+                  validation: {}
+                };
+                setCustomCellTypes([...customCellTypes, newType]);
+                toast.success('✓ סוג תא נוסף');
+              }}
+              className="w-full gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              הוסף סוג תא מותאם
+            </Button>
+
+            <div className="space-y-3">
+              {customCellTypes.map((cellType, index) => (
+                <div key={cellType.type_id} className="border rounded-lg p-4 space-y-3 bg-white">
+                  <div className="flex items-center justify-between gap-2">
+                    <Input
+                      placeholder="שם סוג התא"
+                      value={cellType.name}
+                      onChange={(e) => {
+                        const updated = [...customCellTypes];
+                        updated[index].name = e.target.value;
+                        setCustomCellTypes(updated);
+                      }}
+                      className="flex-1 h-8"
+                    />
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => {
+                        setCustomCellTypes(customCellTypes.filter(t => t.type_id !== cellType.type_id));
+                        toast.success('✓ סוג תא נמחק');
+                      }}
+                      className="text-red-600"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+
+                  <Input
+                    placeholder="מזהה ייחודי (לדוגמה: email, phone, url)"
+                    value={cellType.type_id}
+                    onChange={(e) => {
+                      const updated = [...customCellTypes];
+                      updated[index].type_id = e.target.value;
+                      setCustomCellTypes(updated);
+                    }}
+                    className="h-8"
+                  />
+
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800">
+                    💡 פיצ'ר מתקדם זה יאפשר בעתיד הגדרת רינדור מותאם, ולידציה ספציפית, ועיצוב דינמי לסוגי תאים שונים.
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setShowCellTypesDialog(false)}>
+              סגור
+            </Button>
+            <Button onClick={() => {
+              saveToBackend(columns, rowsData, cellStyles);
+              setShowCellTypesDialog(false);
+              toast.success('✓ סוגי תאים נשמרו');
+            }}>
+              שמור
             </Button>
           </DialogFooter>
         </DialogContent>
