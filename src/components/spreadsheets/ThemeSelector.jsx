@@ -1023,6 +1023,9 @@ export default function ThemeSelector({ open, onClose, currentTheme, onApply }) 
               </Select>
             </div>
           </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
