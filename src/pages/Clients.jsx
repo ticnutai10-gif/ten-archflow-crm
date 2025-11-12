@@ -48,7 +48,8 @@ import {
   RefreshCw,
   ChevronDown,
   MoreVertical,
-  FileDown
+  FileDown,
+  Database // Added this import
 } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
@@ -67,7 +68,8 @@ import GoogleSheetsManager from "../components/clients/GoogleSheetsManager";
 import ClientMerger from "../components/clients/ClientMerger";
 import GoogleSheetsImporter from "../components/clients/GoogleSheetsImporter";
 import SmartClientImporter from "../components/clients/SmartClientImporter";
-import ClientImportWizard from "../components/clients/ClientImportWizard"; // Added this import
+import ClientImportWizard from "../components/clients/ClientImportWizard";
+import TableManager from "../components/clients/TableManager"; // Added this import
 import { useAccessControl, autoAssignToCreator } from "../components/access/AccessValidator";
 import { toast } from "sonner";
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
@@ -97,7 +99,8 @@ export default function ClientsPage() {
   const [showSheetsImporter, setShowSheetsImporter] = useState(false);
   const [isCleaningNames, setIsCleaningNames] = useState(false);
   const [showSmartImporter, setShowSmartImporter] = useState(false);
-  const [showNewImporter, setShowNewImporter] = useState(false); // Added this state
+  const [showNewImporter, setShowNewImporter] = useState(false);
+  const [showTableManager, setShowTableManager] = useState(false); // Added this state
 
   // scrollContainerRef is kept but its role in virtual scrolling is removed.
   // It could still be used for general layout purposes if needed, but no longer directly controls scroll behavior for DND/grid.
@@ -659,6 +662,17 @@ export default function ClientsPage() {
         </div>
       }
 
+      {/* Table Manager */}
+      {showTableManager && (
+        <TableManager
+          open={showTableManager}
+          onClose={() => setShowTableManager(false)}
+          onTableSelect={(table) => {
+            console.log('Selected table:', table);
+            setShowTableManager(false);
+          }}
+        />
+      )}
 
       {/* כותרת העמוד */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-4 gap-4">
@@ -666,6 +680,16 @@ export default function ClientsPage() {
           <h1 className="text-3xl font-bold text-slate-900 mb-2">ניהול לקוחות</h1>
           <p className="text-slate-600">ניהול מאגר הלקוחות והפרויקטים שלהם</p>
         </div>
+
+        {/* כפתור ניהול טבלאות */}
+        <Button
+          onClick={() => setShowTableManager(true)}
+          variant="outline"
+          className="gap-2 border-2 border-blue-200 hover:bg-blue-50"
+        >
+          <Database className="w-4 h-4" style={{ color: iconColor }} />
+          נהל טבלאות
+        </Button>
       </div>
 
       {/* סטטיסטיקות */}
@@ -965,7 +989,7 @@ export default function ClientsPage() {
             }}
             disabled={isCleaningNames}
             variant="outline"
-            className="bg-background text-slate-800 px-4 py-2 text-sm font-medium rounded-xl inline-flex items-center justify-center gap-2 whitespace-nowrap ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-10 border-slate-200 hover:bg-slate-50">
+            className="bg-background text-slate-800 px-4 py-2 text-sm font-medium rounded-xl inline-flex items-center justify-center gap-2 whitespace-nowrap ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-10 border-slate-200 hover:bg-slate-50">
             {isCleaningNames ? (
               <>
                 <RefreshCw className="w-4 h-4 ml-2 animate-spin" style={{ color: iconColor }} />
