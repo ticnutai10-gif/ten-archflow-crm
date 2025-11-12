@@ -6,13 +6,12 @@ import {
   BarChart3, Archive, FolderOpen, MessageSquare,
   Calculator, Pin, PinOff, ChevronRight, Home,
   Briefcase, CheckSquare2, Timer, Receipt,
-  Calendar, Mail, Brain
+  Calendar, Mail
 } from "lucide-react";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import FloatingTimer from "@/components/timer/FloatingTimer";
 import ReminderPopup from "@/components/reminders/ReminderPopup";
 import FloatingDebugPanel from "@/components/debug/FloatingDebugPanel";
-import FloatingAIButton from "@/components/ai/FloatingAIButton";
 import { base44 } from "@/api/base44Client";
 
 const ACCENT_COLOR = "#2C3A50";
@@ -29,7 +28,6 @@ const THEMES = {
 
 const MENU_ITEMS = [
   { name: "Dashboard", icon: Home, path: "Dashboard" },
-  { name: "עוזר AI חכם", icon: Brain, path: "SmartAI", highlight: true },
   { name: "לקוחות", icon: Users, path: "Clients" },
   { name: "פרויקטים", icon: Briefcase, path: "Projects" },
   { name: "הצעות מחיר", icon: Calculator, path: "Quotes" },
@@ -367,28 +365,21 @@ export default function Layout({ children, currentPageName }) {
                         transition-colors duration-200 ease-in-out
                         ${isActive
                           ? `text-white shadow-md border border-white/20`
-                          : item.highlight 
-                            ? "text-purple-600 hover:text-purple-700 bg-gradient-to-r from-purple-50 to-blue-50 hover:from-purple-100 hover:to-blue-100"
-                            : "text-slate-600 hover:text-slate-900"
+                          : "text-slate-600 hover:text-slate-900"
                         }
                         justify-start group relative
                         transform-none
-                        ${!isActive && !item.highlight ? "hover:bg-slate-50/80" : ""}
+                        ${!isActive ? "hover:bg-slate-50/80" : ""}
                       `}
-                      style={isActive ? { background: item.highlight ? 'linear-gradient(to right, #9333ea, #3b82f6)' : ACCENT_COLOR } : undefined}
+                      style={isActive ? { background: ACCENT_COLOR } : undefined}
                     >
                       <Icon 
-                        className={`w-5 h-5 flex-shrink-0 transition-colors duration-200 ${item.highlight && !isActive ? 'animate-pulse' : ''}`} 
-                        style={{ color: isActive ? 'white' : item.highlight ? '#9333ea' : ICON_COLOR }}
+                        className={`w-5 h-5 flex-shrink-0 transition-colors duration-200`} 
+                        style={{ color: isActive ? 'white' : ICON_COLOR }}
                       />
                       <span className="font-medium">
                         {item.name}
                       </span>
-                      {item.highlight && !isActive && (
-                        <span className="mr-auto text-xs bg-purple-600 text-white px-2 py-0.5 rounded-full">
-                          חדש
-                        </span>
-                      )}
                       {isActive && (
                         <ChevronRight className="w-4 h-4 text-white/70 mr-auto flex-shrink-0" />
                       )}
@@ -485,7 +476,6 @@ export default function Layout({ children, currentPageName }) {
         <FloatingTimer />
         <ReminderPopup />
         <FloatingDebugPanel />
-        <FloatingAIButton />
       </div>
     </SidebarProvider>
   );

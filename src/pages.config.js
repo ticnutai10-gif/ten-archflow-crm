@@ -24,7 +24,6 @@ import Meetings from './pages/Meetings';
 import SpreadsheetDetails from './pages/SpreadsheetDetails';
 import Tasks from './pages/Tasks';
 import DailyReports from './pages/DailyReports';
-import SmartAI from './pages/SmartAI';
 import Layout from './Layout.jsx';
 
 
@@ -55,7 +54,6 @@ export const PAGES = {
     "SpreadsheetDetails": SpreadsheetDetails,
     "Tasks": Tasks,
     "DailyReports": DailyReports,
-    "SmartAI": SmartAI,
 }
 
 export const pagesConfig = {
