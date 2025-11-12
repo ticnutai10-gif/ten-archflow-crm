@@ -479,70 +479,93 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     await saveToBackend(updated, rowsData, cellStyles);
   };
 
-  // פונקציות Resizing
+  // פונקציות Resizing - גרסה משופרת
+  const resizeStartRef = useRef(null);
+  
   const handleColumnResizeStart = (e, columnKey) => {
     e.preventDefault();
     e.stopPropagation();
-    setResizingColumn({ key: columnKey, startX: e.pageX });
+    
+    const column = columns.find(c => c.key === columnKey);
+    const currentWidth = parseInt(column.width) || 150;
+    
+    resizeStartRef.current = {
+      type: 'column',
+      key: columnKey,
+      startX: e.pageX,
+      startWidth: currentWidth
+    };
+    
+    setResizingColumn(columnKey);
   };
 
   const handleRowResizeStart = (e, rowId) => {
     e.preventDefault();
     e.stopPropagation();
-    setResizingRow({ id: rowId, startY: e.pageY });
+    
+    const currentHeight = rowHeights[rowId] || 40;
+    
+    resizeStartRef.current = {
+      type: 'row',
+      id: rowId,
+      startY: e.pageY,
+      startHeight: currentHeight
+    };
+    
+    setResizingRow(rowId);
   };
 
   useEffect(() => {
+    if (!resizingColumn && !resizingRow) return;
+
     const handleMouseMove = (e) => {
-      if (resizingColumn) {
-        const diff = e.pageX - resizingColumn.startX;
-        const column = columns.find(c => c.key === resizingColumn.key);
-        if (column) {
-          const currentWidth = parseInt(column.width) || 150;
-          const newWidth = Math.max(50, currentWidth + diff);
-          
-          const updated = columns.map(col => 
-            col.key === resizingColumn.key ? { ...col, width: `${newWidth}px` } : col
-          );
-          setColumns(updated);
-          setResizingColumn({ ...resizingColumn, startX: e.pageX });
-        }
+      if (!resizeStartRef.current) return;
+      
+      if (resizeStartRef.current.type === 'column') {
+        const diff = e.pageX - resizeStartRef.current.startX;
+        const newWidth = Math.max(50, resizeStartRef.current.startWidth + diff);
+        
+        const updated = columns.map(col => 
+          col.key === resizeStartRef.current.key ? { ...col, width: `${newWidth}px` } : col
+        );
+        setColumns(updated);
       }
       
-      if (resizingRow) {
-        const diff = e.pageY - resizingRow.startY;
-        const currentHeight = rowHeights[resizingRow.id] || 40;
-        const newHeight = Math.max(30, currentHeight + diff);
+      if (resizeStartRef.current.type === 'row') {
+        const diff = e.pageY - resizeStartRef.current.startY;
+        const newHeight = Math.max(30, resizeStartRef.current.startHeight + diff);
         
         setRowHeights(prev => ({
           ...prev,
-          [resizingRow.id]: newHeight
+          [resizeStartRef.current.id]: newHeight
         }));
-        setResizingRow({ ...resizingRow, startY: e.pageY });
       }
     };
 
     const handleMouseUp = () => {
-      if (resizingColumn) {
+      if (resizingColumn || resizingRow) {
         saveToBackend(columns, rowsData, cellStyles);
         setResizingColumn(null);
-      }
-      if (resizingRow) {
-        saveToBackend(columns, rowsData, cellStyles);
         setResizingRow(null);
+        resizeStartRef.current = null;
+        toast.success('✓ גודל עודכן');
       }
     };
 
-    if (resizingColumn || resizingRow) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-      
-      return () => {
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
-      };
-    }
-  }, [resizingColumn, resizingRow, columns, rowHeights]);
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    
+    // מניעת בחירת טקסט בזמן גרירה
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = resizingColumn ? 'col-resize' : 'row-resize';
+    
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+    };
+  }, [resizingColumn, resizingRow]);
 
   const applyCellStyle = (cellKey, style) => {
     const newStyles = {
@@ -874,12 +897,12 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         </CardHeader>
 
         <CardContent className="p-0">
-          <div className="overflow-auto" style={{ maxHeight: fullScreenMode ? '85vh' : '60vh' }}>
+          <div className="overflow-auto" style={{ maxHeight: fullScreenMode ? '85vh' : '60vh', position: 'relative' }}>
             <DragDropContext onDragEnd={handleDragEnd}>
               <table className="w-full border-collapse" dir="rtl">
-                <thead className="bg-slate-100 sticky top-0 z-10">
+                <thead className="bg-slate-100" style={{ position: 'sticky', top: 0, zIndex: 25 }}>
                   <tr>
-                    <th className="border border-slate-200 p-3 w-12 bg-slate-200 sticky right-0 z-30 shadow-[2px_0_5px_rgba(0,0,0,0.1)]">
+                    <th className="border border-slate-200 p-3 w-12 bg-slate-200 sticky right-0 shadow-[2px_0_5px_rgba(0,0,0,0.1)]" style={{ zIndex: 35 }}>
                       <GripVertical className="w-4 h-4 mx-auto text-slate-400" />
                     </th>
                     {visibleColumns.map((col, colIndex) => {
@@ -891,13 +914,14 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                         <th
                           key={col.key}
                           className={`border border-slate-200 p-3 text-right font-semibold hover:bg-blue-50 cursor-pointer group relative ${
-                            colIndex === 0 ? 'sticky z-20 shadow-[2px_0_5px_rgba(0,0,0,0.1)] bg-slate-100' : ''
+                            colIndex === 0 ? 'sticky shadow-[2px_0_5px_rgba(0,0,0,0.1)] bg-slate-100' : ''
                           }`}
                           style={{ 
                             width: col.width, 
-                            position: 'relative',
+                            position: colIndex === 0 ? 'sticky' : 'relative',
                             right: colIndex === 0 ? '48px' : undefined,
-                            backgroundColor: colIndex === 0 ? '#f1f5f9' : undefined
+                            backgroundColor: colIndex === 0 ? '#f1f5f9' : '#f1f5f9',
+                            zIndex: colIndex === 0 ? 30 : 25
                           }}
                           onClick={(e) => handleColumnHeaderClick(col.key, e)}
                         >
@@ -1035,14 +1059,17 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                           )}
                           
                           {/* Column Resizer - ידית גרירה לשינוי רוחב */}
-                          {colIndex < visibleColumns.length - 1 && (
-                            <div
-                              className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-500 z-10 group-hover:bg-blue-300"
-                              onMouseDown={(e) => handleColumnResizeStart(e, col.key)}
-                              onClick={(e) => e.stopPropagation()}
-                              title="גרור לשינוי רוחב"
-                            />
-                          )}
+                          <div
+                            className="absolute left-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500 hover:w-1 z-30 transition-colors"
+                            style={{ 
+                              backgroundColor: resizingColumn === col.key ? '#3b82f6' : 'transparent',
+                              width: resizingColumn === col.key ? '3px' : '8px',
+                              marginLeft: '-4px'
+                            }}
+                            onMouseDown={(e) => handleColumnResizeStart(e, col.key)}
+                            onClick={(e) => e.stopPropagation()}
+                            title="גרור לשינוי רוחב עמודה"
+                          />
                         </th>
                       );
                     })}
@@ -1081,17 +1108,22 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                 >
                                   <td 
                                     {...provided.dragHandleProps}
-                                    className="border border-slate-200 p-2 cursor-grab active:cursor-grabbing bg-slate-100 hover:bg-slate-200 relative sticky right-0 z-20 shadow-[2px_0_5px_rgba(0,0,0,0.1)]"
-                                    style={{ height: `${rowHeight}px` }}
+                                    className="border border-slate-200 p-2 cursor-grab active:cursor-grabbing bg-slate-100 hover:bg-slate-200 relative sticky right-0 shadow-[2px_0_5px_rgba(0,0,0,0.1)]"
+                                    style={{ height: `${rowHeight}px`, zIndex: 15 }}
                                   >
                                     <GripVertical className="w-4 h-4 mx-auto text-slate-500" />
                                     
                                     {/* Row Resizer - ידית גרירה לשינוי גובה */}
                                     <div
-                                      className="absolute bottom-0 left-0 right-0 h-1 cursor-row-resize hover:bg-blue-500 z-10"
+                                      className="absolute bottom-0 left-0 right-0 h-2 cursor-row-resize hover:bg-blue-500 z-30 transition-colors"
+                                      style={{ 
+                                        backgroundColor: resizingRow === row.id ? '#3b82f6' : 'transparent',
+                                        height: resizingRow === row.id ? '3px' : '8px',
+                                        marginBottom: '-4px'
+                                      }}
                                       onMouseDown={(e) => handleRowResizeStart(e, row.id)}
                                       onClick={(e) => e.stopPropagation()}
-                                      title="גרור לשינוי גובה"
+                                      title="גרור לשינוי גובה שורה"
                                     />
                                   </td>
                                   {visibleColumns.map(column => {
@@ -1111,7 +1143,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                         className={`border border-slate-200 p-2 cursor-pointer hover:bg-blue-50 ${
                                           isSelected ? 'ring-2 ring-purple-500 bg-purple-50' : ''
                                         } ${
-                                          colIndex === 0 ? 'sticky z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]' : ''
+                                          colIndex === 0 ? 'sticky shadow-[2px_0_5px_rgba(0,0,0,0.05)]' : ''
                                         }`}
                                         style={{
                                           backgroundColor: isSelected ? '#faf5ff' : colIndex === 0 ? (rowIndex % 2 === 0 ? '#ffffff' : '#f8fafc') : cellStyle.backgroundColor,
@@ -1120,7 +1152,9 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                           height: `${rowHeight}px`,
                                           maxHeight: `${rowHeight}px`,
                                           overflow: 'hidden',
-                                          right: colIndex === 0 ? '48px' : undefined
+                                          position: colIndex === 0 ? 'sticky' : 'relative',
+                                          right: colIndex === 0 ? '48px' : undefined,
+                                          zIndex: colIndex === 0 ? 10 : 1
                                         }}
                                         onClick={(e) => !isEditing && handleCellClick(row.id, column.key, e)}
                                       >
