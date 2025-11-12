@@ -1,3 +1,4 @@
+
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.4';
 import XLSX from 'npm:xlsx@0.18.5';
 
@@ -76,6 +77,7 @@ Deno.serve(async (req) => {
 
     const sheetName = workbook.SheetNames[0];
     console.log('📄 [SHEET] Using sheet:', sheetName);
+    console.log('📄 [SHEET] All available sheets:', workbook.SheetNames);
     
     const worksheet = workbook.Sheets[sheetName];
     
@@ -95,7 +97,12 @@ Deno.serve(async (req) => {
         status: 'success',
         rows: [],
         headers: [],
-        count: 0
+        count: 0,
+        debug: {
+          sheetName,
+          contentType,
+          fileSize: contentLength
+        }
       });
     }
 
@@ -117,7 +124,8 @@ Deno.serve(async (req) => {
       headers: headers,
       count: jsonData.length,
       debug: {
-        sheetName,
+        sheetName: sheetName,
+        allSheets: workbook.SheetNames,
         contentType,
         fileSize: contentLength,
         rowCount: jsonData.length,
