@@ -775,12 +775,28 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const saveToBackend = async (cols, rows, styles) => {
     if (!spreadsheet?.id) return;
     try {
-      await base44.entities.CustomSpreadsheet.update(spreadsheet.id, {
-        columns: cols, rows_data: rows, cell_styles: styles, row_heights: rowHeights,
-        validation_rules: validationRules, conditional_formats: conditionalFormats,
-        freeze_settings: freezeSettings, custom_cell_types: customCellTypes, merged_cells: mergedCells,
-        theme_settings: themeSettings, saved_views: savedViews, active_view_id: activeViewId
-      });
+      const payload = {
+        columns: cols, 
+        rows_data: rows, 
+        cell_styles: styles, 
+        row_heights: rowHeights,
+        validation_rules: validationRules, 
+        conditional_formats: conditionalFormats,
+        freeze_settings: freezeSettings, 
+        custom_cell_types: customCellTypes, 
+        merged_cells: mergedCells,
+        theme_settings: themeSettings, 
+        saved_views: savedViews, 
+        active_view_id: activeViewId
+      };
+      
+      console.log('💾 [SAVE] Saving to backend, theme_settings:', themeSettings);
+      console.log('💾 [SAVE] theme_settings.customColors:', themeSettings?.customColors);
+      
+      await base44.entities.CustomSpreadsheet.update(spreadsheet.id, payload);
+      
+      console.log('✅ [SAVE] Data saved successfully');
+      
       if (onUpdate) await onUpdate();
     } catch (error) {
       console.error('❌ Save error:', error);
@@ -790,13 +806,32 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
 
   const handleThemeApply = async (newTheme) => {
     console.log('🎨 [THEME] Applying new theme:', newTheme);
+    console.log('🎨 [THEME] newTheme.customColors:', newTheme.customColors);
+    
     setThemeSettings(newTheme);
     
     try {
-      await base44.entities.CustomSpreadsheet.update(spreadsheet.id, {
+      const updatePayload = {
         theme_settings: newTheme
-      });
+      };
+      
+      console.log('📤 [THEME] Sending to backend:', JSON.stringify(updatePayload, null, 2));
+      
+      await base44.entities.CustomSpreadsheet.update(spreadsheet.id, updatePayload);
+      
       console.log('✅ [THEME] Theme saved to backend successfully');
+      
+      // וידוא - קרא את הנתונים מהשרת
+      const verifyData = await base44.entities.CustomSpreadsheet.get(spreadsheet.id);
+      console.log('🔍 [THEME] Verification - data from server:', verifyData.theme_settings);
+      console.log('🔍 [THEME] Verification - customColors exists?', !!verifyData.theme_settings?.customColors);
+      
+      if (verifyData.theme_settings?.customColors) {
+        console.log('✅ [THEME] customColors saved correctly!', verifyData.theme_settings.customColors);
+      } else {
+        console.error('❌ [THEME] customColors NOT saved! Server returned:', verifyData.theme_settings);
+      }
+      
       toast.success('✓ עיצוב נשמר בהצלחה');
       
       if (onUpdate) await onUpdate();
