@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Palette, Type, Grid } from "lucide-react";
+import { Palette, Type, Grid, Bookmark, Eye } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 
 // פלטות צבעים מוגדרות מראש
@@ -122,6 +123,25 @@ const FONT_OPTIONS = {
   mono: { name: "Monospace", value: "'Courier New', monospace" }
 };
 
+// טעינת ערכות עיצוב שמורות מ-localStorage
+const loadSavedThemes = () => {
+  try {
+    const saved = localStorage.getItem('spreadsheet-custom-themes');
+    return saved ? JSON.parse(saved) : [];
+  } catch {
+    return [];
+  }
+};
+
+// שמירת ערכות עיצוב ל-localStorage
+const saveSavedThemes = (themes) => {
+  try {
+    localStorage.setItem('spreadsheet-custom-themes', JSON.stringify(themes));
+  } catch (e) {
+    console.error('Error saving themes:', e);
+  }
+};
+
 export default function ThemeSelector({ open, onClose, currentTheme, onApply }) {
   const [theme, setTheme] = React.useState(currentTheme || {
     palette: "default",
@@ -138,6 +158,14 @@ export default function ThemeSelector({ open, onClose, currentTheme, onApply }) 
   });
   
   const [showCustomColors, setShowCustomColors] = React.useState(false);
+  const [savedCustomThemes, setSavedCustomThemes] = React.useState([]);
+  const [showSaveThemeDialog, setShowSaveThemeDialog] = React.useState(false);
+  const [newThemeName, setNewThemeName] = React.useState("");
+  
+  // טען ערכות עיצוב שמורות
+  React.useEffect(() => {
+    setSavedCustomThemes(loadSavedThemes());
+  }, [open]);
 
   React.useEffect(() => {
     if (currentTheme) {
@@ -202,6 +230,44 @@ export default function ThemeSelector({ open, onClose, currentTheme, onApply }) 
       }
     });
   };
+  
+  const handleSaveAsCustomTheme = () => {
+    if (!newThemeName.trim()) {
+      toast.error('נא להזין שם לערכת העיצוב');
+      return;
+    }
+    
+    const newCustomTheme = {
+      id: `custom_${Date.now()}`,
+      name: newThemeName.trim(),
+      theme: { ...theme }
+    };
+    
+    const updated = [...savedCustomThemes, newCustomTheme];
+    setSavedCustomThemes(updated);
+    saveSavedThemes(updated);
+    
+    setShowSaveThemeDialog(false);
+    setNewThemeName("");
+    toast.success(`✓ ערכת עיצוב "${newThemeName}" נשמרה בהצלחה`);
+  };
+  
+  const handleLoadCustomTheme = (customTheme) => {
+    setTheme(customTheme.theme);
+    if (customTheme.theme.customColors) {
+      setShowCustomColors(true);
+    }
+    toast.success(`✓ ערכת עיצוב "${customTheme.name}" נטענה`);
+  };
+  
+  const handleDeleteCustomTheme = (themeId) => {
+    if (!confirm('האם למחוק ערכת עיצוב זו?')) return;
+    
+    const updated = savedCustomThemes.filter(t => t.id !== themeId);
+    setSavedCustomThemes(updated);
+    saveSavedThemes(updated);
+    toast.success('✓ ערכת עיצוב נמחקה');
+  };
 
   const selectedPalette = theme.customColors || COLOR_PALETTES[theme.palette] || COLOR_PALETTES.default;
   const selectedBorder = BORDER_STYLES[theme.borderStyle] || BORDER_STYLES.thin;
@@ -247,15 +313,50 @@ export default function ThemeSelector({ open, onClose, currentTheme, onApply }) 
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto" dir="rtl">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-6xl max-h-[95vh] overflow-hidden flex flex-col" dir="rtl">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2 text-xl">
             <Palette className="w-6 h-6 text-purple-600" />
             עיצוב הטבלה
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
+        <div className="flex-1 overflow-y-auto px-1">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 py-4">
+            {/* עמודת אפשרויות */}
+            <div className="space-y-6">{/* ערכות עיצוב שמורות */}
+              {savedCustomThemes.length > 0 && (
+                <div className="space-y-3">
+                  <Label className="text-base font-bold flex items-center gap-2">
+                    <Bookmark className="w-5 h-5 text-indigo-600" />
+                    ערכות עיצוב שמורות
+                  </Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {savedCustomThemes.map((customTheme) => (
+                      <div key={customTheme.id} className="relative group">
+                        <button
+                          onClick={() => handleLoadCustomTheme(customTheme)}
+                          className="w-full p-3 rounded-lg border-2 border-indigo-200 hover:border-indigo-400 bg-gradient-to-br from-indigo-50 to-purple-50 transition-all hover:shadow-md"
+                        >
+                          <div className="text-xs font-semibold text-indigo-900 mb-2">{customTheme.name}</div>
+                          <div className="flex gap-1 h-4">
+                            <div className="flex-1 rounded" style={{ backgroundColor: customTheme.theme.customColors?.headerBg || '#f1f5f9' }} />
+                            <div className="flex-1 rounded" style={{ backgroundColor: customTheme.theme.customColors?.cellBg || '#ffffff' }} />
+                            <div className="flex-1 rounded" style={{ backgroundColor: customTheme.theme.customColors?.cellAltBg || '#f8fafc' }} />
+                          </div>
+                        </button>
+                        <button
+                          onClick={() => handleDeleteCustomTheme(customTheme.id)}
+                          className="absolute -top-2 -left-2 w-6 h-6 bg-red-500 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-red-600"
+                          title="מחק ערכת עיצוב"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
           {/* פלטת צבעים */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
@@ -498,132 +599,329 @@ export default function ThemeSelector({ open, onClose, currentTheme, onApply }) 
             </div>
           </div>
 
-          {/* תצוגה מקדימה */}
-          <div className="space-y-3">
-            <Label className="text-base font-bold">תצוגה מקדימה</Label>
-            <div 
-              className="border-2 border-slate-300 overflow-hidden"
-              style={{ 
-                borderRadius: currentRadius.value,
-                boxShadow: currentShadow.value
-              }}
-            >
-              <table className="w-full" dir="rtl" style={{ borderCollapse: theme.cellSpacing === 'none' ? 'collapse' : 'separate', borderSpacing: currentSpacing.value }}>
-                <thead>
-                  <tr>
-                    <th 
-                      className="p-3 text-right transition-all duration-200"
-                      style={{
-                        backgroundColor: selectedPalette.headerBg,
-                        color: selectedPalette.headerText,
-                        borderWidth: theme.cellSpacing === 'none' ? selectedBorder.width : '0',
-                        borderStyle: selectedBorder.style,
-                        borderColor: selectedPalette.border,
-                        fontFamily: FONT_OPTIONS[theme.headerFont]?.value,
-                        fontSize: theme.fontSize === 'small' ? '12px' : theme.fontSize === 'large' ? '16px' : '14px',
-                        borderRadius: theme.cellSpacing !== 'none' ? currentRadius.value : '0'
-                      }}
-                    >
-                      כותרת 1
-                    </th>
-                    <th 
-                      className="p-3 text-right transition-all duration-200"
-                      style={{
-                        backgroundColor: selectedPalette.headerBg,
-                        color: selectedPalette.headerText,
-                        borderWidth: theme.cellSpacing === 'none' ? selectedBorder.width : '0',
-                        borderStyle: selectedBorder.style,
-                        borderColor: selectedPalette.border,
-                        fontFamily: FONT_OPTIONS[theme.headerFont]?.value,
-                        fontSize: theme.fontSize === 'small' ? '12px' : theme.fontSize === 'large' ? '16px' : '14px',
-                        borderRadius: theme.cellSpacing !== 'none' ? currentRadius.value : '0'
-                      }}
-                    >
-                      כותרת 2
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="preview-row">
-                    <td 
-                      className="p-2 transition-all duration-200"
-                      style={{
-                        backgroundColor: selectedPalette.cellBg,
-                        color: selectedPalette.cellText,
-                        borderWidth: theme.cellSpacing === 'none' ? selectedBorder.width : '0',
-                        borderStyle: selectedBorder.style,
-                        borderColor: selectedPalette.border,
-                        fontFamily: FONT_OPTIONS[theme.cellFont]?.value,
-                        fontSize: theme.fontSize === 'small' ? '11px' : theme.fontSize === 'large' ? '15px' : '13px',
-                        padding: theme.density === 'compact' ? '4px 8px' : theme.density === 'spacious' ? '12px 16px' : '8px 12px',
-                        borderRadius: theme.cellSpacing !== 'none' ? currentRadius.value : '0'
-                      }}
-                    >
-                      נתון 1
-                    </td>
-                    <td 
-                      className="p-2 transition-all duration-200"
-                      style={{
-                        backgroundColor: selectedPalette.cellBg,
-                        color: selectedPalette.cellText,
-                        borderWidth: theme.cellSpacing === 'none' ? selectedBorder.width : '0',
-                        borderStyle: selectedBorder.style,
-                        borderColor: selectedPalette.border,
-                        fontFamily: FONT_OPTIONS[theme.cellFont]?.value,
-                        fontSize: theme.fontSize === 'small' ? '11px' : theme.fontSize === 'large' ? '15px' : '13px',
-                        padding: theme.density === 'compact' ? '4px 8px' : theme.density === 'spacious' ? '12px 16px' : '8px 12px',
-                        borderRadius: theme.cellSpacing !== 'none' ? currentRadius.value : '0'
-                      }}
-                    >
-                      נתון 2
-                    </td>
-                  </tr>
-                  <tr className="preview-row">
-                    <td 
-                      className="p-2 transition-all duration-200"
-                      style={{
-                        backgroundColor: selectedPalette.cellAltBg,
-                        color: selectedPalette.cellText,
-                        borderWidth: theme.cellSpacing === 'none' ? selectedBorder.width : '0',
-                        borderStyle: selectedBorder.style,
-                        borderColor: selectedPalette.border,
-                        fontFamily: FONT_OPTIONS[theme.cellFont]?.value,
-                        fontSize: theme.fontSize === 'small' ? '11px' : theme.fontSize === 'large' ? '15px' : '13px',
-                        padding: theme.density === 'compact' ? '4px 8px' : theme.density === 'spacious' ? '12px 16px' : '8px 12px',
-                        borderRadius: theme.cellSpacing !== 'none' ? currentRadius.value : '0'
-                      }}
-                    >
-                      נתון 3
-                    </td>
-                    <td 
-                      className="p-2 transition-all duration-200"
-                      style={{
-                        backgroundColor: selectedPalette.cellAltBg,
-                        color: selectedPalette.cellText,
-                        borderWidth: theme.cellSpacing === 'none' ? selectedBorder.width : '0',
-                        borderStyle: selectedBorder.style,
-                        borderColor: selectedPalette.border,
-                        fontFamily: FONT_OPTIONS[theme.cellFont]?.value,
-                        fontSize: theme.fontSize === 'small' ? '11px' : theme.fontSize === 'large' ? '15px' : '13px',
-                        padding: theme.density === 'compact' ? '4px 8px' : theme.density === 'spacious' ? '12px 16px' : '8px 12px',
-                        borderRadius: theme.cellSpacing !== 'none' ? currentRadius.value : '0'
-                      }}
-                    >
-                      נתון 4
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-              
-              <style>{`
-                .preview-row:hover td {
-                  background-color: ${selectedPalette.hover} !important;
-                  transform: ${theme.hoverEffect === 'strong' ? 'scale(1.02)' : theme.hoverEffect === 'medium' ? 'translateY(-1px)' : theme.hoverEffect === 'subtle' ? 'none' : 'none'};
-                  box-shadow: ${theme.hoverEffect === 'strong' ? '0 4px 6px rgba(0,0,0,0.1)' : theme.hoverEffect === 'medium' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none'};
-                }
-              `}</style>
+            </div>
+
+            {/* עמודת תצוגה מקדימה חיה */}
+            <div className="space-y-4 lg:sticky lg:top-0 lg:self-start">
+              <div className="bg-gradient-to-br from-blue-50 to-purple-50 p-4 rounded-xl border-2 border-blue-200">
+                <Label className="text-base font-bold mb-3 block flex items-center gap-2">
+                  <Eye className="w-5 h-5 text-blue-600" />
+                  תצוגה מקדימה חיה
+                </Label>
+                <div 
+                  className="border-2 border-slate-300 overflow-hidden"
+                  style={{ 
+                    borderRadius: currentRadius.value,
+                    boxShadow: currentShadow.value
+                  }}
+                >
+                  <table className="w-full" dir="rtl" style={{ borderCollapse: theme.cellSpacing === 'none' ? 'collapse' : 'separate', borderSpacing: currentSpacing.value }}>
+                    <thead>
+                      <tr>
+                        <th 
+                          className="p-3 text-right transition-all duration-300"
+                          style={{
+                            backgroundColor: selectedPalette.headerBg,
+                            color: selectedPalette.headerText,
+                            borderWidth: theme.cellSpacing === 'none' ? selectedBorder.width : '0',
+                            borderStyle: selectedBorder.style,
+                            borderColor: selectedPalette.border,
+                            fontFamily: FONT_OPTIONS[theme.headerFont]?.value,
+                            fontSize: theme.fontSize === 'small' ? '12px' : theme.fontSize === 'large' ? '16px' : '14px',
+                            borderRadius: theme.cellSpacing !== 'none' ? currentRadius.value : '0'
+                          }}
+                        >
+                          שם לקוח
+                        </th>
+                        <th 
+                          className="p-3 text-right transition-all duration-300"
+                          style={{
+                            backgroundColor: selectedPalette.headerBg,
+                            color: selectedPalette.headerText,
+                            borderWidth: theme.cellSpacing === 'none' ? selectedBorder.width : '0',
+                            borderStyle: selectedBorder.style,
+                            borderColor: selectedPalette.border,
+                            fontFamily: FONT_OPTIONS[theme.headerFont]?.value,
+                            fontSize: theme.fontSize === 'small' ? '12px' : theme.fontSize === 'large' ? '16px' : '14px',
+                            borderRadius: theme.cellSpacing !== 'none' ? currentRadius.value : '0'
+                          }}
+                        >
+                          סטטוס
+                        </th>
+                        <th 
+                          className="p-3 text-right transition-all duration-300"
+                          style={{
+                            backgroundColor: selectedPalette.headerBg,
+                            color: selectedPalette.headerText,
+                            borderWidth: theme.cellSpacing === 'none' ? selectedBorder.width : '0',
+                            borderStyle: selectedBorder.style,
+                            borderColor: selectedPalette.border,
+                            fontFamily: FONT_OPTIONS[theme.headerFont]?.value,
+                            fontSize: theme.fontSize === 'small' ? '12px' : theme.fontSize === 'large' ? '16px' : '14px',
+                            borderRadius: theme.cellSpacing !== 'none' ? currentRadius.value : '0'
+                          }}
+                        >
+                          תאריך
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="preview-row">
+                        <td 
+                          className="p-2 transition-all duration-300"
+                          style={{
+                            backgroundColor: selectedPalette.cellBg,
+                            color: selectedPalette.cellText,
+                            borderWidth: theme.cellSpacing === 'none' ? selectedBorder.width : '0',
+                            borderStyle: selectedBorder.style,
+                            borderColor: selectedPalette.border,
+                            fontFamily: FONT_OPTIONS[theme.cellFont]?.value,
+                            fontSize: theme.fontSize === 'small' ? '11px' : theme.fontSize === 'large' ? '15px' : '13px',
+                            padding: theme.density === 'compact' ? '4px 8px' : theme.density === 'spacious' ? '12px 16px' : '8px 12px',
+                            borderRadius: theme.cellSpacing !== 'none' ? currentRadius.value : '0'
+                          }}
+                        >
+                          דוד כהן
+                        </td>
+                        <td 
+                          className="p-2 transition-all duration-300"
+                          style={{
+                            backgroundColor: selectedPalette.cellBg,
+                            color: selectedPalette.cellText,
+                            borderWidth: theme.cellSpacing === 'none' ? selectedBorder.width : '0',
+                            borderStyle: selectedBorder.style,
+                            borderColor: selectedPalette.border,
+                            fontFamily: FONT_OPTIONS[theme.cellFont]?.value,
+                            fontSize: theme.fontSize === 'small' ? '11px' : theme.fontSize === 'large' ? '15px' : '13px',
+                            padding: theme.density === 'compact' ? '4px 8px' : theme.density === 'spacious' ? '12px 16px' : '8px 12px',
+                            borderRadius: theme.cellSpacing !== 'none' ? currentRadius.value : '0'
+                          }}
+                        >
+                          בתהליך
+                        </td>
+                        <td 
+                          className="p-2 transition-all duration-300"
+                          style={{
+                            backgroundColor: selectedPalette.cellBg,
+                            color: selectedPalette.cellText,
+                            borderWidth: theme.cellSpacing === 'none' ? selectedBorder.width : '0',
+                            borderStyle: selectedBorder.style,
+                            borderColor: selectedPalette.border,
+                            fontFamily: FONT_OPTIONS[theme.cellFont]?.value,
+                            fontSize: theme.fontSize === 'small' ? '11px' : theme.fontSize === 'large' ? '15px' : '13px',
+                            padding: theme.density === 'compact' ? '4px 8px' : theme.density === 'spacious' ? '12px 16px' : '8px 12px',
+                            borderRadius: theme.cellSpacing !== 'none' ? currentRadius.value : '0'
+                          }}
+                        >
+                          15/11/2025
+                        </td>
+                      </tr>
+                      <tr className="preview-row">
+                        <td 
+                          className="p-2 transition-all duration-300"
+                          style={{
+                            backgroundColor: selectedPalette.cellAltBg,
+                            color: selectedPalette.cellText,
+                            borderWidth: theme.cellSpacing === 'none' ? selectedBorder.width : '0',
+                            borderStyle: selectedBorder.style,
+                            borderColor: selectedPalette.border,
+                            fontFamily: FONT_OPTIONS[theme.cellFont]?.value,
+                            fontSize: theme.fontSize === 'small' ? '11px' : theme.fontSize === 'large' ? '15px' : '13px',
+                            padding: theme.density === 'compact' ? '4px 8px' : theme.density === 'spacious' ? '12px 16px' : '8px 12px',
+                            borderRadius: theme.cellSpacing !== 'none' ? currentRadius.value : '0'
+                          }}
+                        >
+                          שרה לוי
+                        </td>
+                        <td 
+                          className="p-2 transition-all duration-300"
+                          style={{
+                            backgroundColor: selectedPalette.cellAltBg,
+                            color: selectedPalette.cellText,
+                            borderWidth: theme.cellSpacing === 'none' ? selectedBorder.width : '0',
+                            borderStyle: selectedBorder.style,
+                            borderColor: selectedPalette.border,
+                            fontFamily: FONT_OPTIONS[theme.cellFont]?.value,
+                            fontSize: theme.fontSize === 'small' ? '11px' : theme.fontSize === 'large' ? '15px' : '13px',
+                            padding: theme.density === 'compact' ? '4px 8px' : theme.density === 'spacious' ? '12px 16px' : '8px 12px',
+                            borderRadius: theme.cellSpacing !== 'none' ? currentRadius.value : '0'
+                          }}
+                        >
+                          הושלם
+                        </td>
+                        <td 
+                          className="p-2 transition-all duration-300"
+                          style={{
+                            backgroundColor: selectedPalette.cellAltBg,
+                            color: selectedPalette.cellText,
+                            borderWidth: theme.cellSpacing === 'none' ? selectedBorder.width : '0',
+                            borderStyle: selectedBorder.style,
+                            borderColor: selectedPalette.border,
+                            fontFamily: FONT_OPTIONS[theme.cellFont]?.value,
+                            fontSize: theme.fontSize === 'small' ? '11px' : theme.fontSize === 'large' ? '15px' : '13px',
+                            padding: theme.density === 'compact' ? '4px 8px' : theme.density === 'spacious' ? '12px 16px' : '8px 12px',
+                            borderRadius: theme.cellSpacing !== 'none' ? currentRadius.value : '0'
+                          }}
+                        >
+                          12/11/2025
+                        </td>
+                      </tr>
+                      <tr className="preview-row">
+                        <td 
+                          className="p-2 transition-all duration-300"
+                          style={{
+                            backgroundColor: selectedPalette.cellBg,
+                            color: selectedPalette.cellText,
+                            borderWidth: theme.cellSpacing === 'none' ? selectedBorder.width : '0',
+                            borderStyle: selectedBorder.style,
+                            borderColor: selectedPalette.border,
+                            fontFamily: FONT_OPTIONS[theme.cellFont]?.value,
+                            fontSize: theme.fontSize === 'small' ? '11px' : theme.fontSize === 'large' ? '15px' : '13px',
+                            padding: theme.density === 'compact' ? '4px 8px' : theme.density === 'spacious' ? '12px 16px' : '8px 12px',
+                            borderRadius: theme.cellSpacing !== 'none' ? currentRadius.value : '0'
+                          }}
+                        >
+                          מיכל אברהם
+                        </td>
+                        <td 
+                          className="p-2 transition-all duration-300"
+                          style={{
+                            backgroundColor: selectedPalette.cellBg,
+                            color: selectedPalette.cellText,
+                            borderWidth: theme.cellSpacing === 'none' ? selectedBorder.width : '0',
+                            borderStyle: selectedBorder.style,
+                            borderColor: selectedPalette.border,
+                            fontFamily: FONT_OPTIONS[theme.cellFont]?.value,
+                            fontSize: theme.fontSize === 'small' ? '11px' : theme.fontSize === 'large' ? '15px' : '13px',
+                            padding: theme.density === 'compact' ? '4px 8px' : theme.density === 'spacious' ? '12px 16px' : '8px 12px',
+                            borderRadius: theme.cellSpacing !== 'none' ? currentRadius.value : '0'
+                          }}
+                        >
+                          ממתין
+                        </td>
+                        <td 
+                          className="p-2 transition-all duration-300"
+                          style={{
+                            backgroundColor: selectedPalette.cellBg,
+                            color: selectedPalette.cellText,
+                            borderWidth: theme.cellSpacing === 'none' ? selectedBorder.width : '0',
+                            borderStyle: selectedBorder.style,
+                            borderColor: selectedPalette.border,
+                            fontFamily: FONT_OPTIONS[theme.cellFont]?.value,
+                            fontSize: theme.fontSize === 'small' ? '11px' : theme.fontSize === 'large' ? '15px' : '13px',
+                            padding: theme.density === 'compact' ? '4px 8px' : theme.density === 'spacious' ? '12px 16px' : '8px 12px',
+                            borderRadius: theme.cellSpacing !== 'none' ? currentRadius.value : '0'
+                          }}
+                        >
+                          20/11/2025
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  
+                  <style>{`
+                    .preview-row:hover td {
+                      background-color: ${selectedPalette.hover} !important;
+                      transform: ${theme.hoverEffect === 'strong' ? 'scale(1.02)' : theme.hoverEffect === 'medium' ? 'translateY(-1px)' : theme.hoverEffect === 'subtle' ? 'none' : 'none'};
+                      box-shadow: ${theme.hoverEffect === 'strong' ? '0 4px 6px rgba(0,0,0,0.1)' : theme.hoverEffect === 'medium' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none'};
+                    }
+                  `}</style>
+                </div>
+                
+                <div className="mt-4 text-xs text-slate-600 bg-white/80 p-3 rounded-lg border border-blue-200">
+                  <div className="font-semibold mb-2">💡 טיפ: העבר עכבר על השורות לראות אפקט Hover</div>
+                  <div className="space-y-1 text-[11px]">
+                    <div>• כל שינוי שתבצע ישתקף מיד בתצוגה המקדימה</div>
+                    <div>• ניתן לשמור את העיצוב כערכת מותאמת לשימוש חוזר</div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
+        </div>
+
+        <div className="flex-shrink-0 flex justify-between gap-3 pt-4 border-t">
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              onClick={handleReset}
+              className="hover:bg-red-50 hover:border-red-300"
+            >
+              איפוס לברירת מחדל
+            </Button>
+            {(theme.customColors || theme.palette !== 'default' || theme.borderStyle !== 'thin') && (
+              <Button
+                variant="outline"
+                onClick={() => setShowSaveThemeDialog(true)}
+                className="gap-2 bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-300 hover:border-indigo-400"
+              >
+                <Bookmark className="w-4 h-4" />
+                שמור כערכת עיצוב
+              </Button>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={onClose}>
+              ביטול
+            </Button>
+            <Button onClick={handleApply} className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 gap-2">
+              <Palette className="w-4 h-4" />
+              החל עיצוב
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+      
+      {/* דיאלוג שמירת ערכת עיצוב */}
+      <Dialog open={showSaveThemeDialog} onOpenChange={setShowSaveThemeDialog}>
+        <DialogContent className="sm:max-w-md" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Bookmark className="w-5 h-5 text-indigo-600" />
+              שמור ערכת עיצוב מותאמת
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div>
+              <Label className="text-sm font-semibold mb-2 block">שם ערכת העיצוב</Label>
+              <Input
+                placeholder='למשל: "עיצוב כחול מודרני", "נושא חם"...'
+                value={newThemeName}
+                onChange={(e) => setNewThemeName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleSaveAsCustomTheme();
+                  }
+                }}
+                className="text-right"
+                dir="rtl"
+              />
+            </div>
+            
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800">
+              ✨ ערכת עיצוב זו תישמר וניתן יהיה לטעון אותה בעתיד בלחיצה אחת
+            </div>
+          </div>
+          
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => {
+              setShowSaveThemeDialog(false);
+              setNewThemeName("");
+            }}>
+              ביטול
+            </Button>
+            <Button 
+              onClick={handleSaveAsCustomTheme}
+              className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 gap-2"
+            >
+              <Bookmark className="w-4 h-4" />
+              שמור
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
           {/* סגנון גבולות */}
           <div className="space-y-3">
@@ -725,24 +1023,6 @@ export default function ThemeSelector({ open, onClose, currentTheme, onApply }) 
               </Select>
             </div>
           </div>
-        </div>
-
-        <div className="flex justify-between gap-3 pt-4 border-t">
-          <Button variant="outline" onClick={handleReset}>
-            איפוס לברירת מחדל
-          </Button>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={onClose}>
-              ביטול
-            </Button>
-            <Button onClick={handleApply} className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
-              <Palette className="w-4 h-4 ml-2" />
-              החל עיצוב
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
   );
 }
 
