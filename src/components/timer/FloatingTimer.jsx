@@ -1,4 +1,3 @@
-
 import React, { useEffect, useCallback, useMemo, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1329,7 +1328,7 @@ ${context}
                 <div className="flex gap-3">
                   {[
                   { key: "sm", label: "קטן", size: "w-6 h-6" },
-                  { key: "md", label: "בינוני", label: "בינוני", size: "w-8 h-8" },
+                  { key: "md", label: "בינוני", size: "w-8 h-8" },
                   { key: "lg", label: "גדול", size: "w-10 h-10" }].
                   map(({ key, label, size }) =>
                   <button
