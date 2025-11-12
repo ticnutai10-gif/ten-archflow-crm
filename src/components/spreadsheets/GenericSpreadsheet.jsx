@@ -1356,6 +1356,25 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                       variant="outline" 
                       size="sm" 
                       className="w-full justify-start gap-2"
+                      onClick={() => setShowFindReplaceDialog(true)}
+                    >
+                      <Search className="w-4 h-4" />
+                      חיפוש והחלפה
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full justify-start gap-2"
+                      onClick={() => setShowTemplatesDialog(true)}
+                    >
+                      <Table className="w-4 h-4" />
+                      תבניות מוכנות
+                    </Button>
+                    <Separator />
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full justify-start gap-2"
                       onClick={() => setShowSettingsDialog(true)}
                     >
                       <Settings className="w-4 h-4" />
