@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Table, Copy, Settings, Palette, Eye, EyeOff, Edit2, X, Download, Upload, Grid, List, Search, Filter, ArrowUp, ArrowDown, ArrowUpDown, XCircle, Undo, Redo, GripVertical, BarChart3, TrendingUp, Calculator, Layers, Save, Bookmark } from "lucide-react";
+import { Plus, Trash2, Table, Copy, Settings, Palette, Eye, EyeOff, Edit2, X, Download, Upload, Grid, List, Search, Filter, ArrowUp, ArrowDown, ArrowUpDown, XCircle, Undo, Redo, GripVertical, BarChart3, TrendingUp, Calculator, Layers, Save, Bookmark, Users } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -14,6 +14,7 @@ import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
 import ThemeSelector, { COLOR_PALETTES, BORDER_STYLES, FONT_OPTIONS } from "./ThemeSelector";
 import ViewManager from "./ViewManager";
+import { useAccessControl } from "@/components/access/AccessValidator";
 
 export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMode = false }) {
   const [columns, setColumns] = useState([]);
@@ -67,10 +68,31 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const [showViewManager, setShowViewManager] = useState(false);
   const [savedViews, setSavedViews] = useState([]);
   const [activeViewId, setActiveViewId] = useState(null);
+  const [allClients, setAllClients] = useState([]);
+  const [clientSearchQuery, setClientSearchQuery] = useState("");
+  const [showClientPicker, setShowClientPicker] = useState(null);
   
   const editInputRef = useRef(null);
   const columnEditRef = useRef(null);
   const tableRef = useRef(null);
+  
+  const { filterClients } = useAccessControl();
+
+  // טעינת לקוחות
+  useEffect(() => {
+    const loadClients = async () => {
+      try {
+        const clients = await base44.entities.Client.list();
+        const validClients = Array.isArray(clients) ? clients : [];
+        const filtered = filterClients(validClients);
+        setAllClients(filtered);
+      } catch (error) {
+        console.error('Error loading clients:', error);
+        setAllClients([]);
+      }
+    };
+    loadClients();
+  }, [filterClients]);
 
   useEffect(() => {
     if (spreadsheet) {
@@ -658,6 +680,47 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     await saveToBackend(columns, updatedRows, cellStyles);
   };
 
+  const handleClientSelect = async (rowId, columnKey, client) => {
+    // מצא את העמודות שניתן למלא אוטומטית
+    const phoneCol = columns.find(c => c.key.includes('phone') || c.key.includes('טלפון'));
+    const emailCol = columns.find(c => c.key.includes('email') || c.key.includes('מייל'));
+    const companyCol = columns.find(c => c.key.includes('company') || c.key.includes('חברה'));
+    const addressCol = columns.find(c => c.key.includes('address') || c.key.includes('כתובת'));
+    
+    const updatedRows = rowsData.map(row => {
+      if (row.id === rowId) {
+        const newRow = { ...row, [columnKey]: client.name };
+        
+        // מילוי אוטומטי של שדות נוספים אם העמודות קיימות
+        if (phoneCol && client.phone) newRow[phoneCol.key] = client.phone;
+        if (emailCol && client.email) newRow[emailCol.key] = client.email;
+        if (companyCol && client.company) newRow[companyCol.key] = client.company;
+        if (addressCol && client.address) newRow[addressCol.key] = client.address;
+        
+        return newRow;
+      }
+      return row;
+    });
+    
+    setRowsData(updatedRows);
+    setShowClientPicker(null);
+    setClientSearchQuery("");
+    saveToHistory(columns, updatedRows, cellStyles);
+    await saveToBackend(columns, updatedRows, cellStyles);
+    
+    const autoFilledFields = [];
+    if (phoneCol && client.phone) autoFilledFields.push('טלפון');
+    if (emailCol && client.email) autoFilledFields.push('אימייל');
+    if (companyCol && client.company) autoFilledFields.push('חברה');
+    if (addressCol && client.address) autoFilledFields.push('כתובת');
+    
+    if (autoFilledFields.length > 0) {
+      toast.success(`✓ לקוח נבחר ונתונים נוספים מולאו אוטומטית: ${autoFilledFields.join(', ')}`);
+    } else {
+      toast.success('✓ לקוח נבחר');
+    }
+  };
+
   const handleCellClick = (rowId, columnKey, event) => {
     if (event?.altKey) {
       event.preventDefault();
@@ -675,6 +738,16 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       setPopoverOpen(`${rowId}_${columnKey}`);
       return;
     }
+    
+    // בדיקה אם זה עמודת לקוח
+    const column = columns.find(c => c.key === columnKey);
+    if (column?.type === 'client') {
+      event.preventDefault();
+      setShowClientPicker(`${rowId}_${columnKey}`);
+      setClientSearchQuery("");
+      return;
+    }
+    
     const row = filteredAndSortedData.find(r => r.id === rowId);
     if (!row) return;
     const currentValue = row[columnKey] || '';
@@ -1275,11 +1348,12 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                     const cellKey = `${row.id}_${column.key}`;
                                     const isEditing = editingCell === cellKey;
                                     const isSelected = selectedCells.has(cellKey);
+                                    const isClientPicker = showClientPicker === cellKey;
                                     const cellValue = row[column.key] || '';
                                     const cellStyle = cellStyles[cellKey] || {};
                                     const colIndex = visibleColumns.findIndex(c => c.key === column.key);
                                     return (
-                                      <td key={column.key} className={`transition-all duration-200 ${isSelected ? 'ring-2 ring-purple-500 animate-pulse' : ''} ${isDraggingSelection ? 'cursor-crosshair' : 'cursor-pointer'} ${copiedCells?.some(c => c.cellKey === cellKey) ? 'ring-2 ring-green-400' : ''}`} style={{ 
+                                      <td key={column.key} className={`transition-all duration-200 ${isSelected ? 'ring-2 ring-purple-500 animate-pulse' : ''} ${isDraggingSelection ? 'cursor-crosshair' : 'cursor-pointer'} ${copiedCells?.some(c => c.cellKey === cellKey) ? 'ring-2 ring-green-400' : ''} ${isClientPicker ? 'ring-2 ring-blue-500' : ''}`} style={{ 
                                         backgroundColor: isSelected ? palette.selected : copiedCells?.some(c => c.cellKey === cellKey) ? '#dcfce7' : colIndex === 0 ? (rowIndex % 2 === 0 ? palette.cellBg : palette.cellAltBg) : (cellStyle.backgroundColor || (rowIndex % 2 === 0 ? palette.cellBg : palette.cellAltBg)),
                                         color: cellStyle.color || palette.cellText,
                                         opacity: cellStyle.opacity ? cellStyle.opacity / 100 : 1, 
@@ -1303,6 +1377,76 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                         {column.type === 'checkmark' ? (
                                           <div className="flex items-center justify-center text-2xl font-bold select-none" style={{ userSelect: 'none' }}>
                                             {cellValue === '✓' ? <span className="text-green-600">✓</span> : cellValue === '✗' ? <span className="text-red-600">✗</span> : <span className="text-slate-300">○</span>}
+                                          </div>
+                                        ) : column.type === 'client' ? (
+                                          <div className="relative">
+                                            {isClientPicker ? (
+                                              <div className="absolute top-0 left-0 right-0 z-50 bg-white border-2 border-blue-500 rounded-lg shadow-2xl p-2" style={{ minWidth: '320px' }}>
+                                                <div className="flex items-center gap-2 mb-2">
+                                                  <Users className="w-4 h-4 text-blue-600" />
+                                                  <Input
+                                                    placeholder="חפש לקוח..."
+                                                    value={clientSearchQuery}
+                                                    onChange={(e) => setClientSearchQuery(e.target.value)}
+                                                    className="h-8 text-sm"
+                                                    autoFocus
+                                                    dir="rtl"
+                                                  />
+                                                  <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    onClick={() => {
+                                                      setShowClientPicker(null);
+                                                      setClientSearchQuery("");
+                                                    }}
+                                                    className="h-8 w-8 p-0"
+                                                  >
+                                                    <X className="w-4 h-4" />
+                                                  </Button>
+                                                </div>
+                                                <div className="max-h-64 overflow-y-auto border border-slate-200 rounded bg-white">
+                                                  {allClients
+                                                    .filter(c => 
+                                                      !clientSearchQuery || 
+                                                      c.name?.toLowerCase().includes(clientSearchQuery.toLowerCase()) ||
+                                                      c.company?.toLowerCase().includes(clientSearchQuery.toLowerCase()) ||
+                                                      c.email?.toLowerCase().includes(clientSearchQuery.toLowerCase())
+                                                    )
+                                                    .map(client => (
+                                                      <button
+                                                        key={client.id}
+                                                        onClick={() => handleClientSelect(row.id, column.key, client)}
+                                                        className="w-full px-3 py-2 hover:bg-blue-50 text-right border-b border-slate-100 last:border-b-0 transition-colors"
+                                                      >
+                                                        <div className="font-semibold text-sm text-slate-900">{client.name}</div>
+                                                        {(client.company || client.phone || client.email) && (
+                                                          <div className="text-xs text-slate-500 truncate">
+                                                            {[client.company, client.phone, client.email].filter(Boolean).join(' • ')}
+                                                          </div>
+                                                        )}
+                                                      </button>
+                                                    ))}
+                                                  {allClients.filter(c => 
+                                                    !clientSearchQuery || 
+                                                    c.name?.toLowerCase().includes(clientSearchQuery.toLowerCase()) ||
+                                                    c.company?.toLowerCase().includes(clientSearchQuery.toLowerCase()) ||
+                                                    c.email?.toLowerCase().includes(clientSearchQuery.toLowerCase())
+                                                  ).length === 0 && (
+                                                    <div className="px-3 py-6 text-center text-slate-500 text-sm">
+                                                      {clientSearchQuery ? 'לא נמצאו לקוחות תואמים' : 'אין לקוחות במערכת'}
+                                                    </div>
+                                                  )}
+                                                </div>
+                                                <div className="mt-2 text-xs text-slate-600 bg-blue-50 p-2 rounded">
+                                                  💡 בחר לקוח ונתוניו ימולאו אוטומטית
+                                                </div>
+                                              </div>
+                                            ) : (
+                                              <div className="flex items-center gap-2 text-sm">
+                                                {cellValue && <Users className="w-4 h-4 text-blue-600 flex-shrink-0" />}
+                                                <span className={cellValue ? 'text-slate-900 font-medium' : 'text-slate-400'}>{cellValue || 'בחר לקוח...'}</span>
+                                              </div>
+                                            )}
                                           </div>
                                         ) : isEditing ? (
                                           <div className="relative">

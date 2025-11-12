@@ -24,6 +24,7 @@ const COLUMN_TYPES = [
   { value: 'text', label: 'טקסט' },
   { value: 'number', label: 'מספר' },
   { value: 'date', label: 'תאריך' },
+  { value: 'client', label: '👤 לקוח (מקושר)' },
   { value: 'checkmark', label: '✓/✗ סימון' },
   { value: 'boolean', label: 'כן/לא' },
   { value: 'select', label: 'בחירה' }
