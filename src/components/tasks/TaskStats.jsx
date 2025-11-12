@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckSquare, Clock, AlertTriangle, TrendingUp } from "lucide-react";
@@ -6,12 +5,39 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { isToday, isPast } from "date-fns";
 
 export default function TaskStats({ tasks, isLoading }) {
+  // ✅ הגנה מלאה על tasks
+  const safeTasks = React.useMemo(() => {
+    if (!tasks) {
+      console.warn('⚠️ [TaskStats] tasks is null/undefined');
+      return [];
+    }
+    if (!Array.isArray(tasks)) {
+      console.error('❌ [TaskStats] tasks is not an array!', tasks);
+      return [];
+    }
+    return tasks.filter(t => t && typeof t === 'object');
+  }, [tasks]);
+
   const stats = {
-    total: tasks.length,
-    completed: tasks.filter(t => t.status === 'הושלמה').length,
-    inProgress: tasks.filter(t => t.status === 'בתהליך').length,
-    overdue: tasks.filter(t => t.due_date && isPast(new Date(t.due_date)) && t.status !== 'הושלמה').length,
-    dueToday: tasks.filter(t => t.due_date && isToday(new Date(t.due_date)) && t.status !== 'הושלמה').length
+    total: safeTasks.length,
+    completed: safeTasks.filter(t => t.status === 'הושלמה').length,
+    inProgress: safeTasks.filter(t => t.status === 'בתהליך').length,
+    overdue: safeTasks.filter(t => {
+      if (!t.due_date || t.status === 'הושלמה') return false;
+      try {
+        return isPast(new Date(t.due_date));
+      } catch {
+        return false;
+      }
+    }).length,
+    dueToday: safeTasks.filter(t => {
+      if (!t.due_date || t.status === 'הושלמה') return false;
+      try {
+        return isToday(new Date(t.due_date));
+      } catch {
+        return false;
+      }
+    }).length
   };
 
   const completionRate = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
