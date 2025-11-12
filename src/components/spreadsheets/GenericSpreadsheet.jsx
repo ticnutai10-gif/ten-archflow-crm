@@ -8,22 +8,39 @@ import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
 
 export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMode = false }) {
+  console.log('🎬 [GenericSpreadsheet] Component mounted/rendered', { 
+    hasSpreadsheet: !!spreadsheet,
+    spreadsheetId: spreadsheet?.id,
+    spreadsheetName: spreadsheet?.name 
+  });
+
   const [columns, setColumns] = useState([]);
   const [rowsData, setRowsData] = useState([]);
   const [editingCell, setEditingCell] = useState(null);
   const [editValue, setEditValue] = useState("");
 
   useEffect(() => {
+    console.log('🔄 [GenericSpreadsheet] useEffect triggered', { 
+      hasSpreadsheet: !!spreadsheet,
+      spreadsheetId: spreadsheet?.id 
+    });
+
     if (spreadsheet) {
-      console.log('📊 [GenericSpreadsheet] Loading:', {
+      console.log('📊 [GenericSpreadsheet] Loading spreadsheet data:', {
+        id: spreadsheet.id,
         name: spreadsheet.name,
-        columns: spreadsheet.columns?.length,
-        rows: spreadsheet.rows_data?.length,
+        columnsCount: spreadsheet.columns?.length,
+        rowsDataCount: spreadsheet.rows_data?.length,
+        columns: spreadsheet.columns,
         rowsData: spreadsheet.rows_data
       });
       
       setColumns(spreadsheet.columns || []);
       setRowsData(spreadsheet.rows_data || []);
+      
+      console.log('✅ [GenericSpreadsheet] State updated with new data');
+    } else {
+      console.warn('⚠️ [GenericSpreadsheet] No spreadsheet provided to useEffect');
     }
   }, [spreadsheet]);
 
