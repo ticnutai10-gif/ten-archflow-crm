@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Upload, FileSpreadsheet, Sparkles, Check, X, AlertTriangle, ArrowRight, Eye, Loader2,
   CheckCircle2, Terminal, Wand2, FileText, Database, Zap, Table as TableIcon, AlertCircle,
-  RefreshCw, Brain, XCircle, CheckSquare, Square, Info, Layers, Edit2
+  RefreshCw, Brain, XCircle, CheckSquare, Square, Info, Layers, Edit2, Plus
 } from 'lucide-react';
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
@@ -192,7 +193,7 @@ export default function ClientImportWizard({ open, onClose, onSuccess }) {
     const timestamp = new Date().toLocaleTimeString('he-IL');
     const icon = type === 'error' ? '❌' : type === 'success' ? '✅' : type === 'warning' ? '⚠️' : 'ℹ️';
     setLogs(prev => [...prev, `[${timestamp}] ${icon} ${message}`]);
-    console.log(`[${type.toUpperCase()}]`, message);
+    console.log(`[IMPORT-WIZARD ${type.toUpperCase()}]`, message);
   }, []);
 
   const updateHeaderName = (index, newName) => {
@@ -213,7 +214,6 @@ export default function ClientImportWizard({ open, onClose, onSuccess }) {
     const uploadedFile = e.target.files?.[0];
     if (!uploadedFile) return;
 
-    setError(null);
     setFile(uploadedFile);
     setLogs([]);
     log(`קובץ נבחר: ${uploadedFile.name}`);
@@ -251,7 +251,6 @@ export default function ClientImportWizard({ open, onClose, onSuccess }) {
       
       log(`✅ נמצאו ${headersArray.length} עמודות ו-${dataRows.length} שורות נתונים`);
       
-      // Auto-mapping
       const schema = importMode === 'client' ? CLIENT_SCHEMA : 
         (targetTable?.columns || []).reduce((acc, col) => {
           acc[col.key] = { label: col.title, synonyms: [col.title, col.key] };
@@ -292,7 +291,6 @@ export default function ClientImportWizard({ open, onClose, onSuccess }) {
           const value = row[colIndex];
           mappedRow[fieldKey] = value || '';
           
-          // Validation for client mode
           if (importMode === 'client') {
             const fieldConfig = CLIENT_SCHEMA[fieldKey];
             if (fieldConfig?.required && !value) {
@@ -325,64 +323,181 @@ export default function ClientImportWizard({ open, onClose, onSuccess }) {
   };
 
   const handleImport = async () => {
-    log('🚀 מתחיל יבוא נתונים...');
+    console.log('═══════════════════════════════════════════════════════════');
+    console.log('🐕 [IMPORT-DEBUG] Starting handleImport function');
+    console.log('═══════════════════════════════════════════════════════════');
+    
+    log('🚀 מתחיל יבוא נתונים...', 'info');
     setStep(STEPS.IMPORT);
     setIsProcessing(true);
     setImportProgress(0);
 
     try {
+      console.log('🐕 [IMPORT-DEBUG] Step 1: Checking target table');
+      console.log('targetTable:', JSON.stringify(targetTable, null, 2));
+      console.log('importMode:', importMode);
+      console.log('validatedData.length:', validatedData.length);
+      
       let successCount = 0;
       let errorCount = 0;
       const importErrors = [];
 
-      // ✅ CRITICAL FIX: Check if importing to custom table
+      // 🐕 DETAILED DEBUG: Check table type
+      console.log('🐕 [IMPORT-DEBUG] Step 2: Determining import path');
+      console.log('targetTable?.type:', targetTable?.type);
+      console.log('Is custom table?:', targetTable?.type === 'custom');
+      
       if (targetTable?.type === 'custom') {
-        log(`📊 שומר ${validatedData.length} שורות לטבלה מותאמת "${targetTable.name}"`);
+        console.log('═══════════════════════════════════════════════════════════');
+        console.log('🐕 [CUSTOM-TABLE-PATH] Entering custom table import logic');
+        console.log('═══════════════════════════════════════════════════════════');
         
-        // Create rows with proper structure
-        const newRows = validatedData.map((data, idx) => ({
-          id: `row_${Date.now()}_${idx}_${Math.random().toString(36).substr(2, 9)}`,
-          ...data
-        }));
+        log(`📊 זיהוי: טבלה מותאמת - "${targetTable.name}"`, 'info');
+        console.log('🐕 [CUSTOM] Target table ID:', targetTable.id);
+        console.log('🐕 [CUSTOM] Target table name:', targetTable.name);
+        console.log('🐕 [CUSTOM] Target table columns:', targetTable.columns);
         
-        log(`📦 יצרתי ${newRows.length} שורות עם IDs ייחודיים`);
-        log(`📄 שורה ראשונה לדוגמה: ${JSON.stringify(newRows[0])}`);
-        
-        // Get existing rows from the table
-        const existingRows = targetTable.data?.rows_data || [];
-        log(`📚 הטבלה כרגע מכילה ${existingRows.length} שורות`);
-        
-        // Append new rows to existing ones
-        const allRows = [...existingRows, ...newRows];
-        log(`📊 סה"כ אחרי היבוא: ${allRows.length} שורות`);
-        
-        // Update the CustomSpreadsheet entity
-        await base44.entities.CustomSpreadsheet.update(targetTable.id, {
-          rows_data: allRows
+        // 🐕 Step 1: Create rows with IDs
+        console.log('🐕 [CUSTOM] Step 1: Creating new rows with IDs');
+        const newRows = validatedData.map((data, idx) => {
+          const rowId = `row_${Date.now()}_${idx}_${Math.random().toString(36).substr(2, 9)}`;
+          const newRow = {
+            id: rowId,
+            ...data
+          };
+          console.log(`🐕 [CUSTOM] Row ${idx}:`, newRow);
+          return newRow;
         });
         
+        console.log('🐕 [CUSTOM] Created rows count:', newRows.length);
+        console.log('🐕 [CUSTOM] First row sample:', JSON.stringify(newRows[0], null, 2));
+        console.log('🐕 [CUSTOM] Last row sample:', JSON.stringify(newRows[newRows.length - 1], null, 2));
+        
+        log(`📦 יצרתי ${newRows.length} שורות חדשות עם IDs ייחודיים`, 'success');
+        
+        // 🐕 Step 2: Fetch current table data
+        console.log('🐕 [CUSTOM] Step 2: Fetching current table from database');
+        console.log('🐕 [CUSTOM] Calling base44.entities.CustomSpreadsheet.get()');
+        
+        let currentTable;
+        try {
+          currentTable = await base44.entities.CustomSpreadsheet.get(targetTable.id);
+          console.log('🐕 [CUSTOM] ✅ Successfully fetched table');
+          console.log('🐕 [CUSTOM] Current table data:', JSON.stringify(currentTable, null, 2));
+        } catch (fetchError) {
+          console.error('🐕 [CUSTOM] ❌ Failed to fetch table:', fetchError);
+          log(`❌ שגיאה בטעינת הטבלה: ${fetchError.message}`, 'error');
+          throw fetchError;
+        }
+        
+        const existingRows = currentTable?.rows_data || [];
+        console.log('🐕 [CUSTOM] Existing rows in table:', existingRows.length);
+        console.log('🐕 [CUSTOM] Existing rows sample:', JSON.stringify(existingRows.slice(0, 2), null, 2));
+        
+        log(`📚 הטבלה מכילה כרגע ${existingRows.length} שורות קיימות`, 'info');
+        
+        // 🐕 Step 3: Merge rows
+        console.log('🐕 [CUSTOM] Step 3: Merging existing and new rows');
+        const allRows = [...existingRows, ...newRows];
+        console.log('🐕 [CUSTOM] Total rows after merge:', allRows.length);
+        console.log('🐕 [CUSTOM] First 3 rows of merged data:', JSON.stringify(allRows.slice(0, 3), null, 2));
+        console.log('🐕 [CUSTOM] Last 3 rows of merged data:', JSON.stringify(allRows.slice(-3), null, 2));
+        
+        log(`📊 סה"כ אחרי מיזוג: ${allRows.length} שורות (${existingRows.length} קיימות + ${newRows.length} חדשות)`, 'info');
+        
+        // 🐕 Step 4: Prepare update payload
+        console.log('🐕 [CUSTOM] Step 4: Preparing update payload');
+        const updatePayload = {
+          rows_data: allRows
+        };
+        console.log('🐕 [CUSTOM] Update payload keys:', Object.keys(updatePayload));
+        console.log('🐕 [CUSTOM] Update payload rows_data length:', updatePayload.rows_data.length);
+        console.log('🐕 [CUSTOM] Full update payload (first 3 rows):', JSON.stringify({
+          rows_data: updatePayload.rows_data.slice(0, 3)
+        }, null, 2));
+        
+        // 🐕 Step 5: Execute update
+        console.log('🐕 [CUSTOM] Step 5: Executing database update');
+        console.log('🐕 [CUSTOM] Calling base44.entities.CustomSpreadsheet.update()');
+        console.log('🐕 [CUSTOM] Update params: tableId =', targetTable.id);
+        
+        let updateResult;
+        try {
+          updateResult = await base44.entities.CustomSpreadsheet.update(targetTable.id, updatePayload);
+          console.log('🐕 [CUSTOM] ✅ Update successful!');
+          console.log('🐕 [CUSTOM] Update result:', JSON.stringify(updateResult, null, 2));
+        } catch (updateError) {
+          console.error('🐕 [CUSTOM] ❌ Update FAILED!');
+          console.error('🐕 [CUSTOM] Error details:', updateError);
+          console.error('🐕 [CUSTOM] Error message:', updateError.message);
+          console.error('🐕 [CUSTOM] Error stack:', updateError.stack);
+          log(`❌ שגיאה בעדכון הטבלה: ${updateError.message}`, 'error');
+          throw updateError;
+        }
+        
+        // 🐕 Step 6: Verify the update
+        console.log('🐕 [CUSTOM] Step 6: Verifying update');
+        try {
+          const verifyTable = await base44.entities.CustomSpreadsheet.get(targetTable.id);
+          console.log('🐕 [CUSTOM] ✅ Verification fetch successful');
+          console.log('🐕 [CUSTOM] Verified rows_data length:', verifyTable.rows_data?.length);
+          console.log('🐕 [CUSTOM] Expected:', allRows.length);
+          console.log('🐕 [CUSTOM] Match:', verifyTable.rows_data?.length === allRows.length ? '✅ YES' : '❌ NO');
+          
+          if (verifyTable.rows_data?.length !== allRows.length) {
+            console.error('🐕 [CUSTOM] ⚠️ WARNING: Row count mismatch!');
+            console.error('🐕 [CUSTOM] Expected:', allRows.length);
+            console.error('🐕 [CUSTOM] Got:', verifyTable.rows_data?.length);
+            log(`⚠️ אזהרה: מספר השורות לא תואם! צפוי: ${allRows.length}, התקבל: ${verifyTable.rows_data?.length}`, 'warning');
+          } else {
+            log(`✅ אימות: הטבלה מכילה ${verifyTable.rows_data?.length} שורות כצפוי`, 'success');
+          }
+        } catch (verifyError) {
+          console.error('🐕 [CUSTOM] ❌ Verification failed:', verifyError);
+          log(`⚠️ לא הצלחתי לאמת את העדכון: ${verifyError.message}`, 'warning');
+        }
+        
         successCount = newRows.length;
-        log(`✅ ${successCount} שורות נשמרו בהצלחה לטבלה!`);
+        console.log('🐕 [CUSTOM] ✅ Import complete! Success count:', successCount);
+        log(`✅ ${successCount} שורות נשמרו בהצלחה לטבלה "${targetTable.name}"!`, 'success');
+        
+        console.log('═══════════════════════════════════════════════════════════');
+        console.log('🐕 [CUSTOM-TABLE-PATH] Exiting custom table import logic');
+        console.log('═══════════════════════════════════════════════════════════');
         
       } else {
-        // Import to Client entity (existing logic)
-        log(`📊 שומר ${validatedData.length} לקוחות לישות Client`);
+        console.log('═══════════════════════════════════════════════════════════');
+        console.log('🐕 [CLIENT-ENTITY-PATH] Entering client entity import logic');
+        console.log('═══════════════════════════════════════════════════════════');
+        
+        log(`📊 זיהוי: ישות Client - יבוא ${validatedData.length} לקוחות`, 'info');
         
         for (let i = 0; i < validatedData.length; i++) {
           try {
+            console.log(`🐕 [CLIENT] Importing row ${i + 1}/${validatedData.length}:`, validatedData[i]);
             await base44.entities.Client.create(validatedData[i]);
             successCount++;
             setImportProgress(((i + 1) / validatedData.length) * 100);
+            console.log(`🐕 [CLIENT] ✅ Row ${i + 1} imported successfully`);
           } catch (err) {
             errorCount++;
             importErrors.push({ row: i + 1, error: err.message });
+            console.error(`🐕 [CLIENT] ❌ Row ${i + 1} failed:`, err);
             log(`❌ שגיאה בשורה ${i + 1}: ${err.message}`, 'error');
           }
         }
         
-        log(`✅ ${successCount} לקוחות יובאו בהצלחה`);
+        console.log('🐕 [CLIENT] Import summary:');
+        console.log('🐕 [CLIENT] Success:', successCount);
+        console.log('🐕 [CLIENT] Errors:', errorCount);
+        log(`✅ ${successCount} לקוחות יובאו בהצלחה`, 'success');
+        
+        console.log('═══════════════════════════════════════════════════════════');
+        console.log('🐕 [CLIENT-ENTITY-PATH] Exiting client entity import logic');
+        console.log('═══════════════════════════════════════════════════════════');
       }
 
+      console.log('🐕 [IMPORT-DEBUG] Setting import results');
       setImportResults({
         total: validatedData.length,
         success: successCount,
@@ -390,20 +505,36 @@ export default function ClientImportWizard({ open, onClose, onSuccess }) {
         errorDetails: importErrors
       });
 
+      console.log('🐕 [IMPORT-DEBUG] Moving to COMPLETE step');
       setStep(STEPS.COMPLETE);
       
       if (errorCount === 0 && onSuccess) {
+        console.log('🐕 [IMPORT-DEBUG] No errors, calling onSuccess in 2 seconds');
         setTimeout(() => {
+          console.log('🐕 [IMPORT-DEBUG] Calling onSuccess callback');
           onSuccess();
+          console.log('🐕 [IMPORT-DEBUG] Closing dialog');
           handleClose();
         }, 2000);
       }
     } catch (error) {
+      console.error('═══════════════════════════════════════════════════════════');
+      console.error('🐕 [IMPORT-DEBUG] ❌ CRITICAL ERROR IN IMPORT');
+      console.error('═══════════════════════════════════════════════════════════');
+      console.error('🐕 [ERROR] Error object:', error);
+      console.error('🐕 [ERROR] Error message:', error.message);
+      console.error('🐕 [ERROR] Error stack:', error.stack);
+      console.error('🐕 [ERROR] Error name:', error.name);
+      
       log(`❌ שגיאה קריטית ביבוא: ${error.message}`, 'error');
       toast.error('שגיאה ביבוא: ' + error.message);
     } finally {
+      console.log('🐕 [IMPORT-DEBUG] Cleanup: Setting isProcessing=false, progress=100');
       setIsProcessing(false);
       setImportProgress(100);
+      console.log('═══════════════════════════════════════════════════════════');
+      console.log('🐕 [IMPORT-DEBUG] handleImport function completed');
+      console.log('═══════════════════════════════════════════════════════════');
     }
   };
 
@@ -454,7 +585,6 @@ export default function ClientImportWizard({ open, onClose, onSuccess }) {
     try {
       log(`יוצר טבלה חדשה: ${newTableName}`);
       
-      // Create table with initial columns based on headers
       const initialColumns = rawHeaders.map((header, index) => ({
         key: `col_${index + 1}`,
         title: header || `עמודה ${index + 1}`,
@@ -468,7 +598,7 @@ export default function ClientImportWizard({ open, onClose, onSuccess }) {
         name: newTableName.trim(),
         description: newTableDescription.trim(),
         columns: initialColumns,
-        rows_data: [] // Start with empty rows
+        rows_data: []
       });
       
       log(`✅ טבלה נוצרה בהצלחה: ${newTable.name}`);
@@ -590,7 +720,7 @@ export default function ClientImportWizard({ open, onClose, onSuccess }) {
                         טבלה קיימת
                       </Button>
                       <Button
-                        onClick={() => setStep(STEPS.UPLOAD)}
+                        onClick={() => setStep(STEPS.NAME_TABLE)}
                         className="bg-green-600 hover:bg-green-700 gap-2"
                       >
                         <Plus className="w-5 h-5" />
