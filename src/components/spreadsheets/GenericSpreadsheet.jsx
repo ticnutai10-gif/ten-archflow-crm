@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -582,7 +583,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       
       if (resizeStartRef.current.type === 'column') {
         const diff = e.clientX - resizeStartRef.current.startX;
-        const newWidth = Math.max(50, resizeStartRef.current.startWidth + diff); // מינימום 50px
+        const newWidth = Math.max(50, resizeStartRef.current.startWidth + diff);
         
         const updated = columns.map(col => 
           col.key === resizeStartRef.current.key ? { ...col, width: `${newWidth}px` } : col
@@ -1023,7 +1024,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       }
     }
     
-    return null; // No validation error
+    return null;
   };
 
   const saveEdit = async () => {
@@ -1698,10 +1699,12 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                     return (
                                       <td
                                         key={column.key}
-                                        className={`border border-slate-200 p-2 cursor-pointer hover:bg-blue-50 ${
+                                        className={`border border-slate-200 p-2 hover:bg-blue-50 ${
                                           isSelected ? 'ring-2 ring-purple-500 bg-purple-50' : ''
                                         } ${
                                           colIndex === 0 ? 'sticky shadow-[2px_0_5px_rgba(0,0,0,0.05)]' : ''
+                                        } ${
+                                          isDraggingSelection ? 'cursor-crosshair' : 'cursor-pointer'
                                         }`}
                                         style={{
                                           backgroundColor: isSelected ? '#faf5ff' : colIndex === 0 ? (rowIndex % 2 === 0 ? '#ffffff' : '#f8fafc') : cellStyle.backgroundColor,
@@ -1750,53 +1753,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                             {validationErrors[cellKey] && (
                                               <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse" 
                                                 title={validationErrors[cellKey]}
-                                              />
-                                            )}
-                                            {popoverOpen === cellKey && (
-                                              <Popover
-                                                open={true}
-                                                onOpenChange={(open) => !open && setPopoverOpen(null)}
-                                              >
-                                                <PopoverContent className="w-64" align="start">
-                                                  <ColorPicker 
-                                                    onApply={(style) => {
-                                                      applyCellStyle(cellKey, style);
-                                                      setPopoverOpen(null);
-                                                    }}
-                                                    currentStyle={cellStyle}
-                                                  />
-                                                </PopoverContent>
-                                              </Popover>
-                                            )}
-                                          </div>
-                                        )}
-                                      </td>
-                                    );
-                                  })}                        
-                                  <td className="border border-slate-200 p-2 bg-white" style={{ height: `${rowHeight}px` }}>
-                                    <div className="flex gap-1 justify-center">
-                                      <Button
-                                            ref={editInputRef}
-                                            value={editValue}
-                                            onChange={(e) => setEditValue(e.target.value)}
-                                            onBlur={saveEdit}
-                                            onKeyDown={(e) => {
-                                              if (e.key === 'Enter') saveEdit();
-                                              if (e.key === 'Escape') {
-                                                setEditingCell(null);
-                                                setEditValue("");
-                                              }
-                                            }}
-                                            className="h-8"
-                                            autoFocus
-                                            dir="rtl"
-                                          />
-                                        ) : (
-                                          <div className="text-sm w-full relative">
-                                            {String(cellValue)}
-                                            {hasValidationError && (
-                                              <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse" 
-                                                title={hasValidationError}
                                               />
                                             )}
                                             {popoverOpen === cellKey && (
@@ -3199,8 +3155,6 @@ const TEMPLATES = [
     sampleData: []
   }
 ];
-
-// רכיב עזר לבחירת צבעים
 
 // רכיב עזר לבחירת צבעים
 function ColorPicker({ onApply, currentStyle = {} }) {
