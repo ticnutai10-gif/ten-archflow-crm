@@ -43,6 +43,52 @@ const CLIENT_FIELDS = [
   { value: '', label: '⚠️ דלג על עמודה זו', required: false }
 ];
 
+// פונקציה לניסיון זיהוי אוטומטי של עמודות בעברית
+const autoMapColumns = (headers) => {
+  console.log('🔍 [AUTO MAP] Starting automatic column mapping...');
+  const mapping = {};
+  
+  const hebrewMappings = {
+    'שם': 'name',
+    'שם לקוח': 'name',
+    'לקוח': 'name',
+    'שם החברה': 'company',
+    'חברה': 'company',
+    'טלפון': 'phone',
+    'טל': 'phone',
+    'נייד': 'phone',
+    'מייל': 'email',
+    'אימייל': 'email',
+    'דוא"ל': 'email',
+    'כתובת': 'address',
+    'עיר': 'address',
+    'תפקיד': 'position',
+    'סטטוס': 'status',
+    'מקור': 'source',
+    'הערות': 'notes',
+  };
+  
+  headers.forEach((header, index) => {
+    const cleanHeader = (header || '').trim().toLowerCase();
+    console.log(`🔍 [AUTO MAP] Column ${index}: "${header}" → cleaned: "${cleanHeader}"`);
+    
+    for (const [hebrewKey, fieldValue] of Object.entries(hebrewMappings)) {
+      if (cleanHeader.includes(hebrewKey.toLowerCase())) {
+        mapping[index] = fieldValue;
+        console.log(`✅ [AUTO MAP] Mapped column ${index} ("${header}") → "${fieldValue}"`);
+        break;
+      }
+    }
+    
+    if (!mapping[index]) {
+      console.log(`⚠️ [AUTO MAP] No mapping found for column ${index} ("${header}")`);
+    }
+  });
+  
+  console.log('✅ [AUTO MAP] Auto-mapping complete:', mapping);
+  return mapping;
+};
+
 // פונקציה לקריאת CSV פשוט
 const parseCSV = (text) => {
   console.log('🔍 [CSV PARSER] Starting CSV parse...');
@@ -112,18 +158,12 @@ const parseExcelFile = async (file) => {
     
     // שלב 2: קריאת הקובץ
     console.log('📖 [EXCEL PARSER] Step 2: Parsing file via backend...');
-    console.log('📤 [EXCEL PARSER] Sending to parseSpreadsheet function with params:', {
-      file_url: uploadResult.file_url
-    });
-    
     const response = await base44.functions.invoke('parseSpreadsheet', { 
       file_url: uploadResult.file_url 
     });
     
     console.log('📥 [EXCEL PARSER] Response received from backend:');
-    console.log('📥 [EXCEL PARSER] Response type:', typeof response);
-    console.log('📥 [EXCEL PARSER] Response.data:', response?.data);
-    console.log('📥 [EXCEL PARSER] Full response structure:', JSON.stringify(response, null, 2));
+    console.log('📥 [EXCEL PARSER] Response structure:', JSON.stringify(response, null, 2));
     
     if (!response || !response.data) {
       console.error('❌ [EXCEL PARSER] Invalid response structure!');
@@ -136,15 +176,13 @@ const parseExcelFile = async (file) => {
     }
     
     console.log('✅ [EXCEL PARSER] Backend parse successful!');
-    console.log('📊 [EXCEL PARSER] Backend returned:', {
-      status: response.data.status,
-      rowCount: response.data.rows?.length,
-      headerCount: response.data.headers?.length,
-      debug: response.data.debug
-    });
+    console.log('📊 [EXCEL PARSER] Rows count:', response.data.rows?.length);
+    console.log('📊 [EXCEL PARSER] Headers:', response.data.headers);
     
     // שלב 3: המרה לפורמט מערך דו-ממדי
     console.log('🔄 [EXCEL PARSER] Step 3: Converting to 2D array format...');
+    
+    // הנתונים מגיעים כאובייקטים - צריך להמיר למערך דו-ממדי
     const headers = response.data.headers || [];
     console.log('📋 [EXCEL PARSER] Headers extracted:', headers);
     
@@ -153,24 +191,33 @@ const parseExcelFile = async (file) => {
       throw new Error('לא נמצאו כותרות בקובץ');
     }
     
-    const rows = response.data.rows.map((row, idx) => {
-      const rowArray = headers.map(h => {
-        const value = row[h];
+    // המרת השורות מאובייקטים למערכים
+    const dataRows = response.data.rows.map((rowObj, idx) => {
+      const rowArray = headers.map(header => {
+        const value = rowObj[header];
         const stringValue = value !== undefined && value !== null ? String(value) : '';
+        
         if (idx === 0) {
-          console.log(`🔍 [EXCEL PARSER] First row - Column "${h}":`, value, '→', stringValue);
+          console.log(`🔍 [EXCEL PARSER] Row 1, Column "${header}": "${value}" → "${stringValue}"`);
         }
+        
         return stringValue;
       });
+      
+      if (idx === 0) {
+        console.log('📊 [EXCEL PARSER] First row array:', rowArray);
+      }
+      
       return rowArray;
     });
     
     console.log('✅ [EXCEL PARSER] Conversion complete!');
-    console.log('📊 [EXCEL PARSER] Rows converted:', rows.length);
-    console.log('📊 [EXCEL PARSER] First row sample:', rows[0]);
-    console.log('📊 [EXCEL PARSER] Second row sample:', rows[1]);
+    console.log('📊 [EXCEL PARSER] Data rows:', dataRows.length);
+    console.log('📊 [EXCEL PARSER] First data row:', dataRows[0]);
+    console.log('📊 [EXCEL PARSER] Second data row:', dataRows[1]);
     
-    const result = [headers, ...rows];
+    // החזרת הכותרות + הנתונים
+    const result = [headers, ...dataRows];
     console.log('✅ [EXCEL PARSER] Final result:', result.length, 'total rows (including header)');
     console.log('═══════════════════════════════════════════════════');
     
@@ -221,7 +268,6 @@ export default function SmartClientImporter({ open, onClose, onSuccess }) {
       let parsedData;
       
       addDebugLog(`סוג הקובץ: ${uploadedFile.type}`);
-      addDebugLog(`תאריך שינוי אחרון: ${new Date(uploadedFile.lastModified).toLocaleString('he-IL')}`);
       
       // בדיקה אם זה CSV או Excel
       if (uploadedFile.name.toLowerCase().endsWith('.csv')) {
@@ -244,7 +290,7 @@ export default function SmartClientImporter({ open, onClose, onSuccess }) {
 
       // השורה הראשונה היא כותרות
       const headerRow = parsedData[0];
-      addDebugLog(`📋 כותרות זוהו: ${JSON.stringify(headerRow)}`);
+      addDebugLog(`📋 כותרות זוהו (${headerRow.length}): ${JSON.stringify(headerRow)}`);
       
       const dataRows = parsedData.slice(1).filter(row => 
         row && Array.isArray(row) && row.some(cell => cell !== null && cell !== undefined && cell !== '')
@@ -253,18 +299,33 @@ export default function SmartClientImporter({ open, onClose, onSuccess }) {
       
       if (dataRows.length === 0) {
         addDebugLog('⚠️ אזהרה: לא נמצאו שורות נתונים');
+        setError('לא נמצאו שורות נתונים בקובץ');
+        return;
       } else {
-        addDebugLog(`📄 שורה ראשונה לדוגמה: ${JSON.stringify(dataRows[0])}`);
+        addDebugLog(`📄 שורה ראשונה (${dataRows[0].length} עמודות): ${JSON.stringify(dataRows[0])}`);
+        if (dataRows.length > 1) {
+          addDebugLog(`📄 שורה שנייה: ${JSON.stringify(dataRows[1])}`);
+        }
       }
 
-      setHeaders(headerRow.map(h => String(h || '')));
+      const headersArray = headerRow.map(h => String(h || ''));
+      setHeaders(headersArray);
       setRawData(dataRows);
-      setStep(2);
       
+      // זיהוי אוטומטי של עמודות
+      addDebugLog('🤖 מתחיל זיהוי אוטומטי של עמודות...');
+      const autoMapping = autoMapColumns(headersArray);
+      setMapping(autoMapping);
+      addDebugLog(`✅ זיהוי אוטומטי הושלם: ${Object.keys(autoMapping).length} עמודות מופו`);
+      
+      setStep(2);
       addDebugLog('✅ מעבר לשלב מיפוי');
 
-      // הפעלת AI אוטומטית
-      setTimeout(() => suggestMappingWithAI(headerRow, dataRows.slice(0, 5)), 500);
+      // הפעלת AI אוטומטית (אם לא הצליח המיפוי האוטומטי)
+      if (Object.keys(autoMapping).length < headersArray.length / 2) {
+        addDebugLog('⚠️ מיפוי אוטומטי חלקי - מפעיל AI...');
+        setTimeout(() => suggestMappingWithAI(headerRow, dataRows.slice(0, 5)), 500);
+      }
     } catch (err) {
       console.error('❌ Critical error in handleFileUpload:', err);
       addDebugLog(`❌ שגיאה קריטית: ${err.message}`);
@@ -344,15 +405,14 @@ ${CLIENT_FIELDS.filter(f => f.value).map(f =>
       console.log('🤖 AI Mapping Result:', response);
 
       if (response?.mapping) {
-        addDebugLog(`✅ מיפוי הוצע: ${JSON.stringify(response.mapping)}`);
-        setMapping(response.mapping);
+        addDebugLog(`✅ מיפוי AI הוצע: ${JSON.stringify(response.mapping)}`);
+        setMapping(prev => ({ ...prev, ...response.mapping }));
       } else {
         addDebugLog('⚠️ AI לא החזיר מיפוי');
       }
     } catch (error) {
       console.error('❌ AI mapping failed:', error);
       addDebugLog(`❌ שגיאה במיפוי AI: ${error.message}`);
-      setError('AI לא הצליח להציע מיפוי. אנא מפה ידנית.');
     } finally {
       setAiSuggesting(false);
     }
@@ -365,24 +425,34 @@ ${CLIENT_FIELDS.filter(f => f.value).map(f =>
     const mappedFields = Object.values(mapping).filter(v => v && v !== 'skip');
     const hasName = mappedFields.includes('name');
 
+    addDebugLog(`🔍 בדיקת מיפוי: ${mappedFields.length} שדות מופו`);
+    addDebugLog(`🔍 שדות שמופו: ${mappedFields.join(', ')}`);
+
     if (!hasName) {
       addDebugLog('❌ שגיאה: לא מופה שדה "שם לקוח"');
       setError('חובה למפות לפחות את שדה "שם לקוח"');
       return;
     }
 
-    const preview = rawData.slice(0, 10).map(row => {
+    const preview = rawData.slice(0, 10).map((row, rowIdx) => {
       const client = {};
       headers.forEach((header, index) => {
         const field = mapping[index];
         if (field && field !== 'skip') {
-          client[field] = row[index] !== null && row[index] !== undefined ? String(row[index]) : '';
+          const value = row[index];
+          client[field] = value !== null && value !== undefined ? String(value) : '';
+          
+          if (rowIdx === 0) {
+            addDebugLog(`📋 תצוגה: עמודה "${header}" (${index}) → ${field} = "${client[field]}"`);
+          }
         }
       });
       return client;
     });
 
     addDebugLog(`✅ תצוגה מקדימה הוכנה: ${preview.length} לקוחות`);
+    addDebugLog(`📊 לקוח ראשון לדוגמה: ${JSON.stringify(preview[0])}`);
+    
     setPreviewData(preview);
     setStep(3);
     setError(null);
@@ -395,7 +465,7 @@ ${CLIENT_FIELDS.filter(f => f.value).map(f =>
     setError(null);
 
     try {
-      const clientsToImport = rawData.map(row => {
+      const clientsToImport = rawData.map((row, idx) => {
         const client = {};
         headers.forEach((header, index) => {
           const field = mapping[index];
@@ -404,10 +474,15 @@ ${CLIENT_FIELDS.filter(f => f.value).map(f =>
             client[field] = value !== null && value !== undefined ? String(value) : '';
           }
         });
+        
+        if (idx === 0) {
+          addDebugLog(`📦 לקוח ראשון ליבוא: ${JSON.stringify(client)}`);
+        }
+        
         return client;
-      }).filter(c => c.name);
+      }).filter(c => c.name && c.name.trim());
 
-      addDebugLog(`📦 מייבא ${clientsToImport.length} לקוחות...`);
+      addDebugLog(`📦 סך הכל ${clientsToImport.length} לקוחות תקינים ליבוא (מתוך ${rawData.length} שורות)`);
 
       let successCount = 0;
       let errorCount = 0;
@@ -417,8 +492,8 @@ ${CLIENT_FIELDS.filter(f => f.value).map(f =>
         try {
           await base44.entities.Client.create(clientsToImport[i]);
           successCount++;
-          if (i % 10 === 0) {
-            addDebugLog(`⏳ יובאו ${successCount} לקוחות מתוך ${clientsToImport.length}...`);
+          if (i % 10 === 0 || i === 0) {
+            addDebugLog(`⏳ יובאו ${successCount}/${clientsToImport.length} לקוחות...`);
           }
         } catch (err) {
           errorCount++;
@@ -547,7 +622,7 @@ ${CLIENT_FIELDS.filter(f => f.value).map(f =>
               <div className="font-semibold text-blue-900 mb-2">💡 טיפים:</div>
               <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
                 <li>ודא שהשורה הראשונה מכילה כותרות עמודות</li>
-                <li>המערכת תזהה אוטומטית את העמודות באמצעות AI</li>
+                <li>המערכת תזהה אוטומטית את העמודות בעברית</li>
                 <li>אפשר לערוך את המיפוי לפני היבוא</li>
               </ul>
             </div>
@@ -570,7 +645,7 @@ ${CLIENT_FIELDS.filter(f => f.value).map(f =>
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-bold text-slate-800">מיפוי עמודות</h3>
               <Badge variant="outline" className="text-sm">
-                {headers.length} עמודות נמצאו • {rawData.length} שורות
+                {headers.length} עמודות • {rawData.length} שורות • {Object.keys(mapping).filter(k => mapping[k] && mapping[k] !== 'skip').length} מופו
               </Badge>
             </div>
 
@@ -644,7 +719,7 @@ ${CLIENT_FIELDS.filter(f => f.value).map(f =>
                 className="gap-2"
               >
                 <Brain className="w-4 h-4" />
-                הצע מיפוי מחדש עם AI
+                הצע מיפוי עם AI
               </Button>
               <Button onClick={handlePreview} className="bg-purple-600 hover:bg-purple-700 gap-2">
                 <Eye className="w-4 h-4" />
