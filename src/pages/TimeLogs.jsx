@@ -9,6 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,7 +36,10 @@ import {
   Activity,
   Zap,
   Target,
-  Flame
+  Flame,
+  Plus,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -56,7 +62,7 @@ import {
   ComposedChart,
   Treemap
 } from "recharts";
-import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isWithinInterval, getDay, getHours, startOfDay, addDays } from "date-fns";
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isWithinInterval, getDay, getHours, startOfDay, addDays, isSameDay, addMonths, subMonths } from "date-fns";
 import { he } from "date-fns/locale";
 
 import TimerLogsComponent from "../components/dashboard/TimerLogs";
@@ -281,6 +287,177 @@ function ActivitySparklines({ dailyData }) {
   );
 }
 
+// ✅ קומפוננטת לוח שנה חדשה
+function CalendarView({ timeLogs, onDateClick, clients }) {
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [calendarView, setCalendarView] = useState('month'); // month, week, day
+
+  // קבלת ימי החודש הנוכחי
+  const getDaysInMonth = () => {
+    const start = startOfWeek(startOfMonth(currentMonth), { weekStartsOn: 0 }); // Start from Sunday
+    const end = endOfWeek(endOfMonth(currentMonth), { weekStartsOn: 0 });   // End on Saturday
+    const days = [];
+    
+    let current = start;
+    while (current <= end) {
+      days.push(new Date(current));
+      current = addDays(current, 1);
+    }
+    
+    return days;
+  };
+
+  // חישוב שעות ליום
+  const getHoursForDay = (date) => {
+    const logsForDay = timeLogs.filter(log => 
+      log && log.log_date && isSameDay(new Date(log.log_date), date)
+    );
+    
+    const totalSeconds = logsForDay.reduce((sum, log) => sum + (log.duration_seconds || 0), 0);
+    return totalSeconds / 3600;
+  };
+
+  // קבלת רישומים ליום
+  const getLogsForDay = (date) => {
+    return timeLogs.filter(log => 
+      log && log.log_date && isSameDay(new Date(log.log_date), date)
+    );
+  };
+
+  const days = getDaysInMonth();
+  const daysOfWeek = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'];
+
+  return (
+    <div className="space-y-4">
+      {/* כלי בקרה */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
+          >
+            <ChevronRight className="w-4 h-4" />
+          </Button>
+          <h3 className="text-lg font-bold">
+            {format(currentMonth, 'MMMM yyyy', { locale: he })}
+          </h3>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentMonth(new Date())}
+          >
+            היום
+          </Button>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {/* Calendar view buttons - currently only month is fully supported */}
+          {/* <Button
+            variant={calendarView === 'day' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setCalendarView('day')}
+          >
+            יום
+          </Button>
+          <Button
+            variant={calendarView === 'week' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setCalendarView('week')}
+          >
+            שבוע
+          </Button> */}
+          <Button
+            variant={calendarView === 'month' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setCalendarView('month')}
+          >
+            חודש
+          </Button>
+        </div>
+      </div>
+
+      {/* לוח שנה */}
+      <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+        {/* כותרות ימי השבוע */}
+        <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50">
+          {daysOfWeek.map((day, index) => (
+            <div
+              key={index}
+              className="p-2 text-center font-semibold text-slate-600 text-sm"
+            >
+              {day}
+            </div>
+          ))}
+        </div>
+
+        {/* ימי החודש */}
+        <div className="grid grid-cols-7">
+          {days.map((day, index) => {
+            const hours = getHoursForDay(day);
+            const logs = getLogsForDay(day);
+            const isToday = isSameDay(day, new Date());
+            const isOutsideMonth = !isWithinInterval(day, {
+                start: startOfMonth(currentMonth),
+                end: endOfMonth(currentMonth)
+            });
+            
+            return (
+              <div
+                key={index}
+                className={`min-h-[120px] p-2 border-b border-l border-slate-200 hover:bg-blue-50 cursor-pointer transition-colors 
+                  ${isToday ? 'bg-blue-50 ring-2 ring-blue-500 ring-inset' : ''}
+                  ${isOutsideMonth ? 'text-slate-400 bg-slate-50' : 'text-slate-800'}
+                `}
+                onClick={() => onDateClick(day)}
+              >
+                <div className="flex flex-col h-full">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className={`text-sm font-semibold ${
+                      isToday ? 'text-blue-600' : 'text-slate-700'
+                    }`}>
+                      {format(day, 'd')}
+                    </span>
+                    {hours > 0 && (
+                      <Badge variant="secondary" className="text-xs">
+                        {hours.toFixed(1)}ש'
+                      </Badge>
+                    )}
+                  </div>
+                  
+                  <ScrollArea className="flex-1 space-y-1">
+                    {logs.slice(0, 3).map((log, idx) => (
+                      <div
+                        key={idx}
+                        className="text-xs p-1 bg-blue-100 rounded truncate"
+                        title={`${log.client_name} - ${formatDuration(log.duration_seconds)}`}
+                      >
+                        {log.client_name}
+                      </div>
+                    ))}
+                    {logs.length > 3 && (
+                      <div className="text-xs text-slate-500 text-center">
+                        +{logs.length - 3} עוד
+                      </div>
+                    )}
+                  </ScrollArea>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function TimeLogsPage() {
   const [timeLogs, setTimeLogs] = useState([]);
   const [clients, setClients] = useState([]);
@@ -291,6 +468,18 @@ export default function TimeLogsPage() {
   const [timeFilter, setTimeFilter] = useState("all");
   const [viewMode, setViewMode] = useState("table");
   const [currentUser, setCurrentUser] = useState(null);
+
+  // ✅ מצב טופס הוספת זמן
+  const [addTimeDialogOpen, setAddTimeDialogOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [newLogData, setNewLogData] = useState({
+    client_id: '',
+    client_name: '',
+    hours: '', // Changed to empty string for better controlled input
+    minutes: '', // Changed to empty string
+    title: '',
+    notes: ''
+  });
 
   useEffect(() => {
     loadData();
@@ -340,6 +529,70 @@ export default function TimeLogsPage() {
       setClients([]);
     }
     setIsLoading(false);
+  };
+
+  // ✅ פתיחת טופס הוספת זמן בלחיצה על תאריך
+  const handleDateClick = (date) => {
+    setSelectedDate(date);
+    setNewLogData({
+      client_id: '',
+      client_name: '',
+      hours: '',
+      minutes: '',
+      title: '',
+      notes: ''
+    });
+    setAddTimeDialogOpen(true);
+  };
+
+  // ✅ שמירת רישום זמן חדש
+  const handleSaveNewLog = async () => {
+    if (!newLogData.client_id) {
+      alert('יש לבחור לקוח');
+      return;
+    }
+
+    const hours = parseInt(newLogData.hours || '0', 10);
+    const minutes = parseInt(newLogData.minutes || '0', 10);
+    const totalSeconds = (hours * 3600) + (minutes * 60);
+
+    if (totalSeconds <= 0) {
+      alert('יש להזין זמן גדול מ-0');
+      return;
+    }
+
+    try {
+      const client = clients.find(c => c.id === newLogData.client_id);
+      if (!client) {
+        alert('לקוח לא נמצא.');
+        return;
+      }
+
+      await TimeLog.create({
+        client_id: newLogData.client_id,
+        client_name: client.name, // Ensure client_name is correctly taken from selected client object
+        log_date: format(selectedDate, 'yyyy-MM-dd'),
+        duration_seconds: totalSeconds,
+        title: newLogData.title || '',
+        notes: newLogData.notes || '',
+        created_by: currentUser?.email || 'unknown', // Ensure created_by is set
+      });
+
+      setAddTimeDialogOpen(false);
+      loadData();
+      
+      window.dispatchEvent(new CustomEvent('timelog:created', {
+        detail: {
+          client_name: client.name,
+          duration_seconds: totalSeconds,
+          title: newLogData.title,
+          notes: newLogData.notes
+        }
+      }));
+    } catch (error) {
+      console.error('Error saving time log:', error);
+      alert('שגיאה בשמירת רישום הזמן: ' + (error.message || 'נסה שוב מאוחר יותר.'));
+    }
   };
 
   // ✅ הגנה על uniqueEmployees
@@ -408,7 +661,7 @@ export default function TimeLogsPage() {
     return filteredLogs.reduce((sum, log) => sum + (log?.duration_seconds || 0), 0) / 3600;
   }, [filteredLogs]);
 
-  const avgSessionTime = filteredLogs.length > 0 ? totalHours / filteredLogs.length : 0;
+  // const avgSessionTime = filteredLogs.length > 0 ? totalHours / filteredLogs.length : 0; // Not used in this version
   const totalSecondsFiltered = filteredLogs.reduce((sum, log) => sum + (log?.duration_seconds || 0), 0);
 
 
@@ -695,10 +948,15 @@ export default function TimeLogsPage() {
                    viewMode === 'grid' ? <LayoutGrid className="w-4 h-4" /> :
                    viewMode === 'analytics' ? <BarChart3 className="w-4 h-4" /> :
                    viewMode === 'heatmap' ? <Flame className="w-4 h-4" /> :
+                   viewMode === 'calendar' ? <Calendar className="w-4 h-4" /> :
                    <Activity className="w-4 h-4" />}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" dir="rtl">
+                <DropdownMenuItem onClick={() => setViewMode('calendar')}>
+                  <Calendar className="w-4 h-4 ml-2" />
+                  לוח שנה
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setViewMode('table')}>
                   <TableIcon className="w-4 h-4 ml-2" />
                   תצוגת טבלה
@@ -781,7 +1039,18 @@ export default function TimeLogsPage() {
         </Card>
 
         {/* Content Based on View Mode */}
-        {viewMode === 'heatmap' ? (
+        {/* ✅ תצוגת לוח שנה חדשה */}
+        {viewMode === 'calendar' ? (
+          <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+            <CardContent className="p-6">
+              <CalendarView 
+                timeLogs={filteredLogs} 
+                onDateClick={handleDateClick}
+                clients={clients}
+              />
+            </CardContent>
+          </Card>
+        ) : viewMode === 'heatmap' ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm lg:col-span-2">
               <CardHeader>
@@ -981,6 +1250,134 @@ export default function TimeLogsPage() {
           </Card>
         )}
       </div>
+
+      {/* ✅ דיאלוג הוספת זמן */}
+      <Dialog open={addTimeDialogOpen} onOpenChange={setAddTimeDialogOpen}>
+        <DialogContent className="sm:max-w-lg" dir="rtl">
+          <DialogHeader>
+            <DialogTitle>הוסף רישום זמן</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {/* תאריך */}
+            <div>
+              <label className="text-sm font-semibold text-slate-700 mb-2 block text-right flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-blue-600" />
+                תאריך
+              </label>
+              <Input
+                type="date"
+                value={selectedDate ? format(selectedDate, 'yyyy-MM-dd') : ''}
+                onChange={(e) => setSelectedDate(new Date(e.target.value))}
+                className="text-right"
+                dir="rtl"
+              />
+              <div className="text-xs text-slate-600 mt-1 text-right">
+                📅 {selectedDate.toLocaleDateString('he-IL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+              </div>
+            </div>
+
+            {/* בחירת לקוח */}
+            <div>
+              <label className="text-sm font-semibold text-slate-700 mb-2 block text-right">
+                לקוח <span className="text-red-500">*</span>
+              </label>
+              <Select
+                value={newLogData.client_id}
+                onValueChange={(value) => {
+                  const client = clients.find(c => c.id === value);
+                  setNewLogData({
+                    ...newLogData,
+                    client_id: value,
+                    client_name: client?.name || ''
+                  });
+                }}
+              >
+                <SelectTrigger className="text-right">
+                  <SelectValue placeholder="בחר לקוח..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {clients.map(client => (
+                    <SelectItem key={client.id} value={client.id}>
+                      {client.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* זמן */}
+            <div>
+              <label className="text-sm font-semibold text-slate-700 mb-2 block text-right">
+                משך זמן <span className="text-red-500">*</span>
+              </label>
+              <div className="flex items-center gap-3 justify-center">
+                <div className="flex flex-col items-center">
+                  <Input
+                    value={newLogData.hours}
+                    onChange={(e) => setNewLogData({ ...newLogData, hours: e.target.value.replace(/\D/g, '').slice(0, 2) })}
+                    className="w-20 h-12 text-center text-lg font-bold"
+                    placeholder="00"
+                    dir="ltr"
+                    maxLength={2}
+                  />
+                  <span className="text-xs text-slate-600 mt-1 font-medium">שעות</span>
+                </div>
+                <span className="text-2xl font-bold text-blue-600 mt-[-20px]">:</span>
+                <div className="flex flex-col items-center">
+                  <Input
+                    value={newLogData.minutes}
+                    onChange={(e) => setNewLogData({ ...newLogData, minutes: e.target.value.replace(/\D/g, '').slice(0, 2) })}
+                    className="w-20 h-12 text-center text-lg font-bold"
+                    placeholder="00"
+                    dir="ltr"
+                    maxLength={2}
+                  />
+                  <span className="text-xs text-slate-600 mt-1 font-medium">דקות</span>
+                </div>
+              </div>
+            </div>
+
+            {/* כותרת */}
+            <div>
+              <label className="text-sm font-semibold text-slate-700 mb-2 block text-right">
+                כותרת <span className="text-xs text-slate-500 font-normal">(אופציונלי)</span>
+              </label>
+              <Input
+                placeholder="למשל: פגישת תכנון, ייעוץ טלפוני..."
+                value={newLogData.title}
+                onChange={(e) => setNewLogData({ ...newLogData, title: e.target.value })}
+                className="text-right"
+                dir="rtl"
+              />
+            </div>
+
+            {/* הערות */}
+            <div>
+              <label className="text-sm font-semibold text-slate-700 mb-2 block text-right">
+                הערות <span className="text-xs text-slate-500 font-normal">(אופציונלי)</span>
+              </label>
+              <Textarea
+                placeholder="הוסף פרטים והערות על הפעילות..."
+                value={newLogData.notes}
+                onChange={(e) => setNewLogData({ ...newLogData, notes: e.target.value })}
+                className="text-right min-h-[80px]"
+                dir="rtl"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setAddTimeDialogOpen(false)}>
+              ביטול
+            </Button>
+            <Button onClick={handleSaveNewLog} className="bg-green-600 hover:bg-green-700">
+              <Plus className="w-4 h-4 ml-2" />
+              שמור
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
