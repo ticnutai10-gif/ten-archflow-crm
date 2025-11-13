@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Table, Copy, Settings, Palette, Eye, EyeOff, Edit2, X, Download, Upload, Grid, List, Search, Filter, ArrowUp, ArrowDown, ArrowUpDown, XCircle, Undo, Redo, GripVertical, BarChart3, TrendingUp, Calculator, Layers, Save, Bookmark, Users, Zap } from "lucide-react";
+import { Plus, Trash2, Table, Copy, Settings, Palette, Eye, EyeOff, Edit2, X, Download, Upload, Grid, List, Search, Filter, ArrowUp, ArrowDown, ArrowUpDown, XCircle, Undo, Redo, GripVertical, BarChart3, TrendingUp, Calculator, Layers, Save, Bookmark, Users, Zap, AlertCircle } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -23,8 +23,9 @@ import ColumnsManagerDialog from "./ColumnsManagerDialog";
 import BulkColumnsDialog from "./BulkColumnsDialog";
 
 export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMode = false }) {
+  alert('🔵 GenericSpreadsheet נטען!');
   console.log('🔵 [COMPONENT] GenericSpreadsheet rendered');
-  
+
   const [columns, setColumns] = useState([]);
   const [rowsData, setRowsData] = useState([]);
   const [editingCell, setEditingCell] = useState(null);
@@ -85,12 +86,16 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const [editingChart, setEditingChart] = useState(null);
   const [showColumnsManager, setShowColumnsManager] = useState(false);
   const [showBulkColumnsDialog, setShowBulkColumnsDialog] = useState(false);
+  const [debugLog, setDebugLog] = useState([]);
 
   const editInputRef = useRef(null);
   const columnEditRef = useRef(null);
   const tableRef = useRef(null);
 
   // ✅ שימוש ב-refs כדי לשמור תמיד את הערכים האחרונים
+  const columnsRef = useRef(columns);
+  const rowsDataRef = useRef(rowsData);
+  const cellStylesRef = useRef(cellStyles);
   const rowHeightsRef = useRef(rowHeights);
   const validationRulesRef = useRef(validationRules);
   const conditionalFormatsRef = useRef(conditionalFormats);
@@ -102,29 +107,33 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const activeViewIdRef = useRef(activeViewId);
   const chartsRef = useRef(charts);
 
-  // ✅ עדכן את ה-refs כל פעם שה-state משתנה
-  useEffect(() => { rowHeightsRef.current = rowHeights; }, [rowHeights]);
-  useEffect(() => { validationRulesRef.current = validationRules; }, [validationRules]);
-  useEffect(() => { conditionalFormatsRef.current = conditionalFormats; }, [conditionalFormats]);
-  useEffect(() => { freezeSettingsRef.current = freezeSettings; }, [freezeSettings]);
-  useEffect(() => { customCellTypesRef.current = customCellTypes; }, [customCellTypes]);
-  useEffect(() => { mergedCellsRef.current = mergedCells; }, [mergedCells]);
-  useEffect(() => { 
-    console.log('🎨 [DEBUG] themeSettings state changed:', themeSettings);
-    themeSettingsRef.current = themeSettings; 
-  }, [themeSettings]);
-  useEffect(() => { savedViewsRef.current = savedViews; }, [savedViews]);
-  useEffect(() => { activeViewIdRef.current = activeViewId; }, [activeViewId]);
-  useEffect(() => { chartsRef.current = charts; }, [charts]);
+  // Function to add messages to debug log and console
+  const addDebugLog = (message) => {
+    const timestamp = new Date().toLocaleTimeString('he-IL');
+    setDebugLog(prev => [...prev.slice(-20), `[${timestamp}] ${message}`]); // Keep last 20 logs
+    console.log(`🔍 [DEBUG LOG] ${message}`);
+  };
 
-  // ✅ דיבאג מיוחד ל-cellStyles
+  // ✅ עדכן את ה-refs כל פעם שה-state משתנה
+  useEffect(() => { columnsRef.current = columns; addDebugLog(`Columns updated: ${columns.length} items`); }, [columns]);
+  useEffect(() => { rowsDataRef.current = rowsData; addDebugLog(`RowsData updated: ${rowsData.length} items`); }, [rowsData]);
   useEffect(() => {
-    console.log('🎨 [DEBUG] cellStyles state changed:', {
-      count: Object.keys(cellStyles).length,
-      keys: Object.keys(cellStyles),
-      values: cellStyles
-    });
+    cellStylesRef.current = cellStyles;
+    addDebugLog(`cellStyles updated: ${Object.keys(cellStyles).length} items`);
   }, [cellStyles]);
+  useEffect(() => { rowHeightsRef.current = rowHeights; addDebugLog(`RowHeights updated: ${Object.keys(rowHeights).length} items`); }, [rowHeights]);
+  useEffect(() => { validationRulesRef.current = validationRules; addDebugLog(`ValidationRules updated: ${validationRules.length} items`); }, [validationRules]);
+  useEffect(() => { conditionalFormatsRef.current = conditionalFormats; addDebugLog(`ConditionalFormats updated: ${conditionalFormats.length} items`); }, [conditionalFormats]);
+  useEffect(() => { freezeSettingsRef.current = freezeSettings; addDebugLog(`FreezeSettings updated: R:${freezeSettings.freeze_rows}, C:${freezeSettings.freeze_columns}`); }, [freezeSettings]);
+  useEffect(() => { customCellTypesRef.current = customCellTypes; addDebugLog(`CustomCellTypes updated: ${customCellTypes.length} items`); }, [customCellTypes]);
+  useEffect(() => { mergedCellsRef.current = mergedCells; addDebugLog(`MergedCells updated: ${Object.keys(mergedCells).length} items`); }, [mergedCells]);
+  useEffect(() => {
+    themeSettingsRef.current = themeSettings;
+    addDebugLog(`themeSettings updated: ${themeSettings?.palette || 'null'}`);
+  }, [themeSettings]);
+  useEffect(() => { savedViewsRef.current = savedViews; addDebugLog(`SavedViews updated: ${savedViews.length} items`); }, [savedViews]);
+  useEffect(() => { activeViewIdRef.current = activeViewId; addDebugLog(`ActiveViewId updated: ${activeViewId}`); }, [activeViewId]);
+  useEffect(() => { chartsRef.current = charts; addDebugLog(`Charts updated: ${charts.length} items`); }, [charts]);
 
   const { filterClients } = useAccessControl();
 
@@ -145,25 +154,12 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
 
   useEffect(() => {
     if (spreadsheet) {
-      console.log('📥 [DEBUG] Loading spreadsheet data:', {
-        id: spreadsheet.id,
-        name: spreadsheet.name,
-        hasStyles: !!spreadsheet.cell_styles,
-        stylesCount: Object.keys(spreadsheet.cell_styles || {}).length,
-        stylesSample: spreadsheet.cell_styles,
-        hasTheme: !!spreadsheet.theme_settings,
-        theme: spreadsheet.theme_settings
-      });
+      addDebugLog(`Loading spreadsheet: ${spreadsheet.name} (ID: ${spreadsheet.id})`);
+      addDebugLog(`Loaded ${Object.keys(spreadsheet.cell_styles || {}).length} cell styles from DB`);
 
       const initialColumns = spreadsheet.columns || [];
       const initialRows = spreadsheet.rows_data || [];
       const initialStyles = spreadsheet.cell_styles || {};
-
-      console.log('📥 [DEBUG] Setting initial states:', {
-        columnsCount: initialColumns.length,
-        rowsCount: initialRows.length,
-        stylesCount: Object.keys(initialStyles).length
-      });
 
       setColumns(initialColumns);
       setRowsData(initialRows);
@@ -189,7 +185,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         customColors: null
       };
 
-      console.log('🎨 [DEBUG] Setting initial theme:', loadedTheme);
       setThemeSettings(loadedTheme);
       setSavedViews(spreadsheet.saved_views || []);
       setActiveViewId(spreadsheet.active_view_id || null);
@@ -198,7 +193,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       setHistory([{ columns: initialColumns, rows: initialRows, styles: initialStyles }]);
       setHistoryIndex(0);
 
-      console.log('✅ [DEBUG] Spreadsheet loaded successfully');
+      addDebugLog('Spreadsheet loaded successfully');
     }
   }, [spreadsheet]);
 
@@ -211,41 +206,27 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       return newHistory;
     });
     setHistoryIndex(prev => Math.min(prev + 1, 49));
+    addDebugLog(`History saved. Index: ${historyIndex}, Styles: ${Object.keys(styles).length}`);
   }, [historyIndex, isUndoRedoAction]);
 
-  // ✅ תיקון קריטי - שימוש ב-refs כדי לקבל תמיד את הערכים המעודכנים ביותר
   const saveToBackend = useCallback(async (cols, rows, styles) => {
-    console.log('💾 [DEBUG SAVE] ===== SAVE FUNCTION CALLED =====');
-    console.log('💾 [DEBUG SAVE] Arguments received:', {
-      colsCount: cols?.length,
-      rowsCount: rows?.length,
-      stylesCount: Object.keys(styles || {}).length,
-      styles: styles
-    });
+    alert(`💾 נקרא saveToBackend! Styles: ${Object.keys(styles).length}`);
+    addDebugLog('💾 saveToBackend CALLED!');
 
     if (!spreadsheet?.id) {
-      console.warn('⚠️ [DEBUG SAVE] No spreadsheet ID - ABORTING SAVE');
-      console.warn('⚠️ [DEBUG SAVE] spreadsheet object:', spreadsheet);
+      addDebugLog('⚠️ No spreadsheet ID - ABORTING SAVE');
+      alert('⚠️ אין Spreadsheet ID - לא ניתן לשמור!');
       return;
     }
-    
+
     try {
-      console.log('💾 [DEBUG SAVE] Starting save to backend...', {
-        spreadsheetId: spreadsheet.id,
-        columnsCount: cols.length,
-        rowsCount: rows.length,
-        cellStylesCount: Object.keys(styles).length,
-        cellStylesSample: Object.keys(styles).slice(0, 5),
-        cellStylesData: styles,
-        rowHeights: rowHeightsRef.current,
-        themeSettings: themeSettingsRef.current,
-        timestamp: new Date().toISOString()
-      });
+      addDebugLog(`Starting save to backend... Spreadsheet ID: ${spreadsheet.id}`);
+      addDebugLog(`Styles passed to saveToBackend: ${Object.keys(styles).length}`);
 
       const dataToSave = {
         columns: cols,
         rows_data: rows,
-        cell_styles: styles,
+        cell_styles: styles, // Use styles argument, as it's the specific styles we want to save
         row_heights: rowHeightsRef.current,
         validation_rules: validationRulesRef.current,
         conditional_formats: conditionalFormatsRef.current,
@@ -259,30 +240,23 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       };
 
       console.log('📤 [DEBUG SAVE] FULL DATA BEING SENT TO SERVER:', dataToSave);
+      addDebugLog(`Full data for saving: ${JSON.stringify(dataToSave).substring(0, 200)}...`);
+
 
       const response = await base44.entities.CustomSpreadsheet.update(spreadsheet.id, dataToSave);
 
-      console.log('✅✅✅ [DEBUG SAVE] SAVE SUCCESSFUL! Response:', response);
-      console.log('✅ [DEBUG SAVE] Styles that were saved:', {
-        count: Object.keys(styles).length,
-        data: styles
-      });
+      addDebugLog(`✅ SAVE SUCCESSFUL! Styles saved: ${Object.keys(styles).length}`);
+      alert(`✅ שמירה לשרת הצליחה! מספר עיצובים: ${Object.keys(styles).length}`);
 
       if (onUpdate) {
-        console.log('🔄 [DEBUG SAVE] Calling onUpdate callback...');
+        addDebugLog('Calling onUpdate callback...');
         await onUpdate();
-        console.log('✅ [DEBUG SAVE] onUpdate completed');
+        addDebugLog('onUpdate completed');
       }
     } catch (error) {
-      console.error('❌❌❌ [DEBUG SAVE] SAVE FAILED!', {
-        error,
-        errorType: typeof error,
-        message: error?.message,
-        status: error?.status,
-        response: error?.response,
-        data: error?.data,
-        stack: error?.stack
-      });
+      addDebugLog(`❌ SAVE FAILED! Error: ${error.message}`);
+      alert(`❌ שגיאה בשמירה: ${error.message || 'לא ידוע'}`);
+      console.error('❌❌❌ [DEBUG SAVE] SAVE FAILED!', error);
       toast.error('שגיאה בשמירה: ' + (error?.message || 'לא ידוע'));
     }
   }, [spreadsheet?.id, onUpdate]);
@@ -297,6 +271,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     setHistoryIndex(prev => prev - 1);
     saveToBackend(prevState.columns, prevState.rows, prevState.styles);
     toast.success('✓ פעולה בוטלה');
+    addDebugLog(`Undo performed. History index: ${historyIndex - 1}`);
     setTimeout(() => setIsUndoRedoAction(false), 100);
   }, [history, historyIndex, saveToBackend]);
 
@@ -310,6 +285,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     setHistoryIndex(prev => prev + 1);
     saveToBackend(nextState.columns, nextState.rows, nextState.styles);
     toast.success('✓ פעולה שוחזרה');
+    addDebugLog(`Redo performed. History index: ${historyIndex + 1}`);
     setTimeout(() => setIsUndoRedoAction(false), 100);
   }, [history, historyIndex, saveToBackend]);
 
@@ -327,6 +303,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         });
         setCopiedCells(cellsData);
         toast.success(`✓ הועתקו ${cellsData.length} תאים`);
+        addDebugLog(`Copied ${cellsData.length} cells.`);
       }
 
       if ((e.ctrlKey || e.metaKey) && e.key === 'v' && copiedCells && selectedCells.size > 0) {
@@ -344,9 +321,10 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         });
 
         setRowsData(updatedRows);
-        saveToHistory(columns, updatedRows, cellStyles);
-        saveToBackend(columns, updatedRows, cellStyles);
+        saveToHistory(columnsRef.current, updatedRows, cellStylesRef.current);
+        saveToBackend(columnsRef.current, updatedRows, cellStylesRef.current);
         toast.success(`✓ הודבקו ${Math.min(copiedCells.length, selectedCells.size)} תאים`);
+        addDebugLog(`Pasted ${Math.min(copiedCells.length, selectedCells.size)} cells.`);
       }
 
       if (e.key === 'Delete' && selectedCells.size > 0 && !editingCell) {
@@ -363,14 +341,15 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         });
 
         setRowsData(updatedRows);
-        saveToHistory(columns, updatedRows, cellStyles);
-        saveToBackend(columns, updatedRows, cellStyles);
+        saveToHistory(columnsRef.current, updatedRows, cellStylesRef.current);
+        saveToBackend(columnsRef.current, updatedRows, cellStylesRef.current);
         toast.success(`✓ נמחקו ${selectedCells.size} תאים`);
+        addDebugLog(`Deleted ${selectedCells.size} cells.`);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleUndo, handleRedo, selectedCells, copiedCells, rowsData, columns, cellStyles, editingCell, saveToHistory, saveToBackend]);
+  }, [handleUndo, handleRedo, selectedCells, copiedCells, rowsData, columnsRef, cellStylesRef, editingCell, saveToHistory, saveToBackend]);
 
   const handleDragEnd = (result) => {
     if (!result.destination) return;
@@ -379,9 +358,10 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       const [movedColumn] = reorderedColumns.splice(result.source.index, 1);
       reorderedColumns.splice(result.destination.index, 0, movedColumn);
       setColumns(reorderedColumns);
-      saveToHistory(reorderedColumns, rowsData, cellStyles);
-      saveToBackend(reorderedColumns, rowsData, cellStyles);
+      saveToHistory(reorderedColumns, rowsDataRef.current, cellStylesRef.current);
+      saveToBackend(reorderedColumns, rowsDataRef.current, cellStylesRef.current);
       toast.success('✓ סדר העמודות עודכן');
+      addDebugLog(`Columns reordered.`);
       return;
     }
     const items = Array.from(filteredAndSortedData);
@@ -393,8 +373,9 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     const [movedRow] = reorderedRowsData.splice(sourceIndex, 1);
     reorderedRowsData.splice(destIndex, 0, movedRow);
     setRowsData(reorderedRowsData);
-    saveToBackend(columns, reorderedRowsData, cellStyles);
+    saveToBackend(columnsRef.current, reorderedRowsData, cellStylesRef.current);
     toast.success('✓ סדר השורות עודכן');
+    addDebugLog(`Rows reordered.`);
   };
 
   const handleSort = (columnKey) => {
@@ -405,6 +386,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       setSortColumn(columnKey);
       setSortDirection('asc');
     }
+    addDebugLog(`Sorting by ${columnKey}, direction: ${sortDirection}`);
   };
 
   const filteredAndSortedData = useMemo(() => {
@@ -439,15 +421,17 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     setSortColumn(null);
     setSortDirection('asc');
     toast.success('✓ כל הסינונים והמיונים נוקו');
+    addDebugLog(`All filters cleared.`);
   };
 
   const addNewRow = async () => {
     const newRow = { id: `row_${Date.now()}` };
     const updated = [...rowsData, newRow];
     setRowsData(updated);
-    saveToHistory(columns, updated, cellStyles);
-    await saveToBackend(columns, updated, cellStyles);
+    saveToHistory(columnsRef.current, updated, cellStylesRef.current);
+    await saveToBackend(columnsRef.current, updated, cellStylesRef.current);
     toast.success('✓ שורה נוספה');
+    addDebugLog(`New row added.`);
   };
 
   const addRowFromClient = async (client) => {
@@ -476,8 +460,8 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
 
     const updated = [...rowsData, newRow];
     setRowsData(updated);
-    saveToHistory(columns, updated, cellStyles);
-    await saveToBackend(columns, updated, cellStyles);
+    saveToHistory(columnsRef.current, updated, cellStylesRef.current);
+    await saveToBackend(columnsRef.current, updated, cellStylesRef.current);
 
     setShowAddFromClientDialog(false);
     setClientSearchQuery("");
@@ -490,6 +474,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     if (newRow[columns.find(c => c.key.includes('address'))?.key]) filledFields.push('כתובת');
 
     toast.success(`✓ שורה נוספה מלקוח "${client.name}"${filledFields.length > 0 ? ` • מולאו: ${filledFields.join(', ')}` : ''}`);
+    addDebugLog(`Row added from client: ${client.name}`);
   };
 
   const deleteRow = async (rowId) => {
@@ -499,9 +484,10 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     const newStyles = { ...cellStyles };
     Object.keys(newStyles).forEach(key => { if (key.startsWith(`${rowId}_`)) delete newStyles[key]; });
     setCellStyles(newStyles);
-    saveToHistory(columns, updated, newStyles);
-    await saveToBackend(columns, updated, newStyles);
+    saveToHistory(columnsRef.current, updated, newStyles);
+    await saveToBackend(columnsRef.current, updated, newStyles);
     toast.success('✓ שורה נמחקה');
+    addDebugLog(`Row ${rowId} deleted.`);
   };
 
   const duplicateRow = async (row) => {
@@ -509,9 +495,10 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     const newRow = { ...data, id: `row_${Date.now()}` };
     const updated = [...rowsData, newRow];
     setRowsData(updated);
-    saveToHistory(columns, updated, cellStyles);
-    await saveToBackend(columns, updated, cellStyles);
+    saveToHistory(columnsRef.current, updated, cellStylesRef.current);
+    await saveToBackend(columnsRef.current, updated, cellStylesRef.current);
     toast.success('✓ שורה הועתקה');
+    addDebugLog(`Row ${row.id} duplicated.`);
   };
 
   const addColumn = async () => {
@@ -520,18 +507,20 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     const newColumn = { key: `col_${Date.now()}`, title: columnName, width: '150px', type: 'text', visible: true };
     const updated = [...columns, newColumn];
     setColumns(updated);
-    saveToHistory(updated, rowsData, cellStyles);
-    await saveToBackend(updated, rowsData, cellStyles);
+    saveToHistory(updated, rowsDataRef.current, cellStylesRef.current);
+    await saveToBackend(updated, rowsDataRef.current, cellStylesRef.current);
     toast.success('✓ עמודה נוספה');
+    addDebugLog(`New column "${columnName}" added.`);
   };
 
   const addBulkColumns = async (newColumns) => {
     if (!newColumns || newColumns.length === 0) return;
     const updated = [...columns, ...newColumns];
     setColumns(updated);
-    saveToHistory(updated, rowsData, cellStyles);
-    await saveToBackend(updated, rowsData, cellStyles);
+    saveToHistory(updated, rowsDataRef.current, cellStylesRef.current);
+    await saveToBackend(updated, rowsDataRef.current, cellStylesRef.current);
     toast.success(`✓ נוספו ${newColumns.length} עמודות`);
+    addDebugLog(`Added ${newColumns.length} columns in bulk.`);
   };
 
   const deleteColumn = async (columnKey) => {
@@ -546,35 +535,40 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     saveToHistory(updated, updatedRows, newStyles);
     await saveToBackend(updated, updatedRows, newStyles);
     toast.success('✓ עמודה נמחקה');
+    addDebugLog(`Column ${columnKey} deleted.`);
   };
 
   const toggleColumnVisibility = async (columnKey) => {
     const updated = columns.map(col => col.key === columnKey ? { ...col, visible: !col.visible } : col);
     setColumns(updated);
-    await saveToBackend(updated, rowsData, cellStyles);
+    await saveToBackend(updated, rowsDataRef.current, cellStylesRef.current);
     toast.success('✓ נראות עמודה שונתה');
+    addDebugLog(`Column ${columnKey} visibility toggled.`);
   };
 
   const renameColumn = async (columnKey, newTitle) => {
     if (!newTitle.trim()) return;
     const updated = columns.map(col => col.key === columnKey ? { ...col, title: newTitle.trim() } : col);
     setColumns(updated);
-    saveToHistory(updated, rowsData, cellStyles);
-    await saveToBackend(updated, rowsData, cellStyles);
+    saveToHistory(updated, rowsDataRef.current, cellStylesRef.current);
+    await saveToBackend(updated, rowsDataRef.current, cellStylesRef.current);
     toast.success('✓ שם עמודה עודכן');
+    addDebugLog(`Column ${columnKey} renamed to "${newTitle}".`);
   };
 
   const changeColumnType = async (columnKey, newType) => {
     const updated = columns.map(col => col.key === columnKey ? { ...col, type: newType } : col);
     setColumns(updated);
-    await saveToBackend(updated, rowsData, cellStyles);
+    await saveToBackend(updated, rowsDataRef.current, cellStylesRef.current);
     toast.success('✓ סוג עמודה עודכן');
+    addDebugLog(`Column ${columnKey} type changed to "${newType}".`);
   };
 
   const changeColumnWidth = async (columnKey, newWidth) => {
     const updated = columns.map(col => col.key === columnKey ? { ...col, width: newWidth } : col);
     setColumns(updated);
-    await saveToBackend(updated, rowsData, cellStyles);
+    await saveToBackend(updated, rowsDataRef.current, cellStylesRef.current);
+    addDebugLog(`Column ${columnKey} width changed to "${newWidth}".`);
   };
 
   const resizeStartRef = useRef(null);
@@ -586,6 +580,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     const currentWidth = parseInt(column.width) || 150;
     resizeStartRef.current = { type: 'column', key: columnKey, startX: e.clientX, startWidth: currentWidth };
     setResizingColumn(columnKey);
+    addDebugLog(`Column resize started for ${columnKey}.`);
   };
 
   const handleRowResizeStart = (e, rowId) => {
@@ -594,6 +589,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     const currentHeight = rowHeights[rowId] || 40;
     resizeStartRef.current = { type: 'row', id: rowId, startY: e.clientY, startHeight: currentHeight };
     setResizingRow(rowId);
+    addDebugLog(`Row resize started for ${rowId}.`);
   };
 
   useEffect(() => {
@@ -616,11 +612,12 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     const handleMouseUp = (e) => {
       e.preventDefault();
       if (resizingColumn || resizingRow) {
-        saveToBackend(columns, rowsData, cellStyles);
+        saveToBackend(columnsRef.current, rowsDataRef.current, cellStylesRef.current);
         setResizingColumn(null);
         setResizingRow(null);
         resizeStartRef.current = null;
         toast.success('✓ גודל עודכן');
+        addDebugLog(`Resize finished. Column: ${resizingColumn}, Row: ${resizingRow}`);
       }
     };
     window.addEventListener('mousemove', handleMouseMove, { capture: true });
@@ -633,54 +630,35 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       document.body.style.userSelect = '';
       document.body.style.cursor = '';
     };
-  }, [resizingColumn, resizingRow, columns, rowHeights, rowsData, cellStyles, saveToBackend]);
+  }, [resizingColumn, resizingRow, columns, rowHeights, rowsData, cellStylesRef, saveToBackend, columnsRef, rowsDataRef]);
 
   const applyCellStyle = (cellKey, style) => {
-    console.log('🎨🎨🎨 [DEBUG STYLE] applyCellStyle CALLED!', { cellKey, style });
+    addDebugLog(`🎨 applyCellStyle CALLED! Cell: ${cellKey}, Style: ${JSON.stringify(style)}`);
     const newStyles = { ...cellStyles, [cellKey]: style };
-    console.log('🎨 [DEBUG STYLE] New styles object:', { 
-      totalStyles: Object.keys(newStyles).length,
-      newStyleKeys: Object.keys(newStyles),
-      fullStyles: newStyles
-    });
     setCellStyles(newStyles);
-    console.log('🎨 [DEBUG STYLE] Calling saveToHistory...');
-    saveToHistory(columns, rowsData, newStyles);
-    console.log('🎨 [DEBUG STYLE] Calling saveToBackend...');
-    saveToBackend(columns, rowsData, newStyles);
+    saveToHistory(columnsRef.current, rowsDataRef.current, newStyles);
+    saveToBackend(columnsRef.current, rowsDataRef.current, newStyles);
     toast.success('✓ סגנון הותקן');
+    addDebugLog(`Style applied to single cell: ${cellKey}`);
   };
 
   const applyStyleToSelection = (style) => {
-    console.log('🎨🎨🎨 [DEBUG STYLE] applyStyleToSelection CALLED!', { 
-      selectedCount: selectedCells.size, 
-      style,
-      selectedCells: Array.from(selectedCells)
-    });
-    
-    const newStyles = { ...cellStyles };
-    selectedCells.forEach(cellKey => { 
+    alert(`🎨 applyStyleToSelection נקרא! Selected: ${selectedCells.size}`);
+    addDebugLog(`🎨 Applying style to ${selectedCells.size} cells`);
+
+    const newStyles = { ...cellStylesRef.current };
+    selectedCells.forEach(cellKey => {
       newStyles[cellKey] = style;
-      console.log('🎨 [DEBUG STYLE] Applied style to cell:', cellKey, style);
+      addDebugLog(`Applied to: ${cellKey}`);
     });
-    
-    console.log('🎨 [DEBUG STYLE] Total styles after apply:', {
-      count: Object.keys(newStyles).length,
-      allKeys: Object.keys(newStyles),
-      fullData: newStyles
-    });
-    
-    console.log('🎨 [DEBUG STYLE] Calling setCellStyles...');
+
+    addDebugLog(`Total styles: ${Object.keys(newStyles).length}`);
     setCellStyles(newStyles);
-    
-    console.log('🎨 [DEBUG STYLE] Calling saveToHistory...');
-    saveToHistory(columns, rowsData, newStyles);
-    
-    console.log('🎨 [DEBUG STYLE] Calling saveToBackend...');
-    saveToBackend(columns, rowsData, newStyles);
-    
+    saveToHistory(columnsRef.current, rowsDataRef.current, newStyles);
+    saveToBackend(columnsRef.current, rowsDataRef.current, newStyles);
+
     toast.success(`✓ סגנון הותקן ל-${selectedCells.size} תאים`);
-    console.log('🎨 [DEBUG STYLE] applyStyleToSelection COMPLETED!');
+    addDebugLog(`Style applied to selection of ${selectedCells.size} cells.`);
   };
 
   const exportToCSV = () => {
@@ -699,6 +677,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     link.download = `${spreadsheet.name || 'spreadsheet'}.csv`;
     link.click();
     toast.success('✓ הקובץ יוצא בהצלחה');
+    addDebugLog(`Exported to CSV.`);
   };
 
   const exportToPDF = () => {
@@ -730,7 +709,8 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     }).join('')}</tr>`).join('')}</tbody></table><div class="footer">${spreadsheet.description || ''}</div></body></html>`;
     printWindow.document.write(html);
     printWindow.document.close();
-    setTimeout(() => { printWindow.print(); toast.success('✓ מוכן להדפסה/שמירה כ-PDF'); }, 250);
+    setTimeout(() => { toast.success('✓ מוכן להדפסה/שמירה כ-PDF'); printWindow.print(); }, 250);
+    addDebugLog(`Exported to PDF.`);
   };
 
   const getAutoCompleteSuggestions = (columnKey) => {
@@ -749,7 +729,8 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     setMergedCells(prev => ({ ...prev, [mergeKey]: cellsArray }));
     toast.success(`✓ ${cellsArray.length} תאים אוחדו`);
     setSelectedCells(new Set());
-    saveToBackend(columns, rowsData, cellStyles);
+    saveToBackend(columnsRef.current, rowsDataRef.current, cellStylesRef.current);
+    addDebugLog(`Merged ${cellsArray.length} cells.`);
   };
 
   const handleCellMouseDown = (rowId, columnKey, event) => {
@@ -810,8 +791,9 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     else nextValue = '✓';
     const updatedRows = rowsData.map(r => r.id === rowId ? { ...r, [columnKey]: nextValue } : r);
     setRowsData(updatedRows);
-    saveToHistory(columns, updatedRows, cellStyles);
-    await saveToBackend(columns, updatedRows, cellStyles);
+    saveToHistory(columnsRef.current, updatedRows, cellStylesRef.current);
+    await saveToBackend(columnsRef.current, updatedRows, cellStylesRef.current);
+    addDebugLog(`Checkmark cell ${rowId}_${columnKey} updated to "${nextValue}".`);
   };
 
   const handleClientSelect = async (rowId, columnKey, client) => {
@@ -837,8 +819,8 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     setRowsData(updatedRows);
     setShowClientPicker(null);
     setClientSearchQuery("");
-    saveToHistory(columns, updatedRows, cellStyles);
-    await saveToBackend(columns, updatedRows, cellStyles);
+    saveToHistory(columnsRef.current, updatedRows, cellStylesRef.current);
+    await saveToBackend(columnsRef.current, updatedRows, cellStylesRef.current);
 
     const autoFilledFields = [];
     if (phoneCol && client.phone) autoFilledFields.push('טלפון');
@@ -851,6 +833,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     } else {
       toast.success('✓ לקוח נבחר');
     }
+    addDebugLog(`Client selected for cell ${rowId}_${columnKey}: ${client.name}`);
   };
 
   const handleCellClick = (rowId, columnKey, event) => {
@@ -863,11 +846,13 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         else newSet.add(cellKey);
         return newSet;
       });
+      addDebugLog(`Cell ${cellKey} toggled selection via Alt+Click.`);
       return;
     }
     if (event?.ctrlKey || event?.metaKey) {
       event.preventDefault();
       setPopoverOpen(`${rowId}_${columnKey}`);
+      addDebugLog(`Popover opened for cell ${rowId}_${columnKey} via Ctrl/Meta+Click.`);
       return;
     }
 
@@ -876,6 +861,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       event.preventDefault();
       setShowClientPicker(`${rowId}_${columnKey}`);
       setClientSearchQuery("");
+      addDebugLog(`Client picker opened for cell ${rowId}_${columnKey}.`);
       return;
     }
 
@@ -885,6 +871,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     setEditingCell(`${rowId}_${columnKey}`);
     setEditValue(String(currentValue));
     setTimeout(() => editInputRef.current?.focus(), 0);
+    addDebugLog(`Cell ${rowId}_${columnKey} entered editing mode.`);
   };
 
   const handleColumnHeaderClick = (columnKey, event) => {
@@ -894,6 +881,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     const col = columns.find(c => c.key === columnKey);
     setEditingColumnTitle(col?.title || '');
     setTimeout(() => columnEditRef.current?.focus(), 0);
+    addDebugLog(`Column header ${columnKey} clicked, editing title.`);
   };
 
   const saveColumnTitle = () => {
@@ -905,6 +893,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     renameColumn(editingColumnKey, editingColumnTitle);
     setEditingColumnKey(null);
     setEditingColumnTitle("");
+    addDebugLog(`Column title for ${editingColumnKey} saved.`);
   };
 
   const validateCell = (columnKey, value) => {
@@ -947,6 +936,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     if (validationError) {
       setValidationErrors(prev => ({ ...prev, [editingCell]: validationError }));
       toast.error(validationError);
+      addDebugLog(`Validation error for cell ${editingCell}: ${validationError}`);
       return;
     }
     setValidationErrors(prev => { const { [editingCell]: removed, ...rest } = prev; return rest; });
@@ -954,9 +944,10 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     setRowsData(updatedRows);
     setEditingCell(null);
     setEditValue("");
-    saveToHistory(columns, updatedRows, cellStyles);
-    await saveToBackend(columns, updatedRows, cellStyles);
+    saveToHistory(columnsRef.current, updatedRows, cellStylesRef.current);
+    await saveToBackend(columnsRef.current, updatedRows, cellStylesRef.current);
     toast.success('✓ התא נשמר');
+    addDebugLog(`Cell ${rowId}_${columnKey} saved with value: "${editValue}".`);
   };
 
   const getConditionalStyle = (columnKey, value) => {
@@ -990,11 +981,13 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     setEditingChart(null);
     if (onUpdate) await onUpdate();
     toast.success('✓ גרף נשמר');
+    addDebugLog(`Chart ${chart.id || 'new'} saved.`);
   };
 
   const handleEditChart = (chart) => {
     setEditingChart(chart);
     setShowChartBuilder(true);
+    addDebugLog(`Editing chart ${chart.id}.`);
   };
 
   const handleDeleteChart = async (chartId) => {
@@ -1009,6 +1002,36 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
 
     toast.success('✓ גרף נמחק');
     if (onUpdate) await onUpdate();
+    addDebugLog(`Chart ${chartId} deleted.`);
+  };
+
+  const checkDatabaseState = async () => {
+    try {
+      addDebugLog('🔍 Checking database...');
+      const freshData = await base44.entities.CustomSpreadsheet.filter({ id: spreadsheet.id });
+      const dbSpreadsheet = freshData[0];
+
+      const report = `
+=== DATABASE STATE ===
+ID: ${dbSpreadsheet.id}
+Name: ${dbSpreadsheet.name}
+Cell Styles in DB: ${Object.keys(dbSpreadsheet.cell_styles || {}).length}
+Cell Styles Keys: ${Object.keys(dbSpreadsheet.cell_styles || {}).join(', ')}
+Theme in DB: ${dbSpreadsheet.theme_settings?.palette || 'null'}
+
+=== CURRENT STATE ===
+Cell Styles in Memory: ${Object.keys(cellStyles).length}
+Cell Styles Keys: ${Object.keys(cellStyles).join(', ')}
+Theme in Memory: ${themeSettings?.palette || 'null'}
+      `;
+
+      alert(report);
+      console.log(report);
+      addDebugLog('Database check completed');
+    } catch (error) {
+      alert(`שגיאה בבדיקת DB: ${error.message}`);
+      addDebugLog(`DB check error: ${error.message}`);
+    }
   };
 
   if (!spreadsheet) return <div className="p-6 text-center text-slate-500">לא נבחרה טבלה</div>;
@@ -1088,46 +1111,72 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     return stats;
   }, [visibleColumns, filteredAndSortedData]);
 
-  console.log('🔵 [COMPONENT] Current cellStyles in render:', {
-    count: Object.keys(cellStyles).length,
-    data: cellStyles
-  });
-
   return (
     <div className="w-full space-y-6" dir="rtl">
-      {/* Debug Panel - עכשיו עם עוד מידע */}
-      <div className="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-4 text-xs space-y-2">
-        <div className="font-bold text-yellow-900 mb-2 flex items-center gap-2">
-          🐛 פאנל דיבאג - שמירת נתונים
-          <button 
-            onClick={() => {
-              console.log('🔍 [MANUAL DEBUG] Current state dump:', {
-                spreadsheetId: spreadsheet?.id,
-                cellStyles,
-                cellStylesCount: Object.keys(cellStyles).length,
-                themeSettings,
-                columns: columns.length,
-                rows: rowsData.length
-              });
-            }}
-            className="bg-yellow-600 text-white px-2 py-1 rounded text-xs hover:bg-yellow-700"
-          >
-            הדפס מצב לקונסול
-          </button>
+      {/* Super Debug Panel with Alerts */}
+      <div className="bg-red-50 border-4 border-red-500 rounded-lg p-6 text-sm space-y-4">
+        <div className="font-bold text-red-900 text-lg mb-3 flex items-center gap-2">
+          <AlertCircle className="w-6 h-6" />
+          🚨 פאנל דיבאג מתקדם
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 bg-white p-3 rounded">
           <div><strong>Spreadsheet ID:</strong> {spreadsheet?.id || 'N/A'}</div>
-          <div className="text-red-600 font-bold"><strong>Cell Styles NOW:</strong> {Object.keys(cellStyles).length} תאים</div>
-          <div><strong>Theme:</strong> {themeSettings ? `${themeSettings.palette}` : '❌'}</div>
-          <div><strong>Selected Cells:</strong> {selectedCells.size}</div>
-          <div><strong>History Index:</strong> {historyIndex}/{history.length - 1}</div>
+          <div className="text-red-600 font-bold"><strong>Cell Styles:</strong> {Object.keys(cellStyles).length}</div>
+          <div><strong>Selected:</strong> {selectedCells.size}</div>
+          <div><strong>Theme:</strong> {themeSettings?.palette || '❌'}</div>
+          <div><strong>Columns:</strong> {columns.length}</div>
+          <div><strong>Rows:</strong> {rowsData.length}</div>
         </div>
-        <div className="bg-yellow-100 p-2 rounded mt-2">
-          <div className="font-bold mb-1">📋 Styles Keys:</div>
-          <div className="text-[10px] font-mono">{Object.keys(cellStyles).join(', ') || 'אין עיצובים'}</div>
+
+        <div className="flex gap-2 flex-wrap">
+          <Button
+            onClick={() => {
+              alert(`
+🔍 מצב נוכחי:
+- Spreadsheet ID: ${spreadsheet?.id}
+- Cell Styles: ${Object.keys(cellStyles).length}
+- Selected Cells: ${selectedCells.size}
+- Theme: ${themeSettings?.palette || 'null'}
+              `);
+            }}
+            size="sm"
+            className="bg-blue-600 hover:bg-blue-700"
+          >
+            📊 הצג מצב (Alert)
+          </Button>
+
+          <Button
+            onClick={checkDatabaseState}
+            size="sm"
+            className="bg-green-600 hover:bg-green-700"
+          >
+            🔍 בדוק מה שמור ב-DB
+          </Button>
+
+          <Button
+            onClick={() => {
+              const testStyle = { backgroundColor: '#ff0000', color: '#ffffff', opacity: 100, fontWeight: 'bold' };
+              alert(`🧪 בודק שמירה ידנית! Style: ${JSON.stringify(testStyle)}`);
+              applyStyleToSelection(testStyle);
+            }}
+            size="sm"
+            className="bg-purple-600 hover:bg-purple-700"
+            disabled={selectedCells.size === 0}
+          >
+            🧪 בדיקת שמירה (אדום)
+          </Button>
         </div>
-        <div className="text-yellow-700 mt-2 font-bold">
-          💡 פתח Console (F12) → חפש הודעות [DEBUG] → צלם והעתק הכל
+
+        <div className="bg-yellow-100 p-3 rounded max-h-40 overflow-y-auto">
+          <div className="font-bold mb-2">📋 Debug Log (אחרוני):</div>
+          <div className="text-xs font-mono space-y-1">
+            {debugLog.length === 0 ? (
+              <div className="text-yellow-600">אין לוגים עדיין...</div>
+            ) : (
+              debugLog.map((log, i) => <div key={i} className="text-yellow-900">{log}</div>)
+            )}
+          </div>
         </div>
       </div>
 
@@ -1222,21 +1271,25 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                   <Badge variant="outline" className="bg-purple-50 px-3">נבחרו: {selectedCells.size}</Badge>
                   <Popover>
                     <PopoverTrigger asChild>
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
+                      <Button
+                        size="sm"
+                        variant="outline"
                         className="gap-2"
-                        onClick={() => console.log('🔵 [DEBUG] Color button clicked, selected cells:', Array.from(selectedCells))}
+                        onClick={() => {
+                          alert(`כפתור צבע נלחץ! Selected: ${selectedCells.size}`);
+                          addDebugLog('Color button clicked');
+                        }}
                       >
                         <Palette className="w-4 h-4" />צבע
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-80">
-                      <ColorPicker 
+                      <ColorPicker
                         onApply={(style) => {
-                          console.log('🟢 [DEBUG] ColorPicker onApply triggered with style:', style);
+                          alert(`ColorPicker onApply! Style: ${JSON.stringify(style)}`);
+                          addDebugLog(`ColorPicker onApply: ${JSON.stringify(style)}`);
                           applyStyleToSelection(style);
-                        }} 
+                        }}
                       />
                     </PopoverContent>
                   </Popover>
@@ -1255,7 +1308,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
             </div>
           </div>
         </CardHeader>
-        
+
         <CardContent className="p-0">
           {showColumnStats && Object.keys(columnStats).length > 0 && (
             <div className="bg-gradient-to-r from-purple-50 to-blue-50 border-b-2 border-purple-200 p-4">
@@ -1333,8 +1386,10 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                     <Input ref={columnEditRef} value={editingColumnTitle} onChange={(e) => setEditingColumnTitle(e.target.value)} onBlur={saveColumnTitle} onKeyDown={(e) => { if (e.key === 'Enter') saveColumnTitle(); if (e.key === 'Escape') { setEditingColumnKey(null); setEditingColumnTitle(""); } }} className="h-8" autoFocus />
                                   ) : (
                                     <div className="flex items-center justify-between">
-                                      <div {...provided.dragHandleProps} className="cursor-grab p-1 hover:bg-blue-100 rounded"><GripVertical className="w-4 h-4 text-slate-400" /></div>
-                                      <span>{col.title}</span>
+                                      <div className="flex items-center gap-2">
+                                        <div {...provided.dragHandleProps} className="cursor-grab p-1 hover:bg-blue-100 rounded"><GripVertical className="w-4 h-4 text-slate-400" /></div>
+                                        <span>{col.title}</span>
+                                      </div>
                                       <div className="flex items-center gap-1">
                                         <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); handleSort(col.key); }}>{isSorted ? (sortDirection === 'asc' ? <ArrowUp className="w-4 h-4 text-blue-600" /> : <ArrowDown className="w-4 h-4 text-blue-600" />) : <ArrowUpDown className="w-4 h-4 text-slate-400" />}</Button>
                                         <Popover open={popoverOpen === `header_${col.key}`} onOpenChange={(open) => !open && setPopoverOpen(null)}>
@@ -1487,25 +1542,24 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         </div>
       </Card>
 
-      <ThemeSelector 
-        open={showThemeSelector} 
+      <ThemeSelector
+        open={showThemeSelector}
         onClose={() => {
-          console.log('🚪 [DEBUG] ThemeSelector closed');
+          addDebugLog('ThemeSelector closed.');
           setShowThemeSelector(false);
-        }} 
-        currentTheme={currentTheme} 
-        onApply={(newTheme) => { 
-          console.log('🎨🎨🎨 [DEBUG THEME] ThemeSelector onApply called with:', newTheme);
-          setThemeSettings(newTheme); 
-          // המתן לעדכון state ואז שמור
+        }}
+        currentTheme={currentTheme}
+        onApply={(newTheme) => {
+          addDebugLog(`ThemeSelector onApply: ${newTheme.palette}`);
+          setThemeSettings(newTheme);
+          // Small delay to allow themeSettings state to update before saveToBackend captures it via ref
           setTimeout(() => {
-            console.log('🎨 [DEBUG THEME] Calling saveToBackend after theme change...');
-            saveToBackend(columns, rowsData, cellStyles);
+            saveToBackend(columnsRef.current, rowsDataRef.current, cellStylesRef.current);
           }, 100);
-        }} 
+        }}
       />
 
-      <ViewManager open={showViewManager} onClose={() => setShowViewManager(false)} savedViews={savedViews} activeViewId={activeViewId} currentColumns={columns} onSaveView={(view) => { setSavedViews([...savedViews, view]); saveToBackend(columns, rowsData, cellStyles); }} onLoadView={(view) => { setColumns(view.columns); saveToBackend(view.columns, rowsData, cellStyles); }} onDeleteView={(viewId) => { setSavedViews(savedViews.filter(v => v.id !== viewId)); saveToBackend(columns, rowsData, cellStyles); }} onSetDefault={(viewId) => { setSavedViews(savedViews.map(v => ({ ...v, isDefault: v.id === viewId }))); saveToBackend(columns, rowsData, cellStyles); }} />
+      <ViewManager open={showViewManager} onClose={() => setShowViewManager(false)} savedViews={savedViews} activeViewId={activeViewId} currentColumns={columns} onSaveView={(view) => { setSavedViews([...savedViews, view]); saveToBackend(columnsRef.current, rowsDataRef.current, cellStylesRef.current); addDebugLog(`View "${view.name}" saved.`); }} onLoadView={(view) => { setColumns(view.columns); saveToBackend(view.columns, rowsDataRef.current, cellStylesRef.current); addDebugLog(`View "${view.name}" loaded.`); }} onDeleteView={(viewId) => { setSavedViews(savedViews.filter(v => v.id !== viewId)); saveToBackend(columnsRef.current, rowsDataRef.current, cellStylesRef.current); addDebugLog(`View "${viewId}" deleted.`); }} onSetDefault={(viewId) => { setSavedViews(savedViews.map(v => ({ ...v, isDefault: v.id === viewId }))); saveToBackend(columnsRef.current, rowsDataRef.current, cellStylesRef.current); addDebugLog(`View "${viewId}" set as default.`); }} />
 
       <Dialog open={showAddFromClientDialog} onOpenChange={setShowAddFromClientDialog}>
         <DialogContent className="sm:max-w-2xl" dir="rtl">
@@ -1566,9 +1620,10 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         columns={columns}
         onSave={(updatedColumns) => {
           setColumns(updatedColumns);
-          saveToHistory(updatedColumns, rowsData, cellStyles);
-          saveToBackend(updatedColumns, rowsData, cellStyles);
+          saveToHistory(updatedColumns, rowsDataRef.current, cellStylesRef.current);
+          saveToBackend(updatedColumns, rowsDataRef.current, cellStylesRef.current);
           setShowColumnsManager(false);
+          addDebugLog(`Columns managed and saved.`);
         }}
       />
 
@@ -1582,56 +1637,51 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
 }
 
 function ColorPicker({ onApply, currentStyle = {} }) {
-  console.log('🟣 [COLOR PICKER] Component rendered with currentStyle:', currentStyle);
-  
+  alert('🟣 ColorPicker נטען!');
+
   const [color, setColor] = useState(currentStyle.backgroundColor || '#ffffff');
   const [hexInput, setHexInput] = useState(currentStyle.backgroundColor || '#ffffff');
   const [opacity, setOpacity] = useState(currentStyle.opacity || 100);
   const [isBold, setIsBold] = useState(currentStyle.fontWeight === 'bold');
   const [textColor, setTextColor] = useState(currentStyle.color || '#000000');
   const [textHexInput, setTextHexInput] = useState(currentStyle.color || '#000000');
-  
+
   const colors = ['#ffffff', '#fee2e2', '#fef3c7', '#d1fae5', '#dbeafe', '#ede9fe', '#fce7f3', '#f3f4f6', '#FCF6E3', '#e0f2f7', '#fff5f0', '#e8f5e9'];
-  
-  // ✅ סנכרון צבע רקע
+
   useEffect(() => {
     setHexInput(color);
   }, [color]);
-  
-  // ✅ סנכרון צבע טקסט
+
   useEffect(() => {
     setTextHexInput(textColor);
   }, [textColor]);
-  
+
   const handleHexChange = (value) => {
     setHexInput(value);
-    // בדיקה אם זה hex תקין
     if (/^#[0-9A-Fa-f]{6}$/.test(value)) {
       setColor(value);
     }
   };
-  
+
   const handleTextHexChange = (value) => {
     setTextHexInput(value);
-    // בדיקה אם זה hex תקין
     if (/^#[0-9A-Fa-f]{6}$/.test(value)) {
       setTextColor(value);
     }
   };
-  
+
   const handleApply = () => {
-    const styleToApply = { 
-      backgroundColor: color, 
+    const styleToApply = {
+      backgroundColor: color,
       color: textColor,
-      opacity: opacity, 
-      fontWeight: isBold ? 'bold' : 'normal' 
+      opacity: opacity,
+      fontWeight: isBold ? 'bold' : 'normal'
     };
-    console.log('🟢🟢🟢 [COLOR PICKER] Apply button clicked! Style:', styleToApply);
-    console.log('🟢 [COLOR PICKER] Calling onApply callback...');
+    alert(`🟢 לוחץ על "החל עיצוב"!\nStyle: ${JSON.stringify(styleToApply)}`);
+    console.log('🟢 [COLOR PICKER] Applying:', styleToApply);
     onApply(styleToApply);
-    console.log('🟢 [COLOR PICKER] onApply callback completed');
   };
-  
+
   return (
     <div className="space-y-4" dir="rtl">
       <div>
@@ -1641,40 +1691,31 @@ function ColorPicker({ onApply, currentStyle = {} }) {
         </h4>
         <div className="grid grid-cols-4 gap-2 mb-3">
           {colors.map(c => (
-            <button 
-              key={c} 
-              className={`h-10 rounded-lg border-2 transition-all hover:scale-105 ${color === c ? 'ring-2 ring-blue-500 ring-offset-2' : 'border-slate-200'}`} 
-              style={{ backgroundColor: c }} 
-              onClick={() => {
-                console.log('🟣 [COLOR PICKER] Preset color selected:', c);
-                setColor(c);
-              }}
+            <button
+              key={c}
+              className={`h-10 rounded-lg border-2 transition-all hover:scale-105 ${color === c ? 'ring-2 ring-blue-500 ring-offset-2' : 'border-slate-200'}`}
+              style={{ backgroundColor: c }}
+              onClick={() => setColor(c)}
               title={c}
             />
           ))}
         </div>
-        
+
         <div className="space-y-2">
           <Label className="text-xs text-slate-600">קוד צבע Hex</Label>
           <div className="flex gap-2">
-            <Input 
+            <Input
               type="text"
               value={hexInput}
-              onChange={(e) => {
-                console.log('🟣 [COLOR PICKER] Hex input changed:', e.target.value);
-                handleHexChange(e.target.value.toUpperCase());
-              }}
+              onChange={(e) => handleHexChange(e.target.value.toUpperCase())}
               placeholder="#FCF6E3"
               className="font-mono text-sm"
               dir="ltr"
             />
-            <Input 
-              type="color" 
-              value={color} 
-              onChange={(e) => {
-                console.log('🟣 [COLOR PICKER] Color picker changed:', e.target.value);
-                setColor(e.target.value);
-              }} 
+            <Input
+              type="color"
+              value={color}
+              onChange={(e) => setColor(e.target.value)}
               className="w-16 h-10 cursor-pointer"
               title="בחר צבע"
             />
@@ -1682,13 +1723,13 @@ function ColorPicker({ onApply, currentStyle = {} }) {
           <p className="text-xs text-slate-500">💡 ניתן להזין קוד Hex ישירות (למשל: #FCF6E3)</p>
         </div>
       </div>
-      
+
       <Separator />
-      
+
       <div>
         <h4 className="font-semibold text-sm mb-3">צבע טקסט</h4>
         <div className="flex gap-2 mb-2">
-          <Input 
+          <Input
             type="text"
             value={textHexInput}
             onChange={(e) => handleTextHexChange(e.target.value.toUpperCase())}
@@ -1696,41 +1737,41 @@ function ColorPicker({ onApply, currentStyle = {} }) {
             className="font-mono text-sm"
             dir="ltr"
           />
-          <Input 
-            type="color" 
-            value={textColor} 
-            onChange={(e) => setTextColor(e.target.value)} 
+          <Input
+            type="color"
+            value={textColor}
+            onChange={(e) => setTextColor(e.target.value)}
             className="w-16 h-10 cursor-pointer"
             title="בחר צבע טקסט"
           />
         </div>
       </div>
-      
+
       <Separator />
-      
+
       <div>
         <h4 className="font-semibold text-sm mb-2">שקיפות: {opacity}%</h4>
-        <input 
-          type="range" 
-          min="0" 
-          max="100" 
-          value={opacity} 
-          onChange={(e) => setOpacity(Number(e.target.value))} 
+        <input
+          type="range"
+          min="0"
+          max="100"
+          value={opacity}
+          onChange={(e) => setOpacity(Number(e.target.value))}
           className="w-full accent-purple-600"
         />
       </div>
-      
+
       <div className="flex items-center justify-between bg-slate-50 p-3 rounded-lg">
         <span className="text-sm font-medium">טקסט מודגש</span>
         <Switch checked={isBold} onCheckedChange={setIsBold} />
       </div>
-      
+
       <div className="bg-gradient-to-br from-blue-50 to-purple-50 p-4 rounded-lg border-2 border-blue-200">
         <div className="text-xs text-slate-600 mb-2 font-semibold">תצוגה מקדימה:</div>
-        <div 
+        <div
           className="p-3 rounded text-center font-medium"
-          style={{ 
-            backgroundColor: color, 
+          style={{
+            backgroundColor: color,
             color: textColor,
             opacity: opacity / 100,
             fontWeight: isBold ? 'bold' : 'normal'
@@ -1739,9 +1780,9 @@ function ColorPicker({ onApply, currentStyle = {} }) {
           דוגמת טקסט
         </div>
       </div>
-      
-      <Button 
-        onClick={handleApply} 
+
+      <Button
+        onClick={handleApply}
         className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
       >
         <Palette className="w-4 h-4 ml-2" />
