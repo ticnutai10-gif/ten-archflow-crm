@@ -3,13 +3,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Table, Copy, Settings, Palette, Eye, EyeOff, Edit2, X, Download, Grid, Search, Filter, ArrowUp, ArrowDown, ArrowUpDown, XCircle, Undo, Redo, GripVertical, BarChart3, Calculator, Layers, Bookmark, Users, Zap } from "lucide-react";
+import { Plus, Trash2, Table, Copy, Settings, Palette, Eye, EyeOff, Edit2, X, Download, Grid, Search, Filter, ArrowUp, ArrowDown, ArrowUpDown, XCircle, Undo, Redo, GripVertical, BarChart3, Calculator, Layers, Bookmark, Users, Zap, MessageSquare, Bold } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
@@ -28,6 +29,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const [editValue, setEditValue] = useState("");
   const [selectedCells, setSelectedCells] = useState(new Set());
   const [cellStyles, setCellStyles] = useState({});
+  const [cellNotes, setCellNotes] = useState({});
   const [popoverOpen, setPopoverOpen] = useState(null);
   const [editingColumnKey, setEditingColumnKey] = useState(null);
   const [editingColumnTitle, setEditingColumnTitle] = useState("");
@@ -65,6 +67,9 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const [editingChart, setEditingChart] = useState(null);
   const [showColumnsManager, setShowColumnsManager] = useState(false);
   const [showBulkColumnsDialog, setShowBulkColumnsDialog] = useState(false);
+  const [cellContextMenu, setCellContextMenu] = useState(null);
+  const [noteDialogCell, setNoteDialogCell] = useState(null);
+  const [noteText, setNoteText] = useState("");
 
   const editInputRef = useRef(null);
   const columnEditRef = useRef(null);
@@ -74,6 +79,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const columnsRef = useRef(columns);
   const rowsDataRef = useRef(rowsData);
   const cellStylesRef = useRef(cellStyles);
+  const cellNotesRef = useRef(cellNotes);
   const rowHeightsRef = useRef(rowHeights);
   const validationRulesRef = useRef(validationRules);
   const conditionalFormatsRef = useRef(conditionalFormats);
@@ -88,6 +94,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   useEffect(() => { columnsRef.current = columns; }, [columns]);
   useEffect(() => { rowsDataRef.current = rowsData; }, [rowsData]);
   useEffect(() => { cellStylesRef.current = cellStyles; }, [cellStyles]);
+  useEffect(() => { cellNotesRef.current = cellNotes; }, [cellNotes]);
   useEffect(() => { rowHeightsRef.current = rowHeights; }, [rowHeights]);
   useEffect(() => { validationRulesRef.current = validationRules; }, [validationRules]);
   useEffect(() => { conditionalFormatsRef.current = conditionalFormats; }, [conditionalFormats]);
@@ -121,10 +128,12 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       const initialColumns = spreadsheet.columns || [];
       const initialRows = spreadsheet.rows_data || [];
       const initialStyles = spreadsheet.cell_styles || {};
+      const initialNotes = spreadsheet.cell_notes || {};
 
       setColumns(initialColumns);
       setRowsData(initialRows);
       setCellStyles(initialStyles);
+      setCellNotes(initialNotes);
       setRowHeights(spreadsheet.row_heights || {});
       setValidationRules(spreadsheet.validation_rules || []);
       setConditionalFormats(spreadsheet.conditional_formats || []);
@@ -151,16 +160,16 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       setActiveViewId(spreadsheet.active_view_id || null);
       setCharts(spreadsheet.charts || []);
 
-      setHistory([{ columns: initialColumns, rows: initialRows, styles: initialStyles }]);
+      setHistory([{ columns: initialColumns, rows: initialRows, styles: initialStyles, notes: initialNotes }]);
       setHistoryIndex(0);
     }
   }, [spreadsheet]);
 
-  const saveToHistory = useCallback((cols, rows, styles) => {
+  const saveToHistory = useCallback((cols, rows, styles, notes) => {
     if (isUndoRedoAction) return;
     setHistory(prev => {
       const newHistory = prev.slice(0, historyIndex + 1);
-      newHistory.push({ columns: cols, rows: rows, styles: styles });
+      newHistory.push({ columns: cols, rows: rows, styles: styles, notes: notes });
       if (newHistory.length > 50) newHistory.shift();
       return newHistory;
     });
@@ -179,6 +188,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         columns: columnsRef.current,
         rows_data: rowsDataRef.current,
         cell_styles: cellStylesRef.current,
+        cell_notes: cellNotesRef.current,
         row_heights: rowHeightsRef.current,
         validation_rules: validationRulesRef.current,
         conditional_formats: conditionalFormatsRef.current,
@@ -195,6 +205,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         columns: dataToSave.columns.length,
         rows: dataToSave.rows_data.length,
         cellStyles: Object.keys(dataToSave.cell_styles).length,
+        cellNotes: Object.keys(dataToSave.cell_notes).length,
         theme: dataToSave.theme_settings?.palette
       });
 
@@ -218,6 +229,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     setColumns(prevState.columns);
     setRowsData(prevState.rows);
     setCellStyles(prevState.styles);
+    setCellNotes(prevState.notes || {});
     setHistoryIndex(prev => prev - 1);
     setTimeout(() => {
       saveToBackend();
@@ -233,6 +245,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     setColumns(nextState.columns);
     setRowsData(nextState.rows);
     setCellStyles(nextState.styles);
+    setCellNotes(nextState.notes || {});
     setHistoryIndex(prev => prev + 1);
     setTimeout(() => {
       saveToBackend();
@@ -279,7 +292,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
 
         setRowsData(updatedRows);
         setTimeout(() => {
-          saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current);
+          saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current, cellNotesRef.current);
           saveToBackend();
         }, 50);
         toast.success(`✓ הודבקו ${Math.min(copiedCells.length, selectedCells.size)} תאים`);
@@ -303,7 +316,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
 
         setRowsData(updatedRows);
         setTimeout(() => {
-          saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current);
+          saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current, cellNotesRef.current);
           saveToBackend();
         }, 50);
         toast.success(`✓ נמחקו ${selectedCells.size} תאים`);
@@ -321,7 +334,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       reorderedColumns.splice(result.destination.index, 0, movedColumn);
       setColumns(reorderedColumns);
       setTimeout(() => {
-        saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current);
+        saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current, cellNotesRef.current);
         saveToBackend();
       }, 50);
       toast.success('✓ סדר העמודות עודכן');
@@ -389,7 +402,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     const updated = [...rowsData, newRow];
     setRowsData(updated);
     setTimeout(() => {
-      saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current);
+      saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current, cellNotesRef.current);
       saveToBackend();
     }, 50);
     toast.success('✓ שורה נוספה');
@@ -422,7 +435,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     const updated = [...rowsData, newRow];
     setRowsData(updated);
     setTimeout(() => {
-      saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current);
+      saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current, cellNotesRef.current);
       saveToBackend();
     }, 50);
 
@@ -444,10 +457,13 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     const updated = rowsData.filter(r => r.id !== rowId);
     setRowsData(updated);
     const newStyles = { ...cellStyles };
+    const newNotes = { ...cellNotes };
     Object.keys(newStyles).forEach(key => { if (key.startsWith(`${rowId}_`)) delete newStyles[key]; });
+    Object.keys(newNotes).forEach(key => { if (key.startsWith(`${rowId}_`)) delete newNotes[key]; });
     setCellStyles(newStyles);
+    setCellNotes(newNotes);
     setTimeout(() => {
-      saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current);
+      saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current, cellNotesRef.current);
       saveToBackend();
     }, 50);
     toast.success('✓ שורה נמחקה');
@@ -459,7 +475,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     const updated = [...rowsData, newRow];
     setRowsData(updated);
     setTimeout(() => {
-      saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current);
+      saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current, cellNotesRef.current);
       saveToBackend();
     }, 50);
     toast.success('✓ שורה הועתקה');
@@ -472,7 +488,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     const updated = [...columns, newColumn];
     setColumns(updated);
     setTimeout(() => {
-      saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current);
+      saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current, cellNotesRef.current);
       saveToBackend();
     }, 50);
     toast.success('✓ עמודה נוספה');
@@ -483,7 +499,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     const updated = [...columns, ...newColumns];
     setColumns(updated);
     setTimeout(() => {
-      saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current);
+      saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current, cellNotesRef.current);
       saveToBackend();
     }, 50);
     toast.success(`✓ נוספו ${newColumns.length} עמודות`);
@@ -496,10 +512,13 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     const updatedRows = rowsData.map(row => { const { [columnKey]: removed, ...rest } = row; return rest; });
     setRowsData(updatedRows);
     const newStyles = { ...cellStyles };
+    const newNotes = { ...cellNotes };
     Object.keys(newStyles).forEach(key => { if (key.endsWith(`_${columnKey}`)) delete newStyles[key]; });
+    Object.keys(newNotes).forEach(key => { if (key.endsWith(`_${columnKey}`)) delete newNotes[key]; });
     setCellStyles(newStyles);
+    setCellNotes(newNotes);
     setTimeout(() => {
-      saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current);
+      saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current, cellNotesRef.current);
       saveToBackend();
     }, 50);
     toast.success('✓ עמודה נמחקה');
@@ -517,7 +536,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     const updated = columns.map(col => col.key === columnKey ? { ...col, title: newTitle.trim() } : col);
     setColumns(updated);
     setTimeout(() => {
-      saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current);
+      saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current, cellNotesRef.current);
       saveToBackend();
     }, 50);
     toast.success('✓ שם עמודה עודכן');
@@ -616,7 +635,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     
     setTimeout(() => {
       console.log('💾 [STYLE] Saving after state update...');
-      saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current);
+      saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current, cellNotesRef.current);
       saveToBackend();
     }, 100);
     
@@ -753,7 +772,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     const updatedRows = rowsData.map(r => r.id === rowId ? { ...r, [columnKey]: nextValue } : r);
     setRowsData(updatedRows);
     setTimeout(() => {
-      saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current);
+      saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current, cellNotesRef.current);
       saveToBackend();
     }, 50);
   };
@@ -782,7 +801,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     setShowClientPicker(null);
     setClientSearchQuery("");
     setTimeout(() => {
-      saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current);
+      saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current, cellNotesRef.current);
       saveToBackend();
     }, 50);
 
@@ -831,6 +850,72 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     setEditingCell(`${rowId}_${columnKey}`);
     setEditValue(String(currentValue));
     setTimeout(() => editInputRef.current?.focus(), 0);
+  };
+
+  // ✅ טיפול בלחיצה כפולה על תא
+  const handleCellDoubleClick = (rowId, columnKey, event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const cellKey = `${rowId}_${columnKey}`;
+    setCellContextMenu(cellKey);
+  };
+
+  // ✅ פתיחת דיאלוג הערה
+  const handleOpenNoteDialog = (cellKey) => {
+    setNoteDialogCell(cellKey);
+    setNoteText(cellNotes[cellKey] || '');
+    setCellContextMenu(null);
+  };
+
+  // ✅ שמירת הערה
+  const handleSaveNote = () => {
+    if (!noteDialogCell) return;
+    
+    const newNotes = { ...cellNotes };
+    if (noteText.trim()) {
+      newNotes[noteDialogCell] = noteText.trim();
+    } else {
+      delete newNotes[noteDialogCell];
+    }
+    
+    setCellNotes(newNotes);
+    setNoteDialogCell(null);
+    setNoteText("");
+    
+    setTimeout(() => {
+      saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current, cellNotesRef.current);
+      saveToBackend();
+    }, 50);
+    
+    toast.success('✓ הערה נשמרה');
+  };
+
+  // ✅ צביעת תא בודד
+  const handleColorSingleCell = (cellKey) => {
+    setSelectedCells(new Set([cellKey]));
+    setCellContextMenu(null);
+  };
+
+  // ✅ הדגשת תא בודד
+  const handleBoldSingleCell = (cellKey) => {
+    const currentStyle = cellStyles[cellKey] || {};
+    const newStyles = { 
+      ...cellStyles, 
+      [cellKey]: { 
+        ...currentStyle, 
+        fontWeight: currentStyle.fontWeight === 'bold' ? 'normal' : 'bold' 
+      } 
+    };
+    
+    setCellStyles(newStyles);
+    setCellContextMenu(null);
+    
+    setTimeout(() => {
+      saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current, cellNotesRef.current);
+      saveToBackend();
+    }, 50);
+    
+    toast.success('✓ הדגשה הוחלה');
   };
 
   const handleColumnHeaderClick = (columnKey, event) => {
@@ -917,7 +1002,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     setEditValue("");
     
     setTimeout(() => {
-      saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current);
+      saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current, cellNotesRef.current);
       saveToBackend();
     }, 50);
     
@@ -1090,6 +1175,12 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                   {Object.keys(cellStyles).length} עיצובים
                 </Badge>
               )}
+              {Object.keys(cellNotes).length > 0 && (
+                <Badge className="bg-amber-100 text-amber-800">
+                  <MessageSquare className="w-3 h-3 ml-1" />
+                  {Object.keys(cellNotes).length} הערות
+                </Badge>
+              )}
               {hasActiveFilters && <Badge className="bg-blue-600 text-white"><Filter className="w-3 h-3 ml-1" />פעיל</Badge>}
               {activeViewId && savedViews.find(v => v.id === activeViewId) && (
                 <Badge className="bg-indigo-100 text-indigo-800 border-indigo-300">
@@ -1254,10 +1345,10 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                   ) : (
                                     <div className="flex items-center justify-between">
                                       <div className="flex items-center gap-2">
-                                        <div {...provided.dragHandleProps} className="cursor-grab p-1 hover:bg-blue-100 rounded"><GripVertical className="w-4 h-4 text-slate-400" /></div>
+                                        <div {...provided.dragHandleProps} className="opacity-0 group-hover:opacity-100 cursor-grab p-1 hover:bg-blue-100 rounded transition-opacity"><GripVertical className="w-4 h-4 text-slate-400" /></div>
                                         <span>{col.title}</span>
                                       </div>
-                                      <div className="flex items-center gap-1">
+                                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); handleSort(col.key); }}>{isSorted ? (sortDirection === 'asc' ? <ArrowUp className="w-4 h-4 text-blue-600" /> : <ArrowDown className="w-4 h-4 text-blue-600" />) : <ArrowUpDown className="w-4 h-4 text-slate-400" />}</Button>
                                         <Popover open={popoverOpen === `header_${col.key}`} onOpenChange={(open) => !open && setPopoverOpen(null)}>
                                           <PopoverTrigger asChild>
@@ -1314,26 +1405,38 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                     const cellStyle = cellStyles[cellKey] || {};
                                     const conditionalStyle = getConditionalStyle(column.key, cellValue);
                                     const finalStyle = { ...conditionalStyle, ...cellStyle };
+                                    const hasNote = cellNotes[cellKey];
 
                                     return (
-                                      <td key={column.key} className={`cursor-pointer ${isSelected ? 'ring-2 ring-purple-500' : ''} ${isClientPicker ? 'ring-2 ring-blue-500' : ''}`} style={{
-                                        backgroundColor: isSelected ? palette.selected : (finalStyle.backgroundColor || (rowIndex % 2 === 0 ? palette.cellBg : palette.cellAltBg)),
-                                        color: finalStyle.color || palette.cellText,
-                                        opacity: finalStyle.opacity ? finalStyle.opacity / 100 : 1,
-                                        fontWeight: finalStyle.fontWeight || 'normal',
-                                        fontFamily: cellFont.value,
-                                        fontSize: cellFontSize,
-                                        padding: cellPadding,
-                                        height: `${rowHeight}px`,
-                                        position: colIndex === 0 ? 'sticky' : 'relative',
-                                        right: colIndex === 0 ? '48px' : 'auto',
-                                        zIndex: colIndex === 0 ? 10 : 1,
-                                        boxShadow: colIndex === 0 ? '2px 0 5px rgba(0,0,0,0.05)' : 'none',
-                                        borderWidth: isSeparateBorders ? '0' : borderStyle.width,
-                                        borderStyle: borderStyle.style,
-                                        borderColor: palette.border,
-                                        borderRadius: isSeparateBorders ? tableBorderRadius : '0'
-                                      }} onClick={(e) => !isEditing && (column.type === 'checkmark' ? handleCheckmarkClick(row.id, column.key, e) : handleCellClick(row.id, column.key, e))} onMouseDown={(e) => !isEditing && handleCellMouseDown(row.id, column.key, e)} onMouseEnter={() => handleCellMouseEnter(row.id, column.key)}>
+                                      <td 
+                                        key={column.key} 
+                                        className={`cursor-pointer relative ${isSelected ? 'ring-2 ring-purple-500' : ''} ${isClientPicker ? 'ring-2 ring-blue-500' : ''}`} 
+                                        style={{
+                                          backgroundColor: isSelected ? palette.selected : (finalStyle.backgroundColor || (rowIndex % 2 === 0 ? palette.cellBg : palette.cellAltBg)),
+                                          color: finalStyle.color || palette.cellText,
+                                          opacity: finalStyle.opacity ? finalStyle.opacity / 100 : 1,
+                                          fontWeight: finalStyle.fontWeight || 'normal',
+                                          fontFamily: cellFont.value,
+                                          fontSize: cellFontSize,
+                                          padding: cellPadding,
+                                          height: `${rowHeight}px`,
+                                          position: colIndex === 0 ? 'sticky' : 'relative',
+                                          right: colIndex === 0 ? '48px' : 'auto',
+                                          zIndex: colIndex === 0 ? 10 : 1,
+                                          boxShadow: colIndex === 0 ? '2px 0 5px rgba(0,0,0,0.05)' : 'none',
+                                          borderWidth: isSeparateBorders ? '0' : borderStyle.width,
+                                          borderStyle: borderStyle.style,
+                                          borderColor: palette.border,
+                                          borderRadius: isSeparateBorders ? tableBorderRadius : '0'
+                                        }} 
+                                        onClick={(e) => !isEditing && (column.type === 'checkmark' ? handleCheckmarkClick(row.id, column.key, e) : handleCellClick(row.id, column.key, e))} 
+                                        onDoubleClick={(e) => handleCellDoubleClick(row.id, column.key, e)}
+                                        onMouseDown={(e) => !isEditing && handleCellMouseDown(row.id, column.key, e)} 
+                                        onMouseEnter={() => handleCellMouseEnter(row.id, column.key)}
+                                      >
+                                        {hasNote && (
+                                          <div className="absolute top-0 right-0 w-0 h-0 border-t-8 border-r-8 border-t-amber-500 border-r-transparent" title={cellNotes[cellKey]} />
+                                        )}
                                         {column.type === 'checkmark' ? (
                                           <div className="flex items-center justify-center text-2xl font-bold select-none">
                                             {cellValue === '✓' ? <span className="text-green-600">✓</span> : cellValue === '✗' ? <span className="text-red-600">✗</span> : <span className="text-slate-300">○</span>}
@@ -1404,10 +1507,92 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
             <span>{visibleColumns.length} עמודות</span>
           </div>
           <div className="text-slate-400 text-[10px] bg-slate-100 px-2 py-1 rounded">
-            💡 לחץ על תא לעריכה • Alt+Click לבחירה • Shift+גרירה לבחירת טווח
+            💡 לחיצה כפולה על תא לאפשרויות • Alt+Click לבחירה • Shift+גרירה לבחירת טווח
           </div>
         </div>
       </Card>
+
+      {/* ✅ תפריט קונטקסט לתא */}
+      {cellContextMenu && (
+        <div 
+          className="fixed z-50 bg-white border-2 border-slate-300 rounded-lg shadow-2xl p-2"
+          style={{
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)'
+          }}
+        >
+          <div className="space-y-1 min-w-[200px]">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="w-full justify-start gap-2"
+              onClick={() => handleOpenNoteDialog(cellContextMenu)}
+            >
+              <MessageSquare className="w-4 h-4" />
+              {cellNotes[cellContextMenu] ? 'ערוך הערה' : 'הוסף הערה'}
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="w-full justify-start gap-2"
+              onClick={() => handleColorSingleCell(cellContextMenu)}
+            >
+              <Palette className="w-4 h-4" />
+              צבע תא
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="w-full justify-start gap-2"
+              onClick={() => handleBoldSingleCell(cellContextMenu)}
+            >
+              <Bold className="w-4 h-4" />
+              הדגש
+            </Button>
+            <Separator />
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="w-full justify-start gap-2 text-slate-500"
+              onClick={() => setCellContextMenu(null)}
+            >
+              <X className="w-4 h-4" />
+              ביטול
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* ✅ דיאלוג הערה */}
+      <Dialog open={!!noteDialogCell} onOpenChange={(open) => !open && setNoteDialogCell(null)}>
+        <DialogContent className="sm:max-w-md" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageSquare className="w-5 h-5 text-amber-600" />
+              {cellNotes[noteDialogCell] ? 'ערוך הערה' : 'הוסף הערה'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <Textarea
+              value={noteText}
+              onChange={(e) => setNoteText(e.target.value)}
+              placeholder="הקלד הערה..."
+              className="min-h-[100px]"
+              autoFocus
+              dir="rtl"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNoteDialogCell(null)}>
+              ביטול
+            </Button>
+            <Button onClick={handleSaveNote}>
+              שמור
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <ThemeSelector 
         open={showThemeSelector} 
@@ -1503,7 +1688,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         onSave={(updatedColumns) => {
           setColumns(updatedColumns);
           setTimeout(() => {
-            saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current);
+            saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current, cellNotesRef.current);
             saveToBackend();
           }, 50);
           setShowColumnsManager(false);
