@@ -892,6 +892,13 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     setCellContextMenu(null);
   };
 
+  // ✅ לחיצה על המשולש פותחת את דיאלוג ההערה
+  const handleNoteTriangleClick = (cellKey, event) => {
+    event.stopPropagation();
+    event.preventDefault();
+    handleOpenNoteDialog(cellKey);
+  };
+
   // ✅ שמירת הערה
   const handleSaveNote = () => {
     if (!noteDialogCell) return;
@@ -917,10 +924,12 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
 
   // ✅ צביעת תא בודד - פותח ColorPicker
   const handleColorSingleCell = (cellKey) => {
-    setColorPickerTargetCell(cellKey);
-    setSelectedCells(new Set([cellKey])); // Temporarily select the cell for the color picker
-    setShowColorPickerDialog(true);
-    setCellContextMenu(null);
+    setCellContextMenu(null); // Close the context menu immediately
+    setTimeout(() => { // Open color picker after context menu is surely closed
+      setColorPickerTargetCell(cellKey);
+      setSelectedCells(new Set([cellKey])); // Temporarily select the cell for the color picker
+      setShowColorPickerDialog(true);
+    }, 100);
   };
 
   // ✅ הדגשת תא בודד
@@ -1461,19 +1470,21 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                         onMouseDown={(e) => !isEditing && handleCellMouseDown(row.id, column.key, e)} 
                                         onMouseEnter={() => handleCellMouseEnter(row.id, column.key)}
                                       >
+                                        {/* ✅ משולש הערה עם לחיצה */}
                                         {hasNote && (
                                           <div 
-                                            className="absolute top-0 right-0 w-0 h-0 z-10 pointer-events-none" 
+                                            className="absolute top-0 right-0 w-0 h-0 z-10 cursor-pointer hover:opacity-80 transition-opacity" 
                                             style={{
-                                              borderTop: '12px solid #f59e0b',
-                                              borderLeft: '12px solid transparent'
+                                              borderTop: '14px solid #f59e0b',
+                                              borderLeft: '14px solid transparent'
                                             }}
-                                            title={cellNotes[cellKey]} 
+                                            title={cellNotes[cellKey]}
+                                            onClick={(e) => handleNoteTriangleClick(cellKey, e)}
                                           />
                                         )}
                                         {column.type === 'checkmark' ? (
                                           <div className="flex items-center justify-center text-2xl font-bold select-none">
-                                            {cellValue === '✓' ? <span className="text-green-600">✓</span> : cellValue === '✗' ? <span className="text-red-600">✗</span> : <span className="text-slate-300">○</span>}
+                                            {cellValue === '✓' ? <span className="text-green-600">✓</span> : cellValue === '✗' ? <span className="text-red-600">✗') : <span className="text-slate-300">○</span>}
                                           </div>
                                         ) : column.type === 'client' ? (
                                           <div className="relative">
@@ -1541,7 +1552,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
             <span>{visibleColumns.length} עמודות</span>
           </div>
           <div className="text-slate-400 text-[10px] bg-slate-100 px-2 py-1 rounded">
-            💡 לחיצה כפולה על תא לאפשרויות • Alt+Click לבחירה • Shift+גרירה לבחירת טווח
+            💡 לחיצה כפולה על תא לאפשרויות • לחיצה על משולש כתום לעריכת הערה • Alt+Click לבחירה • Shift+גרירה לבחירת טווח
           </div>
         </div>
       </Card>
