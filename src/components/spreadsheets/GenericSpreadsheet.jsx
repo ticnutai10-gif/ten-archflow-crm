@@ -70,7 +70,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const [showAddFromClientDialog, setShowAddFromClientDialog] = useState(false);
   const [showChartBuilder, setShowChartBuilder] = useState(false);
   const [charts, setCharts] = useState([]);
-  const [editingChart, setEditingChart] = useState(null);
+  const [editingChart, setEditingChart] = null);
   const [showColumnsManager, setShowColumnsManager] = useState(false);
   const [showBulkColumnsDialog, setShowBulkColumnsDialog] = useState(false);
   const [cellContextMenu, setCellContextMenu] = useState(null);
@@ -1524,18 +1524,17 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                     {(Object.keys(subHeaders).length > 0 || Object.keys(mergedHeaders).length > 0) && (
                       <div className="space-y-1 max-h-48 overflow-y-auto">
                         {visibleColumns.map(col => {
-                          const mergedHeader = getHeaderMergeInfo(col.key);
+                          const headerMerge = getHeaderMergeInfo(col.key);
                           const subHeader = subHeaders[col.key];
 
-                          if (mergedHeader && !mergedHeader.isMaster) {
+                          if (headerMerge && !headerMerge.isMaster) {
                             return null;
                           }
                           
-                          const headerKeyForStyle = mergedHeader ? mergedHeader.mergeKey : col.key;
-                          const currentHeaderStyle = headerStyles[headerKeyForStyle] || {};
+                          const headerKeyForStyle = headerMerge ? headerMerge.mergeKey : col.key;
 
-                          if (!mergedHeader && !subHeader) {
-                            return null; // Don't show empty entries if no merged header or subheader exists
+                          if (!headerMerge && !subHeader) {
+                            return null;
                           }
                           
                           return (
@@ -1550,7 +1549,15 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                   <Palette className="w-3 h-3 text-purple-600" />
                                 </Button>
                                 {mergedHeader ? (
-                                  <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => unmergeHeaders(col.key)}>
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-6 w-6"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      unmergeHeaders(col.key);
+                                    }}
+                                  >
                                     <Scissors className="w-3 h-3 text-orange-600" />
                                   </Button>
                                 ) : (
@@ -1694,7 +1701,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
               }}>
                 <Droppable droppableId="columns" direction="horizontal" type="column">
                   {(provided) => (
-                    <thead style={{ position: 'sticky', top: 0, zIndex: 25 }} ref={provided.innerRef} {...provided.droppableProps}>
+                    <thead style={{ position: 'sticky', top: 0, zIndex: 25, backgroundColor: palette.headerBg }} ref={provided.innerRef} {...provided.droppableProps}>
                       {showSubHeaders && (Object.keys(mergedHeaders).length > 0 || Object.keys(subHeaders).length > 0) && (
                         <tr>
                           <th className="p-3 w-12 sticky right-0 shadow-[2px_0_5px_rgba(0,0,0,0.1)]" style={{ zIndex: 35, backgroundColor: palette.headerBg, borderWidth: isSeparateBorders ? '0' : borderStyle.width, borderStyle: borderStyle.style, borderColor: palette.border }}></th>
