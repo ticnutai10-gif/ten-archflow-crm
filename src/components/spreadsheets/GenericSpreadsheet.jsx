@@ -107,7 +107,10 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   useEffect(() => { freezeSettingsRef.current = freezeSettings; }, [freezeSettings]);
   useEffect(() => { customCellTypesRef.current = customCellTypes; }, [customCellTypes]);
   useEffect(() => { mergedCellsRef.current = mergedCells; }, [mergedCells]);
-  useEffect(() => { themeSettingsRef.current = themeSettings; }, [themeSettings]);
+  useEffect(() => { 
+    console.log('🎨 [DEBUG] themeSettings state changed:', themeSettings);
+    themeSettingsRef.current = themeSettings; 
+  }, [themeSettings]);
   useEffect(() => { savedViewsRef.current = savedViews; }, [savedViews]);
   useEffect(() => { activeViewIdRef.current = activeViewId; }, [activeViewId]);
   useEffect(() => { chartsRef.current = charts; }, [charts]);
@@ -131,6 +134,15 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
 
   useEffect(() => {
     if (spreadsheet) {
+      console.log('📥 [DEBUG] Loading spreadsheet data:', {
+        id: spreadsheet.id,
+        name: spreadsheet.name,
+        hasStyles: !!spreadsheet.cell_styles,
+        stylesCount: Object.keys(spreadsheet.cell_styles || {}).length,
+        hasTheme: !!spreadsheet.theme_settings,
+        theme: spreadsheet.theme_settings
+      });
+
       const initialColumns = spreadsheet.columns || [];
       const initialRows = spreadsheet.rows_data || [];
       const initialStyles = spreadsheet.cell_styles || {};
@@ -159,6 +171,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         customColors: null
       };
 
+      console.log('🎨 [DEBUG] Setting initial theme:', loadedTheme);
       setThemeSettings(loadedTheme);
       setSavedViews(spreadsheet.saved_views || []);
       setActiveViewId(spreadsheet.active_view_id || null);
@@ -166,6 +179,8 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
 
       setHistory([{ columns: initialColumns, rows: initialRows, styles: initialStyles }]);
       setHistoryIndex(0);
+
+      console.log('✅ [DEBUG] Spreadsheet loaded successfully');
     }
   }, [spreadsheet]);
 
@@ -182,15 +197,24 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
 
   // ✅ תיקון קריטי - שימוש ב-refs כדי לקבל תמיד את הערכים המעודכנים ביותר
   const saveToBackend = useCallback(async (cols, rows, styles) => {
-    if (!spreadsheet?.id) return;
+    if (!spreadsheet?.id) {
+      console.warn('⚠️ [DEBUG SAVE] No spreadsheet ID - skipping save');
+      return;
+    }
+    
     try {
-      console.log('💾 [SAVE] Saving to backend...', {
+      console.log('💾 [DEBUG SAVE] Starting save to backend...', {
         spreadsheetId: spreadsheet.id,
+        columnsCount: cols.length,
+        rowsCount: rows.length,
         cellStylesCount: Object.keys(styles).length,
-        themeSettings: themeSettingsRef.current
+        cellStylesSample: Object.keys(styles).slice(0, 3),
+        rowHeights: rowHeightsRef.current,
+        themeSettings: themeSettingsRef.current,
+        timestamp: new Date().toISOString()
       });
 
-      await base44.entities.CustomSpreadsheet.update(spreadsheet.id, {
+      const dataToSave = {
         columns: cols,
         rows_data: rows,
         cell_styles: styles,
@@ -204,13 +228,33 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         saved_views: savedViewsRef.current,
         active_view_id: activeViewIdRef.current,
         charts: chartsRef.current
+      };
+
+      console.log('📤 [DEBUG SAVE] Data being sent:', {
+        hasStyles: !!dataToSave.cell_styles,
+        stylesKeys: Object.keys(dataToSave.cell_styles || {}),
+        hasTheme: !!dataToSave.theme_settings,
+        themeDetails: dataToSave.theme_settings
       });
 
-      console.log('✅ [SAVE] Successfully saved to backend');
+      const response = await base44.entities.CustomSpreadsheet.update(spreadsheet.id, dataToSave);
 
-      if (onUpdate) await onUpdate();
+      console.log('✅ [DEBUG SAVE] Save successful! Response:', response);
+      console.log('✅ [DEBUG SAVE] Styles saved:', Object.keys(styles).length, 'items');
+
+      if (onUpdate) {
+        console.log('🔄 [DEBUG SAVE] Calling onUpdate callback...');
+        await onUpdate();
+        console.log('✅ [DEBUG SAVE] onUpdate completed');
+      }
     } catch (error) {
-      console.error('❌ [SAVE] Save error:', error);
+      console.error('❌ [DEBUG SAVE] Save failed!', {
+        error,
+        message: error.message,
+        status: error.status,
+        response: error.response,
+        stack: error.stack
+      });
       toast.error('שגיאה בשמירה: ' + (error.message || 'לא ידוע'));
     }
   }, [spreadsheet?.id, onUpdate]);
@@ -353,7 +397,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         const bVal = b[sortColumn] || '';
         const aNum = Number(aVal);
         const bNum = Number(bVal);
-        if (!isNaN(aNum) && !isNaN(bNum)) return sortDirection === 'asc' ? aNum - bNum : bNum - aNum;
+        if (!isNaN(aNum) && !isNaN(bNum)) return sortDirection === 'asc' ? aNum - bNum : bNnum - aNum;
         const comparison = String(aVal).localeCompare(String(bVal), 'he');
         return sortDirection === 'asc' ? comparison : -comparison;
       });
@@ -564,7 +608,12 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   }, [resizingColumn, resizingRow, columns, rowHeights, rowsData, cellStyles, saveToBackend]);
 
   const applyCellStyle = (cellKey, style) => {
+    console.log('🎨 [DEBUG STYLE] Applying style to cell:', { cellKey, style });
     const newStyles = { ...cellStyles, [cellKey]: style };
+    console.log('🎨 [DEBUG STYLE] New styles object:', { 
+      totalStyles: Object.keys(newStyles).length,
+      newStyleKeys: Object.keys(newStyles)
+    });
     setCellStyles(newStyles);
     saveToHistory(columns, rowsData, newStyles);
     saveToBackend(columns, rowsData, newStyles);
@@ -572,8 +621,17 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   };
 
   const applyStyleToSelection = (style) => {
+    console.log('🎨 [DEBUG STYLE] Applying style to selection:', { 
+      selectedCount: selectedCells.size, 
+      style,
+      selectedCells: Array.from(selectedCells)
+    });
     const newStyles = { ...cellStyles };
-    selectedCells.forEach(cellKey => { newStyles[cellKey] = style; });
+    selectedCells.forEach(cellKey => { 
+      newStyles[cellKey] = style;
+      console.log('🎨 [DEBUG STYLE] Applied to cell:', cellKey, style);
+    });
+    console.log('🎨 [DEBUG STYLE] Total styles after apply:', Object.keys(newStyles).length);
     setCellStyles(newStyles);
     saveToHistory(columns, rowsData, newStyles);
     saveToBackend(columns, rowsData, newStyles);
@@ -987,6 +1045,20 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
 
   return (
     <div className="w-full space-y-6" dir="rtl">
+      {/* Debug Panel */}
+      <div className="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-4 text-xs space-y-2">
+        <div className="font-bold text-yellow-900 mb-2">🐛 פאנל דיבאג - שמירת נתונים</div>
+        <div className="grid grid-cols-2 gap-2">
+          <div><strong>Spreadsheet ID:</strong> {spreadsheet?.id || 'N/A'}</div>
+          <div><strong>Cell Styles:</strong> {Object.keys(cellStyles).length} תאים</div>
+          <div><strong>Theme Settings:</strong> {themeSettings ? '✅ קיים' : '❌ חסר'}</div>
+          <div><strong>Row Heights:</strong> {Object.keys(rowHeights).length} שורות</div>
+        </div>
+        <div className="text-yellow-700 mt-2">
+          💡 פתח Console (F12) וחפש הודעות [DEBUG SAVE] אחרי שינוי צבע/עיצוב
+        </div>
+      </div>
+
       {charts.length > 0 && (
         <div className="space-y-4">
           <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
@@ -1325,7 +1397,20 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         </div>
       </Card>
 
-      <ThemeSelector open={showThemeSelector} onClose={() => setShowThemeSelector(false)} currentTheme={currentTheme} onApply={(newTheme) => { setThemeSettings(newTheme); saveToBackend(columns, rowsData, cellStyles); }} />
+      <ThemeSelector 
+        open={showThemeSelector} 
+        onClose={() => setShowThemeSelector(false)} 
+        currentTheme={currentTheme} 
+        onApply={(newTheme) => { 
+          console.log('🎨 [DEBUG THEME] ThemeSelector onApply called with:', newTheme);
+          setThemeSettings(newTheme); 
+          // המתן לעדכון state ואז שמור
+          setTimeout(() => {
+            console.log('🎨 [DEBUG THEME] Calling saveToBackend after theme change...');
+            saveToBackend(columns, rowsData, cellStyles);
+          }, 100);
+        }} 
+      />
 
       <ViewManager open={showViewManager} onClose={() => setShowViewManager(false)} savedViews={savedViews} activeViewId={activeViewId} currentColumns={columns} onSaveView={(view) => { setSavedViews([...savedViews, view]); saveToBackend(columns, rowsData, cellStyles); }} onLoadView={(view) => { setColumns(view.columns); saveToBackend(view.columns, rowsData, cellStyles); }} onDeleteView={(viewId) => { setSavedViews(savedViews.filter(v => v.id !== viewId)); saveToBackend(columns, rowsData, cellStyles); }} onSetDefault={(viewId) => { setSavedViews(savedViews.map(v => ({ ...v, isDefault: v.id === viewId }))); saveToBackend(columns, rowsData, cellStyles); }} />
 
@@ -1410,19 +1495,19 @@ function ColorPicker({ onApply, currentStyle = {} }) {
   const [isBold, setIsBold] = useState(currentStyle.fontWeight === 'bold');
   const [textColor, setTextColor] = useState(currentStyle.color || '#000000');
   const [textHexInput, setTextHexInput] = useState(currentStyle.color || '#000000');
-
+  
   const colors = ['#ffffff', '#fee2e2', '#fef3c7', '#d1fae5', '#dbeafe', '#ede9fe', '#fce7f3', '#f3f4f6', '#FCF6E3', '#e0f2f7', '#fff5f0', '#e8f5e9'];
-
+  
   // ✅ סנכרון צבע רקע
   useEffect(() => {
     setHexInput(color);
   }, [color]);
-
+  
   // ✅ סנכרון צבע טקסט
   useEffect(() => {
     setTextHexInput(textColor);
   }, [textColor]);
-
+  
   const handleHexChange = (value) => {
     setHexInput(value);
     // בדיקה אם זה hex תקין
@@ -1430,7 +1515,7 @@ function ColorPicker({ onApply, currentStyle = {} }) {
       setColor(value);
     }
   };
-
+  
   const handleTextHexChange = (value) => {
     setTextHexInput(value);
     // בדיקה אם זה hex תקין
@@ -1438,7 +1523,18 @@ function ColorPicker({ onApply, currentStyle = {} }) {
       setTextColor(value);
     }
   };
-
+  
+  const handleApply = () => {
+    const styleToApply = { 
+      backgroundColor: color, 
+      color: textColor,
+      opacity: opacity, 
+      fontWeight: isBold ? 'bold' : 'normal' 
+    };
+    console.log('🎨 [DEBUG COLOR PICKER] Applying style:', styleToApply);
+    onApply(styleToApply);
+  };
+  
   return (
     <div className="space-y-4" dir="rtl">
       <div>
@@ -1448,20 +1544,20 @@ function ColorPicker({ onApply, currentStyle = {} }) {
         </h4>
         <div className="grid grid-cols-4 gap-2 mb-3">
           {colors.map(c => (
-            <button
-              key={c}
-              className={`h-10 rounded-lg border-2 transition-all hover:scale-105 ${color === c ? 'ring-2 ring-blue-500 ring-offset-2' : 'border-slate-200'}`}
-              style={{ backgroundColor: c }}
+            <button 
+              key={c} 
+              className={`h-10 rounded-lg border-2 transition-all hover:scale-105 ${color === c ? 'ring-2 ring-blue-500 ring-offset-2' : 'border-slate-200'}`} 
+              style={{ backgroundColor: c }} 
               onClick={() => setColor(c)}
               title={c}
             />
           ))}
         </div>
-
+        
         <div className="space-y-2">
           <Label className="text-xs text-slate-600">קוד צבע Hex</Label>
           <div className="flex gap-2">
-            <Input
+            <Input 
               type="text"
               value={hexInput}
               onChange={(e) => handleHexChange(e.target.value.toUpperCase())}
@@ -1469,10 +1565,10 @@ function ColorPicker({ onApply, currentStyle = {} }) {
               className="font-mono text-sm"
               dir="ltr"
             />
-            <Input
-              type="color"
-              value={color}
-              onChange={(e) => setColor(e.target.value)}
+            <Input 
+              type="color" 
+              value={color} 
+              onChange={(e) => setColor(e.target.value)} 
               className="w-16 h-10 cursor-pointer"
               title="בחר צבע"
             />
@@ -1480,13 +1576,13 @@ function ColorPicker({ onApply, currentStyle = {} }) {
           <p className="text-xs text-slate-500">💡 ניתן להזין קוד Hex ישירות (למשל: #FCF6E3)</p>
         </div>
       </div>
-
+      
       <Separator />
-
+      
       <div>
         <h4 className="font-semibold text-sm mb-3">צבע טקסט</h4>
         <div className="flex gap-2 mb-2">
-          <Input
+          <Input 
             type="text"
             value={textHexInput}
             onChange={(e) => handleTextHexChange(e.target.value.toUpperCase())}
@@ -1494,41 +1590,41 @@ function ColorPicker({ onApply, currentStyle = {} }) {
             className="font-mono text-sm"
             dir="ltr"
           />
-          <Input
-            type="color"
-            value={textColor}
-            onChange={(e) => setTextColor(e.target.value)}
+          <Input 
+            type="color" 
+            value={textColor} 
+            onChange={(e) => setTextColor(e.target.value)} 
             className="w-16 h-10 cursor-pointer"
             title="בחר צבע טקסט"
           />
         </div>
       </div>
-
+      
       <Separator />
-
+      
       <div>
         <h4 className="font-semibold text-sm mb-2">שקיפות: {opacity}%</h4>
-        <input
-          type="range"
-          min="0"
-          max="100"
-          value={opacity}
-          onChange={(e) => setOpacity(Number(e.target.value))}
+        <input 
+          type="range" 
+          min="0" 
+          max="100" 
+          value={opacity} 
+          onChange={(e) => setOpacity(Number(e.target.value))} 
           className="w-full accent-purple-600"
         />
       </div>
-
+      
       <div className="flex items-center justify-between bg-slate-50 p-3 rounded-lg">
         <span className="text-sm font-medium">טקסט מודגש</span>
         <Switch checked={isBold} onCheckedChange={setIsBold} />
       </div>
-
+      
       <div className="bg-gradient-to-br from-blue-50 to-purple-50 p-4 rounded-lg border-2 border-blue-200">
         <div className="text-xs text-slate-600 mb-2 font-semibold">תצוגה מקדימה:</div>
-        <div
+        <div 
           className="p-3 rounded text-center font-medium"
-          style={{
-            backgroundColor: color,
+          style={{ 
+            backgroundColor: color, 
             color: textColor,
             opacity: opacity / 100,
             fontWeight: isBold ? 'bold' : 'normal'
@@ -1537,14 +1633,9 @@ function ColorPicker({ onApply, currentStyle = {} }) {
           דוגמת טקסט
         </div>
       </div>
-
-      <Button
-        onClick={() => onApply({
-          backgroundColor: color,
-          color: textColor,
-          opacity: opacity,
-          fontWeight: isBold ? 'bold' : 'normal'
-        })}
+      
+      <Button 
+        onClick={handleApply} 
         className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
       >
         <Palette className="w-4 h-4 ml-2" />
