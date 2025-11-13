@@ -34,6 +34,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const [cellNotes, setCellNotes] = useState({});
   const [subHeaders, setSubHeaders] = useState({});
   const [showSubHeaders, setShowSubHeaders] = useState(false);
+  const [headerStyles, setHeaderStyles] = useState({}); // New state for header styles
   const [popoverOpen, setPopoverOpen] = useState(null);
   const [editingColumnKey, setEditingColumnKey] = useState(null);
   const [editingColumnTitle, setEditingColumnTitle] = useState("");
@@ -77,6 +78,8 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const [noteText, setNoteText] = useState("");
   const [showColorPickerDialog, setShowColorPickerDialog] = useState(false);
   const [colorPickerTargetCell, setColorPickerTargetCell] = useState(null);
+  const [showHeaderColorDialog, setShowHeaderColorDialog] = useState(false); // New state
+  const [colorPickerTargetHeader, setColorPickerTargetHeader] = useState(null); // New state
 
   const editInputRef = useRef(null);
   const columnEditRef = useRef(null);
@@ -88,6 +91,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const cellStylesRef = useRef(cellStyles);
   const cellNotesRef = useRef(cellNotes);
   const subHeadersRef = useRef(subHeaders);
+  const headerStylesRef = useRef(headerStyles); // New ref for header styles
   const rowHeightsRef = useRef(rowHeights);
   const validationRulesRef = useRef(validationRules);
   const conditionalFormatsRef = useRef(conditionalFormats);
@@ -105,6 +109,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   useEffect(() => { cellStylesRef.current = cellStyles; }, [cellStyles]);
   useEffect(() => { cellNotesRef.current = cellNotes; }, [cellNotes]);
   useEffect(() => { subHeadersRef.current = subHeaders; }, [subHeaders]);
+  useEffect(() => { headerStylesRef.current = headerStyles; }, [headerStyles]); // Update ref
   useEffect(() => { rowHeightsRef.current = rowHeights; }, [rowHeights]);
   useEffect(() => { validationRulesRef.current = validationRules; }, [validationRules]);
   useEffect(() => { conditionalFormatsRef.current = conditionalFormats; }, [conditionalFormats]);
@@ -165,6 +170,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       setCellNotes(initialNotes);
       setSubHeaders(spreadsheet.sub_headers || {});
       setShowSubHeaders(spreadsheet.show_sub_headers || false);
+      setHeaderStyles(spreadsheet.header_styles || {}); // Initialize header styles
       setRowHeights(spreadsheet.row_heights || {});
       setValidationRules(spreadsheet.validation_rules || []);
       setConditionalFormats(spreadsheet.conditional_formats || []);
@@ -222,6 +228,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         cell_notes: cellNotesRef.current,
         sub_headers: subHeadersRef.current,
         show_sub_headers: showSubHeaders,
+        header_styles: headerStylesRef.current, // Include header styles
         row_heights: rowHeightsRef.current,
         validation_rules: validationRulesRef.current,
         conditional_formats: conditionalFormatsRef.current,
@@ -541,6 +548,12 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     Object.keys(newNotes).forEach(key => { if (key.endsWith(`_${columnKey}`)) delete newNotes[key]; });
     setCellStyles(newStyles);
     setCellNotes(newNotes);
+    
+    // Also remove from header styles
+    const newHeaderStyles = { ...headerStyles };
+    delete newHeaderStyles[columnKey];
+    setHeaderStyles(newHeaderStyles);
+
     setTimeout(() => {
       saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current, cellNotesRef.current);
       saveToBackend();
@@ -692,7 +705,10 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       return {};
     };
 
-    const html = `<!DOCTYPE html><html dir="rtl"><head><meta charset="utf-8"><title>${spreadsheet.name}</title><style>body{font-family:Arial,sans-serif;direction:rtl;padding:20px}h1{text-align:center;margin-bottom:20px}table{width:100%;border-collapse:collapse;margin:20px 0}th,td{border:1px solid #ccc;padding:8px;text-align:right}th{background-color:#f1f5f9;font-weight:bold}tr:nth-child(even){background-color:#f8fafc}.footer{text-align:center;margin-top:30px;font-size:12px;color:#666}</style></head><body><h1>${spreadsheet.name}</h1><p style="text-align:center;color:#666;margin-bottom:20px">נוצר ב-${new Date().toLocaleDateString('he-IL')} | ${filteredAndSortedData.length} שורות</p><table><thead><tr>${visibleCols.map(col => `<th>${col.title}</th>`).join('')}</tr></thead><tbody>${filteredAndSortedData.map(row => `<tr>${visibleCols.map(col => {
+    const html = `<!DOCTYPE html><html dir="rtl"><head><meta charset="utf-8"><title>${spreadsheet.name}</title><style>body{font-family:Arial,sans-serif;direction:rtl;padding:20px}h1{text-align:center;margin-bottom:20px}table{width:100%;border-collapse:collapse;margin:20px 0}th,td{border:1px solid #ccc;padding:8px;text-align:right}th{background-color:#f1f5f9;font-weight:bold}tr:nth-child(even){background-color:#f8fafc}.footer{text-align:center;margin-top:30px;font-size:12px;color:#666}</style></head><body><h1>${spreadsheet.name}</h1><p style="text-align:center;color:#666;margin-bottom:20px">נוצר ב-${new Date().toLocaleDateString('he-IL')} | ${filteredAndSortedData.length} שורות</p><table><thead><tr>${visibleCols.map(col => {
+      const headerStyle = headerStyles[col.key] || {}; // Get header style for PDF export
+      return `<th style="${headerStyle.backgroundColor ? `background-color:${headerStyle.backgroundColor};` : ''}${headerStyle.color ? `color:${headerStyle.color};` : ''}${headerStyle.fontWeight ? `font-weight:${headerStyle.fontWeight};` : ''}">${col.title}</th>`;
+    }).join('')}</tr></thead><tbody>${filteredAndSortedData.map(row => `<tr>${visibleCols.map(col => {
       const cellKey = `${row.id}_${col.key}`;
       const cellStyle = cellStyles[cellKey] || {};
       const conditionalStyle = getConditionalStyle(col.key, row[col.key]);
@@ -881,6 +897,11 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       setShowSubHeaders(false);
     }
     
+    // Also remove any custom styles applied to the merged header
+    const newHeaderStyles = { ...headerStyles };
+    delete newHeaderStyles[mergeKeyToDelete];
+    setHeaderStyles(newHeaderStyles);
+
     setTimeout(() => saveToBackend(), 50);
     toast.success('✓ מיזוג כותרות בוטל');
   };
@@ -909,6 +930,11 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       delete newSubHeaders[columnKey];
       setSubHeaders(newSubHeaders);
       
+      // Also remove any custom styles applied to the subheader
+      const newHeaderStyles = { ...headerStyles };
+      delete newHeaderStyles[columnKey];
+      setHeaderStyles(newHeaderStyles);
+
       if (Object.keys(newSubHeaders).length === 0 && Object.keys(mergedHeaders).length === 0) {
         setShowSubHeaders(false);
       }
@@ -1298,6 +1324,30 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     if (onUpdate) await onUpdate();
   };
 
+  const handleOpenHeaderColorDialog = (columnKey) => {
+    setColorPickerTargetHeader(columnKey);
+    setShowHeaderColorDialog(true);
+    setPopoverOpen(null); // Close column settings popover if open
+  };
+
+  const applyHeaderColor = (columnKey, style) => {
+    const newHeaderStyles = { 
+      ...headerStyles, 
+      [columnKey]: { 
+        ...(headerStyles[columnKey] || {}), 
+        ...style 
+      } 
+    };
+    
+    setHeaderStyles(newHeaderStyles);
+    
+    setTimeout(() => {
+      saveToBackend();
+    }, 100);
+    
+    toast.success('✓ צבע כותרת עודכן');
+  };
+
   if (!spreadsheet) return <div className="p-6 text-center text-slate-500">לא נבחרה טבלה</div>;
 
   const visibleColumns = columns.filter(col => col.visible !== false);
@@ -1437,6 +1487,12 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                   {Object.keys(mergedHeaders).length + Object.keys(subHeaders).length} כותרות
                 </Badge>
               )}
+              {Object.keys(headerStyles).length > 0 && (
+                <Badge className="bg-yellow-100 text-yellow-800">
+                  <Palette className="w-3 h-3 ml-1" />
+                  {Object.keys(headerStyles).length} עיצוב כותרות
+                </Badge>
+              )}
               {hasActiveFilters && <Badge className="bg-blue-600 text-white"><Filter className="w-3 h-3 ml-1" />פעיל</Badge>}
               {activeViewId && savedViews.find(v => v.id === activeViewId) && (
                 <Badge className="bg-indigo-100 text-indigo-800 border-indigo-300">
@@ -1474,16 +1530,29 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                           const mergedHeader = getHeaderMergeInfo(col.key);
                           const subHeader = subHeaders[col.key];
 
-                          if (mergedHeader && mergedHeader.isMaster) {
+                          if (mergedHeader && !mergedHeader.isMaster) {
+                            return null;
+                          }
+                          
+                          // Use a unique key for the merged header to retrieve its style
+                          const headerKeyForStyle = mergedHeader ? mergedHeader.mergeKey : col.key;
+                          const currentHeaderStyle = headerStyles[headerKeyForStyle] || {};
+
+                          if (mergedHeader) {
                             return (
                               <div key={mergedHeader.mergeKey} className="flex items-center justify-between p-2 bg-blue-50 rounded text-xs">
                                 <div>
                                   <div className="font-semibold text-blue-800">{mergedHeader.title}</div>
                                   <div className="text-slate-500">מיזוג ({mergedHeader.colspan} עמודות)</div>
                                 </div>
-                                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => unmergeHeaders(col.key)}>
-                                  <Scissors className="w-3 h-3 text-orange-600" />
-                                </Button>
+                                <div className="flex gap-1">
+                                  <Button size="icon" variant="ghost" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); handleOpenHeaderColorDialog(headerKeyForStyle); }}>
+                                    <Palette className="w-3 h-3 text-purple-600" />
+                                  </Button>
+                                  <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => unmergeHeaders(col.key)}>
+                                    <Scissors className="w-3 h-3 text-orange-600" />
+                                  </Button>
+                                </div>
                               </div>
                             );
                           } else if (subHeader) {
@@ -1493,9 +1562,14 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                   <div className="font-semibold">{col.title}</div>
                                   <div className="text-slate-500">{subHeader}</div>
                                 </div>
-                                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => addOrEditSubHeader(col.key)}>
-                                  <Edit2 className="w-3 h-3" />
-                                </Button>
+                                <div className="flex gap-1">
+                                  <Button size="icon" variant="ghost" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); handleOpenHeaderColorDialog(headerKeyForStyle); }}>
+                                    <Palette className="w-3 h-3 text-purple-600" />
+                                  </Button>
+                                  <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => addOrEditSubHeader(col.key)}>
+                                    <Edit2 className="w-3 h-3" />
+                                  </Button>
+                                </div>
                               </div>
                             );
                           }
@@ -1633,7 +1707,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
               }}>
                 <Droppable droppableId="columns" direction="horizontal" type="column">
                   {(provided) => (
-                    <thead style={{ position: 'sticky', top: 0, zIndex: 25, backgroundColor: palette.headerBg }} ref={provided.innerRef} {...provided.droppableProps}>
+                    <thead style={{ position: 'sticky', top: 0, zIndex: 25 }} ref={provided.innerRef} {...provided.droppableProps}>
                       {showSubHeaders && (Object.keys(mergedHeaders).length > 0 || Object.keys(subHeaders).length > 0) && (
                         <tr>
                           <th className="p-3 w-12 sticky right-0 shadow-[2px_0_5px_rgba(0,0,0,0.1)]" style={{ zIndex: 35, backgroundColor: palette.headerBg, borderWidth: isSeparateBorders ? '0' : borderStyle.width, borderStyle: borderStyle.style, borderColor: palette.border }}></th>
@@ -1645,6 +1719,10 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                               return null;
                             }
                             
+                            // Determine the key for fetching style: merged header key or individual column key
+                            const headerKeyForStyle = headerMerge ? headerMerge.mergeKey : col.key;
+                            const currentHeaderStyle = headerStyles[headerKeyForStyle] || {};
+
                             if (!headerMerge && !subHeaderTitle) {
                               return <th key={`sub_empty_${col.key}`} className="text-center font-bold p-2" style={{ backgroundColor: palette.headerBg, borderWidth: isSeparateBorders ? '0' : borderStyle.width, borderStyle: borderStyle.style, borderColor: palette.border }}></th>;
                             }
@@ -1653,9 +1731,11 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                               <th
                                 key={`merged_header_${col.key}`}
                                 colSpan={headerMerge?.colspan || 1}
-                                className="text-center font-bold p-2 bg-gradient-to-b from-blue-50 to-blue-100 border-b-2 border-blue-300 cursor-pointer group relative"
+                                className="text-center font-bold p-2 cursor-pointer group relative"
                                 style={{
-                                  color: palette.headerText,
+                                  backgroundColor: currentHeaderStyle.backgroundColor || palette.headerBg,
+                                  color: currentHeaderStyle.color || palette.headerText,
+                                  fontWeight: currentHeaderStyle.fontWeight || 'bold',
                                   fontFamily: headerFont.value,
                                   fontSize: headerFontSize,
                                   borderWidth: isSeparateBorders ? '0' : borderStyle.width,
@@ -1680,19 +1760,32 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                               >
                                 <div className="flex items-center justify-center gap-2">
                                   {headerMerge?.title || subHeaderTitle}
-                                  {headerMerge && (
+                                  <div className="opacity-0 group-hover:opacity-100 flex gap-1 absolute left-1 top-1">
                                     <Button
                                       size="icon"
                                       variant="ghost"
-                                      className="h-5 w-5 opacity-0 group-hover:opacity-100 absolute left-1 top-1"
+                                      className="h-5 w-5"
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        unmergeHeaders(col.key);
+                                        handleOpenHeaderColorDialog(headerKeyForStyle);
                                       }}
                                     >
-                                      <Scissors className="w-3 h-3 text-orange-600" />
+                                      <Palette className="w-3 h-3 text-purple-600" />
                                     </Button>
-                                  )}
+                                    {headerMerge && (
+                                      <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-5 w-5"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          unmergeHeaders(col.key);
+                                        }}
+                                      >
+                                        <Scissors className="w-3 h-3 text-orange-600" />
+                                      </Button>
+                                    )}
+                                  </div>
                                 </div>
                               </th>
                             );
@@ -1709,6 +1802,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                           const isSorted = sortColumn === col.key;
                           const isHeaderSelected = selectedHeaders.has(col.key);
                           const hasSubHeader = subHeaders[col.key];
+                          const headerStyle = headerStyles[col.key] || {}; // Get individual header style
                           return (
                             <Draggable key={col.key} draggableId={col.key} index={colIndex} type="column">
                               {(provided, snapshot) => (
@@ -1717,8 +1811,9 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                   minWidth: col.width,
                                   maxWidth: col.width,
                                   position: 'relative',
-                                  backgroundColor: isHeaderSelected ? '#dbeafe' : (snapshot.isDragging ? palette.hover : palette.headerBg),
-                                  color: palette.headerText,
+                                  backgroundColor: isHeaderSelected ? palette.selected : (headerStyle.backgroundColor || (snapshot.isDragging ? palette.hover : palette.headerBg)),
+                                  color: headerStyle.color || palette.headerText,
+                                  fontWeight: headerStyle.fontWeight || 'bold',
                                   fontFamily: headerFont.value,
                                   fontSize: headerFontSize,
                                   padding: cellPadding,
@@ -1748,6 +1843,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                             <div className="space-y-2">
                                               <h4 className="font-semibold text-sm mb-3">{col.title}</h4>
                                               <Button variant="outline" size="sm" className="w-full justify-start gap-2" onClick={() => { setEditingColumnKey(col.key); setEditingColumnTitle(col.title); setPopoverOpen(null); }}><Edit2 className="w-4 h-4" />שנה שם</Button>
+                                              <Button variant="outline" size="sm" className="w-full justify-start gap-2 bg-purple-50" onClick={() => { handleOpenHeaderColorDialog(col.key); }}><Palette className="w-4 h-4 text-purple-600" />צבע כותרת</Button>
                                               <Button variant="outline" size="sm" className="w-full justify-start gap-2 bg-blue-50" onClick={() => { addOrEditSubHeader(col.key); setPopoverOpen(null); }}><Type className="w-4 h-4 text-blue-600" />{hasSubHeader ? 'ערוך' : 'הוסף'} כותרת משנה</Button>
                                               <Button variant="outline" size="sm" className="w-full justify-start gap-2" onClick={() => { toggleColumnVisibility(col.key); setPopoverOpen(null); }}><EyeOff className="w-4 h-4" />הסתר</Button>
                                               <Button variant="outline" size="sm" className="w-full justify-start gap-2 text-red-600" onClick={() => { deleteColumn(col.key); setPopoverOpen(null); }}><Trash2 className="w-4 h-4" />מחק</Button>
@@ -2036,6 +2132,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         if (!open) {
           setShowColorPickerDialog(false);
           setColorPickerTargetCell(null);
+          setSelectedCells(new Set()); // Clear selection when color picker closes
         }
       }}>
         <DialogContent className="sm:max-w-md" dir="rtl">
@@ -2055,6 +2152,35 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                 setShowColorPickerDialog(false);
                 setColorPickerTargetCell(null);
                 setSelectedCells(new Set());
+              }} 
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* New Header Color Dialog */}
+      <Dialog open={showHeaderColorDialog} onOpenChange={(open) => {
+        if (!open) {
+          setShowHeaderColorDialog(false);
+          setColorPickerTargetHeader(null);
+        }
+      }}>
+        <DialogContent className="sm:max-w-md" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Palette className="w-5 h-5 text-purple-600" />
+              בחר צבע לכותרת
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <ColorPicker 
+              currentStyle={colorPickerTargetHeader ? headerStyles[colorPickerTargetHeader] : {}}
+              onApply={(style) => {
+                if (colorPickerTargetHeader) {
+                  applyHeaderColor(colorPickerTargetHeader, style);
+                }
+                setShowHeaderColorDialog(false);
+                setColorPickerTargetHeader(null);
               }} 
             />
           </div>
