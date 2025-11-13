@@ -788,21 +788,33 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   };
 
   const mergeHeaders = () => {
+    console.log('🔵 [MERGE] mergeHeaders called', { selectedHeaders: Array.from(selectedHeaders) });
+    
     if (selectedHeaders.size < 2) {
       toast.error('בחר לפחות 2 כותרות למיזוג');
       return;
     }
 
     const headersArray = Array.from(selectedHeaders);
-    const indices = headersArray.map(key => visibleColumns.findIndex(c => c.key === key)).filter(i => i >= 0).sort((a, b) => a - b);
+    const indices = headersArray
+      .map(key => visibleColumns.findIndex(c => c.key === key))
+      .filter(i => i >= 0)
+      .sort((a, b) => a - b);
     
-    if (indices.length < 2) return;
+    console.log('🔵 [MERGE] indices:', indices);
+    
+    if (indices.length < 2) {
+      toast.error('לא נמצאו מספיק עמודות');
+      return;
+    }
     
     const minIndex = indices[0];
     const maxIndex = indices[indices.length - 1];
     const colspan = maxIndex - minIndex + 1;
     
     const isConsecutive = indices.every((val, i, arr) => i === 0 || val === arr[i - 1] + 1);
+    console.log('🔵 [MERGE] isConsecutive:', isConsecutive, { minIndex, maxIndex, colspan });
+    
     if (!isConsecutive) {
       toast.error('ניתן למזג רק כותרות רציפות');
       return;
@@ -811,17 +823,31 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     const masterKey = visibleColumns[minIndex].key;
     const mergeKey = `header_merge_${Date.now()}`;
     
-    const title = prompt('כותרת עליונה למיזוג:', '') || headersArray.map(k => visibleColumns.find(c => c.key === k)?.title).join(' + ');
+    const defaultTitle = headersArray.map(k => visibleColumns.find(c => c.key === k)?.title).join(' + ');
+    const title = prompt('כותרת עליונה למיזוג:', defaultTitle);
     
-    setMergedHeaders(prev => ({
-      ...prev,
-      [mergeKey]: {
-        columns: headersArray,
-        master: masterKey,
-        colspan,
-        title
-      }
-    }));
+    if (title === null) {
+      console.log('🔵 [MERGE] User cancelled');
+      return;
+    }
+    
+    const finalTitle = title.trim() || defaultTitle;
+    
+    console.log('🔵 [MERGE] Creating merged header:', { mergeKey, masterKey, colspan, title: finalTitle, columns: headersArray });
+    
+    setMergedHeaders(prev => {
+      const newHeaders = {
+        ...prev,
+        [mergeKey]: {
+          columns: headersArray,
+          master: masterKey,
+          colspan,
+          title: finalTitle
+        }
+      };
+      console.log('🔵 [MERGE] New mergedHeaders state:', newHeaders);
+      return newHeaders;
+    });
     
     setShowSubHeaders(true);
     toast.success(`✓ ${headersArray.length} כותרות אוחדו`);
@@ -830,9 +856,14 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   };
 
   const unmergeHeaders = (columnKey) => {
+    console.log('✂️ [UNMERGE] unmergeHeaders called for:', columnKey);
+    console.log('✂️ [UNMERGE] Current mergedHeaders:', mergedHeaders);
+    
     const mergeKeyToDelete = Object.keys(mergedHeaders).find(key =>
       mergedHeaders[key].columns?.includes(columnKey)
     );
+
+    console.log('✂️ [UNMERGE] Found merge key:', mergeKeyToDelete);
 
     if (!mergeKeyToDelete) {
       toast.error('הכותרת אינה חלק ממיזוג');
@@ -843,7 +874,10 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     delete newMerged[mergeKeyToDelete];
     setMergedHeaders(newMerged);
     
+    console.log('✂️ [UNMERGE] After deletion:', newMerged);
+    
     if (Object.keys(newMerged).length === 0 && Object.keys(subHeaders).length === 0) {
+      console.log('✂️ [UNMERGE] No more headers, hiding sub-headers row');
       setShowSubHeaders(false);
     }
     
@@ -1033,12 +1067,18 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   };
 
   const handleHeaderClick = (columnKey, event) => {
+    console.log('🖱️ [HEADER CLICK]', { columnKey, alt: event?.altKey, shift: event?.shiftKey, ctrl: event?.ctrlKey });
+    
     if (event?.altKey) {
       event.preventDefault();
       setSelectedHeaders(prev => {
         const newSet = new Set(prev);
-        if (newSet.has(columnKey)) newSet.delete(columnKey);
-        else newSet.add(columnKey);
+        if (newSet.has(columnKey)) {
+          newSet.delete(columnKey);
+        } else {
+          newSet.add(columnKey);
+        }
+        console.log('🖱️ [HEADER CLICK] New selectedHeaders:', Array.from(newSet));
         return newSet;
       });
       return;
@@ -1335,6 +1375,13 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     return stats;
   }, [visibleColumns, filteredAndSortedData]);
 
+  console.log('📊 [RENDER] State:', {
+    selectedHeaders: Array.from(selectedHeaders),
+    mergedHeaders: Object.keys(mergedHeaders),
+    showSubHeaders,
+    subHeaders: Object.keys(subHeaders)
+  });
+
   return (
     <div className="w-full space-y-6" dir="rtl">
       {charts.length > 0 && (
@@ -1589,18 +1636,15 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                     <thead style={{ position: 'sticky', top: 0, zIndex: 25, backgroundColor: palette.headerBg }} ref={provided.innerRef} {...provided.droppableProps}>
                       {showSubHeaders && (Object.keys(mergedHeaders).length > 0 || Object.keys(subHeaders).length > 0) && (
                         <tr>
-                          {/* Empty th for drag handle column */}
                           <th className="p-3 w-12 sticky right-0 shadow-[2px_0_5px_rgba(0,0,0,0.1)]" style={{ zIndex: 35, backgroundColor: palette.headerBg, borderWidth: isSeparateBorders ? '0' : borderStyle.width, borderStyle: borderStyle.style, borderColor: palette.border }}></th>
                           {visibleColumns.map((col) => {
                             const headerMerge = getHeaderMergeInfo(col.key);
                             const subHeaderTitle = subHeaders[col.key];
                             
-                            // If this column is part of a merge but not the master, skip rendering a th
                             if (headerMerge && !headerMerge.isMaster) {
                               return null;
                             }
                             
-                            // If there's no merged header and no sub header, render an empty th
                             if (!headerMerge && !subHeaderTitle) {
                               return <th key={`sub_empty_${col.key}`} className="text-center font-bold p-2" style={{ backgroundColor: palette.headerBg, borderWidth: isSeparateBorders ? '0' : borderStyle.width, borderStyle: borderStyle.style, borderColor: palette.border }}></th>;
                             }
@@ -1629,7 +1673,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                       }));
                                       setTimeout(() => saveToBackend(), 50);
                                     }
-                                  } else if (subHeaderTitle) { // Individual sub-header editing
+                                  } else if (subHeaderTitle) {
                                     addOrEditSubHeader(col.key);
                                   }
                                 }}
@@ -1653,7 +1697,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                               </th>
                             );
                           })}
-                          {/* Empty th for actions column */}
                           <th className="p-3" style={{ backgroundColor: palette.headerBg, borderWidth: isSeparateBorders ? '0' : borderStyle.width, borderStyle: borderStyle.style, borderColor: palette.border }}></th>
                         </tr>
                       )}
@@ -1674,7 +1717,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                   minWidth: col.width,
                                   maxWidth: col.width,
                                   position: 'relative',
-                                  backgroundColor: isHeaderSelected ? palette.selected : (snapshot.isDragging ? palette.hover : palette.headerBg),
+                                  backgroundColor: isHeaderSelected ? '#dbeafe' : (snapshot.isDragging ? palette.hover : palette.headerBg),
                                   color: palette.headerText,
                                   fontFamily: headerFont.value,
                                   fontSize: headerFontSize,
