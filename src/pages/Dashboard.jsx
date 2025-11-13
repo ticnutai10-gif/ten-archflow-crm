@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,7 +33,6 @@ import TimerLogs from "../components/dashboard/TimerLogs";
 import ReminderManager from "../components/reminders/ReminderManager";
 import DashboardSettings from "../components/dashboard/DashboardSettings";
 import UpcomingMeetings from "../components/dashboard/UpcomingMeetings";
-import ProjectInsightsCard from "../components/dashboard/ProjectInsightsCard";
 
 const VIEW_MODE_OPTIONS = [
   { value: 'list', label: 'שורות', icon: LayoutList },
@@ -370,10 +368,6 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
-        </div>
-
-        <div className="mb-8">
-          <ProjectInsightsCard />
         </div>
 
         {dashboardSettings.showStats && (
