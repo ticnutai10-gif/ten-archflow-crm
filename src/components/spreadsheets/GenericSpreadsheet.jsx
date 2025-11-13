@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -79,7 +78,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const tableRef = useRef(null);
   const contextMenuRef = useRef(null);
 
-  // ✅ Refs שתמיד מעודכנים
   const columnsRef = useRef(columns);
   const rowsDataRef = useRef(rowsData);
   const cellStylesRef = useRef(cellStyles);
@@ -112,7 +110,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
 
   const { filterClients } = useAccessControl();
 
-  // ✅ טיפול בסגירת תפריט קונטקסט בלחיצה מחוץ
   useEffect(() => {
     if (!cellContextMenu) return;
 
@@ -122,8 +119,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       }
     };
 
-    // Use a timeout to ensure the click event that opened the menu has propagated
-    // before attaching the listener, preventing immediate closing.
     setTimeout(() => {
       document.addEventListener('mousedown', handleClickOutside);
     }, 100);
@@ -201,7 +196,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     setHistoryIndex(prev => Math.min(prev + 1, 49));
   }, [historyIndex, isUndoRedoAction]);
 
-  // ✅ תיקון קריטי - saveToBackend תמיד משתמש ב-refs הנוכחיים
   const saveToBackend = useCallback(async () => {
     if (!spreadsheet?.id) {
       console.warn('⚠️ No spreadsheet ID');
@@ -226,17 +220,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         charts: chartsRef.current
       };
 
-      console.log('💾 [SAVE] Saving:', {
-        columns: dataToSave.columns.length,
-        rows: dataToSave.rows_data.length,
-        cellStyles: Object.keys(dataToSave.cell_styles).length,
-        cellNotes: Object.keys(dataToSave.cell_notes).length,
-        theme: dataToSave.theme_settings?.palette
-      });
-
       await base44.entities.CustomSpreadsheet.update(spreadsheet.id, dataToSave);
-      
-      console.log('✅ [SAVE] Success!');
 
       if (onUpdate) {
         await onUpdate();
@@ -638,34 +622,22 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     };
   }, [resizingColumn, resizingRow, columns, rowHeights, saveToBackend]);
 
-  const applyStyleToSelection = useCallback((style) => {
-    console.log('🎨 [STYLE] Applying to selection:', { 
-      selectedCount: selectedCells.size,
-      style,
-      currentStylesCount: Object.keys(cellStylesRef.current).length
-    });
-    
-    const newStyles = { ...cellStylesRef.current };
-    let appliedCount = 0;
+  const applyStyleToSelection = (style) => {
+    const newStyles = { ...cellStyles };
     
     selectedCells.forEach(cellKey => { 
-      newStyles[cellKey] = { ...(newStyles[cellKey] || {}), ...style }; // Merge styles instead of overwriting
-      appliedCount++;
-      console.log('🎨 [STYLE] Applied to:', cellKey);
+      newStyles[cellKey] = { ...(newStyles[cellKey] || {}), ...style };
     });
-    
-    console.log('🎨 [STYLE] Total after apply:', Object.keys(newStyles).length);
     
     setCellStyles(newStyles);
     
     setTimeout(() => {
-      console.log('💾 [STYLE] Saving after state update...');
-      saveToHistory(columnsRef.current, rowsDataRef.current, newStyles, cellNotesRef.current);
+      saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current, cellNotesRef.current);
       saveToBackend();
     }, 100);
     
-    toast.success(`✓ סגנון הותקן ל-${appliedCount} תאים`);
-  }, [selectedCells, saveToHistory, saveToBackend]);
+    toast.success(`✓ סגנון הותקן ל-${selectedCells.size} תאים`);
+  };
 
   const exportToCSV = () => {
     const visibleCols = columns.filter(col => col.visible !== false);
@@ -877,7 +849,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     setTimeout(() => editInputRef.current?.focus(), 0);
   };
 
-  // ✅ טיפול בלחיצה כפולה על תא
   const handleCellDoubleClick = (rowId, columnKey, event) => {
     event.preventDefault();
     event.stopPropagation();
@@ -885,21 +856,18 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     setCellContextMenu(cellKey);
   };
 
-  // ✅ פתיחת דיאלוג הערה
   const handleOpenNoteDialog = (cellKey) => {
     setNoteDialogCell(cellKey);
     setNoteText(cellNotes[cellKey] || '');
     setCellContextMenu(null);
   };
 
-  // ✅ לחיצה על המשולש פותחת את דיאלוג ההערה
   const handleNoteTriangleClick = (cellKey, event) => {
     event.stopPropagation();
     event.preventDefault();
     handleOpenNoteDialog(cellKey);
   };
 
-  // ✅ שמירת הערה
   const handleSaveNote = () => {
     if (!noteDialogCell) return;
     
@@ -917,22 +885,21 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     setNoteText("");
     
     setTimeout(() => {
-      saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current, newNotes); // Pass newNotes directly
+      saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current, newNotes);
       saveToBackend();
     }, 50);
   };
 
-  // ✅ צביעת תא בודד - פותח ColorPicker
   const handleColorSingleCell = (cellKey) => {
-    setCellContextMenu(null); // Close the context menu immediately
-    setTimeout(() => { // Open color picker after context menu is surely closed
+    setCellContextMenu(null);
+    
+    setTimeout(() => {
       setColorPickerTargetCell(cellKey);
-      setSelectedCells(new Set([cellKey])); // Temporarily select the cell for the color picker
+      setSelectedCells(new Set([cellKey]));
       setShowColorPickerDialog(true);
     }, 100);
   };
 
-  // ✅ הדגשת תא בודד
   const handleBoldSingleCell = (cellKey) => {
     const currentStyle = cellStyles[cellKey] || {};
     const newStyles = { 
@@ -947,7 +914,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     setCellContextMenu(null);
     
     setTimeout(() => {
-      saveToHistory(columnsRef.current, rowsDataRef.current, newStyles, cellNotesRef.current); // Pass newStyles directly
+      saveToHistory(columnsRef.current, rowsDataRef.current, newStyles, cellNotesRef.current);
       saveToBackend();
     }, 50);
     
@@ -1008,7 +975,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const saveEdit = async () => {
     if (!editingCell) return;
     
-    // ✅ פיצול נכון של cellKey
     const match = editingCell.match(/^(.+?)_(col.*)$/);
     if (!match) {
       console.error('❌ Invalid cellKey:', editingCell);
@@ -1018,8 +984,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     
     const rowId = match[1];
     const columnKey = match[2];
-    
-    console.log('💾 [EDIT] Saving cell:', { rowId, columnKey, value: editValue });
     
     const validationError = validateCell(columnKey, editValue);
     if (validationError) {
@@ -1470,7 +1434,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                         onMouseDown={(e) => !isEditing && handleCellMouseDown(row.id, column.key, e)} 
                                         onMouseEnter={() => handleCellMouseEnter(row.id, column.key)}
                                       >
-                                        {/* ✅ משולש הערה עם לחיצה */}
                                         {hasNote && (
                                           <div 
                                             className="absolute top-0 right-0 w-0 h-0 z-10 cursor-pointer hover:opacity-80 transition-opacity" 
@@ -1484,7 +1447,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                         )}
                                         {column.type === 'checkmark' ? (
                                           <div className="flex items-center justify-center text-2xl font-bold select-none">
-                                            {cellValue === '✓' ? <span className="text-green-600">✓</span> : cellValue === '✗' ? <span className="text-red-600">✗') : <span className="text-slate-300">○</span>}
+                                            {cellValue === '✓' ? <span className="text-green-600">✓</span> : cellValue === '✗' ? <span className="text-red-600">✗</span> : <span className="text-slate-300">○</span>}
                                           </div>
                                         ) : column.type === 'client' ? (
                                           <div className="relative">
@@ -1557,7 +1520,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         </div>
       </Card>
 
-      {/* ✅ תפריט קונטקסט לתא - מיקום משופר */}
       {cellContextMenu && (
         <div 
           ref={contextMenuRef}
@@ -1611,7 +1573,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         </div>
       )}
 
-      {/* ✅ דיאלוג הערה */}
       <Dialog open={!!noteDialogCell} onOpenChange={(open) => !open && setNoteDialogCell(null)}>
         <DialogContent className="sm:max-w-md" dir="rtl">
           <DialogHeader>
@@ -1641,12 +1602,10 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         </DialogContent>
       </Dialog>
 
-      {/* ✅ דיאלוג בחירת צבע לתא בודד */}
       <Dialog open={showColorPickerDialog} onOpenChange={(open) => {
         if (!open) {
           setShowColorPickerDialog(false);
           setColorPickerTargetCell(null);
-          setSelectedCells(new Set()); // Clear selection after closing color picker
         }
       }}>
         <DialogContent className="sm:max-w-md" dir="rtl">
@@ -1661,20 +1620,11 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
               currentStyle={colorPickerTargetCell ? cellStyles[colorPickerTargetCell] : {}}
               onApply={(style) => {
                 if (colorPickerTargetCell) {
-                  // Apply style only to the target cell, not the whole selection
-                  setCellStyles(prev => ({
-                    ...prev,
-                    [colorPickerTargetCell]: { ...(prev[colorPickerTargetCell] || {}), ...style }
-                  }));
-                  setTimeout(() => {
-                    saveToHistory(columnsRef.current, rowsDataRef.current, { ...cellStylesRef.current, [colorPickerTargetCell]: { ...(cellStylesRef.current[colorPickerTargetCell] || {}), ...style } }, cellNotesRef.current);
-                    saveToBackend();
-                  }, 50);
-                  toast.success(`✓ סגנון הוחל לתא`);
+                  applyStyleToSelection(style);
                 }
                 setShowColorPickerDialog(false);
                 setColorPickerTargetCell(null);
-                setSelectedCells(new Set()); // Clear selection after applying style
+                setSelectedCells(new Set());
               }} 
             />
           </div>
@@ -1802,15 +1752,6 @@ function ColorPicker({ onApply, currentStyle = {} }) {
   const colors = ['#ffffff', '#fee2e2', '#fef3c7', '#d1fae5', '#dbeafe', '#ede9fe', '#fce7f3', '#f3f4f6', '#FCF6E3', '#e0f2f7', '#fff5f0', '#e8f5e9'];
   
   useEffect(() => {
-    setColor(currentStyle.backgroundColor || '#ffffff');
-    setHexInput(currentStyle.backgroundColor || '#ffffff');
-    setOpacity(currentStyle.opacity || 100);
-    setIsBold(currentStyle.fontWeight === 'bold');
-    setTextColor(currentStyle.color || '#000000');
-    setTextHexInput(currentStyle.color || '#000000');
-  }, [currentStyle]);
-
-  useEffect(() => {
     setHexInput(color);
   }, [color]);
   
@@ -1839,7 +1780,6 @@ function ColorPicker({ onApply, currentStyle = {} }) {
       opacity: opacity, 
       fontWeight: isBold ? 'bold' : 'normal' 
     };
-    console.log('🟢 [COLOR PICKER] Applying:', styleToApply);
     onApply(styleToApply);
   };
   
