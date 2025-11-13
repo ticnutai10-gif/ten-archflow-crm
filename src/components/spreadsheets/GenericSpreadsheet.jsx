@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Table, Copy, Settings, Palette, Eye, EyeOff, Edit2, X, Download, Grid, Search, Filter, ArrowUp, ArrowDown, ArrowUpDown, XCircle, Undo, Redo, GripVertical, BarChart3, Calculator, Layers, Bookmark, Users, Zap, MessageSquare, Bold } from "lucide-react";
+import { Plus, Trash2, Table, Copy, Settings, Palette, Eye, EyeOff, Edit2, X, Download, Grid, Search, Filter, ArrowUp, ArrowDown, ArrowUpDown, XCircle, Undo, Redo, GripVertical, BarChart3, Calculator, Layers, Bookmark, Users, Zap, MessageSquare, Bold, Scissors } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -698,14 +699,44 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     return Array.from(values).sort();
   };
 
+  // ✅ מיזוג תאים
   const mergeCells = () => {
-    if (selectedCells.size < 2) { toast.error('בחר לפחות 2 תאים למיזוג'); return; }
+    if (selectedCells.size < 2) { 
+      toast.error('בחר לפחות 2 תאים למיזוג'); 
+      return; 
+    }
     const cellsArray = Array.from(selectedCells);
     const mergeKey = cellsArray.sort().join('|');
     setMergedCells(prev => ({ ...prev, [mergeKey]: cellsArray }));
     toast.success(`✓ ${cellsArray.length} תאים אוחדו`);
     setSelectedCells(new Set());
     setTimeout(() => saveToBackend(), 50);
+  };
+
+  // ✅ ביטול מיזוג תאים
+  const unmergeCells = (cellKey) => {
+    // מצא את קבוצת המיזוג שמכילה את התא הזה
+    const mergeKeyToDelete = Object.keys(mergedCells).find(key => 
+      mergedCells[key].includes(cellKey)
+    );
+    
+    if (!mergeKeyToDelete) {
+      toast.error('התא אינו חלק ממיזוג');
+      return;
+    }
+
+    const newMerged = { ...mergedCells };
+    delete newMerged[mergeKeyToDelete];
+    setMergedCells(newMerged);
+    setCellContextMenu(null);
+    
+    setTimeout(() => saveToBackend(), 50);
+    toast.success('✓ מיזוג בוטל');
+  };
+
+  // ✅ בדיקה האם תא הוא חלק ממיזוג
+  const isCellMerged = (cellKey) => {
+    return Object.values(mergedCells).some(cells => cells.includes(cellKey));
   };
 
   const handleCellMouseDown = (rowId, columnKey, event) => {
@@ -1181,6 +1212,12 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                   {Object.keys(cellNotes).length} הערות
                 </Badge>
               )}
+              {Object.keys(mergedCells).length > 0 && (
+                <Badge className="bg-green-100 text-green-800">
+                  <Grid className="w-3 h-3 ml-1" />
+                  {Object.keys(mergedCells).length} מיזוגים
+                </Badge>
+              )}
               {hasActiveFilters && <Badge className="bg-blue-600 text-white"><Filter className="w-3 h-3 ml-1" />פעיל</Badge>}
               {activeViewId && savedViews.find(v => v.id === activeViewId) && (
                 <Badge className="bg-indigo-100 text-indigo-800 border-indigo-300">
@@ -1251,7 +1288,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                       <ColorPicker onApply={applyStyleToSelection} />
                     </PopoverContent>
                   </Popover>
-                  {selectedCells.size >= 2 && <Button size="sm" variant="outline" onClick={mergeCells} className="gap-2"><Grid className="w-4 h-4" />מזג</Button>}
+                  {selectedCells.size >= 2 && <Button size="sm" variant="outline" onClick={mergeCells} className="gap-2 hover:bg-green-50"><Grid className="w-4 h-4 text-green-600" />מזג תאים</Button>}
                   <Button size="sm" variant="ghost" onClick={() => setSelectedCells(new Set())} className="gap-2"><X className="w-4 h-4" /></Button>
                 </>
               )}
@@ -1447,7 +1484,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                         )}
                                         {column.type === 'checkmark' ? (
                                           <div className="flex items-center justify-center text-2xl font-bold select-none">
-                                            {cellValue === '✓' ? <span className="text-green-600">✓</span> : cellValue === '✗' ? <span className="text-red-600">✗</span> : <span className="text-slate-300">○</span>}
+                                            {cellValue === '✓' ? <span className="text-green-600">✓</span> : cellValue === '✗' ? <span className="text-red-600">✗'] : <span className="text-slate-300">○</span>}
                                           </div>
                                         ) : column.type === 'client' ? (
                                           <div className="relative">
@@ -1513,13 +1550,20 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
             <span className="font-semibold">{filteredAndSortedData.length}/{rowsData.length} שורות</span>
             <span>•</span>
             <span>{visibleColumns.length} עמודות</span>
+            {selectedCells.size > 0 && (
+              <>
+                <span>•</span>
+                <span className="text-purple-600 font-semibold">נבחרו {selectedCells.size} תאים</span>
+              </>
+            )}
           </div>
           <div className="text-slate-400 text-[10px] bg-slate-100 px-2 py-1 rounded">
-            💡 לחיצה כפולה על תא לאפשרויות • לחיצה על משולש כתום לעריכת הערה • Alt+Click לבחירה • Shift+גרירה לבחירת טווח
+            💡 לחיצה כפולה על תא לאפשרויות • לחיצה על 🔺 לעריכת הערה • Alt+Click לבחירה מרובה • Shift+גרירה לטווח
           </div>
         </div>
       </Card>
 
+      {/* ✅ תפריט קונטקסט - עם אפשרות לבטל מיזוג */}
       {cellContextMenu && (
         <div 
           ref={contextMenuRef}
@@ -1559,6 +1603,20 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
               <Bold className="w-4 h-4 text-blue-600" />
               {cellStyles[cellContextMenu]?.fontWeight === 'bold' ? 'בטל הדגשה' : 'הדגש'}
             </Button>
+            {isCellMerged(cellContextMenu) && (
+              <>
+                <Separator />
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="w-full justify-start gap-2 hover:bg-orange-50"
+                  onClick={() => unmergeCells(cellContextMenu)}
+                >
+                  <Scissors className="w-4 h-4 text-orange-600" />
+                  בטל מיזוג
+                </Button>
+              </>
+            )}
             <Separator />
             <Button 
               variant="ghost" 
