@@ -88,6 +88,30 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const columnEditRef = useRef(null);
   const tableRef = useRef(null);
 
+  // ✅ שימוש ב-refs כדי לשמור תמיד את הערכים האחרונים
+  const rowHeightsRef = useRef(rowHeights);
+  const validationRulesRef = useRef(validationRules);
+  const conditionalFormatsRef = useRef(conditionalFormats);
+  const freezeSettingsRef = useRef(freezeSettings);
+  const customCellTypesRef = useRef(customCellTypes);
+  const mergedCellsRef = useRef(mergedCells);
+  const themeSettingsRef = useRef(themeSettings);
+  const savedViewsRef = useRef(savedViews);
+  const activeViewIdRef = useRef(activeViewId);
+  const chartsRef = useRef(charts);
+
+  // ✅ עדכן את ה-refs כל פעם שה-state משתנה
+  useEffect(() => { rowHeightsRef.current = rowHeights; }, [rowHeights]);
+  useEffect(() => { validationRulesRef.current = validationRules; }, [validationRules]);
+  useEffect(() => { conditionalFormatsRef.current = conditionalFormats; }, [conditionalFormats]);
+  useEffect(() => { freezeSettingsRef.current = freezeSettings; }, [freezeSettings]);
+  useEffect(() => { customCellTypesRef.current = customCellTypes; }, [customCellTypes]);
+  useEffect(() => { mergedCellsRef.current = mergedCells; }, [mergedCells]);
+  useEffect(() => { themeSettingsRef.current = themeSettings; }, [themeSettings]);
+  useEffect(() => { savedViewsRef.current = savedViews; }, [savedViews]);
+  useEffect(() => { activeViewIdRef.current = activeViewId; }, [activeViewId]);
+  useEffect(() => { chartsRef.current = charts; }, [charts]);
+
   const { filterClients } = useAccessControl();
 
   useEffect(() => {
@@ -156,31 +180,40 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     setHistoryIndex(prev => Math.min(prev + 1, 49));
   }, [historyIndex, isUndoRedoAction]);
 
+  // ✅ תיקון קריטי - שימוש ב-refs כדי לקבל תמיד את הערכים המעודכנים ביותר
   const saveToBackend = useCallback(async (cols, rows, styles) => {
     if (!spreadsheet?.id) return;
     try {
+      console.log('💾 [SAVE] Saving to backend...', {
+        spreadsheetId: spreadsheet.id,
+        cellStylesCount: Object.keys(styles).length,
+        themeSettings: themeSettingsRef.current
+      });
+
       await base44.entities.CustomSpreadsheet.update(spreadsheet.id, {
         columns: cols,
         rows_data: rows,
         cell_styles: styles,
-        row_heights: rowHeights,
-        validation_rules: validationRules,
-        conditional_formats: conditionalFormats,
-        freeze_settings: freezeSettings,
-        custom_cell_types: customCellTypes,
-        merged_cells: mergedCells,
-        theme_settings: themeSettings,
-        saved_views: savedViews,
-        active_view_id: activeViewId,
-        charts: charts
+        row_heights: rowHeightsRef.current,
+        validation_rules: validationRulesRef.current,
+        conditional_formats: conditionalFormatsRef.current,
+        freeze_settings: freezeSettingsRef.current,
+        custom_cell_types: customCellTypesRef.current,
+        merged_cells: mergedCellsRef.current,
+        theme_settings: themeSettingsRef.current,
+        saved_views: savedViewsRef.current,
+        active_view_id: activeViewIdRef.current,
+        charts: chartsRef.current
       });
+
+      console.log('✅ [SAVE] Successfully saved to backend');
 
       if (onUpdate) await onUpdate();
     } catch (error) {
-      console.error('❌ Save error:', error);
-      toast.error('שגיאה בשמירה');
+      console.error('❌ [SAVE] Save error:', error);
+      toast.error('שגיאה בשמירה: ' + (error.message || 'לא ידוע'));
     }
-  }, [spreadsheet?.id, rowHeights, validationRules, conditionalFormats, freezeSettings, customCellTypes, mergedCells, themeSettings, savedViews, activeViewId, charts, onUpdate]);
+  }, [spreadsheet?.id, onUpdate]);
 
   const handleUndo = useCallback(() => {
     if (historyIndex <= 0) { toast.error('אין מה לבטל'); return; }
@@ -1043,7 +1076,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
               {selectedCells.size > 0 && (
                 <>
                   <Badge variant="outline" className="bg-purple-50 px-3">נבחרו: {selectedCells.size}</Badge>
-                  <Popover><PopoverTrigger asChild><Button size="sm" variant="outline" className="gap-2"><Palette className="w-4 h-4" />צבע</Button></PopoverTrigger><PopoverContent className="w-64"><ColorPicker onApply={applyStyleToSelection} /></PopoverContent></Popover>
+                  <Popover><PopoverTrigger asChild><Button size="sm" variant="outline" className="gap-2"><Palette className="w-4 h-4" />צבע</Button></PopoverTrigger><PopoverContent className="w-80"><ColorPicker onApply={applyStyleToSelection} /></PopoverContent></Popover>
                   {selectedCells.size >= 2 && <Button size="sm" variant="outline" onClick={mergeCells} className="gap-2"><Grid className="w-4 h-4" />מזג</Button>}
                   <Button size="sm" variant="ghost" onClick={() => setSelectedCells(new Set())} className="gap-2"><X className="w-4 h-4" /></Button>
                 </>
@@ -1372,15 +1405,155 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
 
 function ColorPicker({ onApply, currentStyle = {} }) {
   const [color, setColor] = useState(currentStyle.backgroundColor || '#ffffff');
+  const [hexInput, setHexInput] = useState(currentStyle.backgroundColor || '#ffffff');
   const [opacity, setOpacity] = useState(currentStyle.opacity || 100);
   const [isBold, setIsBold] = useState(currentStyle.fontWeight === 'bold');
-  const colors = ['#ffffff', '#fee2e2', '#fef3c7', '#d1fae5', '#dbeafe', '#ede9fe', '#fce7f3', '#f3f4f6'];
+  const [textColor, setTextColor] = useState(currentStyle.color || '#000000');
+  const [textHexInput, setTextHexInput] = useState(currentStyle.color || '#000000');
+
+  const colors = ['#ffffff', '#fee2e2', '#fef3c7', '#d1fae5', '#dbeafe', '#ede9fe', '#fce7f3', '#f3f4f6', '#FCF6E3', '#e0f2f7', '#fff5f0', '#e8f5e9'];
+
+  // ✅ סנכרון צבע רקע
+  useEffect(() => {
+    setHexInput(color);
+  }, [color]);
+
+  // ✅ סנכרון צבע טקסט
+  useEffect(() => {
+    setTextHexInput(textColor);
+  }, [textColor]);
+
+  const handleHexChange = (value) => {
+    setHexInput(value);
+    // בדיקה אם זה hex תקין
+    if (/^#[0-9A-Fa-f]{6}$/.test(value)) {
+      setColor(value);
+    }
+  };
+
+  const handleTextHexChange = (value) => {
+    setTextHexInput(value);
+    // בדיקה אם זה hex תקין
+    if (/^#[0-9A-Fa-f]{6}$/.test(value)) {
+      setTextColor(value);
+    }
+  };
+
   return (
-    <div className="space-y-3" dir="rtl">
-      <div><h4 className="font-semibold text-sm mb-2">צבע רקע</h4><div className="grid grid-cols-4 gap-2 mb-2">{colors.map(c => <button key={c} className={`h-8 rounded border-2 ${color === c ? 'ring-2 ring-blue-500' : ''}`} style={{ backgroundColor: c }} onClick={() => setColor(c)} />)}</div><Input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="w-full h-10" /></div>
-      <div><h4 className="font-semibold text-sm mb-2">שקיפות: {opacity}%</h4><input type="range" min="0" max="100" value={opacity} onChange={(e) => setOpacity(Number(e.target.value))} className="w-full" /></div>
-      <div className="flex items-center justify-between"><span className="text-sm">טקסט מודגש</span><input type="checkbox" checked={isBold} onChange={(e) => setIsBold(e.target.checked)} className="h-4 w-4" /></div>
-      <Button onClick={() => onApply({ backgroundColor: color, opacity: opacity, fontWeight: isBold ? 'bold' : 'normal' })} className="w-full">החל</Button>
+    <div className="space-y-4" dir="rtl">
+      <div>
+        <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
+          <Palette className="w-4 h-4" />
+          צבע רקע
+        </h4>
+        <div className="grid grid-cols-4 gap-2 mb-3">
+          {colors.map(c => (
+            <button
+              key={c}
+              className={`h-10 rounded-lg border-2 transition-all hover:scale-105 ${color === c ? 'ring-2 ring-blue-500 ring-offset-2' : 'border-slate-200'}`}
+              style={{ backgroundColor: c }}
+              onClick={() => setColor(c)}
+              title={c}
+            />
+          ))}
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-xs text-slate-600">קוד צבע Hex</Label>
+          <div className="flex gap-2">
+            <Input
+              type="text"
+              value={hexInput}
+              onChange={(e) => handleHexChange(e.target.value.toUpperCase())}
+              placeholder="#FCF6E3"
+              className="font-mono text-sm"
+              dir="ltr"
+            />
+            <Input
+              type="color"
+              value={color}
+              onChange={(e) => setColor(e.target.value)}
+              className="w-16 h-10 cursor-pointer"
+              title="בחר צבע"
+            />
+          </div>
+          <p className="text-xs text-slate-500">💡 ניתן להזין קוד Hex ישירות (למשל: #FCF6E3)</p>
+        </div>
+      </div>
+
+      <Separator />
+
+      <div>
+        <h4 className="font-semibold text-sm mb-3">צבע טקסט</h4>
+        <div className="flex gap-2 mb-2">
+          <Input
+            type="text"
+            value={textHexInput}
+            onChange={(e) => handleTextHexChange(e.target.value.toUpperCase())}
+            placeholder="#000000"
+            className="font-mono text-sm"
+            dir="ltr"
+          />
+          <Input
+            type="color"
+            value={textColor}
+            onChange={(e) => setTextColor(e.target.value)}
+            className="w-16 h-10 cursor-pointer"
+            title="בחר צבע טקסט"
+          />
+        </div>
+      </div>
+
+      <Separator />
+
+      <div>
+        <h4 className="font-semibold text-sm mb-2">שקיפות: {opacity}%</h4>
+        <input
+          type="range"
+          min="0"
+          max="100"
+          value={opacity}
+          onChange={(e) => setOpacity(Number(e.target.value))}
+          className="w-full accent-purple-600"
+        />
+      </div>
+
+      <div className="flex items-center justify-between bg-slate-50 p-3 rounded-lg">
+        <span className="text-sm font-medium">טקסט מודגש</span>
+        <Switch checked={isBold} onCheckedChange={setIsBold} />
+      </div>
+
+      <div className="bg-gradient-to-br from-blue-50 to-purple-50 p-4 rounded-lg border-2 border-blue-200">
+        <div className="text-xs text-slate-600 mb-2 font-semibold">תצוגה מקדימה:</div>
+        <div
+          className="p-3 rounded text-center font-medium"
+          style={{
+            backgroundColor: color,
+            color: textColor,
+            opacity: opacity / 100,
+            fontWeight: isBold ? 'bold' : 'normal'
+          }}
+        >
+          דוגמת טקסט
+        </div>
+      </div>
+
+      <Button
+        onClick={() => onApply({
+          backgroundColor: color,
+          color: textColor,
+          opacity: opacity,
+          fontWeight: isBold ? 'bold' : 'normal'
+        })}
+        className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+      >
+        <Palette className="w-4 h-4 ml-2" />
+        החל עיצוב
+      </Button>
     </div>
   );
+}
+
+function Label({ children, className = "" }) {
+  return <label className={`text-sm font-medium ${className}`}>{children}</label>;
 }
