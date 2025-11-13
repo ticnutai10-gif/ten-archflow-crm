@@ -70,7 +70,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const [showAddFromClientDialog, setShowAddFromClientDialog] = useState(false);
   const [showChartBuilder, setShowChartBuilder] = useState(false);
   const [charts, setCharts] = useState([]);
-  const [editingChart, setEditingChart] = null);
+  const [editingChart, setEditingChart] = useState(null);
   const [showColumnsManager, setShowColumnsManager] = useState(false);
   const [showBulkColumnsDialog, setShowBulkColumnsDialog] = useState(false);
   const [cellContextMenu, setCellContextMenu] = useState(null);
@@ -659,7 +659,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     setCellStyles(newStyles);
     
     setTimeout(() => {
-      saveToHistory(columnsRef.current, rowsDataRef.current, newStyles, cellNotesRef.current);
+      saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current, cellNotesRef.current);
       saveToBackend();
     }, 100);
     
@@ -1524,50 +1524,52 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                     {(Object.keys(subHeaders).length > 0 || Object.keys(mergedHeaders).length > 0) && (
                       <div className="space-y-1 max-h-48 overflow-y-auto">
                         {visibleColumns.map(col => {
-                          const headerMerge = getHeaderMergeInfo(col.key);
+                          const mergedHeader = getHeaderMergeInfo(col.key);
                           const subHeader = subHeaders[col.key];
 
-                          if (headerMerge && !headerMerge.isMaster) {
+                          if (mergedHeader && !mergedHeader.isMaster) {
                             return null;
                           }
                           
-                          const headerKeyForStyle = headerMerge ? headerMerge.mergeKey : col.key;
+                          const headerKeyForStyle = mergedHeader ? mergedHeader.mergeKey : col.key;
+                          const currentHeaderStyle = headerStyles[headerKeyForStyle] || {};
 
-                          if (!headerMerge && !subHeader) {
-                            return null;
-                          }
-                          
-                          return (
-                            <div key={mergedHeader?.mergeKey || col.key} className="flex items-center justify-between p-2 bg-blue-50 rounded text-xs">
-                              <div>
-                                <div className="font-semibold text-blue-800">{mergedHeader?.title || col.title}</div>
-                                {mergedHeader && <div className="text-slate-500">מיזוג ({mergedHeader.colspan} עמודות)</div>}
-                                {subHeader && <div className="text-slate-500">כותרת משנה: {subHeader}</div>}
-                              </div>
-                              <div className="flex gap-1">
-                                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); handleOpenHeaderColorDialog(headerKeyForStyle); }}>
-                                  <Palette className="w-3 h-3 text-purple-600" />
-                                </Button>
-                                {mergedHeader ? (
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-6 w-6"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      unmergeHeaders(col.key);
-                                    }}
-                                  >
+                          if (mergedHeader) {
+                            return (
+                              <div key={mergedHeader.mergeKey} className="flex items-center justify-between p-2 bg-blue-50 rounded text-xs">
+                                <div>
+                                  <div className="font-semibold text-blue-800">{mergedHeader.title}</div>
+                                  <div className="text-slate-500">מיזוג ({mergedHeader.colspan} עמודות)</div>
+                                </div>
+                                <div className="flex gap-1">
+                                  <Button size="icon" variant="ghost" className="h-6 w-6 bg-white/90 hover:bg-white" onClick={(e) => { e.stopPropagation(); handleOpenHeaderColorDialog(headerKeyForStyle); }}>
+                                    <Palette className="w-3 h-3 text-purple-600" />
+                                  </Button>
+                                  <Button size="icon" variant="ghost" className="h-6 w-6 bg-white/90 hover:bg-white" onClick={() => unmergeHeaders(col.key)}>
                                     <Scissors className="w-3 h-3 text-orange-600" />
                                   </Button>
-                                ) : (
+                                </div>
+                              </div>
+                            );
+                          } else if (subHeader) {
+                            return (
+                              <div key={col.key} className="flex items-center justify-between p-2 bg-slate-50 rounded text-xs">
+                                <div>
+                                  <div className="font-semibold">{col.title}</div>
+                                  <div className="text-slate-500">{subHeader}</div>
+                                </div>
+                                <div className="flex gap-1">
+                                  <Button size="icon" variant="ghost" className="h-6 w-6 bg-white/90 hover:bg-white" onClick={(e) => { e.stopPropagation(); handleOpenHeaderColorDialog(headerKeyForStyle); }}>
+                                    <Palette className="w-3 h-3 text-purple-600" />
+                                  </Button>
                                   <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => addOrEditSubHeader(col.key)}>
                                     <Edit2 className="w-3 h-3" />
                                   </Button>
-                                )}
+                                </div>
                               </div>
-                            </div>
-                          );
+                            );
+                          }
+                          return null;
                         })}
                       </div>
                     )}
@@ -1701,7 +1703,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
               }}>
                 <Droppable droppableId="columns" direction="horizontal" type="column">
                   {(provided) => (
-                    <thead style={{ position: 'sticky', top: 0, zIndex: 25, backgroundColor: palette.headerBg }} ref={provided.innerRef} {...provided.droppableProps}>
+                    <thead style={{ position: 'sticky', top: 0, zIndex: 25 }} ref={provided.innerRef} {...provided.droppableProps}>
                       {showSubHeaders && (Object.keys(mergedHeaders).length > 0 || Object.keys(subHeaders).length > 0) && (
                         <tr>
                           <th className="p-3 w-12 sticky right-0 shadow-[2px_0_5px_rgba(0,0,0,0.1)]" style={{ zIndex: 35, backgroundColor: palette.headerBg, borderWidth: isSeparateBorders ? '0' : borderStyle.width, borderStyle: borderStyle.style, borderColor: palette.border }}></th>
@@ -1713,7 +1715,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                               return null;
                             }
                             
-                            const headerKeyForStyle = headerMerge ? headerMerge.mergeKey : col.key;
+                            const headerKeyForStyle = mergedHeader ? mergedHeader.mergeKey : col.key;
                             const currentHeaderStyle = headerStyles[headerKeyForStyle] || {};
 
                             if (!headerMerge && !subHeaderTitle) {
@@ -1757,7 +1759,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                     <Button
                                       size="icon"
                                       variant="ghost"
-                                      className="h-5 w-5"
+                                      className="h-5 w-5 bg-white/90 hover:bg-white"
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         handleOpenHeaderColorDialog(headerKeyForStyle);
@@ -1765,11 +1767,11 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                     >
                                       <Palette className="w-3 h-3 text-purple-600" />
                                     </Button>
-                                    {headerMerge && (
+                                    {mergedHeader && (
                                       <Button
                                         size="icon"
                                         variant="ghost"
-                                        className="h-5 w-5"
+                                        className="h-5 w-5 bg-white/90 hover:bg-white"
                                         onClick={(e) => {
                                           e.stopPropagation();
                                           unmergeHeaders(col.key);
@@ -2125,7 +2127,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         if (!open) {
           setShowColorPickerDialog(false);
           setColorPickerTargetCell(null);
-          setSelectedCells(new Set());
+          setSelectedCells(new Set()); // Clear selection when color picker closes
         }
       }}>
         <DialogContent className="sm:max-w-md" dir="rtl">
