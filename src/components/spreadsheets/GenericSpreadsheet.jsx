@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Table, Copy, Settings, Palette, Eye, EyeOff, Edit2, X, Download, Upload, Grid, List, Search, Filter, ArrowUp, ArrowDown, ArrowUpDown, XCircle, Undo, Redo, GripVertical, BarChart3, TrendingUp, Calculator, Layers, Save, Bookmark, Users } from "lucide-react";
+import { Plus, Trash2, Table, Copy, Settings, Palette, Eye, EyeOff, Edit2, X, Download, Upload, Grid, List, Search, Filter, ArrowUp, ArrowDown, ArrowUpDown, XCircle, Undo, Redo, GripVertical, BarChart3, TrendingUp, Calculator, Layers, Save, Bookmark, Users, Zap } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -20,6 +20,7 @@ import ChartBuilder from "./ChartBuilder";
 import ChartViewer from "./ChartViewer";
 import { useAccessControl } from "@/components/access/AccessValidator";
 import ColumnsManagerDialog from "./ColumnsManagerDialog";
+import BulkColumnsDialog from "./BulkColumnsDialog";
 
 export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMode = false }) {
   const [columns, setColumns] = useState([]);
@@ -81,6 +82,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const [charts, setCharts] = useState([]);
   const [editingChart, setEditingChart] = useState(null);
   const [showColumnsManager, setShowColumnsManager] = useState(false);
+  const [showBulkColumnsDialog, setShowBulkColumnsDialog] = useState(false);
 
   const editInputRef = useRef(null);
   const columnEditRef = useRef(null);
@@ -410,12 +412,21 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const addColumn = async () => {
     const columnName = prompt('שם העמודה החדשה:');
     if (!columnName) return;
-    const newColumn = { key: `col${Date.now()}`, title: columnName, width: '150px', type: 'text', visible: true };
+    const newColumn = { key: `col_${Date.now()}`, title: columnName, width: '150px', type: 'text', visible: true };
     const updated = [...columns, newColumn];
     setColumns(updated);
     saveToHistory(updated, rowsData, cellStyles);
     await saveToBackend(updated, rowsData, cellStyles);
     toast.success('✓ עמודה נוספה');
+  };
+
+  const addBulkColumns = async (newColumns) => {
+    if (!newColumns || newColumns.length === 0) return;
+    const updated = [...columns, ...newColumns];
+    setColumns(updated);
+    saveToHistory(updated, rowsData, cellStyles);
+    await saveToBackend(updated, rowsData, cellStyles);
+    toast.success(`✓ נוספו ${newColumns.length} עמודות`);
   };
 
   const deleteColumn = async (columnKey) => {
@@ -1009,6 +1020,22 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                   </div>
                 </PopoverContent>
               </Popover>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button size="sm" className="gap-2"><Plus className="w-4 h-4" />עמודה</Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-56" align="end" dir="rtl">
+                  <div className="space-y-2">
+                    <Button variant="outline" size="sm" className="w-full justify-start gap-2" onClick={addColumn}>
+                      <Plus className="w-4 h-4" />עמודה בודדת
+                    </Button>
+                    <Button variant="outline" size="sm" className="w-full justify-start gap-2 bg-orange-50 hover:bg-orange-100 border-orange-300" onClick={() => setShowBulkColumnsDialog(true)}>
+                      <Zap className="w-4 h-4 text-orange-600" />
+                      <span className="text-orange-900">יצירה מהירה</span>
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
               <Button onClick={() => setShowColumnsManager(true)} size="sm" variant="outline" className="gap-2 hover:bg-orange-50">
                 <Settings className="w-4 h-4" />
                 ניהול עמודות
@@ -1213,7 +1240,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                                     </button>
                                                   ))}
                                                   {allClients.filter(c => !clientSearchQuery || c.name?.toLowerCase().includes(clientSearchQuery.toLowerCase()) || c.company?.toLowerCase().includes(clientSearchQuery.toLowerCase()) || c.email?.toLowerCase().includes(clientSearchQuery.toLowerCase())).length === 0 && (
-                                                    <div className="px-3 py-6 text-center text-slate-500 text-sm">{clientSearchQuery ? 'לא נמצאו לקוחות' : 'אין לקוחות'}</div>
+                                                    <div className="text-center py-12 text-slate-500 text-sm">{clientSearchQuery ? 'לא נמצאו לקוחות' : 'אין לקוחות'}</div>
                                                   )}
                                                 </div>
                                               </div>
@@ -1332,6 +1359,12 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
           saveToBackend(updatedColumns, rowsData, cellStyles);
           setShowColumnsManager(false);
         }}
+      />
+
+      <BulkColumnsDialog
+        open={showBulkColumnsDialog}
+        onClose={() => setShowBulkColumnsDialog(false)}
+        onAdd={addBulkColumns}
       />
     </div>
   );
