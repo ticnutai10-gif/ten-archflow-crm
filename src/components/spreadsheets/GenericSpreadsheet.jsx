@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Table, Copy, Settings, Palette, Eye, EyeOff, Edit2, X, Download, Grid, Search, Filter, ArrowUp, ArrowDown, ArrowUpDown, XCircle, Undo, Redo, GripVertical, BarChart3, Calculator, Layers, Bookmark, Users, Zap, MessageSquare, Bold, Scissors, Merge } from "lucide-react";
+import { Plus, Trash2, Table, Copy, Settings, Palette, Eye, EyeOff, Edit2, X, Download, Grid, Search, Filter, ArrowUp, ArrowDown, ArrowUpDown, XCircle, Undo, Redo, GripVertical, BarChart3, Calculator, Layers, Bookmark, Users, Zap, MessageSquare, Bold, Scissors, Merge, Type } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -29,11 +29,11 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const [editingCell, setEditingCell] = useState(null);
   const [editValue, setEditValue] = useState("");
   const [selectedCells, setSelectedCells] = useState(new Set());
-  const [selectedHeaders, setSelectedHeaders] = useState(new Set()); // New state
+  const [selectedHeaders, setSelectedHeaders] = useState(new Set());
   const [cellStyles, setCellStyles] = useState({});
   const [cellNotes, setCellNotes] = useState({});
-  const [subHeaders, setSubHeaders] = useState({}); // New state (was removed, now re-added)
-  const [showSubHeaders, setShowSubHeaders] = useState(false); // New state
+  const [subHeaders, setSubHeaders] = useState({});
+  const [showSubHeaders, setShowSubHeaders] = useState(false);
   const [popoverOpen, setPopoverOpen] = useState(null);
   const [editingColumnKey, setEditingColumnKey] = useState(null);
   const [editingColumnTitle, setEditingColumnTitle] = useState("");
@@ -53,7 +53,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const [freezeSettings, setFreezeSettings] = useState({ freeze_rows: 0, freeze_columns: 1 });
   const [customCellTypes, setCustomCellTypes] = useState([]);
   const [mergedCells, setMergedCells] = useState({});
-  const [mergedHeaders, setMergedHeaders] = useState({}); // New state
+  const [mergedHeaders, setMergedHeaders] = useState({});
   const [isDraggingSelection, setIsDraggingSelection] = useState(false);
   const [dragStartCell, setDragStartCell] = useState(null);
   const [copiedCells, setCopiedCells] = useState(null);
@@ -87,14 +87,14 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const rowsDataRef = useRef(rowsData);
   const cellStylesRef = useRef(cellStyles);
   const cellNotesRef = useRef(cellNotes);
-  const subHeadersRef = useRef(subHeaders); // New ref
+  const subHeadersRef = useRef(subHeaders);
   const rowHeightsRef = useRef(rowHeights);
   const validationRulesRef = useRef(validationRules);
   const conditionalFormatsRef = useRef(conditionalFormats);
   const freezeSettingsRef = useRef(freezeSettings);
   const customCellTypesRef = useRef(customCellTypes);
   const mergedCellsRef = useRef(mergedCells);
-  const mergedHeadersRef = useRef(mergedHeaders); // New ref
+  const mergedHeadersRef = useRef(mergedHeaders);
   const themeSettingsRef = useRef(themeSettings);
   const savedViewsRef = useRef(savedViews);
   const activeViewIdRef = useRef(activeViewId);
@@ -104,14 +104,14 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   useEffect(() => { rowsDataRef.current = rowsData; }, [rowsData]);
   useEffect(() => { cellStylesRef.current = cellStyles; }, [cellStyles]);
   useEffect(() => { cellNotesRef.current = cellNotes; }, [cellNotes]);
-  useEffect(() => { subHeadersRef.current = subHeaders; }, [subHeaders]); // New dependency
+  useEffect(() => { subHeadersRef.current = subHeaders; }, [subHeaders]);
   useEffect(() => { rowHeightsRef.current = rowHeights; }, [rowHeights]);
   useEffect(() => { validationRulesRef.current = validationRules; }, [validationRules]);
   useEffect(() => { conditionalFormatsRef.current = conditionalFormats; }, [conditionalFormats]);
   useEffect(() => { freezeSettingsRef.current = freezeSettings; }, [freezeSettings]);
   useEffect(() => { customCellTypesRef.current = customCellTypes; }, [customCellTypes]);
   useEffect(() => { mergedCellsRef.current = mergedCells; }, [mergedCells]);
-  useEffect(() => { mergedHeadersRef.current = mergedHeaders; }, [mergedHeaders]); // New dependency
+  useEffect(() => { mergedHeadersRef.current = mergedHeaders; }, [mergedHeaders]);
   useEffect(() => { themeSettingsRef.current = themeSettings; }, [themeSettings]);
   useEffect(() => { savedViewsRef.current = savedViews; }, [savedViews]);
   useEffect(() => { activeViewIdRef.current = activeViewId; }, [activeViewId]);
@@ -163,15 +163,15 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       setRowsData(initialRows);
       setCellStyles(initialStyles);
       setCellNotes(initialNotes);
-      setSubHeaders(spreadsheet.sub_headers || {}); // Load new state
-      setShowSubHeaders(spreadsheet.show_sub_headers || false); // Load new state
+      setSubHeaders(spreadsheet.sub_headers || {});
+      setShowSubHeaders(spreadsheet.show_sub_headers || false);
       setRowHeights(spreadsheet.row_heights || {});
       setValidationRules(spreadsheet.validation_rules || []);
       setConditionalFormats(spreadsheet.conditional_formats || []);
       setFreezeSettings(spreadsheet.freeze_settings || { freeze_rows: 0, freeze_columns: 1 });
       setCustomCellTypes(spreadsheet.custom_cell_types || []);
       setMergedCells(spreadsheet.merged_cells || {});
-      setMergedHeaders(spreadsheet.merged_headers || {}); // Load new state
+      setMergedHeaders(spreadsheet.merged_headers || {});
 
       const loadedTheme = spreadsheet.theme_settings || {
         palette: "default",
@@ -220,15 +220,15 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         rows_data: rowsDataRef.current,
         cell_styles: cellStylesRef.current,
         cell_notes: cellNotesRef.current,
-        sub_headers: subHeadersRef.current, // Save new state
-        show_sub_headers: showSubHeaders, // Save new state
+        sub_headers: subHeadersRef.current,
+        show_sub_headers: showSubHeaders,
         row_heights: rowHeightsRef.current,
         validation_rules: validationRulesRef.current,
         conditional_formats: conditionalFormatsRef.current,
         freeze_settings: freezeSettingsRef.current,
         custom_cell_types: customCellTypesRef.current,
         merged_cells: mergedCellsRef.current,
-        merged_headers: mergedHeadersRef.current, // Save new state
+        merged_headers: mergedHeadersRef.current,
         theme_settings: themeSettingsRef.current,
         saved_views: savedViewsRef.current,
         active_view_id: activeViewIdRef.current,
@@ -244,7 +244,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       console.error('❌ [SAVE] Error:', error);
       toast.error('שגיאה בשמירה: ' + (error.message || 'לא ידוע'));
     }
-  }, [spreadsheet?.id, onUpdate, showSubHeaders]); // Add showSubHeaders to deps
+  }, [spreadsheet?.id, onUpdate, showSubHeaders]);
 
   const handleUndo = useCallback(() => {
     if (historyIndex <= 0) { toast.error('אין מה לבטל'); return; }
@@ -713,7 +713,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     return Array.from(values).sort();
   };
 
-  // ✅ מיזוג תאים
   const mergeCells = () => {
     if (selectedCells.size < 2) { 
       toast.error('בחר לפחות 2 תאים למיזוג'); 
@@ -755,12 +754,11 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       }
     }));
     
-    toast.success(`✓ ${cellsArray.length} תאים אוחדו (${rowspan}x${colspan})`);
+    toast.success(`✓ ${cellsArray.length} תאים אוחדו (${rowspan}×${colspan})`);
     setSelectedCells(new Set());
     setTimeout(() => saveToBackend(), 50);
   };
 
-  // ✅ ביטול מיזוג תאים
   const unmergeCells = (cellKey) => {
     const mergeKeyToDelete = Object.keys(mergedCells).find(key => 
       mergedCells[key].cells?.includes(cellKey)
@@ -777,10 +775,9 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     setCellContextMenu(null);
     
     setTimeout(() => saveToBackend(), 50);
-    toast.success('✓ מיזוג תאים בוטל');
+    toast.success('✓ מיזוג בוטל');
   };
 
-  // ✅ בדיקה האם תא הוא חלק ממיזוג
   const getMergeInfo = (cellKey) => {
     for (const [mergeKey, mergeData] of Object.entries(mergedCells)) {
       if (mergeData.cells?.includes(cellKey)) {
@@ -790,7 +787,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     return null;
   };
 
-  // ✅ מיזוג כותרות
   const mergeHeaders = () => {
     if (selectedHeaders.size < 2) {
       toast.error('בחר לפחות 2 כותרות למיזוג');
@@ -800,16 +796,12 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     const headersArray = Array.from(selectedHeaders);
     const indices = headersArray.map(key => visibleColumns.findIndex(c => c.key === key)).filter(i => i >= 0).sort((a, b) => a - b);
     
-    if (indices.length < 2) {
-      toast.error('שגיאה: לא ניתן למצוא מספיק אינדקסים עבור הכותרות הנבחרות.');
-      return;
-    }
+    if (indices.length < 2) return;
     
     const minIndex = indices[0];
     const maxIndex = indices[indices.length - 1];
     const colspan = maxIndex - minIndex + 1;
     
-    // בדוק שהכותרות רציפות
     const isConsecutive = indices.every((val, i, arr) => i === 0 || val === arr[i - 1] + 1);
     if (!isConsecutive) {
       toast.error('ניתן למזג רק כותרות רציפות');
@@ -819,13 +811,15 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     const masterKey = visibleColumns[minIndex].key;
     const mergeKey = `header_merge_${Date.now()}`;
     
+    const title = prompt('כותרת עליונה למיזוג:', '') || headersArray.map(k => visibleColumns.find(c => c.key === k)?.title).join(' + ');
+    
     setMergedHeaders(prev => ({
       ...prev,
       [mergeKey]: {
         columns: headersArray,
         master: masterKey,
         colspan,
-        title: prompt('כותרת עליונה למיזוג:', '') || headersArray.map(k => visibleColumns.find(c => c.key === k)?.title).join(' + ')
+        title
       }
     }));
     
@@ -835,7 +829,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     setTimeout(() => saveToBackend(), 50);
   };
 
-  // ✅ ביטול מיזוג כותרות
   const unmergeHeaders = (columnKey) => {
     const mergeKeyToDelete = Object.keys(mergedHeaders).find(key =>
       mergedHeaders[key].columns?.includes(columnKey)
@@ -850,7 +843,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     delete newMerged[mergeKeyToDelete];
     setMergedHeaders(newMerged);
     
-    if (Object.keys(newMerged).length === 0) {
+    if (Object.keys(newMerged).length === 0 && Object.keys(subHeaders).length === 0) {
       setShowSubHeaders(false);
     }
     
@@ -858,7 +851,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     toast.success('✓ מיזוג כותרות בוטל');
   };
 
-  // ✅ בדיקה האם כותרת ממוזגת
   const getHeaderMergeInfo = (columnKey) => {
     for (const [mergeKey, mergeData] of Object.entries(mergedHeaders)) {
       if (mergeData.columns?.includes(columnKey)) {
@@ -866,6 +858,30 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       }
     }
     return null;
+  };
+
+  const addOrEditSubHeader = (columnKey) => {
+    const currentSubHeader = subHeaders[columnKey] || '';
+    const newTitle = prompt('כותרת משנה:', currentSubHeader);
+    
+    if (newTitle === null) return;
+    
+    if (newTitle.trim()) {
+      setSubHeaders(prev => ({ ...prev, [columnKey]: newTitle.trim() }));
+      setShowSubHeaders(true);
+      toast.success('✓ כותרת משנה נוספה');
+    } else {
+      const newSubHeaders = { ...subHeaders };
+      delete newSubHeaders[columnKey];
+      setSubHeaders(newSubHeaders);
+      
+      if (Object.keys(newSubHeaders).length === 0 && Object.keys(mergedHeaders).length === 0) {
+        setShowSubHeaders(false);
+      }
+      toast.success('✓ כותרת משנה הוסרה');
+    }
+    
+    setTimeout(() => saveToBackend(), 50);
   };
 
   const handleCellMouseDown = (rowId, columnKey, event) => {
@@ -1003,8 +1019,8 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
 
     const row = filteredAndSortedData.find(r => r.id === rowId);
     if (!row) return;
-    const currentValue = row[columnKey] || '';
-    setEditingCell(`${rowId}_${columnKey}`);
+    const currentValue = row[column.key] || '';
+    setEditingCell(`${rowId}_${column.key}`);
     setEditValue(String(currentValue));
     setTimeout(() => editInputRef.current?.focus(), 0);
   };
@@ -1016,7 +1032,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     setCellContextMenu(cellKey);
   };
 
-  // Replaced handleColumnHeaderClick
   const handleHeaderClick = (columnKey, event) => {
     if (event?.altKey) {
       event.preventDefault();
@@ -1369,10 +1384,10 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                   {Object.keys(mergedCells).length} מיזוגי תאים
                 </Badge>
               )}
-              {Object.keys(mergedHeaders).length > 0 && (
+              {(Object.keys(mergedHeaders).length > 0 || Object.keys(subHeaders).length > 0) && (
                 <Badge className="bg-blue-100 text-blue-800">
                   <Merge className="w-3 h-3 ml-1" />
-                  {Object.keys(mergedHeaders).length} מיזוגי כותרות
+                  {Object.keys(mergedHeaders).length + Object.keys(subHeaders).length} כותרות
                 </Badge>
               )}
               {hasActiveFilters && <Badge className="bg-blue-600 text-white"><Filter className="w-3 h-3 ml-1" />פעיל</Badge>}
@@ -1386,10 +1401,64 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
             <div className="flex gap-2 flex-wrap">
               <Button onClick={handleUndo} size="sm" variant="outline" disabled={!canUndo} title="בטל (Ctrl+Z)"><Undo className="w-4 h-4" /></Button>
               <Button onClick={handleRedo} size="sm" variant="outline" disabled={!canRedo} title="שחזר (Ctrl+Y)"><Redo className="w-4 h-4" /></Button>
-              <Button onClick={() => setShowSubHeaders(!showSubHeaders)} size="sm" variant={showSubHeaders ? "default" : "outline"} className="gap-2">
-                <Layers className="w-4 h-4" />
-                {showSubHeaders ? 'הסתר' : 'הצג'} כותרות משנה
-              </Button>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button size="sm" variant="outline" className="gap-2">
+                    <Type className="w-4 h-4" />
+                    כותרות משנה
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-64" align="end" dir="rtl">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold">הצג כותרות משנה</span>
+                      <Switch checked={showSubHeaders} onCheckedChange={(val) => {
+                        setShowSubHeaders(val);
+                        setTimeout(() => saveToBackend(), 50);
+                      }} />
+                    </div>
+                    <Separator />
+                    <div className="text-xs text-slate-600 bg-blue-50 p-2 rounded">
+                      💡 לחץ על כותרת עמודה כדי להוסיף כותרת משנה
+                    </div>
+                    {(Object.keys(subHeaders).length > 0 || Object.keys(mergedHeaders).length > 0) && (
+                      <div className="space-y-1 max-h-48 overflow-y-auto">
+                        {visibleColumns.map(col => {
+                          const mergedHeader = getHeaderMergeInfo(col.key);
+                          const subHeader = subHeaders[col.key];
+
+                          if (mergedHeader && mergedHeader.isMaster) {
+                            return (
+                              <div key={mergedHeader.mergeKey} className="flex items-center justify-between p-2 bg-blue-50 rounded text-xs">
+                                <div>
+                                  <div className="font-semibold text-blue-800">{mergedHeader.title}</div>
+                                  <div className="text-slate-500">מיזוג ({mergedHeader.colspan} עמודות)</div>
+                                </div>
+                                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => unmergeHeaders(col.key)}>
+                                  <Scissors className="w-3 h-3 text-orange-600" />
+                                </Button>
+                              </div>
+                            );
+                          } else if (subHeader) {
+                            return (
+                              <div key={col.key} className="flex items-center justify-between p-2 bg-slate-50 rounded text-xs">
+                                <div>
+                                  <div className="font-semibold">{col.title}</div>
+                                  <div className="text-slate-500">{subHeader}</div>
+                                </div>
+                                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => addOrEditSubHeader(col.key)}>
+                                  <Edit2 className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            );
+                          }
+                          return null;
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
               <Button onClick={() => setShowColumnStats(!showColumnStats)} size="sm" variant="outline" className="gap-2"><BarChart3 className="w-4 h-4" />סטטיסטיקות</Button>
               <Button onClick={() => setShowThemeSelector(true)} size="sm" variant="outline" className="gap-2"><Palette className="w-4 h-4" />עיצוב</Button>
               <Button onClick={() => setShowViewManager(true)} size="sm" variant="outline" className="gap-2">
@@ -1518,23 +1587,29 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                 <Droppable droppableId="columns" direction="horizontal" type="column">
                   {(provided) => (
                     <thead style={{ position: 'sticky', top: 0, zIndex: 25, backgroundColor: palette.headerBg }} ref={provided.innerRef} {...provided.droppableProps}>
-                      {showSubHeaders && Object.keys(mergedHeaders).length > 0 && (
+                      {showSubHeaders && (Object.keys(mergedHeaders).length > 0 || Object.keys(subHeaders).length > 0) && (
                         <tr>
                           {/* Empty th for drag handle column */}
                           <th className="p-3 w-12 sticky right-0 shadow-[2px_0_5px_rgba(0,0,0,0.1)]" style={{ zIndex: 35, backgroundColor: palette.headerBg, borderWidth: isSeparateBorders ? '0' : borderStyle.width, borderStyle: borderStyle.style, borderColor: palette.border }}></th>
                           {visibleColumns.map((col) => {
                             const headerMerge = getHeaderMergeInfo(col.key);
+                            const subHeaderTitle = subHeaders[col.key];
                             
                             // If this column is part of a merge but not the master, skip rendering a th
                             if (headerMerge && !headerMerge.isMaster) {
                               return null;
                             }
                             
+                            // If there's no merged header and no sub header, render an empty th
+                            if (!headerMerge && !subHeaderTitle) {
+                              return <th key={`sub_empty_${col.key}`} className="text-center font-bold p-2" style={{ backgroundColor: palette.headerBg, borderWidth: isSeparateBorders ? '0' : borderStyle.width, borderStyle: borderStyle.style, borderColor: palette.border }}></th>;
+                            }
+                            
                             return (
                               <th
                                 key={`merged_header_${col.key}`}
                                 colSpan={headerMerge?.colspan || 1}
-                                className="text-center font-bold p-3 bg-gradient-to-b from-blue-50 to-blue-100 border-b-2 border-blue-300 cursor-pointer group"
+                                className="text-center font-bold p-2 bg-gradient-to-b from-blue-50 to-blue-100 border-b-2 border-blue-300 cursor-pointer group relative"
                                 style={{
                                   color: palette.headerText,
                                   fontFamily: headerFont.value,
@@ -1543,20 +1618,29 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                   borderStyle: borderStyle.style,
                                   borderColor: palette.border
                                 }}
-                                onDoubleClick={(e) => {
+                                onClick={(e) => {
                                   e.preventDefault();
                                   if (headerMerge) {
-                                    unmergeHeaders(col.key);
+                                    const newTitle = prompt('ערוך כותרת עליונה:', headerMerge.title);
+                                    if (newTitle !== null && newTitle.trim()) {
+                                      setMergedHeaders(prev => ({
+                                        ...prev,
+                                        [headerMerge.mergeKey]: { ...headerMerge, title: newTitle.trim() }
+                                      }));
+                                      setTimeout(() => saveToBackend(), 50);
+                                    }
+                                  } else if (subHeaderTitle) { // Individual sub-header editing
+                                    addOrEditSubHeader(col.key);
                                   }
                                 }}
                               >
                                 <div className="flex items-center justify-center gap-2">
-                                  {headerMerge?.title || col.title}
+                                  {headerMerge?.title || subHeaderTitle}
                                   {headerMerge && (
                                     <Button
                                       size="icon"
                                       variant="ghost"
-                                      className="h-5 w-5 opacity-0 group-hover:opacity-100"
+                                      className="h-5 w-5 opacity-0 group-hover:opacity-100 absolute left-1 top-1"
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         unmergeHeaders(col.key);
@@ -1581,6 +1665,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                           const isEditing = editingColumnKey === col.key;
                           const isSorted = sortColumn === col.key;
                           const isHeaderSelected = selectedHeaders.has(col.key);
+                          const hasSubHeader = subHeaders[col.key];
                           return (
                             <Draggable key={col.key} draggableId={col.key} index={colIndex} type="column">
                               {(provided, snapshot) => (
@@ -1608,6 +1693,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                       <div className="flex items-center gap-2">
                                         <div {...provided.dragHandleProps} className="opacity-0 group-hover:opacity-100 cursor-grab p-1 hover:bg-blue-100 rounded transition-opacity"><GripVertical className="w-4 h-4 text-slate-400" /></div>
                                         <span>{col.title}</span>
+                                        {hasSubHeader && <Type className="w-3 h-3 text-blue-500" title={subHeaders[col.key]} />}
                                       </div>
                                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); handleSort(col.key); }}>{isSorted ? (sortDirection === 'asc' ? <ArrowUp className="w-4 h-4 text-blue-600" /> : <ArrowDown className="w-4 h-4 text-blue-600" />) : <ArrowUpDown className="w-4 h-4 text-slate-400" />}</Button>
@@ -1615,10 +1701,11 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                           <PopoverTrigger asChild>
                                             <Button size="icon" variant="ghost" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); setPopoverOpen(`header_${col.key}`); }}><Settings className="w-3 h-3" /></Button>
                                           </PopoverTrigger>
-                                          <PopoverContent className="w-56" align="start">
+                                          <PopoverContent className="w-56" align="start" dir="rtl">
                                             <div className="space-y-2">
                                               <h4 className="font-semibold text-sm mb-3">{col.title}</h4>
                                               <Button variant="outline" size="sm" className="w-full justify-start gap-2" onClick={() => { setEditingColumnKey(col.key); setEditingColumnTitle(col.title); setPopoverOpen(null); }}><Edit2 className="w-4 h-4" />שנה שם</Button>
+                                              <Button variant="outline" size="sm" className="w-full justify-start gap-2 bg-blue-50" onClick={() => { addOrEditSubHeader(col.key); setPopoverOpen(null); }}><Type className="w-4 h-4 text-blue-600" />{hasSubHeader ? 'ערוך' : 'הוסף'} כותרת משנה</Button>
                                               <Button variant="outline" size="sm" className="w-full justify-start gap-2" onClick={() => { toggleColumnVisibility(col.key); setPopoverOpen(null); }}><EyeOff className="w-4 h-4" />הסתר</Button>
                                               <Button variant="outline" size="sm" className="w-full justify-start gap-2 text-red-600" onClick={() => { deleteColumn(col.key); setPopoverOpen(null); }}><Trash2 className="w-4 h-4" />מחק</Button>
                                             </div>
@@ -1662,7 +1749,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                     const mergeInfo = getMergeInfo(cellKey);
                                     
                                     if (mergeInfo && !mergeInfo.isMaster) {
-                                      return null; // Skip rendering for non-master merged cells
+                                      return null;
                                     }
                                     
                                     const isEditing = editingCell === cellKey;
@@ -1806,7 +1893,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         </div>
       </Card>
 
-      {/* ✅ תפריט קונטקסט - עם אפשרות לבטל מיזוג */}
       {cellContextMenu && (
         <div 
           ref={contextMenuRef}
