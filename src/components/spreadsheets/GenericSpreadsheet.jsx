@@ -1484,7 +1484,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                         )}
                                         {column.type === 'checkmark' ? (
                                           <div className="flex items-center justify-center text-2xl font-bold select-none">
-                                            {cellValue === '✓' ? <span className="text-green-600">✓</span> : cellValue === '✗' ? <span className="text-red-600">✗'] : <span className="text-slate-300">○</span>}
+                                            {cellValue === '✓' ? <span className="text-green-600">✓</span> : cellValue === '✗' ? <span className="text-red-600">✗</span> : <span className="text-slate-300">○</span>}
                                           </div>
                                         ) : column.type === 'client' ? (
                                           <div className="relative">
