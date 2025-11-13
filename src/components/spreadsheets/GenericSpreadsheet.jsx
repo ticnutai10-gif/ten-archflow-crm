@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -70,10 +71,13 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const [cellContextMenu, setCellContextMenu] = useState(null);
   const [noteDialogCell, setNoteDialogCell] = useState(null);
   const [noteText, setNoteText] = useState("");
+  const [showColorPickerDialog, setShowColorPickerDialog] = useState(false);
+  const [colorPickerTargetCell, setColorPickerTargetCell] = useState(null);
 
   const editInputRef = useRef(null);
   const columnEditRef = useRef(null);
   const tableRef = useRef(null);
+  const contextMenuRef = useRef(null);
 
   // ✅ Refs שתמיד מעודכנים
   const columnsRef = useRef(columns);
@@ -107,6 +111,27 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   useEffect(() => { chartsRef.current = charts; }, [charts]);
 
   const { filterClients } = useAccessControl();
+
+  // ✅ טיפול בסגירת תפריט קונטקסט בלחיצה מחוץ
+  useEffect(() => {
+    if (!cellContextMenu) return;
+
+    const handleClickOutside = (e) => {
+      if (contextMenuRef.current && !contextMenuRef.current.contains(e.target)) {
+        setCellContextMenu(null);
+      }
+    };
+
+    // Use a timeout to ensure the click event that opened the menu has propagated
+    // before attaching the listener, preventing immediate closing.
+    setTimeout(() => {
+      document.addEventListener('mousedown', handleClickOutside);
+    }, 100);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [cellContextMenu]);
 
   useEffect(() => {
     const loadClients = async () => {
@@ -613,18 +638,18 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     };
   }, [resizingColumn, resizingRow, columns, rowHeights, saveToBackend]);
 
-  const applyStyleToSelection = (style) => {
+  const applyStyleToSelection = useCallback((style) => {
     console.log('🎨 [STYLE] Applying to selection:', { 
       selectedCount: selectedCells.size,
       style,
-      currentStylesCount: Object.keys(cellStyles).length
+      currentStylesCount: Object.keys(cellStylesRef.current).length
     });
     
-    const newStyles = { ...cellStyles };
+    const newStyles = { ...cellStylesRef.current };
     let appliedCount = 0;
     
     selectedCells.forEach(cellKey => { 
-      newStyles[cellKey] = style;
+      newStyles[cellKey] = { ...(newStyles[cellKey] || {}), ...style }; // Merge styles instead of overwriting
       appliedCount++;
       console.log('🎨 [STYLE] Applied to:', cellKey);
     });
@@ -635,12 +660,12 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     
     setTimeout(() => {
       console.log('💾 [STYLE] Saving after state update...');
-      saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current, cellNotesRef.current);
+      saveToHistory(columnsRef.current, rowsDataRef.current, newStyles, cellNotesRef.current);
       saveToBackend();
     }, 100);
     
     toast.success(`✓ סגנון הותקן ל-${appliedCount} תאים`);
-  };
+  }, [selectedCells, saveToHistory, saveToBackend]);
 
   const exportToCSV = () => {
     const visibleCols = columns.filter(col => col.visible !== false);
@@ -874,8 +899,10 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     const newNotes = { ...cellNotes };
     if (noteText.trim()) {
       newNotes[noteDialogCell] = noteText.trim();
+      toast.success('✓ הערה נשמרה');
     } else {
       delete newNotes[noteDialogCell];
+      toast.success('✓ הערה נמחקה');
     }
     
     setCellNotes(newNotes);
@@ -883,16 +910,16 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     setNoteText("");
     
     setTimeout(() => {
-      saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current, cellNotesRef.current);
+      saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current, newNotes); // Pass newNotes directly
       saveToBackend();
     }, 50);
-    
-    toast.success('✓ הערה נשמרה');
   };
 
-  // ✅ צביעת תא בודד
+  // ✅ צביעת תא בודד - פותח ColorPicker
   const handleColorSingleCell = (cellKey) => {
-    setSelectedCells(new Set([cellKey]));
+    setColorPickerTargetCell(cellKey);
+    setSelectedCells(new Set([cellKey])); // Temporarily select the cell for the color picker
+    setShowColorPickerDialog(true);
     setCellContextMenu(null);
   };
 
@@ -911,7 +938,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     setCellContextMenu(null);
     
     setTimeout(() => {
-      saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current, cellNotesRef.current);
+      saveToHistory(columnsRef.current, rowsDataRef.current, newStyles, cellNotesRef.current); // Pass newStyles directly
       saveToBackend();
     }, 50);
     
@@ -1002,7 +1029,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     setEditValue("");
     
     setTimeout(() => {
-      saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current, cellNotesRef.current);
+      saveToHistory(columnsRef.current, updatedRows, cellStylesRef.current, cellNotesRef.current);
       saveToBackend();
     }, 50);
     
@@ -1435,7 +1462,14 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                         onMouseEnter={() => handleCellMouseEnter(row.id, column.key)}
                                       >
                                         {hasNote && (
-                                          <div className="absolute top-0 right-0 w-0 h-0 border-t-8 border-r-8 border-t-amber-500 border-r-transparent" title={cellNotes[cellKey]} />
+                                          <div 
+                                            className="absolute top-0 right-0 w-0 h-0 z-10 pointer-events-none" 
+                                            style={{
+                                              borderTop: '12px solid #f59e0b',
+                                              borderLeft: '12px solid transparent'
+                                            }}
+                                            title={cellNotes[cellKey]} 
+                                          />
                                         )}
                                         {column.type === 'checkmark' ? (
                                           <div className="flex items-center justify-center text-2xl font-bold select-none">
@@ -1512,53 +1546,55 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         </div>
       </Card>
 
-      {/* ✅ תפריט קונטקסט לתא */}
+      {/* ✅ תפריט קונטקסט לתא - מיקום משופר */}
       {cellContextMenu && (
         <div 
-          className="fixed z-50 bg-white border-2 border-slate-300 rounded-lg shadow-2xl p-2"
+          ref={contextMenuRef}
+          className="fixed z-[60] bg-white border-2 border-slate-300 rounded-lg shadow-2xl"
           style={{
             top: '50%',
             left: '50%',
             transform: 'translate(-50%, -50%)'
           }}
         >
-          <div className="space-y-1 min-w-[200px]">
+          <div className="p-2 space-y-1 min-w-[220px]">
+            <div className="px-3 py-2 text-xs font-semibold text-slate-500 border-b">אפשרויות תא</div>
             <Button 
               variant="ghost" 
               size="sm" 
-              className="w-full justify-start gap-2"
+              className="w-full justify-start gap-2 hover:bg-amber-50"
               onClick={() => handleOpenNoteDialog(cellContextMenu)}
             >
-              <MessageSquare className="w-4 h-4" />
+              <MessageSquare className="w-4 h-4 text-amber-600" />
               {cellNotes[cellContextMenu] ? 'ערוך הערה' : 'הוסף הערה'}
             </Button>
             <Button 
               variant="ghost" 
               size="sm" 
-              className="w-full justify-start gap-2"
+              className="w-full justify-start gap-2 hover:bg-purple-50"
               onClick={() => handleColorSingleCell(cellContextMenu)}
             >
-              <Palette className="w-4 h-4" />
+              <Palette className="w-4 h-4 text-purple-600" />
               צבע תא
             </Button>
             <Button 
               variant="ghost" 
               size="sm" 
-              className="w-full justify-start gap-2"
+              className="w-full justify-start gap-2 hover:bg-blue-50"
               onClick={() => handleBoldSingleCell(cellContextMenu)}
             >
-              <Bold className="w-4 h-4" />
-              הדגש
+              <Bold className="w-4 h-4 text-blue-600" />
+              {cellStyles[cellContextMenu]?.fontWeight === 'bold' ? 'בטל הדגשה' : 'הדגש'}
             </Button>
             <Separator />
             <Button 
               variant="ghost" 
               size="sm" 
-              className="w-full justify-start gap-2 text-slate-500"
+              className="w-full justify-start gap-2 text-slate-500 hover:bg-slate-50"
               onClick={() => setCellContextMenu(null)}
             >
               <X className="w-4 h-4" />
-              ביטול
+              סגור
             </Button>
           </div>
         </div>
@@ -1587,10 +1623,50 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
             <Button variant="outline" onClick={() => setNoteDialogCell(null)}>
               ביטול
             </Button>
-            <Button onClick={handleSaveNote}>
-              שמור
+            <Button onClick={handleSaveNote} className="bg-amber-600 hover:bg-amber-700">
+              שמור הערה
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ✅ דיאלוג בחירת צבע לתא בודד */}
+      <Dialog open={showColorPickerDialog} onOpenChange={(open) => {
+        if (!open) {
+          setShowColorPickerDialog(false);
+          setColorPickerTargetCell(null);
+          setSelectedCells(new Set()); // Clear selection after closing color picker
+        }
+      }}>
+        <DialogContent className="sm:max-w-md" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Palette className="w-5 h-5 text-purple-600" />
+              בחר צבע לתא
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <ColorPicker 
+              currentStyle={colorPickerTargetCell ? cellStyles[colorPickerTargetCell] : {}}
+              onApply={(style) => {
+                if (colorPickerTargetCell) {
+                  // Apply style only to the target cell, not the whole selection
+                  setCellStyles(prev => ({
+                    ...prev,
+                    [colorPickerTargetCell]: { ...(prev[colorPickerTargetCell] || {}), ...style }
+                  }));
+                  setTimeout(() => {
+                    saveToHistory(columnsRef.current, rowsDataRef.current, { ...cellStylesRef.current, [colorPickerTargetCell]: { ...(cellStylesRef.current[colorPickerTargetCell] || {}), ...style } }, cellNotesRef.current);
+                    saveToBackend();
+                  }, 50);
+                  toast.success(`✓ סגנון הוחל לתא`);
+                }
+                setShowColorPickerDialog(false);
+                setColorPickerTargetCell(null);
+                setSelectedCells(new Set()); // Clear selection after applying style
+              }} 
+            />
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -1714,6 +1790,15 @@ function ColorPicker({ onApply, currentStyle = {} }) {
   
   const colors = ['#ffffff', '#fee2e2', '#fef3c7', '#d1fae5', '#dbeafe', '#ede9fe', '#fce7f3', '#f3f4f6', '#FCF6E3', '#e0f2f7', '#fff5f0', '#e8f5e9'];
   
+  useEffect(() => {
+    setColor(currentStyle.backgroundColor || '#ffffff');
+    setHexInput(currentStyle.backgroundColor || '#ffffff');
+    setOpacity(currentStyle.opacity || 100);
+    setIsBold(currentStyle.fontWeight === 'bold');
+    setTextColor(currentStyle.color || '#000000');
+    setTextHexInput(currentStyle.color || '#000000');
+  }, [currentStyle]);
+
   useEffect(() => {
     setHexInput(color);
   }, [color]);
