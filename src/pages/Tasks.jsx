@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
@@ -66,36 +67,22 @@ export default function TasksPage() {
   const [newSpreadsheetName, setNewSpreadsheetName] = useState("");
   const [newSpreadsheetDescription, setNewSpreadsheetDescription] = useState("");
 
-  const { me, isAdmin, isManagerPlus, filterClients, filterProjects } = useAccessControl();
+  const { me, isAdmin, isManagerPlus, filterClients, filterProjects, loading: accessLoading } = useAccessControl();
 
   const loadTasks = async () => {
     setLoading(true);
     try {
-      console.log('🔄 [TASKS] Loading tasks...');
+      console.log('🔄 [TASKS] Loading tasks...', { me: me?.email, isAdmin, isManagerPlus });
       
-      let allTasks = [];
-      let allClients = [];
-      let allProjects = [];
+      const [tasksData, clientsData, projectsData] = await Promise.all([
+        base44.entities.Task.list('-created_date').catch((e) => { console.error('Error loading tasks:', e); return []; }),
+        base44.entities.Client.list().catch((e) => { console.error('Error loading clients:', e); return []; }),
+        base44.entities.Project.list().catch((e) => { console.error('Error loading projects:', e); return []; })
+      ]);
 
-      if (isAdmin || isManagerPlus) {
-        const [tasksData, clientsData, projectsData] = await Promise.all([
-          base44.entities.Task.list('-created_date').catch(() => []),
-          base44.entities.Client.list().catch(() => []),
-          base44.entities.Project.list().catch(() => [])
-        ]);
-        allTasks = Array.isArray(tasksData) ? tasksData : [];
-        allClients = Array.isArray(clientsData) ? clientsData : [];
-        allProjects = Array.isArray(projectsData) ? projectsData : [];
-      } else if (me?.email) {
-        const [tasksData, clientsData, projectsData] = await Promise.all([
-          base44.entities.Task.filter({ created_by: me.email }, '-created_date', 500).catch(() => []),
-          base44.entities.Client.list().catch(() => []),
-          base44.entities.Project.list().catch(() => [])
-        ]);
-        allTasks = Array.isArray(tasksData) ? tasksData : [];
-        allClients = Array.isArray(clientsData) ? clientsData : [];
-        allProjects = Array.isArray(projectsData) ? projectsData : [];
-      }
+      const allTasks = Array.isArray(tasksData) ? tasksData : [];
+      const allClients = Array.isArray(clientsData) ? clientsData : [];
+      const allProjects = Array.isArray(projectsData) ? projectsData : [];
 
       console.log('✅ [TASKS] Raw data loaded:', {
         tasks: allTasks.length,
@@ -106,20 +93,26 @@ export default function TasksPage() {
       const visibleClients = filterClients ? filterClients(allClients) : allClients;
       const visibleProjects = filterProjects ? filterProjects(allProjects) : allProjects;
 
-      console.log('✅ [TASKS] Filtered data:', {
+      console.log('✅ [TASKS] After access filter:', {
         visibleClients: visibleClients.length,
         visibleProjects: visibleProjects.length
       });
 
-      const accessibleTasks = allTasks.filter(task => {
-        if (isAdmin || isManagerPlus) return true;
-        if (task.created_by === me?.email) return true;
-        if (task.client_id && visibleClients.some(client => client.id === task.client_id)) return true;
-        if (task.project_id && visibleProjects.some(project => project.id === task.project_id)) return true;
-        return false;
-      });
+      // אם אדמין או מנהל+ - הצג הכל
+      let accessibleTasks = allTasks;
+      
+      // אם לא אדמין - סנן לפי הרשאות
+      if (!isAdmin && !isManagerPlus && me?.email) {
+        accessibleTasks = allTasks.filter(task => {
+          if (task.created_by === me.email) return true;
+          if (task.client_id && visibleClients.some(client => client.id === task.client_id)) return true;
+          if (task.project_id && visibleProjects.some(project => project.id === task.project_id)) return true;
+          return false;
+        });
+      }
 
       console.log('✅ [TASKS] Final accessible tasks:', accessibleTasks.length);
+      console.log('📋 [TASKS] Sample tasks:', accessibleTasks.slice(0, 3).map(t => ({ id: t.id, title: t.title })));
 
       setTasks(accessibleTasks);
       setClients(visibleClients);
@@ -138,9 +131,13 @@ export default function TasksPage() {
   const loadCustomSpreadsheets = async () => {
     try {
       console.log('🔄 [TASKS] Loading spreadsheets...');
-      const spreadsheets = await base44.entities.CustomSpreadsheet.list('-created_date').catch(() => []);
+      const spreadsheets = await base44.entities.CustomSpreadsheet.list('-created_date').catch((e) => {
+        console.error('Error loading spreadsheets:', e);
+        return [];
+      });
       const validSpreadsheets = Array.isArray(spreadsheets) ? spreadsheets : [];
       console.log('✅ [TASKS] Loaded spreadsheets:', validSpreadsheets.length);
+      console.log('📋 [TASKS] Sample spreadsheets:', validSpreadsheets.slice(0, 3).map(s => ({ id: s.id, name: s.name })));
       setCustomSpreadsheets(validSpreadsheets);
     } catch (error) {
       console.error("❌ [TASKS] Error loading spreadsheets:", error);
@@ -149,11 +146,19 @@ export default function TasksPage() {
   };
 
   useEffect(() => {
-    if (me) {
+    console.log('🎯 [TASKS] useEffect triggered', { 
+      hasMe: !!me, 
+      meEmail: me?.email, 
+      accessLoading, 
+      isAdmin, 
+      isManagerPlus 
+    });
+    
+    if (!accessLoading) {
       loadTasks();
       loadCustomSpreadsheets();
     }
-  }, [me, isAdmin, isManagerPlus]);
+  }, [accessLoading, isAdmin, isManagerPlus]);
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -400,8 +405,14 @@ export default function TasksPage() {
 
         <Tabs defaultValue="tasks" className="w-full" dir="rtl">
           <TabsList className="grid w-full grid-cols-2 mb-6">
-            <TabsTrigger value="tasks">משימות ({filteredTasks.length})</TabsTrigger>
-            <TabsTrigger value="spreadsheets">טבלאות ({customSpreadsheets.length})</TabsTrigger>
+            <TabsTrigger value="tasks">
+              משימות ({filteredTasks.length})
+              {loading && <span className="mr-2 text-xs">⏳</span>}
+            </TabsTrigger>
+            <TabsTrigger value="spreadsheets">
+              טבלאות ({customSpreadsheets.length})
+              {loading && <span className="mr-2 text-xs">⏳</span>}
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="tasks">
@@ -478,6 +489,11 @@ export default function TasksPage() {
                   </div>
                 ) : (
                   <>
+                    {/* Debug info */}
+                    <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded text-xs text-blue-800">
+                      📊 נתונים: {tasks.length} משימות כולל • {filteredTasks.length} אחרי סינון • {clients.length} לקוחות • {projects.length} פרויקטים
+                    </div>
+
                     {filteredTasks.length === 0 && (
                       <div className="text-center py-12 bg-white rounded-xl border-2 border-dashed border-slate-300">
                         <p className="text-slate-600 mb-4">
@@ -682,6 +698,11 @@ export default function TasksPage() {
                       <Plus className="w-4 h-4" />
                       טבלה חדשה
                     </Button>
+                  </div>
+
+                  {/* Debug info */}
+                  <div className="mb-4 p-3 bg-purple-50 border border-purple-200 rounded text-xs text-purple-800">
+                    📊 נמצאו {customSpreadsheets.length} טבלאות במערכת
                   </div>
 
                   {showCreateSpreadsheet && (
