@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +19,7 @@ import ViewManager from "./ViewManager";
 import ChartBuilder from "./ChartBuilder";
 import ChartViewer from "./ChartViewer";
 import { useAccessControl } from "@/components/access/AccessValidator";
+import ColumnsManagerDialog from "./ColumnsManagerDialog";
 
 export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMode = false }) {
   const [columns, setColumns] = useState([]);
@@ -78,11 +80,12 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const [showChartBuilder, setShowChartBuilder] = useState(false);
   const [charts, setCharts] = useState([]);
   const [editingChart, setEditingChart] = useState(null);
-  
+  const [showColumnsManager, setShowColumnsManager] = useState(false);
+
   const editInputRef = useRef(null);
   const columnEditRef = useRef(null);
   const tableRef = useRef(null);
-  
+
   const { filterClients } = useAccessControl();
 
   useEffect(() => {
@@ -105,7 +108,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       const initialColumns = spreadsheet.columns || [];
       const initialRows = spreadsheet.rows_data || [];
       const initialStyles = spreadsheet.cell_styles || {};
-      
+
       setColumns(initialColumns);
       setRowsData(initialRows);
       setCellStyles(initialStyles);
@@ -115,7 +118,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       setFreezeSettings(spreadsheet.freeze_settings || { freeze_rows: 0, freeze_columns: 1 });
       setCustomCellTypes(spreadsheet.custom_cell_types || []);
       setMergedCells(spreadsheet.merged_cells || {});
-      
+
       const loadedTheme = spreadsheet.theme_settings || {
         palette: "default",
         borderStyle: "thin",
@@ -129,12 +132,12 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         hoverEffect: "subtle",
         customColors: null
       };
-      
+
       setThemeSettings(loadedTheme);
       setSavedViews(spreadsheet.saved_views || []);
       setActiveViewId(spreadsheet.active_view_id || null);
       setCharts(spreadsheet.charts || []);
-      
+
       setHistory([{ columns: initialColumns, rows: initialRows, styles: initialStyles }]);
       setHistoryIndex(0);
     }
@@ -155,21 +158,21 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     if (!spreadsheet?.id) return;
     try {
       await base44.entities.CustomSpreadsheet.update(spreadsheet.id, {
-        columns: cols, 
-        rows_data: rows, 
-        cell_styles: styles, 
+        columns: cols,
+        rows_data: rows,
+        cell_styles: styles,
         row_heights: rowHeights,
-        validation_rules: validationRules, 
+        validation_rules: validationRules,
         conditional_formats: conditionalFormats,
-        freeze_settings: freezeSettings, 
-        custom_cell_types: customCellTypes, 
+        freeze_settings: freezeSettings,
+        custom_cell_types: customCellTypes,
         merged_cells: mergedCells,
-        theme_settings: themeSettings, 
-        saved_views: savedViews, 
+        theme_settings: themeSettings,
+        saved_views: savedViews,
         active_view_id: activeViewId,
         charts: charts
       });
-      
+
       if (onUpdate) await onUpdate();
     } catch (error) {
       console.error('❌ Save error:', error);
@@ -207,7 +210,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     const handleKeyDown = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); handleUndo(); }
       if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); handleRedo(); }
-      
+
       if ((e.ctrlKey || e.metaKey) && e.key === 'c' && selectedCells.size > 0) {
         e.preventDefault();
         const cellsData = Array.from(selectedCells).map(cellKey => {
@@ -218,7 +221,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         setCopiedCells(cellsData);
         toast.success(`✓ הועתקו ${cellsData.length} תאים`);
       }
-      
+
       if ((e.ctrlKey || e.metaKey) && e.key === 'v' && copiedCells && selectedCells.size > 0) {
         e.preventDefault();
         const updatedRows = [...rowsData];
@@ -232,13 +235,13 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
             }
           }
         });
-        
+
         setRowsData(updatedRows);
         saveToHistory(columns, updatedRows, cellStyles);
         saveToBackend(columns, updatedRows, cellStyles);
         toast.success(`✓ הודבקו ${Math.min(copiedCells.length, selectedCells.size)} תאים`);
       }
-      
+
       if (e.key === 'Delete' && selectedCells.size > 0 && !editingCell) {
         e.preventDefault();
         const updatedRows = rowsData.map(row => {
@@ -251,7 +254,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
           });
           return newRow;
         });
-        
+
         setRowsData(updatedRows);
         saveToHistory(columns, updatedRows, cellStyles);
         saveToBackend(columns, updatedRows, cellStyles);
@@ -342,11 +345,11 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
 
   const addRowFromClient = async (client) => {
     const newRow = { id: `row_${Date.now()}` };
-    
+
     columns.forEach(col => {
       const colKey = col.key.toLowerCase();
       const colTitle = (col.title || '').toLowerCase();
-      
+
       if (col.type === 'client' || colKey.includes('client') || colKey.includes('לקוח') || colTitle.includes('לקוח')) {
         newRow[col.key] = client.name;
       } else if (colKey.includes('name') || colKey.includes('שם')) {
@@ -363,22 +366,22 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         newRow[col.key] = client.name || '';
       }
     });
-    
+
     const updated = [...rowsData, newRow];
     setRowsData(updated);
     saveToHistory(columns, updated, cellStyles);
     await saveToBackend(columns, updated, cellStyles);
-    
+
     setShowAddFromClientDialog(false);
     setClientSearchQuery("");
-    
+
     const filledFields = [];
     if (newRow[columns.find(c => c.type === 'client' || c.key.includes('name'))?.key]) filledFields.push('שם');
     if (newRow[columns.find(c => c.key.includes('phone'))?.key]) filledFields.push('טלפון');
     if (newRow[columns.find(c => c.key.includes('email'))?.key]) filledFields.push('אימייל');
     if (newRow[columns.find(c => c.key.includes('company'))?.key]) filledFields.push('חברה');
     if (newRow[columns.find(c => c.key.includes('address'))?.key]) filledFields.push('כתובת');
-    
+
     toast.success(`✓ שורה נוספה מלקוח "${client.name}"${filledFields.length > 0 ? ` • מולאו: ${filledFields.join(', ')}` : ''}`);
   };
 
@@ -459,7 +462,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   };
 
   const resizeStartRef = useRef(null);
-  
+
   const handleColumnResizeStart = (e, columnKey) => {
     e.preventDefault();
     e.stopPropagation();
@@ -570,7 +573,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       }
       return {};
     };
-    
+
     const html = `<!DOCTYPE html><html dir="rtl"><head><meta charset="utf-8"><title>${spreadsheet.name}</title><style>body{font-family:Arial,sans-serif;direction:rtl;padding:20px}h1{text-align:center;margin-bottom:20px}table{width:100%;border-collapse:collapse;margin:20px 0}th,td{border:1px solid #ccc;padding:8px;text-align:right}th{background-color:#f1f5f9;font-weight:bold}tr:nth-child(even){background-color:#f8fafc}.footer{text-align:center;margin-top:30px;font-size:12px;color:#666}</style></head><body><h1>${spreadsheet.name}</h1><p style="text-align:center;color:#666;margin-bottom:20px">נוצר ב-${new Date().toLocaleDateString('he-IL')} | ${filteredAndSortedData.length} שורות</p><table><thead><tr>${visibleCols.map(col => `<th>${col.title}</th>`).join('')}</tr></thead><tbody>${filteredAndSortedData.map(row => `<tr>${visibleCols.map(col => {
       const cellKey = `${row.id}_${col.key}`;
       const cellStyle = cellStyles[cellKey] || {};
@@ -669,33 +672,33 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     const emailCol = columns.find(c => c.key.includes('email') || c.key.includes('מייל'));
     const companyCol = columns.find(c => c.key.includes('company') || c.key.includes('חברה'));
     const addressCol = columns.find(c => c.key.includes('address') || c.key.includes('כתובת'));
-    
+
     const updatedRows = rowsData.map(row => {
       if (row.id === rowId) {
         const newRow = { ...row, [columnKey]: client.name };
-        
+
         if (phoneCol && client.phone) newRow[phoneCol.key] = client.phone;
         if (emailCol && client.email) newRow[emailCol.key] = client.email;
         if (companyCol && client.company) newRow[companyCol.key] = client.company;
         if (addressCol && client.address) newRow[addressCol.key] = client.address;
-        
+
         return newRow;
       }
       return row;
     });
-    
+
     setRowsData(updatedRows);
     setShowClientPicker(null);
     setClientSearchQuery("");
     saveToHistory(columns, updatedRows, cellStyles);
     await saveToBackend(columns, updatedRows, cellStyles);
-    
+
     const autoFilledFields = [];
     if (phoneCol && client.phone) autoFilledFields.push('טלפון');
     if (emailCol && client.email) autoFilledFields.push('אימייל');
     if (companyCol && client.company) autoFilledFields.push('חברה');
     if (addressCol && client.address) autoFilledFields.push('כתובת');
-    
+
     if (autoFilledFields.length > 0) {
       toast.success(`✓ לקוח נבחר ונתונים נוספים מולאו אוטומטית: ${autoFilledFields.join(', ')}`);
     } else {
@@ -720,7 +723,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       setPopoverOpen(`${rowId}_${columnKey}`);
       return;
     }
-    
+
     const column = columns.find(c => c.key === columnKey);
     if (column?.type === 'client') {
       event.preventDefault();
@@ -728,7 +731,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       setClientSearchQuery("");
       return;
     }
-    
+
     const row = filteredAndSortedData.find(r => r.id === rowId);
     if (!row) return;
     const currentValue = row[columnKey] || '';
@@ -830,12 +833,12 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     const updatedCharts = editingChart
       ? charts.map(c => c.id === chart.id ? chart : c)
       : [...charts, { ...chart, id: chart.id || `chart_${Date.now()}` }];
-    
+
     setCharts(updatedCharts);
     await base44.entities.CustomSpreadsheet.update(spreadsheet.id, {
       charts: updatedCharts
     });
-    
+
     setShowChartBuilder(false);
     setEditingChart(null);
     if (onUpdate) await onUpdate();
@@ -849,14 +852,14 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
 
   const handleDeleteChart = async (chartId) => {
     if (!confirm('האם למחוק גרף זה?')) return;
-    
+
     const updatedCharts = charts.filter(c => c.id !== chartId);
     setCharts(updatedCharts);
-    
+
     await base44.entities.CustomSpreadsheet.update(spreadsheet.id, {
       charts: updatedCharts
     });
-    
+
     toast.success('✓ גרף נמחק');
     if (onUpdate) await onUpdate();
   };
@@ -867,7 +870,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const hasActiveFilters = globalFilter || Object.keys(columnFilters).length > 0 || sortColumn;
   const canUndo = historyIndex > 0;
   const canRedo = historyIndex < history.length - 1;
-  
+
   const currentTheme = themeSettings || {
     palette: "default",
     borderStyle: "thin",
@@ -881,16 +884,16 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     hoverEffect: "subtle",
     customColors: null
   };
-  
+
   const palette = currentTheme.customColors || COLOR_PALETTES[currentTheme.palette] || COLOR_PALETTES.default;
   const borderStyle = BORDER_STYLES[currentTheme.borderStyle] || BORDER_STYLES.thin;
   const headerFont = FONT_OPTIONS[currentTheme.headerFont] || FONT_OPTIONS.default;
   const cellFont = FONT_OPTIONS[currentTheme.cellFont] || FONT_OPTIONS.default;
-  
+
   const headerFontSize = currentTheme.fontSize === 'small' ? '12px' : currentTheme.fontSize === 'large' ? '16px' : '14px';
   const cellFontSize = currentTheme.fontSize === 'small' ? '11px' : currentTheme.fontSize === 'large' ? '15px' : '13px';
   const cellPadding = currentTheme.density === 'compact' ? '4px 8px' : currentTheme.density === 'spacious' ? '12px 16px' : '8px 12px';
-  
+
   const borderRadiusMap = {
     none: "0px",
     small: "4px",
@@ -898,7 +901,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     large: "12px",
     xlarge: "16px"
   };
-  
+
   const shadowMap = {
     none: "none",
     subtle: "0 1px 3px rgba(0,0,0,0.1)",
@@ -906,19 +909,19 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     strong: "0 10px 15px rgba(0,0,0,0.15)",
     glow: "0 0 10px rgba(147, 51, 234, 0.3)"
   };
-  
+
   const cellSpacingMap = {
     none: "0px",
     small: "2px",
     medium: "4px",
     large: "8px"
   };
-  
+
   const tableBorderRadius = borderRadiusMap[currentTheme.borderRadius] || "0px";
   const tableShadow = shadowMap[currentTheme.shadow] || "none";
   const tableCellSpacing = cellSpacingMap[currentTheme.cellSpacing] || "0px";
   const isSeparateBorders = currentTheme.cellSpacing !== 'none';
-  
+
   const columnStats = useMemo(() => {
     const stats = {};
     visibleColumns.forEach(col => {
@@ -1006,7 +1009,10 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                   </div>
                 </PopoverContent>
               </Popover>
-              <Button onClick={addColumn} size="sm" variant="outline" className="gap-2"><Plus className="w-4 h-4" />עמודה</Button>
+              <Button onClick={() => setShowColumnsManager(true)} size="sm" variant="outline" className="gap-2 hover:bg-orange-50">
+                <Settings className="w-4 h-4" />
+                ניהול עמודות
+              </Button>
               {selectedCells.size > 0 && (
                 <>
                   <Badge variant="outline" className="bg-purple-50 px-3">נבחרו: {selectedCells.size}</Badge>
@@ -1051,7 +1057,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
               </div>
             </div>
           )}
-          
+
           {copiedCells && (
             <div className="bg-green-50 border-b border-green-200 px-4 py-2 text-sm flex items-center gap-2">
               <Copy className="w-4 h-4 text-green-600" />
@@ -1059,10 +1065,10 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
               <button onClick={() => setCopiedCells(null)} className="mr-auto text-green-600 hover:text-green-800"><X className="w-4 h-4" /></button>
             </div>
           )}
-          
+
           <div className="overflow-auto" style={{ maxHeight: fullScreenMode ? '85vh' : '60vh' }}>
             <DragDropContext onDragEnd={handleDragEnd}>
-              <table ref={tableRef} className="w-full" dir="rtl" style={{ 
+              <table ref={tableRef} className="w-full" dir="rtl" style={{
                 fontFamily: cellFont.value,
                 borderCollapse: isSeparateBorders ? 'separate' : 'collapse',
                 borderSpacing: isSeparateBorders ? tableCellSpacing : '0',
@@ -1082,11 +1088,11 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                           return (
                             <Draggable key={col.key} draggableId={col.key} index={colIndex} type="column">
                               {(provided, snapshot) => (
-                                <th ref={provided.innerRef} {...provided.draggableProps} className={`text-right font-semibold cursor-pointer group ${snapshot.isDragging ? 'opacity-50 shadow-2xl' : ''}`} style={{ 
-                                  width: col.width, 
-                                  minWidth: col.width, 
-                                  maxWidth: col.width, 
-                                  position: 'relative', 
+                                <th ref={provided.innerRef} {...provided.draggableProps} className={`text-right font-semibold cursor-pointer group ${snapshot.isDragging ? 'opacity-50 shadow-2xl' : ''}`} style={{
+                                  width: col.width,
+                                  minWidth: col.width,
+                                  maxWidth: col.width,
+                                  position: 'relative',
                                   backgroundColor: snapshot.isDragging ? palette.hover : palette.headerBg,
                                   color: palette.headerText,
                                   fontFamily: headerFont.value,
@@ -1097,7 +1103,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                   borderColor: palette.border,
                                   borderRadius: isSeparateBorders ? tableBorderRadius : '0',
                                   zIndex: snapshot.isDragging ? 50 : 10,
-                                  ...provided.draggableProps.style 
+                                  ...provided.draggableProps.style
                                 }} onClick={(e) => !snapshot.isDragging && handleColumnHeaderClick(col.key, e)}>
                                   {isEditing ? (
                                     <Input ref={columnEditRef} value={editingColumnTitle} onChange={(e) => setEditingColumnTitle(e.target.value)} onBlur={saveColumnTitle} onKeyDown={(e) => { if (e.key === 'Enter') saveColumnTitle(); if (e.key === 'Escape') { setEditingColumnKey(null); setEditingColumnTitle(""); } }} className="h-8" autoFocus />
@@ -1164,19 +1170,19 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                     const cellStyle = cellStyles[cellKey] || {};
                                     const conditionalStyle = getConditionalStyle(column.key, cellValue);
                                     const finalStyle = { ...conditionalStyle, ...cellStyle };
-                                    
+
                                     return (
-                                      <td key={column.key} className={`cursor-pointer ${isSelected ? 'ring-2 ring-purple-500' : ''} ${isClientPicker ? 'ring-2 ring-blue-500' : ''}`} style={{ 
+                                      <td key={column.key} className={`cursor-pointer ${isSelected ? 'ring-2 ring-purple-500' : ''} ${isClientPicker ? 'ring-2 ring-blue-500' : ''}`} style={{
                                         backgroundColor: isSelected ? palette.selected : (finalStyle.backgroundColor || (rowIndex % 2 === 0 ? palette.cellBg : palette.cellAltBg)),
                                         color: finalStyle.color || palette.cellText,
-                                        opacity: finalStyle.opacity ? finalStyle.opacity / 100 : 1, 
+                                        opacity: finalStyle.opacity ? finalStyle.opacity / 100 : 1,
                                         fontWeight: finalStyle.fontWeight || 'normal',
                                         fontFamily: cellFont.value,
                                         fontSize: cellFontSize,
                                         padding: cellPadding,
-                                        height: `${rowHeight}px`, 
-                                        position: colIndex === 0 ? 'sticky' : 'relative', 
-                                        right: colIndex === 0 ? '48px' : 'auto', 
+                                        height: `${rowHeight}px`,
+                                        position: colIndex === 0 ? 'sticky' : 'relative',
+                                        right: colIndex === 0 ? '48px' : 'auto',
                                         zIndex: colIndex === 0 ? 10 : 1,
                                         boxShadow: colIndex === 0 ? '2px 0 5px rgba(0,0,0,0.05)' : 'none',
                                         borderWidth: isSeparateBorders ? '0' : borderStyle.width,
@@ -1199,7 +1205,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                                 </div>
                                                 <div className="max-h-64 overflow-y-auto border border-slate-200 rounded bg-white">
                                                   {allClients.filter(c => !clientSearchQuery || c.name?.toLowerCase().includes(clientSearchQuery.toLowerCase()) || c.company?.toLowerCase().includes(clientSearchQuery.toLowerCase()) || c.email?.toLowerCase().includes(clientSearchQuery.toLowerCase())).map(client => (
-                                                    <button key={client.id} onClick={() => handleClientSelect(row.id, column.key, client)} className="w-full px-3 py-2 hover:bg-blue-50 text-right border-b border-slate-100 last:border-b-0">
+                                                    <button key={client.id} onClick={() => handleClientSelect(row.id, column.key, client)} className="w-full px-3 py-2 hover:bg-blue-50 rounded-lg text-right border-b border-slate-100 last:border-b-0">
                                                       <div className="font-semibold text-sm text-slate-900">{client.name}</div>
                                                       {(client.company || client.phone || client.email) && (
                                                         <div className="text-xs text-slate-500 truncate">{[client.company, client.phone, client.email].filter(Boolean).join(' • ')}</div>
@@ -1258,9 +1264,9 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
           </div>
         </div>
       </Card>
-      
+
       <ThemeSelector open={showThemeSelector} onClose={() => setShowThemeSelector(false)} currentTheme={currentTheme} onApply={(newTheme) => { setThemeSettings(newTheme); saveToBackend(columns, rowsData, cellStyles); }} />
-      
+
       <ViewManager open={showViewManager} onClose={() => setShowViewManager(false)} savedViews={savedViews} activeViewId={activeViewId} currentColumns={columns} onSaveView={(view) => { setSavedViews([...savedViews, view]); saveToBackend(columns, rowsData, cellStyles); }} onLoadView={(view) => { setColumns(view.columns); saveToBackend(view.columns, rowsData, cellStyles); }} onDeleteView={(viewId) => { setSavedViews(savedViews.filter(v => v.id !== viewId)); saveToBackend(columns, rowsData, cellStyles); }} onSetDefault={(viewId) => { setSavedViews(savedViews.map(v => ({ ...v, isDefault: v.id === viewId }))); saveToBackend(columns, rowsData, cellStyles); }} />
 
       <Dialog open={showAddFromClientDialog} onOpenChange={setShowAddFromClientDialog}>
@@ -1271,14 +1277,14 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
               בחר לקוח להוספת שורה
             </DialogTitle>
           </DialogHeader>
-          
+
           <div className="space-y-4 py-4">
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
               💡 <strong>טיפ:</strong> בחר לקוח והמערכת תמלא אוטומטית את השדות
             </div>
-            
+
             <Input placeholder="חפש לקוח..." value={clientSearchQuery} onChange={(e) => setClientSearchQuery(e.target.value)} className="text-right" dir="rtl" autoFocus />
-            
+
             <ScrollArea className="h-96 border border-slate-200 rounded-lg">
               <div className="p-2 space-y-1">
                 {allClients.filter(c => !clientSearchQuery || c.name?.toLowerCase().includes(clientSearchQuery.toLowerCase()) || c.company?.toLowerCase().includes(clientSearchQuery.toLowerCase()) || c.email?.toLowerCase().includes(clientSearchQuery.toLowerCase())).map(client => (
@@ -1307,7 +1313,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
               </div>
             </ScrollArea>
           </div>
-          
+
           <DialogFooter>
             <Button variant="outline" onClick={() => { setShowAddFromClientDialog(false); setClientSearchQuery(""); }}>ביטול</Button>
           </DialogFooter>
@@ -1315,6 +1321,18 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       </Dialog>
 
       <ChartBuilder open={showChartBuilder} onClose={() => { setShowChartBuilder(false); setEditingChart(null); }} columns={columns} rowsData={filteredAndSortedData} onSave={handleSaveChart} editingChart={editingChart} />
+
+      <ColumnsManagerDialog
+        open={showColumnsManager}
+        onClose={() => setShowColumnsManager(false)}
+        columns={columns}
+        onSave={(updatedColumns) => {
+          setColumns(updatedColumns);
+          saveToHistory(updatedColumns, rowsData, cellStyles);
+          saveToBackend(updatedColumns, rowsData, cellStyles);
+          setShowColumnsManager(false);
+        }}
+      />
     </div>
   );
 }
