@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
@@ -72,24 +71,45 @@ export default function TasksPage() {
   const loadTasks = async () => {
     setLoading(true);
     try {
-      let allTasks, allClients, allProjects;
+      console.log('🔄 [TASKS] Loading tasks...');
+      
+      let allTasks = [];
+      let allClients = [];
+      let allProjects = [];
 
       if (isAdmin || isManagerPlus) {
-        [allTasks, allClients, allProjects] = await Promise.all([
-          base44.entities.Task.list('-created_date'),
-          base44.entities.Client.list(),
-          base44.entities.Project.list()
+        const [tasksData, clientsData, projectsData] = await Promise.all([
+          base44.entities.Task.list('-created_date').catch(() => []),
+          base44.entities.Client.list().catch(() => []),
+          base44.entities.Project.list().catch(() => [])
         ]);
-      } else {
-        [allTasks, allClients, allProjects] = await Promise.all([
-          base44.entities.Task.filter({ created_by: me?.email || '' }, '-created_date', 500),
-          base44.entities.Client.list(),
-          base44.entities.Project.list()
+        allTasks = Array.isArray(tasksData) ? tasksData : [];
+        allClients = Array.isArray(clientsData) ? clientsData : [];
+        allProjects = Array.isArray(projectsData) ? projectsData : [];
+      } else if (me?.email) {
+        const [tasksData, clientsData, projectsData] = await Promise.all([
+          base44.entities.Task.filter({ created_by: me.email }, '-created_date', 500).catch(() => []),
+          base44.entities.Client.list().catch(() => []),
+          base44.entities.Project.list().catch(() => [])
         ]);
+        allTasks = Array.isArray(tasksData) ? tasksData : [];
+        allClients = Array.isArray(clientsData) ? clientsData : [];
+        allProjects = Array.isArray(projectsData) ? projectsData : [];
       }
+
+      console.log('✅ [TASKS] Raw data loaded:', {
+        tasks: allTasks.length,
+        clients: allClients.length,
+        projects: allProjects.length
+      });
 
       const visibleClients = filterClients ? filterClients(allClients) : allClients;
       const visibleProjects = filterProjects ? filterProjects(allProjects) : allProjects;
+
+      console.log('✅ [TASKS] Filtered data:', {
+        visibleClients: visibleClients.length,
+        visibleProjects: visibleProjects.length
+      });
 
       const accessibleTasks = allTasks.filter(task => {
         if (isAdmin || isManagerPlus) return true;
@@ -99,12 +119,17 @@ export default function TasksPage() {
         return false;
       });
 
+      console.log('✅ [TASKS] Final accessible tasks:', accessibleTasks.length);
+
       setTasks(accessibleTasks);
       setClients(visibleClients);
       setProjects(visibleProjects);
     } catch (error) {
-      console.error("Error loading tasks:", error);
+      console.error("❌ [TASKS] Error loading tasks:", error);
       toast.error("שגיאה בטעינת משימות");
+      setTasks([]);
+      setClients([]);
+      setProjects([]);
     } finally {
       setLoading(false);
     }
@@ -112,10 +137,14 @@ export default function TasksPage() {
 
   const loadCustomSpreadsheets = async () => {
     try {
-      const spreadsheets = await base44.entities.CustomSpreadsheet.list('-created_date');
-      setCustomSpreadsheets(spreadsheets || []);
+      console.log('🔄 [TASKS] Loading spreadsheets...');
+      const spreadsheets = await base44.entities.CustomSpreadsheet.list('-created_date').catch(() => []);
+      const validSpreadsheets = Array.isArray(spreadsheets) ? spreadsheets : [];
+      console.log('✅ [TASKS] Loaded spreadsheets:', validSpreadsheets.length);
+      setCustomSpreadsheets(validSpreadsheets);
     } catch (error) {
-      console.error("Error loading spreadsheets:", error);
+      console.error("❌ [TASKS] Error loading spreadsheets:", error);
+      setCustomSpreadsheets([]);
     }
   };
 
@@ -267,7 +296,7 @@ export default function TasksPage() {
         show_sub_headers: false
       });
 
-      setCustomSpreadsheets([newSpreadsheet, ...customSpreadsheets]);
+      await loadCustomSpreadsheets();
       setSelectedSpreadsheet(newSpreadsheet);
       setShowCreateSpreadsheet(false);
       setNewSpreadsheetName("");
@@ -284,7 +313,7 @@ export default function TasksPage() {
 
     try {
       await base44.entities.CustomSpreadsheet.delete(spreadsheetId);
-      setCustomSpreadsheets(customSpreadsheets.filter(s => s.id !== spreadsheetId));
+      await loadCustomSpreadsheets();
       if (selectedSpreadsheet?.id === spreadsheetId) {
         setSelectedSpreadsheet(null);
       }
@@ -371,271 +400,275 @@ export default function TasksPage() {
 
         <Tabs defaultValue="tasks" className="w-full" dir="rtl">
           <TabsList className="grid w-full grid-cols-2 mb-6">
-            <TabsTrigger value="tasks">משימות</TabsTrigger>
-            <TabsTrigger value="spreadsheets">טבלאות</TabsTrigger>
+            <TabsTrigger value="tasks">משימות ({filteredTasks.length})</TabsTrigger>
+            <TabsTrigger value="spreadsheets">טבלאות ({customSpreadsheets.length})</TabsTrigger>
           </TabsList>
 
           <TabsContent value="tasks">
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <h2 className="text-lg font-semibold text-slate-900">סינון וחיפוש</h2>
-                <HelpIcon
-                  text="השתמש בפילטרים לצמצום התוצאות. ניתן לשלב מספר פילטרים יחד"
-                  side="left"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="relative">
-                  <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <Input
-                    placeholder="חיפוש משימות..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pr-10"
+            <div className="space-y-4">
+              <div className="bg-white rounded-xl shadow-sm p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <h2 className="text-lg font-semibold text-slate-900">סינון וחיפוש</h2>
+                  <HelpIcon
+                    text="השתמש בפילטרים לצמצום התוצאות. ניתן לשלב מספר פילטרים יחד"
+                    side="left"
                   />
                 </div>
 
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="כל הסטטוסים" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">כל הסטטוסים</SelectItem>
-                    <SelectItem value="חדשה">חדשה</SelectItem>
-                    <SelectItem value="בתהליך">בתהליך</SelectItem>
-                    <SelectItem value="הושלמה">הושלמה</SelectItem>
-                    <SelectItem value="דחויה">דחויה</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                  <div className="relative">
+                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <Input
+                      placeholder="חיפוש משימות..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pr-10"
+                    />
+                  </div>
 
-                <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="כל הדחיפויות" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">כל הדחיפויות</SelectItem>
-                    <SelectItem value="גבוהה">גבוהה</SelectItem>
-                    <SelectItem value="בינונית">בינונית</SelectItem>
-                    <SelectItem value="נמוכה">נמוכה</SelectItem>
-                  </SelectContent>
-                </Select>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="כל הסטטוסים" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">כל הסטטוסים</SelectItem>
+                      <SelectItem value="חדשה">חדשה</SelectItem>
+                      <SelectItem value="בתהליך">בתהליך</SelectItem>
+                      <SelectItem value="הושלמה">הושלמה</SelectItem>
+                      <SelectItem value="דחויה">דחויה</SelectItem>
+                    </SelectContent>
+                  </Select>
 
-                <Select value={clientFilter} onValueChange={setClientFilter}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="כל הלקוחות" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">כל הלקוחות</SelectItem>
-                    {uniqueClients.map(client => (
-                      <SelectItem key={client} value={client}>{client}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="כל הדחיפויות" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">כל הדחיפויות</SelectItem>
+                      <SelectItem value="גבוהה">גבוהה</SelectItem>
+                      <SelectItem value="בינונית">בינונית</SelectItem>
+                      <SelectItem value="נמוכה">נמוכה</SelectItem>
+                    </SelectContent>
+                  </Select>
 
-                <Button variant="outline" onClick={handleExport}>
-                  <Download className="w-4 h-4 ml-2" />
-                  יצוא
-                </Button>
-              </div>
-            </div>
+                  <Select value={clientFilter} onValueChange={setClientFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="כל הלקוחות" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">כל הלקוחות</SelectItem>
+                      {uniqueClients.map(client => (
+                        <SelectItem key={client} value={client}>{client}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
 
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              {loading ? (
-                <div className="text-center py-12">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-900 mx-auto"></div>
-                  <p className="text-slate-600 mt-4">טוען משימות...</p>
+                  <Button variant="outline" onClick={handleExport} className="gap-2">
+                    <Download className="w-4 h-4" />
+                    יצוא
+                  </Button>
                 </div>
-              ) : (
-                <>
-                  {filteredTasks.length === 0 && (
-                    <div className="text-center py-12 bg-white rounded-xl border-2 border-dashed border-slate-300">
-                      <p className="text-slate-600 mb-4">אין משימות להצגה</p>
-                      <Button
-                        onClick={() => {
-                          setEditingTask(null);
-                          setShowForm(true);
-                        }}
-                        variant="outline"
-                      >
-                        <Plus className="w-4 h-4 ml-2" />
-                        צור משימה ראשונה
-                      </Button>
-                    </div>
-                  )}
+              </div>
 
-                  {filteredTasks.length > 0 && viewMode === 'list' && (
-                    <div className="space-y-4">
-                      {filteredTasks.map(task => (
-                        <TaskCard
-                          key={task.id}
-                          task={task}
-                          onEdit={handleEdit}
-                          onDelete={handleDelete}
-                          onUpdate={handleTaskUpdate}
-                        />
-                      ))}
-                    </div>
-                  )}
-
-                  {filteredTasks.length > 0 && viewMode === 'grid' && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {filteredTasks.map(task => (
-                        <TaskCard
-                          key={task.id}
-                          task={task}
-                          onEdit={handleEdit}
-                          onDelete={handleDelete}
-                          onUpdate={handleTaskUpdate}
-                        />
-                      ))}
-                    </div>
-                  )}
-
-                  {filteredTasks.length > 0 && viewMode === 'compact' && (
-                    <div className="space-y-2">
-                      {filteredTasks.map(task => (
-                        <div
-                          key={task.id}
-                          className="flex items-center justify-between p-3 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+              <div className="bg-white rounded-xl shadow-sm p-6">
+                {loading ? (
+                  <div className="text-center py-12">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-900 mx-auto"></div>
+                    <p className="text-slate-600 mt-4">טוען משימות...</p>
+                  </div>
+                ) : (
+                  <>
+                    {filteredTasks.length === 0 && (
+                      <div className="text-center py-12 bg-white rounded-xl border-2 border-dashed border-slate-300">
+                        <p className="text-slate-600 mb-4">
+                          {tasks.length === 0 ? 'אין משימות במערכת' : 'אין משימות המתאימות לסינון'}
+                        </p>
+                        <Button
+                          onClick={() => {
+                            setEditingTask(null);
+                            setShowForm(true);
+                          }}
+                          variant="outline"
                         >
-                          <div className="flex items-center gap-3 flex-1 min-w-0">
-                            <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                              task.priority === 'גבוהה' ? 'bg-red-500' :
-                              task.priority === 'בינונית' ? 'bg-amber-500' :
-                              'bg-green-500'
-                            }`} />
-                            <span className="font-medium text-slate-900 truncate">{task.title}</span>
-                            {task.client_name && (
-                              <span className="text-xs text-slate-500 truncate">{task.client_name}</span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            <Button variant="ghost" size="sm" onClick={() => handleEdit(task)}>
-                              ערוך
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                          <Plus className="w-4 h-4 ml-2" />
+                          צור משימה ראשונה
+                        </Button>
+                      </div>
+                    )}
 
-                  {filteredTasks.length > 0 && viewMode === 'detailed' && (
-                    <div className="space-y-6">
-                      {filteredTasks.map(task => (
-                        <div
-                          key={task.id}
-                          className="border border-slate-200 rounded-xl p-6 hover:shadow-md transition-shadow"
-                        >
-                          <div className="flex items-start justify-between mb-4">
-                            <div>
-                              <h3 className="text-xl font-semibold text-slate-900 mb-2">{task.title}</h3>
-                              <p className="text-slate-600">{task.description}</p>
+                    {filteredTasks.length > 0 && viewMode === 'list' && (
+                      <div className="space-y-4">
+                        {filteredTasks.map(task => (
+                          <TaskCard
+                            key={task.id}
+                            task={task}
+                            onEdit={handleEdit}
+                            onDelete={handleDelete}
+                            onUpdate={handleTaskUpdate}
+                          />
+                        ))}
+                      </div>
+                    )}
+
+                    {filteredTasks.length > 0 && viewMode === 'grid' && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {filteredTasks.map(task => (
+                          <TaskCard
+                            key={task.id}
+                            task={task}
+                            onEdit={handleEdit}
+                            onDelete={handleDelete}
+                            onUpdate={handleTaskUpdate}
+                          />
+                        ))}
+                      </div>
+                    )}
+
+                    {filteredTasks.length > 0 && viewMode === 'compact' && (
+                      <div className="space-y-2">
+                        {filteredTasks.map(task => (
+                          <div
+                            key={task.id}
+                            className="flex items-center justify-between p-3 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+                          >
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                              <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                                task.priority === 'גבוהה' ? 'bg-red-500' :
+                                task.priority === 'בינונית' ? 'bg-amber-500' :
+                                'bg-green-500'
+                              }`} />
+                              <span className="font-medium text-slate-900 truncate">{task.title}</span>
+                              {task.client_name && (
+                                <span className="text-xs text-slate-500 truncate">{task.client_name}</span>
+                              )}
                             </div>
-                            <div className="flex gap-2 flex-shrink-0">
-                              <Button variant="outline" size="sm" onClick={() => handleEdit(task)}>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              <Button variant="ghost" size="sm" onClick={() => handleEdit(task)}>
                                 ערוך
                               </Button>
-                              <Button variant="outline" size="sm" onClick={() => handleDelete(task.id)}>
-                                מחק
-                              </Button>
                             </div>
                           </div>
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                            <div>
-                              <span className="text-slate-500">סטטוס:</span>
-                              <span className="font-medium mr-2">{task.status}</span>
-                            </div>
-                            <div>
-                              <span className="text-slate-500">עדיפות:</span>
-                              <span className="font-medium mr-2">{task.priority}</span>
-                            </div>
-                            {task.client_name && (
-                              <div>
-                                <span className="text-slate-500">לקוח:</span>
-                                <span className="font-medium mr-2">{task.client_name}</span>
-                              </div>
-                            )}
-                            {task.due_date && (
-                              <div>
-                                <span className="text-slate-500">תאריך יעד:</span>
-                                <span className="font-medium mr-2">{task.due_date}</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                        ))}
+                      </div>
+                    )}
 
-                  {filteredTasks.length > 0 && viewMode === 'table' && (
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead className="bg-slate-50 border-b border-slate-200">
-                          <tr>
-                            <th className="text-right p-3 text-sm font-semibold text-slate-700">משימה</th>
-                            <th className="text-right p-3 text-sm font-semibold text-slate-700">לקוח</th>
-                            <th className="text-right p-3 text-sm font-semibold text-slate-700">סטטוס</th>
-                            <th className="text-right p-3 text-sm font-semibold text-slate-700">עדיפות</th>
-                            <th className="text-right p-3 text-sm font-semibold text-slate-700">תאריך יעד</th>
-                            <th className="text-right p-3 text-sm font-semibold text-slate-700">פעולות</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {filteredTasks.map(task => (
-                            <tr key={task.id} className="border-b border-slate-100 hover:bg-slate-50">
-                              <td className="p-3">{task.title}</td>
-                              <td className="p-3 text-slate-600">{task.client_name || '—'}</td>
-                              <td className="p-3">{task.status}</td>
-                              <td className="p-3">
-                                <span className={`inline-block px-2 py-1 rounded text-xs ${
-                                  task.priority === 'גבוהה' ? 'bg-red-100 text-red-700' :
-                                  task.priority === 'בינונית' ? 'bg-amber-100 text-amber-700' :
-                                  'bg-green-100 text-green-700'
-                                }`}>
-                                  {task.priority}
-                                </span>
-                              </td>
-                              <td className="p-3 text-slate-600">{task.due_date || '—'}</td>
-                              <td className="p-3">
-                                <div className="flex gap-2">
-                                  <Button variant="ghost" size="sm" onClick={() => handleEdit(task)}>
-                                    ערוך
-                                  </Button>
+                    {filteredTasks.length > 0 && viewMode === 'detailed' && (
+                      <div className="space-y-6">
+                        {filteredTasks.map(task => (
+                          <div
+                            key={task.id}
+                            className="border border-slate-200 rounded-xl p-6 hover:shadow-md transition-shadow"
+                          >
+                            <div className="flex items-start justify-between mb-4">
+                              <div>
+                                <h3 className="text-xl font-semibold text-slate-900 mb-2">{task.title}</h3>
+                                <p className="text-slate-600">{task.description}</p>
+                              </div>
+                              <div className="flex gap-2 flex-shrink-0">
+                                <Button variant="outline" size="sm" onClick={() => handleEdit(task)}>
+                                  ערוך
+                                </Button>
+                                <Button variant="outline" size="sm" onClick={() => handleDelete(task.id)}>
+                                  מחק
+                                </Button>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                              <div>
+                                <span className="text-slate-500">סטטוס:</span>
+                                <span className="font-medium mr-2">{task.status}</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-500">עדיפות:</span>
+                                <span className="font-medium mr-2">{task.priority}</span>
+                              </div>
+                              {task.client_name && (
+                                <div>
+                                  <span className="text-slate-500">לקוח:</span>
+                                  <span className="font-medium mr-2">{task.client_name}</span>
                                 </div>
-                              </td>
+                              )}
+                              {task.due_date && (
+                                <div>
+                                  <span className="text-slate-500">תאריך יעד:</span>
+                                  <span className="font-medium mr-2">{task.due_date}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {filteredTasks.length > 0 && viewMode === 'table' && (
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead className="bg-slate-50 border-b border-slate-200">
+                            <tr>
+                              <th className="text-right p-3 text-sm font-semibold text-slate-700">משימה</th>
+                              <th className="text-right p-3 text-sm font-semibold text-slate-700">לקוח</th>
+                              <th className="text-right p-3 text-sm font-semibold text-slate-700">סטטוס</th>
+                              <th className="text-right p-3 text-sm font-semibold text-slate-700">עדיפות</th>
+                              <th className="text-right p-3 text-sm font-semibold text-slate-700">תאריך יעד</th>
+                              <th className="text-right p-3 text-sm font-semibold text-slate-700">פעולות</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
+                          </thead>
+                          <tbody>
+                            {filteredTasks.map(task => (
+                              <tr key={task.id} className="border-b border-slate-100 hover:bg-slate-50">
+                                <td className="p-3">{task.title}</td>
+                                <td className="p-3 text-slate-600">{task.client_name || '—'}</td>
+                                <td className="p-3">{task.status}</td>
+                                <td className="p-3">
+                                  <span className={`inline-block px-2 py-1 rounded text-xs ${
+                                    task.priority === 'גבוהה' ? 'bg-red-100 text-red-700' :
+                                    task.priority === 'בינונית' ? 'bg-amber-100 text-amber-700' :
+                                    'bg-green-100 text-green-700'
+                                  }`}>
+                                    {task.priority}
+                                  </span>
+                                </td>
+                                <td className="p-3 text-slate-600">{task.due_date || '—'}</td>
+                                <td className="p-3">
+                                  <div className="flex gap-2">
+                                    <Button variant="ghost" size="sm" onClick={() => handleEdit(task)}>
+                                      ערוך
+                                    </Button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
 
-                  {filteredTasks.length > 0 && viewMode === 'kanban' && (
-                    <TaskKanban
-                      tasks={filteredTasks}
-                      onTaskUpdate={handleTaskUpdate}
-                      onTaskEdit={handleEdit}
-                      onTaskDelete={handleDelete}
-                    />
-                  )}
+                    {filteredTasks.length > 0 && viewMode === 'kanban' && (
+                      <TaskKanban
+                        tasks={filteredTasks}
+                        onTaskUpdate={handleTaskUpdate}
+                        onTaskEdit={handleEdit}
+                        onTaskDelete={handleDelete}
+                      />
+                    )}
 
-                  {viewMode === 'workflow' && (
-                    <TaskWorkflow
-                      tasks={filteredTasks}
-                      onTaskUpdate={handleTaskUpdate}
-                      onTaskEdit={handleEdit}
-                      onTaskDelete={handleDelete}
-                      onTaskCreate={(initialData) => {
-                        setEditingTask(initialData || null);
-                        setShowForm(true);
-                      }}
-                      clients={clients}
-                      projects={projects}
-                    />
-                  )}
-                </>
-              )}
+                    {viewMode === 'workflow' && (
+                      <TaskWorkflow
+                        tasks={filteredTasks}
+                        onTaskUpdate={handleTaskUpdate}
+                        onTaskEdit={handleEdit}
+                        onTaskDelete={handleDelete}
+                        onTaskCreate={(initialData) => {
+                          setEditingTask(initialData || null);
+                          setShowForm(true);
+                        }}
+                        clients={clients}
+                        projects={projects}
+                      />
+                    )}
+                  </>
+                )}
+              </div>
             </div>
           </TabsContent>
 
@@ -643,7 +676,7 @@ export default function TasksPage() {
             <div className="space-y-6">
               {!selectedSpreadsheet ? (
                 <div className="bg-white rounded-xl shadow-sm p-6">
-                  <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center justify-between mb-6">
                     <h2 className="text-xl font-bold text-slate-900">הטבלאות שלי</h2>
                     <Button onClick={() => setShowCreateSpreadsheet(true)} className="bg-purple-600 hover:bg-purple-700 gap-2">
                       <Plus className="w-4 h-4" />
