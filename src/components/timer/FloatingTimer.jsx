@@ -59,8 +59,8 @@ function readPrefs() {
       titleTemplates: p?.timer?.titleTemplates || [],
       notesTemplates: p?.timer?.notesTemplates || [],
       recentClients: p?.timer?.recentClients || [], // רשימת לקוחות אחרונים
-      quickTitlePrompts: p?.timer?.quickTitlePrompts || ["פגישת תכנון", "ייעוץ טלפוני", "עדכון פרויקט"],
-      quickNotesPrompts: p?.timer?.quickNotesPrompts || ["דנו בתכנון הכללי", "עדכון על התקדמות", "שאלות ובירורים"]
+      quickTitlePrompts: p?.timer?.quickTitlePrompts || ["פגישת תכנון", "ייעוץ טלפוני", "עדכון פרויקט", "סיור באתר", "שיחת וידאו"],
+      quickNotesPrompts: p?.timer?.quickNotesPrompts || ["דנו בתכנון הכללי", "עדכון על התקדמות", "שאלות ובירורים", "תיאום עם ספקים", "בחינת דגמים"]
     };
   } catch {
     return {
@@ -77,8 +77,8 @@ function readPrefs() {
       titleTemplates: [],
       notesTemplates: [],
       recentClients: [],
-      quickTitlePrompts: ["פגישת תכנון", "ייעוץ טלפוני", "עדכון פרויקט"],
-      quickNotesPrompts: ["דנו בתכנון הכללי", "עדכון על התקדמות", "שאלות ובירורים"]
+      quickTitlePrompts: ["פגישת תכנון", "ייעוץ טלפוני", "עדכון פרויקט", "סיור באתר", "שיחת וידאו"],
+      quickNotesPrompts: ["דנו בתכנון הכללי", "עדכון על התקדמות", "שאלות ובירורים", "תיאום עם ספקים", "בחינת דגמים"]
     };
   }
 }
@@ -272,6 +272,12 @@ export default function FloatingTimer() {
   const [showNotesTemplates, setShowNotesTemplates] = React.useState(false);
   const [newTitleTemplate, setNewTitleTemplate] = React.useState("");
   const [newNotesTemplate, setNewNotesTemplate] = React.useState("");
+  const [editingQuickTitleIdx, setEditingQuickTitleIdx] = React.useState(null);
+  const [editingQuickNotesIdx, setEditingQuickNotesIdx] = React.useState(null);
+  const [newQuickTitle, setNewQuickTitle] = React.useState("");
+  const [newQuickNotes, setNewQuickNotes] = React.useState("");
+  const [showQuickTitleEditor, setShowQuickTitleEditor] = React.useState(false);
+  const [showQuickNotesEditor, setShowQuickNotesEditor] = React.useState(false);
 
   const { getAllowedClientsForTimer, loading: accessLoading } = useAccessControl();
 
@@ -624,6 +630,46 @@ ${context}
     savePrefs({ notesTemplates: updated });
   };
 
+  const addQuickTitlePrompt = () => {
+    if (!newQuickTitle.trim()) return;
+    const updated = [...(prefs.quickTitlePrompts || []), newQuickTitle.trim()];
+    savePrefs({ quickTitlePrompts: updated });
+    setNewQuickTitle("");
+    setShowQuickTitleEditor(false);
+  };
+
+  const deleteQuickTitlePrompt = (index) => {
+    const updated = (prefs.quickTitlePrompts || []).filter((_, i) => i !== index);
+    savePrefs({ quickTitlePrompts: updated });
+  };
+
+  const updateQuickTitlePrompt = (index, newValue) => {
+    const updated = [...(prefs.quickTitlePrompts || [])];
+    updated[index] = newValue.trim();
+    savePrefs({ quickTitlePrompts: updated });
+    setEditingQuickTitleIdx(null);
+  };
+
+  const addQuickNotesPrompt = () => {
+    if (!newQuickNotes.trim()) return;
+    const updated = [...(prefs.quickNotesPrompts || []), newQuickNotes.trim()];
+    savePrefs({ quickNotesPrompts: updated });
+    setNewQuickNotes("");
+    setShowQuickNotesEditor(false);
+  };
+
+  const deleteQuickNotesPrompt = (index) => {
+    const updated = (prefs.quickNotesPrompts || []).filter((_, i) => i !== index);
+    savePrefs({ quickNotesPrompts: updated });
+  };
+
+  const updateQuickNotesPrompt = (index, newValue) => {
+    const updated = [...(prefs.quickNotesPrompts || [])];
+    updated[index] = newValue.trim();
+    savePrefs({ quickNotesPrompts: updated });
+    setEditingQuickNotesIdx(null);
+  };
+
   const handleMouseDown = (e) => {
     // Only allow dragging if Ctrl is pressed
     if (!e.ctrlKey) return;
@@ -935,17 +981,85 @@ ${context}
                               </div>
 
                               <div className="bg-white rounded-lg p-3 mt-2 border border-slate-200">
-                                <div className="text-[11px] text-slate-600 mb-2 font-semibold text-right">בחר כותרת מהירה:</div>
+                                <div className="flex items-center justify-between mb-2">
+                                  <div className="text-[11px] text-slate-600 font-semibold text-right">בחר כותרת מהירה:</div>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => setShowQuickTitleEditor(!showQuickTitleEditor)}
+                                    className="h-6 px-2"
+                                    title="ערוך כפתורים">
+                                    <Settings className="w-3 h-3" />
+                                  </Button>
+                                </div>
                                 <div className="flex flex-wrap gap-2 justify-end">
                                   {(prefs.quickTitlePrompts || []).map((prompt, idx) => (
-                                    <button
-                                      key={idx}
-                                      onClick={() => setTitle(prompt)}
-                                      className="text-xs px-3 py-1.5 bg-gradient-to-r from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200 border border-blue-300 rounded-lg transition-all font-medium text-blue-700"
-                                      disabled={aiSuggesting}>
-                                      {prompt}
-                                    </button>
+                                    editingQuickTitleIdx === idx ? (
+                                      <div key={idx} className="flex items-center gap-1">
+                                        <Input
+                                          value={prompt}
+                                          onChange={(e) => {
+                                            const updated = [...(prefs.quickTitlePrompts || [])];
+                                            updated[idx] = e.target.value;
+                                            savePrefs({ quickTitlePrompts: updated });
+                                          }}
+                                          onBlur={() => setEditingQuickTitleIdx(null)}
+                                          onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                              setEditingQuickTitleIdx(null);
+                                            }
+                                          }}
+                                          className="h-7 text-xs w-32"
+                                          autoFocus
+                                        />
+                                      </div>
+                                    ) : (
+                                      <div key={idx} className="group relative">
+                                        <button
+                                          onClick={() => setTitle(prompt)}
+                                          className="text-xs px-3 py-1.5 bg-gradient-to-r from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200 border border-blue-300 rounded-lg transition-all font-medium text-blue-700"
+                                          disabled={aiSuggesting}>
+                                          {prompt}
+                                        </button>
+                                        {showQuickTitleEditor && (
+                                          <div className="absolute -top-1 -left-1 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setEditingQuickTitleIdx(idx);
+                                              }}
+                                              className="w-5 h-5 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center shadow-lg"
+                                              title="ערוך">
+                                              <Pencil className="w-2.5 h-2.5" />
+                                            </button>
+                                            <button
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                deleteQuickTitlePrompt(idx);
+                                              }}
+                                              className="w-5 h-5 bg-red-600 hover:bg-red-700 text-white rounded-full flex items-center justify-center shadow-lg"
+                                              title="מחק">
+                                              <Trash2 className="w-2.5 h-2.5" />
+                                            </button>
+                                          </div>
+                                        )}
+                                      </div>
+                                    )
                                   ))}
+                                  {showQuickTitleEditor && (
+                                    <button
+                                      onClick={() => {
+                                        const prompt = window.prompt('הזן כותרת חדשה:');
+                                        if (prompt?.trim()) {
+                                          const updated = [...(prefs.quickTitlePrompts || []), prompt.trim()];
+                                          savePrefs({ quickTitlePrompts: updated });
+                                        }
+                                      }}
+                                      className="text-xs px-3 py-1.5 bg-green-100 hover:bg-green-200 border border-green-400 rounded-lg transition-all font-medium text-green-700 flex items-center gap-1">
+                                      <Plus className="w-3 h-3" />
+                                      הוסף
+                                    </button>
+                                  )}
                                 </div>
                               </div>
 
@@ -1025,17 +1139,85 @@ ${context}
                               </div>
 
                               <div className="bg-white rounded-lg p-3 mt-2 border border-slate-200">
-                                <div className="text-[11px] text-slate-600 mb-2 font-semibold text-right">בחר הערה מהירה:</div>
+                                <div className="flex items-center justify-between mb-2">
+                                  <div className="text-[11px] text-slate-600 font-semibold text-right">בחר הערה מהירה:</div>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => setShowQuickNotesEditor(!showQuickNotesEditor)}
+                                    className="h-6 px-2"
+                                    title="ערוך כפתורים">
+                                    <Settings className="w-3 h-3" />
+                                  </Button>
+                                </div>
                                 <div className="flex flex-wrap gap-2 justify-end">
                                   {(prefs.quickNotesPrompts || []).map((prompt, idx) => (
-                                    <button
-                                      key={idx}
-                                      onClick={() => setNotes(prompt)}
-                                      className="text-xs px-3 py-1.5 bg-gradient-to-r from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200 border border-purple-300 rounded-lg transition-all font-medium text-purple-700"
-                                      disabled={aiSuggesting}>
-                                      {prompt}
-                                    </button>
+                                    editingQuickNotesIdx === idx ? (
+                                      <div key={idx} className="flex items-center gap-1">
+                                        <Input
+                                          value={prompt}
+                                          onChange={(e) => {
+                                            const updated = [...(prefs.quickNotesPrompts || [])];
+                                            updated[idx] = e.target.value;
+                                            savePrefs({ quickNotesPrompts: updated });
+                                          }}
+                                          onBlur={() => setEditingQuickNotesIdx(null)}
+                                          onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                              setEditingQuickNotesIdx(null);
+                                            }
+                                          }}
+                                          className="h-7 text-xs w-32"
+                                          autoFocus
+                                        />
+                                      </div>
+                                    ) : (
+                                      <div key={idx} className="group relative">
+                                        <button
+                                          onClick={() => setNotes(prompt)}
+                                          className="text-xs px-3 py-1.5 bg-gradient-to-r from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200 border border-purple-300 rounded-lg transition-all font-medium text-purple-700"
+                                          disabled={aiSuggesting}>
+                                          {prompt}
+                                        </button>
+                                        {showQuickNotesEditor && (
+                                          <div className="absolute -top-1 -left-1 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setEditingQuickNotesIdx(idx);
+                                              }}
+                                              className="w-5 h-5 bg-purple-600 hover:bg-purple-700 text-white rounded-full flex items-center justify-center shadow-lg"
+                                              title="ערוך">
+                                              <Pencil className="w-2.5 h-2.5" />
+                                            </button>
+                                            <button
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                deleteQuickNotesPrompt(idx);
+                                              }}
+                                              className="w-5 h-5 bg-red-600 hover:bg-red-700 text-white rounded-full flex items-center justify-center shadow-lg"
+                                              title="מחק">
+                                              <Trash2 className="w-2.5 h-2.5" />
+                                            </button>
+                                          </div>
+                                        )}
+                                      </div>
+                                    )
                                   ))}
+                                  {showQuickNotesEditor && (
+                                    <button
+                                      onClick={() => {
+                                        const prompt = window.prompt('הזן הערה חדשה:');
+                                        if (prompt?.trim()) {
+                                          const updated = [...(prefs.quickNotesPrompts || []), prompt.trim()];
+                                          savePrefs({ quickNotesPrompts: updated });
+                                        }
+                                      }}
+                                      className="text-xs px-3 py-1.5 bg-green-100 hover:bg-green-200 border border-green-400 rounded-lg transition-all font-medium text-green-700 flex items-center gap-1">
+                                      <Plus className="w-3 h-3" />
+                                      הוסף
+                                    </button>
+                                  )}
                                 </div>
                               </div>
 
