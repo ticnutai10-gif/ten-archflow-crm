@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1715,7 +1714,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                               return null;
                             }
                             
-                            const headerKeyForStyle = mergedHeader ? mergedHeader.mergeKey : col.key;
+                            const headerKeyForStyle = headerMerge ? headerMerge.mergeKey : col.key;
                             const currentHeaderStyle = headerStyles[headerKeyForStyle] || {};
 
                             if (!headerMerge && !subHeaderTitle) {
@@ -1767,7 +1766,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                     >
                                       <Palette className="w-3 h-3 text-purple-600" />
                                     </Button>
-                                    {mergedHeader && (
+                                    {headerMerge && (
                                       <Button
                                         size="icon"
                                         variant="ghost"
