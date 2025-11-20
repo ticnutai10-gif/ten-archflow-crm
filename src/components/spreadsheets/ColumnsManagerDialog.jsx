@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, Trash2, GripVertical, Eye, EyeOff, Edit2, Save, X, Table } from "lucide-react";
+import { Plus, Trash2, GripVertical, Eye, EyeOff, Edit2, Save, X, Table, Palette } from "lucide-react";
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { toast } from "sonner";
 
@@ -20,7 +20,7 @@ const COLUMN_TYPES = [
   { value: 'select', label: 'בחירה', icon: '📋' }
 ];
 
-export default function ColumnsManagerDialog({ open, onClose, columns, onSave }) {
+export default function ColumnsManagerDialog({ open, onClose, columns, onSave, headerStyles = {}, onHeaderStyleChange }) {
   const [editedColumns, setEditedColumns] = useState(columns);
   const [editingIndex, setEditingIndex] = useState(null);
   const [newColumnData, setNewColumnData] = useState({
@@ -90,6 +90,12 @@ export default function ColumnsManagerDialog({ open, onClose, columns, onSave })
       i === index ? { ...col, ...updates } : col
     );
     setEditedColumns(updated);
+  };
+
+  const updateHeaderColor = (columnKey, color) => {
+    if (onHeaderStyleChange) {
+      onHeaderStyleChange(columnKey, { backgroundColor: color });
+    }
   };
 
   const handleSave = () => {
@@ -275,6 +281,11 @@ export default function ColumnsManagerDialog({ open, onClose, columns, onSave })
 
                                     <div className="flex-1 min-w-0">
                                       <div className="flex items-center gap-2 mb-1">
+                                        <div 
+                                          className="w-6 h-6 rounded border-2 border-slate-200 flex-shrink-0" 
+                                          style={{ backgroundColor: headerStyles[column.key]?.backgroundColor || '#f1f5f9' }}
+                                          title="צבע כותרת"
+                                        />
                                         <span className="font-bold text-slate-900 text-base">
                                           {column.title}
                                         </span>
@@ -298,6 +309,14 @@ export default function ColumnsManagerDialog({ open, onClose, columns, onSave })
                                     </div>
 
                                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <input
+                                        type="color"
+                                        value={headerStyles[column.key]?.backgroundColor || '#f1f5f9'}
+                                        onChange={(e) => updateHeaderColor(column.key, e.target.value)}
+                                        className="h-8 w-8 cursor-pointer rounded border-2 border-slate-200 hover:border-purple-400"
+                                        title="בחר צבע כותרת"
+                                      />
+
                                       <Button
                                         size="icon"
                                         variant="ghost"

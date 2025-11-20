@@ -1701,7 +1701,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
               </Popover>
               <Button onClick={() => setShowColumnsManager(true)} size="sm" variant="outline" className="gap-2 hover:bg-orange-50">
                 <Settings className="w-4 h-4" />
-                ניהול עמודות
+                ניהול עמודות + צבעים
               </Button>
               {selectedCells.size > 0 && (
                 <>
@@ -2350,6 +2350,18 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         open={showColumnsManager}
         onClose={() => setShowColumnsManager(false)}
         columns={columns}
+        headerStyles={headerStyles}
+        onHeaderStyleChange={(columnKey, style) => {
+          const newHeaderStyles = { 
+            ...headerStyles, 
+            [columnKey]: { 
+              ...(headerStyles[columnKey] || {}), 
+              ...style 
+            } 
+          };
+          setHeaderStyles(newHeaderStyles);
+          setTimeout(() => saveToBackend(), 100);
+        }}
         onSave={(updatedColumns) => {
           setColumns(updatedColumns);
           setTimeout(() => {
