@@ -1096,22 +1096,34 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       return;
     }
 
-    // Ctrl+Shift - Navigate to client page with spreadsheet
-    if ((event?.ctrlKey || event?.metaKey) && event?.shiftKey) {
+    // Enter - Navigate to client page with spreadsheet
+    if (event?.key === 'Enter') {
       event.preventDefault();
       const column = columns.find(c => c.key === columnKey);
+      console.log('🔍 [NAVIGATE] Enter pressed', { columnKey, column, isClientColumn: isClientColumn(column) });
+      
       if (isClientColumn(column)) {
         const row = filteredAndSortedData.find(r => r.id === rowId);
         const clientName = row?.[columnKey];
+        console.log('🔍 [NAVIGATE] Client name:', clientName);
+        
         if (clientName) {
           const client = allClients.find(c => 
             c.name?.toLowerCase() === clientName.toLowerCase()
           );
+          console.log('🔍 [NAVIGATE] Found client:', client);
+          console.log('🔍 [NAVIGATE] Spreadsheet ID:', spreadsheet?.id);
+          
           if (client && spreadsheet?.id) {
-            window.location.href = createPageUrl(`Clients?clientId=${client.id}&spreadsheetId=${spreadsheet.id}`);
+            const url = createPageUrl(`Clients?clientId=${client.id}&spreadsheetId=${spreadsheet.id}`);
+            console.log('🔍 [NAVIGATE] Navigating to:', url);
+            window.location.href = url;
           } else if (client) {
-            window.location.href = createPageUrl(`Clients?clientId=${client.id}`);
+            const url = createPageUrl(`Clients?clientId=${client.id}`);
+            console.log('🔍 [NAVIGATE] Navigating to (no spreadsheet):', url);
+            window.location.href = url;
           } else {
+            console.log('❌ [NAVIGATE] Client not found in system');
             toast.error('לקוח לא נמצא במערכת');
           }
         }
