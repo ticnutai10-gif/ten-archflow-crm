@@ -1618,14 +1618,30 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                           if (mergedHeader) {
                             return (
                               <div key={mergedHeader.mergeKey} className="flex items-center justify-between p-2 bg-blue-50 rounded text-xs">
-                                <div>
-                                  <div className="font-semibold text-blue-800">{mergedHeader.title}</div>
-                                  <div className="text-slate-500">מיזוג ({mergedHeader.colspan} עמודות)</div>
+                                <div className="flex items-center gap-2 flex-1">
+                                  <input
+                                    type="color"
+                                    value={currentHeaderStyle.backgroundColor || '#f1f5f9'}
+                                    onChange={(e) => {
+                                      const newHeaderStyles = { 
+                                        ...headerStyles, 
+                                        [headerKeyForStyle]: { 
+                                          ...(headerStyles[headerKeyForStyle] || {}), 
+                                          backgroundColor: e.target.value 
+                                        } 
+                                      };
+                                      setHeaderStyles(newHeaderStyles);
+                                      setTimeout(() => saveToBackend(), 100);
+                                    }}
+                                    className="h-6 w-6 cursor-pointer rounded border-2 border-slate-200"
+                                    title="צבע כותרת"
+                                  />
+                                  <div>
+                                    <div className="font-semibold text-blue-800">{mergedHeader.title}</div>
+                                    <div className="text-slate-500">מיזוג ({mergedHeader.colspan} עמודות)</div>
+                                  </div>
                                 </div>
                                 <div className="flex gap-1">
-                                  <Button size="icon" variant="ghost" className="h-6 w-6 bg-white/90 hover:bg-white" onClick={(e) => { e.stopPropagation(); handleOpenHeaderColorDialog(headerKeyForStyle); }}>
-                                    <Palette className="w-3 h-3 text-purple-600" />
-                                  </Button>
                                   <Button size="icon" variant="ghost" className="h-6 w-6 bg-white/90 hover:bg-white" onClick={() => unmergeHeaders(col.key)}>
                                     <Scissors className="w-3 h-3 text-orange-600" />
                                   </Button>
@@ -1635,14 +1651,30 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                           } else if (subHeader) {
                             return (
                               <div key={col.key} className="flex items-center justify-between p-2 bg-slate-50 rounded text-xs">
-                                <div>
-                                  <div className="font-semibold">{col.title}</div>
-                                  <div className="text-slate-500">{subHeader}</div>
+                                <div className="flex items-center gap-2 flex-1">
+                                  <input
+                                    type="color"
+                                    value={currentHeaderStyle.backgroundColor || '#f1f5f9'}
+                                    onChange={(e) => {
+                                      const newHeaderStyles = { 
+                                        ...headerStyles, 
+                                        [headerKeyForStyle]: { 
+                                          ...(headerStyles[headerKeyForStyle] || {}), 
+                                          backgroundColor: e.target.value 
+                                        } 
+                                      };
+                                      setHeaderStyles(newHeaderStyles);
+                                      setTimeout(() => saveToBackend(), 100);
+                                    }}
+                                    className="h-6 w-6 cursor-pointer rounded border-2 border-slate-200"
+                                    title="צבע כותרת"
+                                  />
+                                  <div>
+                                    <div className="font-semibold">{col.title}</div>
+                                    <div className="text-slate-500">{subHeader}</div>
+                                  </div>
                                 </div>
                                 <div className="flex gap-1">
-                                  <Button size="icon" variant="ghost" className="h-6 w-6 bg-white/90 hover:bg-white" onClick={(e) => { e.stopPropagation(); handleOpenHeaderColorDialog(headerKeyForStyle); }}>
-                                    <Palette className="w-3 h-3 text-purple-600" />
-                                  </Button>
                                   <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => addOrEditSubHeader(col.key)}>
                                     <Edit2 className="w-3 h-3" />
                                   </Button>
