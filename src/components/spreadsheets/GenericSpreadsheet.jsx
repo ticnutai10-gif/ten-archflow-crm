@@ -1923,11 +1923,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                         onMouseDown={(e) => !isEditing && handleCellMouseDown(row.id, column.key, e)} 
                                         onMouseEnter={() => handleCellMouseEnter(row.id, column.key)}
                                       >
-                                        {mergeInfo && (
-                                          <div className="absolute top-1 left-1 px-1.5 py-0.5 bg-green-600 text-white text-[9px] rounded-full font-bold">
-                                            {mergeInfo.rowspan}×{mergeInfo.colspan}
-                                          </div>
-                                        )}
+
                                         {hasNote && (
                                           <div 
                                             className="absolute top-0 right-0 w-0 h-0 z-10 cursor-pointer hover:opacity-80 transition-opacity" 
