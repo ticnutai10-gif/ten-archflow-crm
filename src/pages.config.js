@@ -25,7 +25,7 @@ import SpreadsheetDetails from './pages/SpreadsheetDetails';
 import Tasks from './pages/Tasks';
 import DailyReports from './pages/DailyReports';
 import CustomSpreadsheets from './pages/CustomSpreadsheets';
-import Layout from './Layout.jsx';
+import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
@@ -61,5 +61,5 @@ export const PAGES = {
 export const pagesConfig = {
     mainPage: "Dashboard",
     Pages: PAGES,
-    Layout: Layout,
+    Layout: __Layout,
 };
