@@ -2056,78 +2056,64 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                           </div>
                                         ) : column.type === 'client' ? (
                                           <div className="relative group/client">
-                                            {isClientPicker ? (
-                                              <div className="absolute top-0 left-0 right-0 z-50 bg-white border-2 border-blue-500 rounded-lg shadow-2xl p-2" style={{ minWidth: '320px' }}>
-                                                <div className="flex items-center gap-2 mb-2">
-                                                  <Users className="w-4 h-4 text-blue-600" />
-                                                  <Input placeholder="חפש..." value={clientSearchQuery} onChange={(e) => setClientSearchQuery(e.target.value)} className="h-8 text-sm" autoFocus dir="rtl" />
-                                                  <Button size="sm" variant="ghost" onClick={() => { setShowClientPicker(null); setClientSearchQuery(""); }} className="h-8 w-8 p-0"><X className="w-4 h-4" /></Button>
-                                                </div>
-                                                <div className="max-h-64 overflow-y-auto border border-slate-200 rounded bg-white">
-                                                  {allClients.filter(c => !clientSearchQuery || c.name?.toLowerCase().includes(clientSearchQuery.toLowerCase()) || c.company?.toLowerCase().includes(clientSearchQuery.toLowerCase()) || c.email?.toLowerCase().includes(clientSearchQuery.toLowerCase())).map(client => (
-                                                    <button key={client.id} onClick={() => handleClientSelect(row.id, column.key, client)} className="w-full px-3 py-2 hover:bg-blue-50 rounded-lg text-right border-b border-slate-100 last:border-b-0">
-                                                      <div className="font-semibold text-sm text-slate-900">{client.name}</div>
-                                                      {(client.company || client.phone || client.email) && (
-                                                        <div className="text-xs text-slate-500 truncate">{[client.company, client.phone, client.email].filter(Boolean).join(' • ')}</div>
-                                                      )}
-                                                    </button>
-                                                  ))}
-                                                  {allClients.filter(c => !clientSearchQuery || c.name?.toLowerCase().includes(clientSearchQuery.toLowerCase()) || c.company?.toLowerCase().includes(clientSearchQuery.toLowerCase()) || c.email?.toLowerCase().includes(clientSearchQuery.toLowerCase())).length === 0 && (
-                                                    <div className="text-center py-12 text-slate-500 text-sm">{clientSearchQuery ? 'לא נמצאו לקוחות' : 'אין לקוחות'}</div>
-                                                  )}
-                                                </div>
-                                              </div>
-                                            ) : isEditing ? (
-                                              <div className="flex items-center gap-1">
+                                            {isEditing ? (
+                                              <div className="relative">
                                                 <Input 
                                                   ref={editInputRef} 
                                                   value={editValue} 
                                                   onChange={(e) => setEditValue(e.target.value)} 
-                                                  onBlur={saveEdit} 
+                                                  onBlur={(e) => {
+                                                    setTimeout(() => saveEdit(), 150);
+                                                  }}
                                                   onKeyDown={(e) => { 
-                                                    if (e.key === 'Enter') saveEdit(); 
-                                                    if (e.key === 'Escape') { setEditingCell(null); setEditValue(""); } 
+                                                    if (e.key === 'Enter') {
+                                                      e.preventDefault();
+                                                      saveEdit();
+                                                    }
+                                                    if (e.key === 'Escape') { 
+                                                      setEditingCell(null); 
+                                                      setEditValue(""); 
+                                                    } 
                                                   }} 
-                                                  className="h-8 flex-1" 
+                                                  className="h-8" 
                                                   autoFocus 
                                                   dir="rtl" 
-                                                  list={`ac-clients-${column.key}`}
-                                                  placeholder="הקלד או בחר..."
+                                                  placeholder="הקלד שם לקוח..."
                                                 />
-                                                <Button 
-                                                  size="icon" 
-                                                  variant="ghost" 
-                                                  className="h-8 w-8 flex-shrink-0 hover:bg-blue-50"
-                                                  onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setEditingCell(null);
-                                                    handleClientPickerToggle(row.id, column.key, e);
-                                                  }}
-                                                  title="בחר מרשימת לקוחות"
-                                                >
-                                                  <Users className="w-4 h-4 text-blue-600" />
-                                                </Button>
-                                                <datalist id={`ac-clients-${column.key}`}>
-                                                  {allClients.map(c => (
-                                                    <option key={c.id} value={c.name} />
-                                                  ))}
-                                                </datalist>
+                                                {editValue && allClients.filter(c => 
+                                                  c.name?.toLowerCase().includes(editValue.toLowerCase()) || 
+                                                  c.company?.toLowerCase().includes(editValue.toLowerCase())
+                                                ).length > 0 && (
+                                                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border-2 border-blue-400 rounded-lg shadow-xl z-50 max-h-48 overflow-y-auto">
+                                                    {allClients
+                                                      .filter(c => 
+                                                        c.name?.toLowerCase().includes(editValue.toLowerCase()) || 
+                                                        c.company?.toLowerCase().includes(editValue.toLowerCase())
+                                                      )
+                                                      .slice(0, 8)
+                                                      .map(client => (
+                                                        <button 
+                                                          key={client.id} 
+                                                          onMouseDown={(e) => {
+                                                            e.preventDefault();
+                                                            handleClientSelect(row.id, column.key, client);
+                                                            setEditingCell(null);
+                                                          }}
+                                                          className="w-full px-3 py-2 hover:bg-blue-50 text-right border-b border-slate-100 last:border-b-0 transition-colors"
+                                                        >
+                                                          <div className="font-semibold text-sm text-slate-900">{client.name}</div>
+                                                          {client.company && (
+                                                            <div className="text-xs text-slate-500">{client.company}</div>
+                                                          )}
+                                                        </button>
+                                                      ))}
+                                                  </div>
+                                                )}
                                               </div>
                                             ) : (
-                                              <div className="flex items-center justify-between gap-2 text-sm">
-                                                <div className="flex items-center gap-2 flex-1">
-                                                  {cellValue && <Users className="w-4 h-4 text-blue-600" />}
-                                                  <span className={cellValue ? 'text-slate-900 font-medium' : 'text-slate-400'}>{cellValue || 'הקלד או בחר...'}</span>
-                                                </div>
-                                                <Button
-                                                  size="icon"
-                                                  variant="ghost"
-                                                  className="h-6 w-6 opacity-0 group-hover/client:opacity-100 transition-opacity hover:bg-blue-50 flex-shrink-0"
-                                                  onClick={(e) => handleClientPickerToggle(row.id, column.key, e)}
-                                                  title="בחר מרשימת לקוחות"
-                                                >
-                                                  <Users className="w-3 h-3 text-blue-600" />
-                                                </Button>
+                                              <div className="flex items-center gap-2 text-sm">
+                                                {cellValue && <Users className="w-4 h-4 text-blue-600" />}
+                                                <span className={cellValue ? 'text-slate-900 font-medium' : 'text-slate-400'}>{cellValue || 'הקלד שם...'}</span>
                                               </div>
                                             )}
                                           </div>
