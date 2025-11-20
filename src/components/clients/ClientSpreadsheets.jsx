@@ -61,6 +61,18 @@ export default function ClientSpreadsheets({ clientId, clientName }) {
     loadSpreadsheets();
   }, [clientId]);
 
+  // Auto-select spreadsheet from URL if provided
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const spreadsheetId = urlParams.get('spreadsheetId');
+    if (spreadsheetId && spreadsheets.length > 0) {
+      const spreadsheet = spreadsheets.find(s => s.id === spreadsheetId);
+      if (spreadsheet) {
+        setSelectedSpreadsheet(spreadsheet);
+      }
+    }
+  }, [spreadsheets]);
+
   const handleLinkExisting = async () => {
     if (!selectedToLink) {
       toast.error('בחר טבלה לשיוך');
