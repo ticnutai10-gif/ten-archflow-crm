@@ -1089,20 +1089,20 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       return;
     }
 
-    const column = columns.find(c => c.key === columnKey);
-    if (column?.type === 'client') {
-      event.preventDefault();
-      setShowClientPicker(`${rowId}_${columnKey}`);
-      setClientSearchQuery("");
-      return;
-    }
-
     const row = filteredAndSortedData.find(r => r.id === rowId);
     if (!row) return;
+    const column = columns.find(c => c.key === columnKey);
     const currentValue = row[column.key] || '';
     setEditingCell(`${rowId}_${column.key}`);
     setEditValue(String(currentValue));
     setTimeout(() => editInputRef.current?.focus(), 0);
+  };
+
+  const handleClientPickerToggle = (rowId, columnKey, event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setShowClientPicker(`${rowId}_${columnKey}`);
+    setClientSearchQuery("");
   };
 
   const handleCellDoubleClick = (rowId, columnKey, event) => {
@@ -2055,7 +2055,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                             {cellValue === '✓' ? <span className="text-green-600">✓</span> : cellValue === '✗' ? <span className="text-red-600">✗</span> : <span className="text-slate-300">○</span>}
                                           </div>
                                         ) : column.type === 'client' ? (
-                                          <div className="relative">
+                                          <div className="relative group/client">
                                             {isClientPicker ? (
                                               <div className="absolute top-0 left-0 right-0 z-50 bg-white border-2 border-blue-500 rounded-lg shadow-2xl p-2" style={{ minWidth: '320px' }}>
                                                 <div className="flex items-center gap-2 mb-2">
@@ -2077,10 +2077,57 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                                   )}
                                                 </div>
                                               </div>
+                                            ) : isEditing ? (
+                                              <div className="flex items-center gap-1">
+                                                <Input 
+                                                  ref={editInputRef} 
+                                                  value={editValue} 
+                                                  onChange={(e) => setEditValue(e.target.value)} 
+                                                  onBlur={saveEdit} 
+                                                  onKeyDown={(e) => { 
+                                                    if (e.key === 'Enter') saveEdit(); 
+                                                    if (e.key === 'Escape') { setEditingCell(null); setEditValue(""); } 
+                                                  }} 
+                                                  className="h-8 flex-1" 
+                                                  autoFocus 
+                                                  dir="rtl" 
+                                                  list={`ac-clients-${column.key}`}
+                                                  placeholder="הקלד או בחר..."
+                                                />
+                                                <Button 
+                                                  size="icon" 
+                                                  variant="ghost" 
+                                                  className="h-8 w-8 flex-shrink-0 hover:bg-blue-50"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setEditingCell(null);
+                                                    handleClientPickerToggle(row.id, column.key, e);
+                                                  }}
+                                                  title="בחר מרשימת לקוחות"
+                                                >
+                                                  <Users className="w-4 h-4 text-blue-600" />
+                                                </Button>
+                                                <datalist id={`ac-clients-${column.key}`}>
+                                                  {allClients.map(c => (
+                                                    <option key={c.id} value={c.name} />
+                                                  ))}
+                                                </datalist>
+                                              </div>
                                             ) : (
-                                              <div className="flex items-center gap-2 text-sm">
-                                                {cellValue && <Users className="w-4 h-4 text-blue-600" />}
-                                                <span className={cellValue ? 'text-slate-900 font-medium' : 'text-slate-400'}>{cellValue || 'בחר...'}</span>
+                                              <div className="flex items-center justify-between gap-2 text-sm">
+                                                <div className="flex items-center gap-2 flex-1">
+                                                  {cellValue && <Users className="w-4 h-4 text-blue-600" />}
+                                                  <span className={cellValue ? 'text-slate-900 font-medium' : 'text-slate-400'}>{cellValue || 'הקלד או בחר...'}</span>
+                                                </div>
+                                                <Button
+                                                  size="icon"
+                                                  variant="ghost"
+                                                  className="h-6 w-6 opacity-0 group-hover/client:opacity-100 transition-opacity hover:bg-blue-50 flex-shrink-0"
+                                                  onClick={(e) => handleClientPickerToggle(row.id, column.key, e)}
+                                                  title="בחר מרשימת לקוחות"
+                                                >
+                                                  <Users className="w-3 h-3 text-blue-600" />
+                                                </Button>
                                               </div>
                                             )}
                                           </div>
