@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,6 +32,7 @@ import ClientSheets from "./ClientSheets";
 import TimeLogView from "./TimeLogView";
 import ClientTasks from "./ClientTasks";
 import ClientTimeline from "../portal/ClientTimeline";
+import ClientSpreadsheets from "./ClientSpreadsheets";
 
 const statusColors = {
   "פוטנציאלי": "bg-amber-100 text-amber-800 border-amber-200",
@@ -252,7 +252,7 @@ export default function ClientDetails({ client, onBack, onEdit }) {
 
         {/* Tabs */}
         <Tabs defaultValue="timeline" className="w-full" dir="rtl">
-          <TabsList className="grid w-full grid-cols-7 bg-white shadow-sm">
+          <TabsList className="grid w-full grid-cols-8 bg-white shadow-sm">
             <TabsTrigger value="timeline" className="gap-2">
               <Clock className="w-4 h-4" />
               ציר זמן
@@ -264,6 +264,10 @@ export default function ClientDetails({ client, onBack, onEdit }) {
             <TabsTrigger value="tasks" className="gap-2">
               <CheckCircle className="w-4 h-4" />
               משימות
+            </TabsTrigger>
+            <TabsTrigger value="spreadsheets" className="gap-2">
+              <FileText className="w-4 h-4" />
+              טבלאות
             </TabsTrigger>
             <TabsTrigger value="time" className="gap-2">
               <Clock className="w-4 h-4" />
@@ -326,6 +330,11 @@ export default function ClientDetails({ client, onBack, onEdit }) {
           {/* Tasks Tab */}
           <TabsContent value="tasks" className="mt-6">
             <ClientTasks clientId={client.id} clientName={client.name} />
+          </TabsContent>
+
+          {/* Spreadsheets Tab */}
+          <TabsContent value="spreadsheets" className="mt-6">
+            <ClientSpreadsheets clientId={client.id} clientName={client.name} />
           </TabsContent>
 
           {/* Time Tab */}
