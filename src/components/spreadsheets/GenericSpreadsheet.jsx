@@ -2562,56 +2562,62 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         onAdd={addBulkColumns}
       />
 
-      {editingCell && editInputRef.current && isClientColumn(columns.find(c => editingCell.includes(c.key))) && allClients.filter(c => 
-        !editValue || 
-        c.name?.toLowerCase().includes(editValue.toLowerCase()) || 
-        c.company?.toLowerCase().includes(editValue.toLowerCase())
-      ).length > 0 && (
-        <div 
-          className="fixed bg-white border-2 border-blue-500 rounded-lg shadow-2xl max-h-72 overflow-y-auto"
-          style={{
-            zIndex: 99999,
-            minWidth: '320px',
-            maxWidth: '400px',
-            top: `${editInputRef.current?.getBoundingClientRect().bottom + 5}px`,
-            left: `${editInputRef.current?.getBoundingClientRect().left}px`,
-          }}
-        >
-          {allClients
-            .filter(c => 
-              !editValue || 
-              c.name?.toLowerCase().includes(editValue.toLowerCase()) || 
-              c.company?.toLowerCase().includes(editValue.toLowerCase())
-            )
-            .slice(0, 12)
-            .map(client => {
-              const cellKey = editingCell;
-              const match = cellKey.match(/^(.+?)_(col.*)$/);
-              if (!match) return null;
-              const rowId = match[1];
-              const colKey = match[2];
-              
-              return (
+      {editingCell && (() => {
+        const match = editingCell.match(/^(.+?)_(col.*)$/);
+        if (!match) return null;
+        const rowId = match[1];
+        const colKey = match[2];
+        const column = columns.find(c => c.key === colKey);
+        
+        if (!isClientColumn(column)) return null;
+        
+        const filteredClients = allClients.filter(c => 
+          !editValue || 
+          c.name?.toLowerCase().includes(editValue.toLowerCase()) || 
+          c.company?.toLowerCase().includes(editValue.toLowerCase()) ||
+          c.email?.toLowerCase().includes(editValue.toLowerCase())
+        ).slice(0, 15);
+        
+        if (filteredClients.length === 0) return null;
+        
+        return (
+          <div 
+            className="fixed bg-white border-2 border-blue-500 rounded-lg shadow-2xl max-h-80 overflow-y-auto z-[99999]"
+            style={{
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              minWidth: '360px',
+              maxWidth: '500px'
+            }}
+          >
+            <div className="sticky top-0 bg-blue-50 px-4 py-2 border-b border-blue-200 text-sm font-semibold text-blue-900">
+              💡 בחר לקוח ({filteredClients.length} תוצאות)
+            </div>
+            <div className="p-2">
+              {filteredClients.map(client => (
                 <button 
                   key={client.id} 
                   onMouseDown={(e) => {
                     e.preventDefault();
                     handleClientSelect(rowId, colKey, client);
                     setEditingCell(null);
+                    setEditValue("");
                   }}
-                  className="w-full px-4 py-3 hover:bg-blue-50 text-right border-b border-slate-200 last:border-b-0 transition-colors"
+                  className="w-full px-4 py-3 hover:bg-blue-50 text-right rounded-lg transition-colors mb-1"
                 >
                   <div className="font-bold text-base text-slate-900">{client.name}</div>
-                  {(client.company || client.phone) && (
+                  {(client.company || client.phone || client.email) && (
                     <div className="text-xs text-slate-600 mt-1">
-                      {[client.company, client.phone].filter(Boolean).join(' • ')}
+                      {[client.company, client.phone, client.email].filter(Boolean).join(' • ')}
                     </div>
                   )}
                 </button>
-              );
-            })}
-        </div>
-      )}
+              ))}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
