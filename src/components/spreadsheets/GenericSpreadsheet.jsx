@@ -2271,7 +2271,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
               transform: 'translate(-50%, -50%)'
             }}
           >
-            <div className="space-y-3">
+            <div className="space-y-2">
               <div className="text-sm font-semibold text-slate-700 border-b pb-2">
                 {cellValue}
               </div>
@@ -2303,6 +2303,22 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
               <Button
                 size="sm"
                 variant="outline"
+                className="w-full gap-2"
+                onClick={() => {
+                  setPopoverOpen(null);
+                  const row = filteredAndSortedData.find(r => r.id === rowId);
+                  if (!row) return;
+                  setEditingCell(`${rowId}_${columnKey}`);
+                  setEditValue(String(cellValue));
+                  setTimeout(() => editInputRef.current?.focus(), 0);
+                }}
+              >
+                <Edit2 className="w-4 h-4" />
+                ערוך שם
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
                 className="w-full gap-2"
                 onClick={() => setPopoverOpen(null)}
               >
