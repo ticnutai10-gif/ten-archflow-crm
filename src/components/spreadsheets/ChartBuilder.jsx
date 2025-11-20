@@ -2,7 +2,6 @@ import React, { useState, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
@@ -351,7 +350,7 @@ export default function ChartBuilder({ open, onClose, columns, rowsData, onSave,
             <TabsContent value="data" className="space-y-6 m-0">
               {/* שם הגרף */}
               <div>
-                <Label className="text-sm font-semibold mb-2 block">שם הגרף *</Label>
+                <label className="text-sm font-semibold mb-2 block">שם הגרף *</label>
                 <Input
                   placeholder="למשל: השוואת מכירות, התקדמות פרויקט..."
                   value={chartConfig.name}
@@ -363,7 +362,7 @@ export default function ChartBuilder({ open, onClose, columns, rowsData, onSave,
 
               {/* סוג גרף */}
               <div>
-                <Label className="text-sm font-semibold mb-3 block">סוג גרף *</Label>
+                <label className="text-sm font-semibold mb-3 block">סוג גרף *</label>
                 <div className="grid grid-cols-3 gap-3">
                   {CHART_TYPES.map((type) => {
                     const Icon = type.icon;
@@ -393,7 +392,7 @@ export default function ChartBuilder({ open, onClose, columns, rowsData, onSave,
               <div className="grid grid-cols-2 gap-6">
                 {/* ציר X */}
                 <div>
-                  <Label className="text-sm font-semibold mb-2 block">ציר X (קטגוריות) *</Label>
+                  <label className="text-sm font-semibold mb-2 block">ציר X (קטגוריות) *</label>
                   <Select value={chartConfig.xAxisColumn} onValueChange={(value) => setChartConfig({ ...chartConfig, xAxisColumn: value })}>
                     <SelectTrigger>
                       <SelectValue placeholder="בחר עמודה..." />
@@ -410,12 +409,12 @@ export default function ChartBuilder({ open, onClose, columns, rowsData, onSave,
 
                 {/* ציר Y */}
                 <div>
-                  <Label className="text-sm font-semibold mb-2 block">
+                  <label className="text-sm font-semibold mb-2 block">
                     ציר Y (ערכים מספריים) * 
                     <span className="text-xs text-slate-500 font-normal mr-2">
                       ({chartConfig.yAxisColumns.length} נבחרו)
                     </span>
-                  </Label>
+                  </label>
                   <ScrollArea className="h-48 border border-slate-200 rounded-lg p-2">
                     <div className="space-y-1">
                       {numericColumns.length === 0 ? (
@@ -451,7 +450,7 @@ export default function ChartBuilder({ open, onClose, columns, rowsData, onSave,
             <TabsContent value="style" className="space-y-6 m-0">
               {/* ערכת צבעים */}
               <div>
-                <Label className="text-sm font-semibold mb-3 block">ערכת צבעים</Label>
+                <label className="text-sm font-semibold mb-3 block">ערכת צבעים</label>
                 <div className="grid grid-cols-4 gap-3">
                   {Object.entries(COLOR_SCHEMES).map(([key, colors]) => (
                     <button
@@ -477,7 +476,7 @@ export default function ChartBuilder({ open, onClose, columns, rowsData, onSave,
               {/* גודל */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-sm font-semibold mb-2 block">רוחב (px)</Label>
+                  <label className="text-sm font-semibold mb-2 block">רוחב (px)</label>
                   <Input
                     type="number"
                     value={chartConfig.width}
@@ -488,7 +487,7 @@ export default function ChartBuilder({ open, onClose, columns, rowsData, onSave,
                   />
                 </div>
                 <div>
-                  <Label className="text-sm font-semibold mb-2 block">גובה (px)</Label>
+                  <label className="text-sm font-semibold mb-2 block">גובה (px)</label>
                   <Input
                     type="number"
                     value={chartConfig.height}
@@ -505,7 +504,7 @@ export default function ChartBuilder({ open, onClose, columns, rowsData, onSave,
                 <h4 className="font-semibold text-sm mb-3">אפשרויות תצוגה</h4>
                 
                 <div className="flex items-center justify-between">
-                  <Label className="text-sm">הצג מקרא</Label>
+                  <label className="text-sm">הצג מקרא</label>
                   <Switch
                     checked={chartConfig.showLegend}
                     onCheckedChange={(checked) => setChartConfig({ ...chartConfig, showLegend: checked })}
@@ -513,7 +512,7 @@ export default function ChartBuilder({ open, onClose, columns, rowsData, onSave,
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <Label className="text-sm">הצג רשת</Label>
+                  <label className="text-sm">הצג רשת</label>
                   <Switch
                     checked={chartConfig.showGrid}
                     onCheckedChange={(checked) => setChartConfig({ ...chartConfig, showGrid: checked })}
@@ -521,7 +520,7 @@ export default function ChartBuilder({ open, onClose, columns, rowsData, onSave,
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <Label className="text-sm">הצג Tooltip</Label>
+                  <label className="text-sm">הצג Tooltip</label>
                   <Switch
                     checked={chartConfig.showTooltip}
                     onCheckedChange={(checked) => setChartConfig({ ...chartConfig, showTooltip: checked })}
