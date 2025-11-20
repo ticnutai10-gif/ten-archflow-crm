@@ -1096,7 +1096,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       return;
     }
 
-    // Ctrl+Shift - Navigate to client page
+    // Ctrl+Shift - Navigate to client page with spreadsheet
     if ((event?.ctrlKey || event?.metaKey) && event?.shiftKey) {
       event.preventDefault();
       const column = columns.find(c => c.key === columnKey);
@@ -1107,7 +1107,9 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
           const client = allClients.find(c => 
             c.name?.toLowerCase() === clientName.toLowerCase()
           );
-          if (client) {
+          if (client && spreadsheet?.id) {
+            window.location.href = createPageUrl(`Clients?clientId=${client.id}&spreadsheetId=${spreadsheet.id}`);
+          } else if (client) {
             window.location.href = createPageUrl(`Clients?clientId=${client.id}`);
           } else {
             toast.error('לקוח לא נמצא במערכת');
