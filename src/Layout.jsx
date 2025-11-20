@@ -449,58 +449,7 @@ export default function Layout({ children, currentPageName }) {
           )}
         </div>
 
-        {(isExpanded || hovered || pinned) && (
-          <div className="order-1 fixed bottom-4 right-4 z-40">
-            <div className="bg-white/90 backdrop-blur-sm border border-slate-200/50 rounded-xl shadow-sm px-3 py-2">
-              {user ? (
-                <div className="flex items-center gap-2">
-                  <div 
-                    className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium"
-                    style={{ backgroundColor: ACCENT_COLOR }}
-                  >
-                    {getUserDisplayName()?.substring(0, 1).toUpperCase()}
-                  </div>
-                  
-                  <div className="flex-1 min-w-0 max-w-[150px]">
-                    <div className="text-xs text-slate-600 truncate" title={user.email}>
-                      {user.email || 'לא זמין'}
-                    </div>
-                  </div>
 
-                  <div className="flex gap-1">
-                    <button
-                      onClick={handleSwitchUser}
-                      className="p-1 hover:text-blue-600 transition-colors duration-200"
-                      style={{ color: ICON_COLOR }}
-                      title="החלף משתמש"
-                    >
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                      </svg>
-                    </button>
-                    
-                    <button
-                      onClick={handleLogout}
-                      className="p-1 text-slate-400 hover:text-red-600 transition-colors duration-200"
-                      title="התנתק"
-                    >
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <button
-                  onClick={handleLogin}
-                  className="text-xs text-slate-600 hover:text-blue-600 transition-colors duration-200"
-                >
-                  התחבר
-                </button>
-              )}
-            </div>
-          </div>
-        )}
 
         <div className="order-2 flex-1 transition-all duration-200" style={{ backgroundColor: 'var(--bg-cream)', overflow: 'visible', width: '100%' }} dir="rtl">
           {user && (
