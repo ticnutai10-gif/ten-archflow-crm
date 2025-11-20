@@ -2129,16 +2129,22 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                                 <Input 
                                                   ref={editInputRef} 
                                                   value={editValue} 
-                                                  onChange={(e) => setEditValue(e.target.value)} 
+                                                  onChange={(e) => {
+                                                    console.log('🔍 [INPUT] Client input changed:', e.target.value);
+                                                    setEditValue(e.target.value);
+                                                  }} 
                                                   onBlur={(e) => {
+                                                    console.log('🔍 [INPUT] Input blurred, saving...');
                                                     setTimeout(() => saveEdit(), 200);
                                                   }}
                                                   onKeyDown={(e) => { 
                                                     if (e.key === 'Enter') {
                                                       e.preventDefault();
+                                                      console.log('🔍 [INPUT] Enter pressed, saving...');
                                                       saveEdit();
                                                     }
                                                     if (e.key === 'Escape') { 
+                                                      console.log('🔍 [INPUT] Escape pressed, canceling...');
                                                       setEditingCell(null); 
                                                       setEditValue(""); 
                                                     } 
@@ -2564,10 +2570,15 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
 
       {editingCell && (() => {
         const match = editingCell.match(/^(.+?)_(col.*)$/);
-        if (!match) return null;
+        if (!match) {
+          console.log('🔍 [POPUP] No match for editingCell:', editingCell);
+          return null;
+        }
         const rowId = match[1];
         const colKey = match[2];
         const column = columns.find(c => c.key === colKey);
+        
+        console.log('🔍 [POPUP] Checking if client column:', { column, isClientColumn: isClientColumn(column) });
         
         if (!isClientColumn(column)) return null;
         
@@ -2578,7 +2589,12 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
           c.email?.toLowerCase().includes(editValue.toLowerCase())
         ).slice(0, 15);
         
-        if (filteredClients.length === 0) return null;
+        console.log('🔍 [POPUP] Filtered clients:', filteredClients.length, 'editValue:', editValue);
+        
+        if (filteredClients.length === 0) {
+          console.log('🔍 [POPUP] No filtered clients found');
+          return null;
+        }
         
         return (
           <div 
