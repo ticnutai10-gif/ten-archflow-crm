@@ -10,7 +10,6 @@ import RingtoneManager from "@/components/settings/RingtoneManager";
 import ThemeManager from "@/components/settings/ThemeManager";
 import { toast } from "sonner";
 import { base44 } from "@/api/base44Client";
-import { Client, AccessControl } from "@/entities/all";
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = React.useState("general");
@@ -98,7 +97,7 @@ export default function SettingsPage() {
 
       let allRules, myRule;
       try {
-        allRules = await AccessControl.list();
+        allRules = await base44.entities.AccessControl.list();
         myRule = allRules.find(r => r.email?.toLowerCase() === user.email?.toLowerCase());
 
         if (myRule) {
@@ -200,7 +199,7 @@ export default function SettingsPage() {
       setPermissionTest({ ...results });
 
       try {
-        const allClients = await Client.list();
+        const allClients = await base44.entities.Client.list();
         
         let filteredClients = [];
         if (isAdmin || isManagerPlus || isSuperAdmin) {
