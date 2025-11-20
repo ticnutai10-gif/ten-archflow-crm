@@ -1326,6 +1326,63 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     setPopoverOpen(null);
   };
 
+  const splitColumn = async (columnKey) => {
+    const col = columns.find(c => c.key === columnKey);
+    if (!col) return;
+
+    const delimiter = prompt(`פיצול עמודה "${col.title}"\n\nהזן תו מפריד (לדוגמה: , או ; או רווח):`, ',');
+    if (!delimiter) return;
+
+    const numParts = prompt('לכמה חלקים לפצל? (מקסימום 5)', '2');
+    const parts = parseInt(numParts);
+    if (isNaN(parts) || parts < 2 || parts > 5) {
+      toast.error('מספר חלקים לא תקין (2-5)');
+      return;
+    }
+
+    const newColumns = [];
+    for (let i = 1; i <= parts; i++) {
+      newColumns.push({
+        key: `${columnKey}_part${i}`,
+        title: `${col.title} (${i})`,
+        width: col.width,
+        type: col.type,
+        visible: true
+      });
+    }
+
+    const colIndex = columns.findIndex(c => c.key === columnKey);
+    const updatedColumns = [
+      ...columns.slice(0, colIndex),
+      ...newColumns,
+      ...columns.slice(colIndex + 1)
+    ];
+
+    const updatedRows = rowsData.map(row => {
+      const value = row[columnKey] || '';
+      const splitValues = String(value).split(delimiter);
+      const newRow = { ...row };
+
+      delete newRow[columnKey];
+
+      for (let i = 0; i < parts; i++) {
+        newRow[`${columnKey}_part${i + 1}`] = splitValues[i]?.trim() || '';
+      }
+
+      return newRow;
+    });
+
+    setColumns(updatedColumns);
+    setRowsData(updatedRows);
+
+    setTimeout(() => {
+      saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current, cellNotesRef.current);
+      saveToBackend();
+    }, 50);
+
+    toast.success(`✓ עמודה פוצלה ל-${parts} חלקים`);
+  };
+
   const applyHeaderColor = (columnKey, style) => {
     const newHeaderStyles = { 
       ...headerStyles, 
