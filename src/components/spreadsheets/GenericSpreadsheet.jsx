@@ -2243,11 +2243,11 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                   );
                   console.log('🔵 [CLIENT NAV] Button clicked', { cellValue, client, spreadsheet: spreadsheet?.id, allClients: allClients.length });
                   if (client && spreadsheet?.id) {
-                    const url = createPageUrl(`Clients?clientId=${client.id}&spreadsheetId=${spreadsheet.id}`);
+                    const url = createPageUrl(`Clients?open=details&client_id=${client.id}&spreadsheetId=${spreadsheet.id}`);
                     console.log('🔵 [CLIENT NAV] Navigating to:', url);
                     window.location.href = url;
                   } else if (client) {
-                    const url = createPageUrl(`Clients?clientId=${client.id}`);
+                    const url = createPageUrl(`Clients?open=details&client_id=${client.id}`);
                     console.log('🔵 [CLIENT NAV] Navigating to (no spreadsheet):', url);
                     window.location.href = url;
                   } else {
