@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.7.0';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.4';
 import XLSX from 'npm:xlsx@0.18.5';
 import Papa from 'npm:papaparse@5.4.1';
 
