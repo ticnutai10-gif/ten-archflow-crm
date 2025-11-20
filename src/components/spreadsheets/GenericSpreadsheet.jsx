@@ -1094,6 +1094,28 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       });
       return;
     }
+
+    // Ctrl+Shift - Navigate to client page
+    if ((event?.ctrlKey || event?.metaKey) && event?.shiftKey) {
+      event.preventDefault();
+      const column = columns.find(c => c.key === columnKey);
+      if (isClientColumn(column)) {
+        const row = filteredAndSortedData.find(r => r.id === rowId);
+        const clientName = row?.[columnKey];
+        if (clientName) {
+          const client = allClients.find(c => 
+            c.name?.toLowerCase() === clientName.toLowerCase()
+          );
+          if (client) {
+            window.location.href = createPageUrl(`Clients?clientId=${client.id}`);
+          } else {
+            toast.error('לקוח לא נמצא במערכת');
+          }
+        }
+      }
+      return;
+    }
+
     if (event?.ctrlKey || event?.metaKey) {
       event.preventDefault();
       setPopoverOpen(`${rowId}_${columnKey}`);
