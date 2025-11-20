@@ -2066,9 +2066,9 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                             {cellValue === '✓' ? <span className="text-green-600">✓</span> : cellValue === '✗' ? <span className="text-red-600">✗</span> : <span className="text-slate-300">○</span>}
                                           </div>
                                         ) : isClientColumn(column) ? (
-                                          <div className="relative group/client" style={{ position: 'relative', zIndex: isEditing ? 100 : 1 }}>
+                                          <div className="relative group/client">
                                             {isEditing ? (
-                                              <div className="relative">
+                                              <>
                                                 <Input 
                                                   ref={editInputRef} 
                                                   value={editValue} 
@@ -2091,48 +2091,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                                   dir="rtl" 
                                                   placeholder="הקלד שם לקוח..."
                                                 />
-                                                {allClients.filter(c => 
-                                                  !editValue || 
-                                                  c.name?.toLowerCase().includes(editValue.toLowerCase()) || 
-                                                  c.company?.toLowerCase().includes(editValue.toLowerCase())
-                                                ).length > 0 && (
-                                                  <div 
-                                                    className="fixed bg-white border-2 border-blue-400 rounded-lg shadow-2xl max-h-64 overflow-y-auto"
-                                                    style={{
-                                                      zIndex: 9999,
-                                                      minWidth: '300px',
-                                                      top: `${editInputRef.current?.getBoundingClientRect().bottom + 5}px`,
-                                                      left: `${editInputRef.current?.getBoundingClientRect().left}px`,
-                                                    }}
-                                                  >
-                                                    {allClients
-                                                      .filter(c => 
-                                                        !editValue || 
-                                                        c.name?.toLowerCase().includes(editValue.toLowerCase()) || 
-                                                        c.company?.toLowerCase().includes(editValue.toLowerCase())
-                                                      )
-                                                      .slice(0, 10)
-                                                      .map(client => (
-                                                        <button 
-                                                          key={client.id} 
-                                                          onMouseDown={(e) => {
-                                                            e.preventDefault();
-                                                            handleClientSelect(row.id, column.key, client);
-                                                            setEditingCell(null);
-                                                          }}
-                                                          className="w-full px-4 py-3 hover:bg-blue-50 text-right border-b border-slate-100 last:border-b-0 transition-colors"
-                                                        >
-                                                          <div className="font-bold text-sm text-slate-900">{client.name}</div>
-                                                          {(client.company || client.phone) && (
-                                                            <div className="text-xs text-slate-500 mt-1">
-                                                              {[client.company, client.phone].filter(Boolean).join(' • ')}
-                                                            </div>
-                                                          )}
-                                                        </button>
-                                                      ))}
-                                                  </div>
-                                                )}
-                                              </div>
+                                              </>
                                             ) : (
                                               <div className="flex items-center gap-2 text-sm">
                                                 {cellValue && <Users className="w-4 h-4 text-blue-600" />}
@@ -2465,6 +2424,57 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         onClose={() => setShowBulkColumnsDialog(false)}
         onAdd={addBulkColumns}
       />
+
+      {editingCell && editInputRef.current && isClientColumn(columns.find(c => editingCell.includes(c.key))) && allClients.filter(c => 
+        !editValue || 
+        c.name?.toLowerCase().includes(editValue.toLowerCase()) || 
+        c.company?.toLowerCase().includes(editValue.toLowerCase())
+      ).length > 0 && (
+        <div 
+          className="fixed bg-white border-2 border-blue-500 rounded-lg shadow-2xl max-h-72 overflow-y-auto"
+          style={{
+            zIndex: 99999,
+            minWidth: '320px',
+            maxWidth: '400px',
+            top: `${editInputRef.current?.getBoundingClientRect().bottom + 5}px`,
+            left: `${editInputRef.current?.getBoundingClientRect().left}px`,
+          }}
+        >
+          {allClients
+            .filter(c => 
+              !editValue || 
+              c.name?.toLowerCase().includes(editValue.toLowerCase()) || 
+              c.company?.toLowerCase().includes(editValue.toLowerCase())
+            )
+            .slice(0, 12)
+            .map(client => {
+              const cellKey = editingCell;
+              const match = cellKey.match(/^(.+?)_(col.*)$/);
+              if (!match) return null;
+              const rowId = match[1];
+              const colKey = match[2];
+              
+              return (
+                <button 
+                  key={client.id} 
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    handleClientSelect(rowId, colKey, client);
+                    setEditingCell(null);
+                  }}
+                  className="w-full px-4 py-3 hover:bg-blue-50 text-right border-b border-slate-200 last:border-b-0 transition-colors"
+                >
+                  <div className="font-bold text-base text-slate-900">{client.name}</div>
+                  {(client.company || client.phone) && (
+                    <div className="text-xs text-slate-600 mt-1">
+                      {[client.company, client.phone].filter(Boolean).join(' • ')}
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+        </div>
+      )}
     </div>
   );
 }
