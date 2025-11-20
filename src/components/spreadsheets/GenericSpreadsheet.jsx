@@ -1070,6 +1070,17 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     }
   };
 
+  const isClientColumn = (column) => {
+    if (!column) return false;
+    const title = (column.title || '').toLowerCase();
+    const key = (column.key || '').toLowerCase();
+    return column.type === 'client' || 
+           title.includes('לקוח') || 
+           title.includes('client') ||
+           key.includes('לקוח') ||
+           key.includes('client');
+  };
+
   const handleCellClick = (rowId, columnKey, event) => {
     const isAltPressed = event?.altKey || event?.getModifierState?.('AltGraph');
     if (isAltPressed) {
@@ -2054,7 +2065,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                           <div className="flex items-center justify-center text-2xl font-bold select-none">
                                             {cellValue === '✓' ? <span className="text-green-600">✓</span> : cellValue === '✗' ? <span className="text-red-600">✗</span> : <span className="text-slate-300">○</span>}
                                           </div>
-                                        ) : column.type === 'client' ? (
+                                        ) : isClientColumn(column) ? (
                                           <div className="relative group/client">
                                             {isEditing ? (
                                               <div className="relative">
