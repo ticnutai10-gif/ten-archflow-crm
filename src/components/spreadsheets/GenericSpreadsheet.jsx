@@ -85,6 +85,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const columnEditRef = useRef(null);
   const tableRef = useRef(null);
   const contextMenuRef = useRef(null);
+  const clientPopoverRef = useRef(null);
 
   const columnsRef = useRef(columns);
   const rowsDataRef = useRef(rowsData);
@@ -141,6 +142,24 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [cellContextMenu]);
+
+  useEffect(() => {
+    if (!popoverOpen) return;
+
+    const handleClickOutside = (e) => {
+      if (clientPopoverRef.current && !clientPopoverRef.current.contains(e.target)) {
+        setPopoverOpen(null);
+      }
+    };
+
+    setTimeout(() => {
+      document.addEventListener('mousedown', handleClickOutside);
+    }, 100);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [popoverOpen]);
 
   useEffect(() => {
     const loadClients = async () => {
@@ -2226,10 +2245,74 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
             )}
           </div>
           <div className="text-slate-400 text-[10px] bg-slate-100 px-2 py-1 rounded">
-            💡 Ctrl+לחיצה לפתיחת תיקיית לקוח • Alt+Click לבחירה מרובה • Shift+גרירה לטווח • לחיצה כפולה לתפריט • 🔺 להערה
+            💡 Ctrl+לחיצה על תא לקוח = תפריט ניווט • Alt+Click לבחירה מרובה • Shift+גרירה לטווח • לחיצה כפולה לתפריט • 🔺 להערה
           </div>
         </div>
       </Card>
+
+      {popoverOpen && (() => {
+        const match = popoverOpen.match(/^(.+?)_(col.*)$/);
+        if (!match) return null;
+        const rowId = match[1];
+        const columnKey = match[2];
+        const column = columns.find(c => c.key === columnKey);
+        const row = filteredAndSortedData.find(r => r.id === rowId);
+        const cellValue = row?.[columnKey] || '';
+        
+        if (!isClientColumn(column) || !cellValue) return null;
+        
+        return (
+          <div 
+            ref={clientPopoverRef}
+            className="fixed z-[9999] bg-white border-2 border-blue-500 rounded-lg shadow-2xl p-3 min-w-[220px]"
+            style={{
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)'
+            }}
+          >
+            <div className="space-y-3">
+              <div className="text-sm font-semibold text-slate-700 border-b pb-2">
+                {cellValue}
+              </div>
+              <Button
+                size="sm"
+                className="w-full gap-2 bg-blue-600 hover:bg-blue-700"
+                onClick={() => {
+                  const client = allClients.find(c => 
+                    c.name?.toLowerCase() === cellValue?.toLowerCase()
+                  );
+                  console.log('🔵 [CLIENT NAV] Button clicked', { cellValue, client, spreadsheet: spreadsheet?.id, allClients: allClients.length });
+                  if (client && spreadsheet?.id) {
+                    const url = createPageUrl(`Clients?clientId=${client.id}&spreadsheetId=${spreadsheet.id}`);
+                    console.log('🔵 [CLIENT NAV] Navigating to:', url);
+                    window.location.href = url;
+                  } else if (client) {
+                    const url = createPageUrl(`Clients?clientId=${client.id}`);
+                    console.log('🔵 [CLIENT NAV] Navigating to (no spreadsheet):', url);
+                    window.location.href = url;
+                  } else {
+                    console.log('❌ [CLIENT NAV] Client not found');
+                    toast.error('לקוח לא נמצא במערכת');
+                  }
+                }}
+              >
+                <Users className="w-4 h-4" />
+                פתח תיקיית לקוח
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full gap-2"
+                onClick={() => setPopoverOpen(null)}
+              >
+                <X className="w-4 h-4" />
+                סגור
+              </Button>
+            </div>
+          </div>
+        );
+      })()}
 
       {cellContextMenu && (
         <div 
