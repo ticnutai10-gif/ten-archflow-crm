@@ -14,13 +14,32 @@ const Tabs = React.forwardRef(({ defaultValue, value, onValueChange, children, c
     onValueChange?.(newValue);
   };
 
+  const cloneDeep = (children) => {
+    return React.Children.map(children, child => {
+      if (!React.isValidElement(child)) return child;
+
+      let newProps = {};
+      
+      if (child.type?.displayName === 'TabsList' || 
+          child.type?.displayName === 'TabsContent' || 
+          child.type?.displayName === 'TabsTrigger') {
+        newProps = { selectedValue, onValueChange: handleValueChange };
+      }
+
+      if (child.props?.children) {
+        return React.cloneElement(child, {
+          ...newProps,
+          children: cloneDeep(child.props.children)
+        });
+      }
+
+      return React.cloneElement(child, newProps);
+    });
+  };
+
   return (
     <div ref={ref} className={className} {...props}>
-      {React.Children.map(children, child =>
-        React.isValidElement(child)
-          ? React.cloneElement(child, { selectedValue: selectedValue, onValueChange: handleValueChange })
-          : child
-      )}
+      {cloneDeep(children)}
     </div>
   );
 });
