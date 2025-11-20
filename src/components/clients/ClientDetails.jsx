@@ -48,6 +48,7 @@ export default function ClientDetails({ client, onBack, onEdit }) {
   const [invoices, setInvoices] = useState([]);
   const [timeLogs, setTimeLogs] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('timeline');
 
   const loadClientData = useCallback(async () => {
     setIsLoading(true);
@@ -78,6 +79,15 @@ export default function ClientDetails({ client, onBack, onEdit }) {
   useEffect(() => {
     loadClientData();
   }, [loadClientData]);
+
+  // Auto-switch to spreadsheets tab if spreadsheetId in URL
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const spreadsheetId = urlParams.get('spreadsheetId');
+    if (spreadsheetId) {
+      setActiveTab('spreadsheets');
+    }
+  }, []);
 
   const totalRevenue = invoices
     .filter(inv => inv?.status === 'paid')
@@ -251,7 +261,7 @@ export default function ClientDetails({ client, onBack, onEdit }) {
         </Card>
 
         {/* Tabs */}
-        <Tabs defaultValue="timeline" className="w-full" dir="rtl">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full" dir="rtl">
           <TabsList className="grid w-full grid-cols-8 bg-white shadow-sm">
             <TabsTrigger value="timeline" className="gap-2">
               <Clock className="w-4 h-4" />
