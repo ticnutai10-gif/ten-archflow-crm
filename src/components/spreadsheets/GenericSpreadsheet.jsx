@@ -1048,7 +1048,8 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   };
 
   const handleCellClick = (rowId, columnKey, event) => {
-    if (event?.altKey) {
+    const isAltPressed = event?.altKey || event?.getModifierState?.('AltGraph');
+    if (isAltPressed) {
       event.preventDefault();
       const cellKey = `${rowId}_${columnKey}`;
       setSelectedCells(prev => {
@@ -1089,9 +1090,10 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   };
 
   const handleHeaderClick = (columnKey, event) => {
-    console.log('🖱️ [HEADER CLICK]', { columnKey, alt: event?.altKey, shift: event?.shiftKey, ctrl: event?.ctrlKey });
-    
-    if (event?.altKey) {
+    const isAltPressed = event?.altKey || event?.getModifierState?.('AltGraph');
+    console.log('🖱️ [HEADER CLICK]', { columnKey, alt: event?.altKey, altGraph: event?.getModifierState?.('AltGraph'), shift: event?.shiftKey, ctrl: event?.ctrlKey });
+
+    if (isAltPressed) {
       event.preventDefault();
       setSelectedHeaders(prev => {
         const newSet = new Set(prev);
