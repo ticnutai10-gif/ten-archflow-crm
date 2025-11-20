@@ -2066,7 +2066,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                             {cellValue === '✓' ? <span className="text-green-600">✓</span> : cellValue === '✗' ? <span className="text-red-600">✗</span> : <span className="text-slate-300">○</span>}
                                           </div>
                                         ) : isClientColumn(column) ? (
-                                          <div className="relative group/client">
+                                          <div className="relative group/client" style={{ position: 'relative', zIndex: isEditing ? 100 : 1 }}>
                                             {isEditing ? (
                                               <div className="relative">
                                                 <Input 
@@ -2074,7 +2074,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                                   value={editValue} 
                                                   onChange={(e) => setEditValue(e.target.value)} 
                                                   onBlur={(e) => {
-                                                    setTimeout(() => saveEdit(), 150);
+                                                    setTimeout(() => saveEdit(), 200);
                                                   }}
                                                   onKeyDown={(e) => { 
                                                     if (e.key === 'Enter') {
@@ -2091,17 +2091,27 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                                   dir="rtl" 
                                                   placeholder="הקלד שם לקוח..."
                                                 />
-                                                {editValue && allClients.filter(c => 
+                                                {allClients.filter(c => 
+                                                  !editValue || 
                                                   c.name?.toLowerCase().includes(editValue.toLowerCase()) || 
                                                   c.company?.toLowerCase().includes(editValue.toLowerCase())
                                                 ).length > 0 && (
-                                                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border-2 border-blue-400 rounded-lg shadow-xl z-50 max-h-48 overflow-y-auto">
+                                                  <div 
+                                                    className="fixed bg-white border-2 border-blue-400 rounded-lg shadow-2xl max-h-64 overflow-y-auto"
+                                                    style={{
+                                                      zIndex: 9999,
+                                                      minWidth: '300px',
+                                                      top: `${editInputRef.current?.getBoundingClientRect().bottom + 5}px`,
+                                                      left: `${editInputRef.current?.getBoundingClientRect().left}px`,
+                                                    }}
+                                                  >
                                                     {allClients
                                                       .filter(c => 
+                                                        !editValue || 
                                                         c.name?.toLowerCase().includes(editValue.toLowerCase()) || 
                                                         c.company?.toLowerCase().includes(editValue.toLowerCase())
                                                       )
-                                                      .slice(0, 8)
+                                                      .slice(0, 10)
                                                       .map(client => (
                                                         <button 
                                                           key={client.id} 
@@ -2110,11 +2120,13 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                                             handleClientSelect(row.id, column.key, client);
                                                             setEditingCell(null);
                                                           }}
-                                                          className="w-full px-3 py-2 hover:bg-blue-50 text-right border-b border-slate-100 last:border-b-0 transition-colors"
+                                                          className="w-full px-4 py-3 hover:bg-blue-50 text-right border-b border-slate-100 last:border-b-0 transition-colors"
                                                         >
-                                                          <div className="font-semibold text-sm text-slate-900">{client.name}</div>
-                                                          {client.company && (
-                                                            <div className="text-xs text-slate-500">{client.company}</div>
+                                                          <div className="font-bold text-sm text-slate-900">{client.name}</div>
+                                                          {(client.company || client.phone) && (
+                                                            <div className="text-xs text-slate-500 mt-1">
+                                                              {[client.company, client.phone].filter(Boolean).join(' • ')}
+                                                            </div>
                                                           )}
                                                         </button>
                                                       ))}
