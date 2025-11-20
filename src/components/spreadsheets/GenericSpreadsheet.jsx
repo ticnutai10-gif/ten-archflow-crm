@@ -312,10 +312,10 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       if ((e.ctrlKey || e.metaKey) && e.key === 'c' && selectedCells.size > 0) {
         e.preventDefault();
         const cellsData = Array.from(selectedCells).map(cellKey => {
-          const match = cellKey.match(/^(.+?)_(col.*)$/);
-          if (!match) return null;
-          const rowId = match[1];
-          const colKey = match[2];
+          const lastColIndex = cellKey.lastIndexOf('_col');
+          if (lastColIndex === -1) return null;
+          const rowId = cellKey.substring(0, lastColIndex);
+          const colKey = cellKey.substring(lastColIndex + 1);
           const row = rowsData.find(r => r.id === rowId);
           return { cellKey, value: row?.[colKey] || '' };
         }).filter(Boolean);
@@ -329,10 +329,10 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         copiedCells.forEach((copiedCell, idx) => {
           if (idx < selectedCells.size) {
             const cellKey = Array.from(selectedCells)[idx];
-            const match = cellKey.match(/^(.+?)_(col.*)$/);
-            if (!match) return;
-            const rowId = match[1];
-            const colKey = match[2];
+            const lastColIndex = cellKey.lastIndexOf('_col');
+            if (lastColIndex === -1) return;
+            const rowId = cellKey.substring(0, lastColIndex);
+            const colKey = cellKey.substring(lastColIndex + 1);
             const rowIndex = updatedRows.findIndex(r => r.id === rowId);
             if (rowIndex >= 0) {
               updatedRows[rowIndex] = { ...updatedRows[rowIndex], [colKey]: copiedCell.value };
@@ -353,10 +353,10 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         const updatedRows = rowsData.map(row => {
           const newRow = { ...row };
           selectedCells.forEach(cellKey => {
-            const match = cellKey.match(/^(.+?)_(col.*)$/);
-            if (!match) return;
-            const rowId = match[1];
-            const colKey = match[2];
+            const lastColIndex = cellKey.lastIndexOf('_col');
+            if (lastColIndex === -1) return;
+            const rowId = cellKey.substring(0, lastColIndex);
+            const colKey = cellKey.substring(lastColIndex + 1);
             if (row.id === rowId) {
               newRow[colKey] = '';
             }
@@ -996,11 +996,11 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
 
   const handleCellMouseEnter = (rowId, columnKey) => {
     if (!isDraggingSelection || !dragStartCell) return;
-    const match = dragStartCell.match(/^(.+?)_(col.*)$/);
-    if (!match) return;
+    const lastColIndex = dragStartCell.lastIndexOf('_col');
+    if (lastColIndex === -1) return;
     
-    const startRowId = match[1];
-    const startColKey = match[2];
+    const startRowId = dragStartCell.substring(0, lastColIndex);
+    const startColKey = dragStartCell.substring(lastColIndex + 1);
     const startRowIndex = filteredAndSortedData.findIndex(r => r.id === startRowId);
     const endRowIndex = filteredAndSortedData.findIndex(r => r.id === rowId);
     const startColIndex = visibleColumns.findIndex(c => c.key === startColKey);
@@ -1327,17 +1327,18 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const saveEdit = async () => {
     if (!editingCell) return;
     
-    const match = editingCell.match(/^(.+?)_(col.*)$/);
-    if (!match) {
+    // Fixed: Split by last occurrence of "_col" to handle row IDs that might contain underscores
+    const lastColIndex = editingCell.lastIndexOf('_col');
+    if (lastColIndex === -1) {
       console.error('❌ Invalid cellKey:', editingCell);
       toast.error('שגיאה בזיהוי התא');
       return;
     }
     
-    const rowId = match[1];
-    const columnKey = match[2];
+    const rowId = editingCell.substring(0, lastColIndex);
+    const columnKey = editingCell.substring(lastColIndex + 1);
     
-    console.log('💾 [SAVE] Saving cell:', { rowId, columnKey, editValue });
+    console.log('💾 [SAVE] Saving cell:', { cellKey: editingCell, rowId, columnKey, editValue });
     
     const validationError = validateCell(columnKey, editValue);
     if (validationError) {
@@ -2223,10 +2224,10 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       </Card>
 
       {popoverOpen && (() => {
-        const match = popoverOpen.match(/^(.+?)_(col.*)$/);
-        if (!match) return null;
-        const rowId = match[1];
-        const columnKey = match[2];
+        const lastColIndex = popoverOpen.lastIndexOf('_col');
+        if (lastColIndex === -1) return null;
+        const rowId = popoverOpen.substring(0, lastColIndex);
+        const columnKey = popoverOpen.substring(lastColIndex + 1);
         const column = columns.find(c => c.key === columnKey);
         const row = filteredAndSortedData.find(r => r.id === rowId);
         const cellValue = row?.[columnKey] || '';
@@ -2576,13 +2577,13 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       />
 
       {editingCell && (() => {
-        const match = editingCell.match(/^(.+?)_(col.*)$/);
-        if (!match) {
+        const lastColIndex = editingCell.lastIndexOf('_col');
+        if (lastColIndex === -1) {
           console.log('🔍 [POPUP] No match for editingCell:', editingCell);
           return null;
         }
-        const rowId = match[1];
-        const colKey = match[2];
+        const rowId = editingCell.substring(0, lastColIndex);
+        const colKey = editingCell.substring(lastColIndex + 1);
         const column = columns.find(c => c.key === colKey);
         
         console.log('🔍 [POPUP] Checking if client column:', { column, isClientColumn: isClientColumn(column) });
