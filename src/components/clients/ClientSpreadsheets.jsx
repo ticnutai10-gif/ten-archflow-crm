@@ -232,6 +232,7 @@ export default function ClientSpreadsheets({ clientId, clientName }) {
           spreadsheet={selectedSpreadsheet}
           onUpdate={loadSpreadsheets}
           fullScreenMode={false}
+          filterByClient={clientName}
         />
       )}
 

@@ -22,7 +22,7 @@ import { useAccessControl } from "@/components/access/AccessValidator";
 import ColumnsManagerDialog from "./ColumnsManagerDialog";
 import BulkColumnsDialog from "./BulkColumnsDialog";
 
-export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMode = false }) {
+export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMode = false, filterByClient = null }) {
   const [columns, setColumns] = useState([]);
   const [rowsData, setRowsData] = useState([]);
   const [editingCell, setEditingCell] = useState(null);
@@ -395,6 +395,29 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
 
   const filteredAndSortedData = useMemo(() => {
     let result = [...rowsData];
+    
+    // סינון אוטומטי לפי לקוח (אם הוגדר)
+    if (filterByClient) {
+      const clientColumns = columns.filter(col => 
+        col.type === 'client' || 
+        col.key.toLowerCase().includes('client') || 
+        col.key.toLowerCase().includes('לקוח') ||
+        col.title?.toLowerCase().includes('לקוח') ||
+        col.title?.toLowerCase().includes('client')
+      );
+      
+      if (clientColumns.length > 0) {
+        result = result.filter(row => {
+          return clientColumns.some(col => {
+            const cellValue = row[col.key];
+            if (!cellValue) return false;
+            return String(cellValue).toLowerCase().includes(filterByClient.toLowerCase()) ||
+                   filterByClient.toLowerCase().includes(String(cellValue).toLowerCase());
+          });
+        });
+      }
+    }
+    
     if (globalFilter) {
       const searchLower = globalFilter.toLowerCase();
       result = result.filter(row => columns.some(col => String(row[col.key] || '').toLowerCase().includes(searchLower)));
@@ -417,7 +440,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       });
     }
     return result;
-  }, [rowsData, columns, sortColumn, sortDirection, globalFilter, columnFilters]);
+  }, [rowsData, columns, sortColumn, sortDirection, globalFilter, columnFilters, filterByClient]);
 
   const clearAllFilters = () => {
     setGlobalFilter("");
