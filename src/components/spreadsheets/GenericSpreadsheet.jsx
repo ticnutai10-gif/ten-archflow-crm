@@ -1337,6 +1337,8 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     const rowId = match[1];
     const columnKey = match[2];
     
+    console.log('💾 [SAVE] Saving cell:', { rowId, columnKey, editValue });
+    
     const validationError = validateCell(columnKey, editValue);
     if (validationError) {
       setValidationErrors(prev => ({ ...prev, [editingCell]: validationError }));
@@ -1349,9 +1351,14 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       row.id === rowId ? { ...row, [columnKey]: editValue } : row
     );
     
+    console.log('💾 [SAVE] Updated rows:', updatedRows);
+    
     setRowsData(updatedRows);
     setEditingCell(null);
     setEditValue("");
+    
+    // Update refs immediately for saveToBackend
+    rowsDataRef.current = updatedRows;
     
     setTimeout(() => {
       saveToHistory(columnsRef.current, updatedRows, cellStylesRef.current, cellNotesRef.current);
