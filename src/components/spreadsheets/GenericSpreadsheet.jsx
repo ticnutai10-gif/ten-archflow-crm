@@ -1133,6 +1133,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
 
     if (event?.ctrlKey || event?.metaKey) {
       event.preventDefault();
+      console.log('🔵 [POPOVER] Opening popover for cell', { rowId, columnKey, isClientColumn: isClientColumn(columns.find(c => c.key === columnKey)) });
       setPopoverOpen(`${rowId}_${columnKey}`);
       return;
     }
@@ -2142,6 +2143,47 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                           <div className="text-sm">{String(cellValue)}</div>
                                         )}
                                         <datalist id={`ac-${column.key}`}>{getAutoCompleteSuggestions(column.key).map((s, i) => <option key={i} value={s} />)}</datalist>
+                                        {popoverOpen === cellKey && isClientColumn(column) && (
+                                          <Popover open={true} onOpenChange={(open) => !open && setPopoverOpen(null)}>
+                                            <PopoverContent 
+                                              className="w-56 p-3 z-[99999]" 
+                                              align="start" 
+                                              dir="rtl"
+                                              style={{ position: 'absolute', top: '100%', right: 0 }}
+                                            >
+                                              <div className="space-y-3">
+                                                <div className="text-sm font-semibold text-slate-700 border-b pb-2">
+                                                  {cellValue}
+                                                </div>
+                                                <Button
+                                                  size="sm"
+                                                  className="w-full gap-2 bg-blue-600 hover:bg-blue-700"
+                                                  onClick={() => {
+                                                    const client = allClients.find(c => 
+                                                      c.name?.toLowerCase() === cellValue?.toLowerCase()
+                                                    );
+                                                    console.log('🔵 [CLIENT NAV] Button clicked', { cellValue, client, spreadsheet: spreadsheet?.id, allClients: allClients.length });
+                                                    if (client && spreadsheet?.id) {
+                                                      const url = createPageUrl(`Clients?clientId=${client.id}&spreadsheetId=${spreadsheet.id}`);
+                                                      console.log('🔵 [CLIENT NAV] Navigating to:', url);
+                                                      window.location.href = url;
+                                                    } else if (client) {
+                                                      const url = createPageUrl(`Clients?clientId=${client.id}`);
+                                                      console.log('🔵 [CLIENT NAV] Navigating to (no spreadsheet):', url);
+                                                      window.location.href = url;
+                                                    } else {
+                                                      console.log('❌ [CLIENT NAV] Client not found');
+                                                      toast.error('לקוח לא נמצא במערכת');
+                                                    }
+                                                  }}
+                                                >
+                                                  <Users className="w-4 h-4" />
+                                                  פתח תיקיית לקוח
+                                                </Button>
+                                              </div>
+                                            </PopoverContent>
+                                          </Popover>
+                                        )}
                                       </td>
                                     );
                                   })}
@@ -2184,7 +2226,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
             )}
           </div>
           <div className="text-slate-400 text-[10px] bg-slate-100 px-2 py-1 rounded">
-            💡 Alt+Click לבחירה מרובה • Shift+גרירה לטווח • לחיצה כפולה לתפריט • 🔺 להערה
+            💡 Ctrl+לחיצה לפתיחת תיקיית לקוח • Alt+Click לבחירה מרובה • Shift+גרירה לטווח • לחיצה כפולה לתפריט • 🔺 להערה
           </div>
         </div>
       </Card>
