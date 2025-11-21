@@ -15,6 +15,7 @@ const COLUMN_TYPES = [
   { value: 'number', label: 'מספר', icon: '🔢' },
   { value: 'date', label: 'תאריך', icon: '📅' },
   { value: 'client', label: 'לקוח (מקושר)', icon: '👤' },
+  { value: 'stage', label: 'שלבים (מואר)', icon: '🔵' },
   { value: 'checkmark', label: 'סימון ✓/✗', icon: '✓' },
   { value: 'boolean', label: 'כן/לא', icon: '⚡' },
   { value: 'select', label: 'בחירה', icon: '📋' }

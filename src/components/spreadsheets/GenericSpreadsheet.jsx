@@ -1271,12 +1271,10 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
           );
 
           if (client) {
-            // Fast navigation using React Router
             const url = spreadsheet?.id 
               ? createPageUrl(`Clients?clientId=${client.id}&spreadsheetId=${spreadsheet.id}`)
               : createPageUrl(`Clients?clientId=${client.id}`);
 
-            // Use programmatic navigation instead of window.location for speed
             window.history.pushState(null, '', url);
             window.dispatchEvent(new PopStateEvent('popstate'));
           } else {
