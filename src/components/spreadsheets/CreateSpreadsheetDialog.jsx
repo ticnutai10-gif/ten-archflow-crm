@@ -25,9 +25,18 @@ const COLUMN_TYPES = [
   { value: 'number', label: 'מספר' },
   { value: 'date', label: 'תאריך' },
   { value: 'client', label: '👤 לקוח (מקושר)' },
+  { value: 'stage', label: '🔵 שלבים (מואר)' },
   { value: 'checkmark', label: '✓/✗ סימון' },
   { value: 'boolean', label: 'כן/לא' },
   { value: 'select', label: 'בחירה' }
+];
+
+const DEFAULT_STAGE_OPTIONS = [
+  { value: 'ברור_תכן', label: 'ברור תכן', color: '#3b82f6', glow: 'rgba(59, 130, 246, 0.4)' },
+  { value: 'תיק_מידע', label: 'תיק מידע', color: '#8b5cf6', glow: 'rgba(139, 92, 246, 0.4)' },
+  { value: 'היתרים', label: 'היתרים', color: '#f59e0b', glow: 'rgba(245, 158, 11, 0.4)' },
+  { value: 'ביצוע', label: 'ביצוע', color: '#10b981', glow: 'rgba(16, 185, 129, 0.4)' },
+  { value: 'סיום', label: 'סיום', color: '#6b7280', glow: 'rgba(107, 114, 128, 0.4)' }
 ];
 
 export default function CreateSpreadsheetDialog({ open, onClose, onSave, spreadsheet }) {
@@ -38,7 +47,8 @@ export default function CreateSpreadsheetDialog({ open, onClose, onSave, spreads
     rows_data: [],
     cell_styles: {},
     show_sub_headers: false,
-    sub_headers: {}
+    sub_headers: {},
+    custom_stage_options: DEFAULT_STAGE_OPTIONS
   });
 
   const [newColumn, setNewColumn] = useState({
@@ -59,7 +69,8 @@ export default function CreateSpreadsheetDialog({ open, onClose, onSave, spreads
         rows_data: spreadsheet.rows_data || [],
         cell_styles: spreadsheet.cell_styles || {},
         show_sub_headers: spreadsheet.show_sub_headers || false,
-        sub_headers: spreadsheet.sub_headers || {}
+        sub_headers: spreadsheet.sub_headers || {},
+        custom_stage_options: spreadsheet.custom_stage_options || DEFAULT_STAGE_OPTIONS
       });
     } else {
       setFormData({
@@ -69,7 +80,8 @@ export default function CreateSpreadsheetDialog({ open, onClose, onSave, spreads
         rows_data: [],
         cell_styles: {},
         show_sub_headers: false,
-        sub_headers: {}
+        sub_headers: {},
+        custom_stage_options: DEFAULT_STAGE_OPTIONS
       });
     }
   }, [spreadsheet, open]);
