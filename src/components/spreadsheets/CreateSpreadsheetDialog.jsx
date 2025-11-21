@@ -40,6 +40,8 @@ const DEFAULT_STAGE_OPTIONS = [
 ];
 
 export default function CreateSpreadsheetDialog({ open, onClose, onSave, spreadsheet }) {
+  console.log('🔵 [DIALOG] Rendered with open:', open);
+  
   const [formData, setFormData] = useState({
     name: '',
     description: '',

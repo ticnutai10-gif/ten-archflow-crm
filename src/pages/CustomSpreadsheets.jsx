@@ -112,8 +112,10 @@ export default function CustomSpreadsheetsPage() {
           
           <Button
             onClick={() => {
+              console.log('🔵 [CREATE TABLE] Button clicked!');
               setEditingSpreadsheet(null);
               setShowCreateDialog(true);
+              console.log('🔵 [CREATE TABLE] showCreateDialog set to true');
             }}
             className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg gap-2"
           >
