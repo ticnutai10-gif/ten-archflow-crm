@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +19,8 @@ import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import HelpIcon from "@/components/ui/HelpIcon";
 import { Checkbox } from "@/components/ui/checkbox";
+import { StageDisplay } from "@/components/spreadsheets/GenericSpreadsheet";
+import { base44 } from "@/api/base44Client";
 
 const ICON_COLOR = "#2C3A50";
 
@@ -41,7 +42,8 @@ const COLORS = [
 
 
 const fixedDefaultColumns = [
-{ key: 'name', title: 'שם', width: '200px', type: 'text', required: true },
+{ key: 'name', title: 'שם לקוח', width: '200px', type: 'text', required: true },
+{ key: 'stage', title: 'שלבים', width: '180px', type: 'stage', required: false },
 { key: 'name_clean', title: 'שם נקי', width: '200px', type: 'text', required: false },
 { key: 'phone', title: 'טלפון', width: '150px', type: 'phone', required: false },
 { key: 'email', title: 'אימייל', width: '150px', type: 'email', required: false },
@@ -2325,7 +2327,24 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
 
                               <PopoverTrigger asChild>
                                 <div className="text-sm w-full" dir="rtl">
-                                  {column.type === 'status' ?
+                                  {column.type === 'stage' ?
+                                <div onClick={(e) => e.stopPropagation()}>
+                                    <StageDisplay
+                                      value={cellValue}
+                                      options={client.custom_stage_options}
+                                      onChange={async (newStage) => {
+                                        try {
+                                          await base44.entities.Client.update(client.id, { stage: newStage });
+                                          setLocalClients(prev => prev.map(c => c.id === client.id ? {...c, stage: newStage} : c));
+                                          toast.success('השלב עודכן');
+                                        } catch (error) {
+                                          console.error('Error updating stage:', error);
+                                          toast.error('שגיאה בעדכון השלב');
+                                        }
+                                      }}
+                                    />
+                                  </div> :
+                                column.type === 'status' ?
                                 <Badge variant="outline" className={statusColors[cellValue] || 'bg-slate-100 text-slate-800'}>
                                       {cellValue}
                                     </Badge> :
