@@ -24,7 +24,7 @@ import ColumnsManagerDialog from "./ColumnsManagerDialog";
 import BulkColumnsDialog from "./BulkColumnsDialog";
 import StageOptionsManager from "./StageOptionsManager";
 
-// Default stage options with colors
+// Default stage options with colors - MUST BE OUTSIDE COMPONENT
 const DEFAULT_STAGE_OPTIONS = [
   { value: 'ברור_תכן', label: 'ברור תכן', color: '#3b82f6', glow: 'rgba(59, 130, 246, 0.4)' },
   { value: 'תיק_מידע', label: 'תיק מידע', color: '#8b5cf6', glow: 'rgba(139, 92, 246, 0.4)' },
@@ -33,10 +33,10 @@ const DEFAULT_STAGE_OPTIONS = [
   { value: 'סיום', label: 'סיום', color: '#6b7280', glow: 'rgba(107, 114, 128, 0.4)' }
 ];
 
-function StageDisplay({ value, column, isEditing, onEdit, editValue, onSave, onCancel, stageOptions }) {
+function StageDisplay({ value, column, isEditing, onEdit, editValue, onSave, onCancel, stageOptions = DEFAULT_STAGE_OPTIONS }) {
   const [showPicker, setShowPicker] = useState(false);
   
-  const STAGE_OPTIONS = stageOptions || DEFAULT_STAGE_OPTIONS;
+  const STAGE_OPTIONS = stageOptions;
   const currentStage = STAGE_OPTIONS.find(s => s.value === value);
   
   if (isEditing) {
