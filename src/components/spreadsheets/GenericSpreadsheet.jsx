@@ -22,9 +22,10 @@ import ChartViewer from "./ChartViewer";
 import { useAccessControl } from "@/components/access/AccessValidator";
 import ColumnsManagerDialog from "./ColumnsManagerDialog";
 import BulkColumnsDialog from "./BulkColumnsDialog";
+import StageOptionsManager from "./StageOptionsManager";
 
-// Stage options with colors
-const STAGE_OPTIONS = [
+// Default stage options with colors
+const DEFAULT_STAGE_OPTIONS = [
   { value: 'ברור_תכן', label: 'ברור תכן', color: '#3b82f6', glow: 'rgba(59, 130, 246, 0.4)' },
   { value: 'תיק_מידע', label: 'תיק מידע', color: '#8b5cf6', glow: 'rgba(139, 92, 246, 0.4)' },
   { value: 'היתרים', label: 'היתרים', color: '#f59e0b', glow: 'rgba(245, 158, 11, 0.4)' },
@@ -32,9 +33,10 @@ const STAGE_OPTIONS = [
   { value: 'סיום', label: 'סיום', color: '#6b7280', glow: 'rgba(107, 114, 128, 0.4)' }
 ];
 
-function StageDisplay({ value, column, isEditing, onEdit, editValue, onSave, onCancel }) {
+function StageDisplay({ value, column, isEditing, onEdit, editValue, onSave, onCancel, stageOptions }) {
   const [showPicker, setShowPicker] = useState(false);
   
+  const STAGE_OPTIONS = stageOptions || DEFAULT_STAGE_OPTIONS;
   const currentStage = STAGE_OPTIONS.find(s => s.value === value);
   
   if (isEditing) {
@@ -146,6 +148,8 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const [editingChart, setEditingChart] = useState(null);
   const [showColumnsManager, setShowColumnsManager] = useState(false);
   const [showBulkColumnsDialog, setShowBulkColumnsDialog] = useState(false);
+  const [showStageManager, setShowStageManager] = useState(false);
+  const [customStageOptions, setCustomStageOptions] = useState(DEFAULT_STAGE_OPTIONS);
   const [cellContextMenu, setCellContextMenu] = useState(null);
   const [noteDialogCell, setNoteDialogCell] = useState(null);
   const [noteText, setNoteText] = useState("");
@@ -177,8 +181,10 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const savedViewsRef = useRef(savedViews);
   const activeViewIdRef = useRef(activeViewId);
   const chartsRef = useRef(charts);
+  const customStageOptionsRef = useRef(customStageOptions);
 
   useEffect(() => { columnsRef.current = columns; }, [columns]);
+  useEffect(() => { customStageOptionsRef.current = customStageOptions; }, [customStageOptions]);
   useEffect(() => { rowsDataRef.current = rowsData; }, [rowsData]);
   useEffect(() => { cellStylesRef.current = cellStyles; }, [cellStyles]);
   useEffect(() => { cellNotesRef.current = cellNotes; }, [cellNotes]);
@@ -289,6 +295,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       setSavedViews(spreadsheet.saved_views || []);
       setActiveViewId(spreadsheet.active_view_id || null);
       setCharts(spreadsheet.charts || []);
+      setCustomStageOptions(spreadsheet.custom_stage_options || DEFAULT_STAGE_OPTIONS);
 
       setHistory([{ columns: initialColumns, rows: initialRows, styles: initialStyles, notes: initialNotes }]);
       setHistoryIndex(0);
@@ -381,6 +388,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         saved_views: savedViewsRef.current,
         active_view_id: activeViewIdRef.current,
         charts: chartsRef.current,
+        custom_stage_options: customStageOptionsRef.current,
         client_id: detectedClientId,
         client_name: detectedClientName
       };
@@ -1953,6 +1961,10 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                 <Settings className="w-4 h-4" />
                 ניהול עמודות + צבעים
               </Button>
+              <Button onClick={() => setShowStageManager(true)} size="sm" variant="outline" className="gap-2 hover:bg-purple-50">
+                <Circle className="w-4 h-4 text-purple-600" />
+                ניהול שלבים
+              </Button>
               {selectedCells.size > 0 && (
                 <>
                   <Badge variant="outline" className="bg-purple-50 px-3">נבחרו: {selectedCells.size} תאים</Badge>
@@ -2273,7 +2285,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                             {cellValue === '✓' ? <span className="text-green-600">✓</span> : cellValue === '✗' ? <span className="text-red-600">✗</span> : <span className="text-slate-300">○</span>}
                                           </div>
                                         ) : column.type === 'stage' ? (
-                                          <StageDisplay value={cellValue} column={column} isEditing={isEditing} onEdit={(val) => setEditValue(val)} editValue={editValue} onSave={saveEdit} onCancel={() => { setEditingCell(null); setEditValue(""); }} />
+                                          <StageDisplay value={cellValue} column={column} isEditing={isEditing} onEdit={(val) => setEditValue(val)} editValue={editValue} onSave={saveEdit} onCancel={() => { setEditingCell(null); setEditValue(""); }} stageOptions={customStageOptions} />
                                         ) : isClientColumn(column) ? (
                                           <div className="relative group/client">
                                             {isEditing ? (
@@ -2718,6 +2730,17 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         open={showBulkColumnsDialog}
         onClose={() => setShowBulkColumnsDialog(false)}
         onAdd={addBulkColumns}
+      />
+
+      <StageOptionsManager
+        open={showStageManager}
+        onClose={() => setShowStageManager(false)}
+        stageOptions={customStageOptions}
+        onSave={(newOptions) => {
+          setCustomStageOptions(newOptions);
+          setTimeout(() => saveToBackend(), 50);
+          toast.success('✓ אפשרויות שלבים עודכנו');
+        }}
       />
 
       {editingCell && (() => {
