@@ -193,7 +193,7 @@ export default function ColumnsManagerDialog({ open, onClose, columns, onSave, h
           </div>
 
           {/* רשימת עמודות קיימות */}
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 overflow-hidden flex flex-col">
             <h3 className="font-bold text-sm mb-3 flex items-center gap-2">
               <Table className="w-4 h-4 text-slate-600" />
               עמודות קיימות ({editedColumns.length})
@@ -209,8 +209,8 @@ export default function ColumnsManagerDialog({ open, onClose, columns, onSave, h
               <DragDropContext onDragEnd={handleDragEnd}>
                 <Droppable droppableId="columns-manager">
                   {(provided) => (
-                    <ScrollArea className="h-[400px]">
-                      <div ref={provided.innerRef} {...provided.droppableProps} className="space-y-2 pr-2">
+                    <div className="flex-1 overflow-y-auto max-h-[450px] border border-slate-200 rounded-lg p-2 bg-slate-50">
+                      <div ref={provided.innerRef} {...provided.droppableProps} className="space-y-2">
                         {editedColumns.map((column, index) => (
                           <Draggable key={column.key} draggableId={column.key} index={index}>
                             {(provided, snapshot) => (
@@ -360,7 +360,7 @@ export default function ColumnsManagerDialog({ open, onClose, columns, onSave, h
                         ))}
                         {provided.placeholder}
                       </div>
-                    </ScrollArea>
+                    </div>
                   )}
                 </Droppable>
               </DragDropContext>
