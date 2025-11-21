@@ -6,7 +6,7 @@ import {
   BarChart3, Archive, FolderOpen, MessageSquare,
   Calculator, Pin, PinOff, ChevronRight, Home,
   Briefcase, CheckSquare2, Timer, Receipt,
-  Calendar, Mail
+  Calendar, Mail, Zap
 } from "lucide-react";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import FloatingTimer from "@/components/timer/FloatingTimer";
@@ -44,6 +44,7 @@ const MENU_ITEMS = [
   { name: "דוחות", icon: BarChart3, path: "Reports" },
   { name: "דוחות יומיים", icon: Mail, path: "DailyReports" },
   { name: "מסמכים", icon: FileText, path: "Documents" },
+  { name: "אינטגרציות", icon: Zap, path: "Integrations" },
   { name: "אוטומציות", icon: Settings, path: "Automations" },
   { name: "יצוא", icon: Archive, path: "Exports" },
   { name: "גיבוי", icon: Archive, path: "Backup" },

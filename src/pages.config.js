@@ -25,6 +25,7 @@ import SpreadsheetDetails from './pages/SpreadsheetDetails';
 import Tasks from './pages/Tasks';
 import DailyReports from './pages/DailyReports';
 import CustomSpreadsheets from './pages/CustomSpreadsheets';
+import Integrations from './pages/Integrations';
 import __Layout from './Layout.jsx';
 
 
@@ -56,6 +57,7 @@ export const PAGES = {
     "Tasks": Tasks,
     "DailyReports": DailyReports,
     "CustomSpreadsheets": CustomSpreadsheets,
+    "Integrations": Integrations,
 }
 
 export const pagesConfig = {
