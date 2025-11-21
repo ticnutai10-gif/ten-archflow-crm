@@ -2315,7 +2315,18 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                             {cellValue === '✓' ? <span className="text-green-600">✓</span> : cellValue === '✗' ? <span className="text-red-600">✗</span> : <span className="text-slate-300">○</span>}
                                           </div>
                                         ) : column.type === 'stage' ? (
-                                          <StageDisplay value={cellValue} column={column} isEditing={isEditing} onEdit={(val) => setEditValue(val)} editValue={editValue} onSave={saveEdit} onCancel={() => { setEditingCell(null); setEditValue(""); }} stageOptions={customStageOptions} />
+                                          <div className="flex items-center justify-center">
+                                            <StageDisplay 
+                                              value={cellValue} 
+                                              column={column} 
+                                              isEditing={isEditing} 
+                                              onEdit={(val) => setEditValue(val)} 
+                                              editValue={editValue} 
+                                              onSave={saveEdit} 
+                                              onCancel={() => { setEditingCell(null); setEditValue(""); }} 
+                                              stageOptions={customStageOptions}
+                                            />
+                                          </div>
                                         ) : isClientColumn(column) ? (
                                           <div className="relative group/client">
                                             {isEditing ? (
@@ -2350,30 +2361,44 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                                 />
                                               </>
                                             ) : (
-                                              <div className="flex items-center gap-2 text-sm">
-                                                {(() => {
-                                                  const stageColumn = visibleColumns.find(col => col.type === 'stage');
-                                                  if (cellValue && stageColumn) {
-                                                    const stageValue = row[stageColumn.key];
-                                                    const currentStage = customStageOptions.find(s => s.value === stageValue);
-                                                    if (currentStage) {
-                                                      return (
-                                                        <div 
-                                                          className="w-3 h-3 rounded-full flex-shrink-0"
-                                                          style={{ 
-                                                            backgroundColor: currentStage.color,
-                                                            boxShadow: `0 0 8px ${currentStage.glow}, 0 0 12px ${currentStage.glow}`,
-                                                            border: '1px solid white'
-                                                          }}
-                                                          title={currentStage.label}
-                                                        />
-                                                      );
-                                                    }
-                                                  }
-                                                  return cellValue ? <Users className="w-4 h-4 text-blue-600" /> : null;
-                                                })()}
-                                                <span className={cellValue ? 'text-slate-900 font-medium' : 'text-slate-400'}>{cellValue || 'הקלד שם...'}</span>
-                                              </div>
+                                             <div className="flex items-center gap-2 text-sm">
+                                               {(() => {
+                                                 if (!cellValue) return <span className="text-slate-400">הקלד שם...</span>;
+
+                                                 // Find stage column and get stage value for THIS ROW
+                                                 const stageColumn = visibleColumns.find(col => col.type === 'stage');
+                                                 if (stageColumn) {
+                                                   const stageValue = row[stageColumn.key];
+                                                   if (stageValue) {
+                                                     const currentStage = customStageOptions.find(s => s.value === stageValue);
+                                                     if (currentStage) {
+                                                       return (
+                                                         <>
+                                                           <div 
+                                                             className="w-3 h-3 rounded-full flex-shrink-0 animate-pulse"
+                                                             style={{ 
+                                                               backgroundColor: currentStage.color,
+                                                               boxShadow: `0 0 8px ${currentStage.glow}, 0 0 12px ${currentStage.glow}`,
+                                                               border: '1px solid white'
+                                                             }}
+                                                             title={currentStage.label}
+                                                           />
+                                                           <span className="text-slate-900 font-medium">{cellValue}</span>
+                                                         </>
+                                                       );
+                                                     }
+                                                   }
+                                                 }
+
+                                                 // Default: just user icon and name
+                                                 return (
+                                                   <>
+                                                     <Users className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                                                     <span className="text-slate-900 font-medium">{cellValue}</span>
+                                                   </>
+                                                 );
+                                               })()}
+                                             </div>
                                             )}
                                           </div>
                                         ) : isEditing ? (
