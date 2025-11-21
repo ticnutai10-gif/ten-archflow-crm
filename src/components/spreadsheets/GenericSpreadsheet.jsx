@@ -34,7 +34,7 @@ const DEFAULT_STAGE_OPTIONS = [
 ];
 
 // Export StageDisplay for use in other components
-export function StageDisplay({ value, column, isEditing, onEdit, editValue, onSave, onCancel, stageOptions = DEFAULT_STAGE_OPTIONS, compact = false }) {
+export function StageDisplay({ value, column, isEditing, onEdit, editValue, onSave, onCancel, stageOptions = DEFAULT_STAGE_OPTIONS, compact = false, onDirectSave }) {
   const [showPicker, setShowPicker] = useState(false);
   
   const STAGE_OPTIONS = stageOptions;
@@ -48,13 +48,19 @@ export function StageDisplay({ value, column, isEditing, onEdit, editValue, onSa
             <button
               key={stage.value}
               onClick={() => {
-                onEdit(stage.value);
-                setTimeout(() => onSave(), 50);
+                console.log('🟣 [STAGE] Clicked stage:', stage.value);
+                // Use direct save if available, otherwise use the old method
+                if (onDirectSave) {
+                  onDirectSave(stage.value);
+                } else {
+                  onEdit(stage.value);
+                  setTimeout(() => onSave(), 100);
+                }
               }}
               className="w-full flex items-center gap-3 px-3 py-2 hover:bg-purple-50 rounded-lg transition-all"
             >
               <div 
-                className="w-3 h-3 rounded-full"
+                className="w-3 h-3 rounded-full animate-pulse"
                 style={{ 
                   backgroundColor: stage.color,
                   boxShadow: `0 0 8px ${stage.glow}, 0 0 12px ${stage.glow}`
@@ -2325,6 +2331,22 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                               onSave={saveEdit} 
                                               onCancel={() => { setEditingCell(null); setEditValue(""); }} 
                                               stageOptions={customStageOptions}
+                                              onDirectSave={(stageValue) => {
+                                                console.log('🟣 [STAGE SAVE] Direct save called with:', stageValue);
+                                                const updatedRows = rowsData.map(r => 
+                                                  r.id === row.id ? { ...r, [column.key]: stageValue } : r
+                                                );
+                                                console.log('🟣 [STAGE SAVE] Updated rows:', updatedRows);
+                                                setRowsData(updatedRows);
+                                                setEditingCell(null);
+                                                setEditValue("");
+                                                rowsDataRef.current = updatedRows;
+                                                setTimeout(() => {
+                                                  saveToHistory(columnsRef.current, updatedRows, cellStylesRef.current, cellNotesRef.current);
+                                                  saveToBackend();
+                                                }, 50);
+                                                toast.success('✓ שלב עודכן');
+                                              }}
                                             />
                                           </div>
                                         ) : isClientColumn(column) ? (
