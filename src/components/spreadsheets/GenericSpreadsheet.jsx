@@ -67,29 +67,58 @@ function StageDisplay({ value, column, isEditing, onEdit, editValue, onSave, onC
     );
   }
   
-  if (!currentStage) {
+  if (!currentStage && !isEditing) {
     return (
-      <div className="text-xs text-slate-400 text-center">
+      <div className="text-xs text-slate-400 text-center py-2 hover:bg-purple-50 rounded transition-colors">
         לחץ לבחירה
       </div>
     );
   }
   
+  if (!currentStage && isEditing) {
+    return (
+      <div className="relative" onClick={(e) => e.stopPropagation()}>
+        <div className="space-y-2 p-2 bg-white rounded-lg shadow-lg border-2 border-purple-300 min-w-[180px]">
+          {STAGE_OPTIONS.map(stage => (
+            <button
+              key={stage.value}
+              onClick={() => {
+                onEdit(stage.value);
+                setTimeout(() => onSave(), 50);
+              }}
+              className="w-full flex items-center gap-3 px-3 py-2 hover:bg-purple-50 rounded-lg transition-all"
+            >
+              <div 
+                className="w-3 h-3 rounded-full"
+                style={{ 
+                  backgroundColor: stage.color,
+                  boxShadow: `0 0 8px ${stage.glow}, 0 0 12px ${stage.glow}`
+                }}
+              />
+              <span className="text-sm font-medium">{stage.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  
   return (
-    <div className="flex items-center justify-center gap-2 group cursor-pointer">
+    <div className="flex items-center justify-center gap-2 group cursor-pointer py-1">
       <div 
-        className="w-3 h-3 rounded-full transition-all duration-300 group-hover:scale-125"
+        className="w-4 h-4 rounded-full transition-all duration-300 group-hover:scale-125 flex-shrink-0"
         style={{ 
           backgroundColor: currentStage.color,
-          boxShadow: `0 0 8px ${currentStage.glow}, 0 0 12px ${currentStage.glow}`
+          boxShadow: `0 0 10px ${currentStage.glow}, 0 0 15px ${currentStage.glow}`,
+          border: '2px solid white'
         }}
       />
       <span 
-        className="text-sm font-semibold px-3 py-1 rounded-full transition-all duration-300"
+        className="text-sm font-semibold px-3 py-1.5 rounded-full transition-all duration-300"
         style={{ 
-          backgroundColor: `${currentStage.color}15`,
+          backgroundColor: `${currentStage.color}20`,
           color: currentStage.color,
-          border: `1px solid ${currentStage.color}40`
+          border: `2px solid ${currentStage.color}60`
         }}
       >
         {currentStage.label}
@@ -2321,7 +2350,27 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                               </>
                                             ) : (
                                               <div className="flex items-center gap-2 text-sm">
-                                                {cellValue && <Users className="w-4 h-4 text-blue-600" />}
+                                                {(() => {
+                                                  const stageColumn = visibleColumns.find(col => col.type === 'stage');
+                                                  if (cellValue && stageColumn) {
+                                                    const stageValue = row[stageColumn.key];
+                                                    const currentStage = customStageOptions.find(s => s.value === stageValue);
+                                                    if (currentStage) {
+                                                      return (
+                                                        <div 
+                                                          className="w-3 h-3 rounded-full flex-shrink-0"
+                                                          style={{ 
+                                                            backgroundColor: currentStage.color,
+                                                            boxShadow: `0 0 8px ${currentStage.glow}, 0 0 12px ${currentStage.glow}`,
+                                                            border: '1px solid white'
+                                                          }}
+                                                          title={currentStage.label}
+                                                        />
+                                                      );
+                                                    }
+                                                  }
+                                                  return cellValue ? <Users className="w-4 h-4 text-blue-600" /> : null;
+                                                })()}
                                                 <span className={cellValue ? 'text-slate-900 font-medium' : 'text-slate-400'}>{cellValue || 'הקלד שם...'}</span>
                                               </div>
                                             )}
