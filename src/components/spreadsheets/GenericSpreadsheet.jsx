@@ -2272,6 +2272,8 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                           <div className="flex items-center justify-center text-2xl font-bold select-none">
                                             {cellValue === '✓' ? <span className="text-green-600">✓</span> : cellValue === '✗' ? <span className="text-red-600">✗</span> : <span className="text-slate-300">○</span>}
                                           </div>
+                                        ) : column.type === 'stage' ? (
+                                          <StageDisplay value={cellValue} column={column} isEditing={isEditing} onEdit={(val) => setEditValue(val)} editValue={editValue} onSave={saveEdit} onCancel={() => { setEditingCell(null); setEditValue(""); }} />
                                         ) : isClientColumn(column) ? (
                                           <div className="relative group/client">
                                             {isEditing ? (
