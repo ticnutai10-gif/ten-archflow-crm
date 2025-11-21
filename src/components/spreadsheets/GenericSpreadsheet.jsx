@@ -240,6 +240,55 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     }
     
     try {
+      // Auto-detect client from spreadsheet data
+      let detectedClientId = spreadsheet.client_id;
+      let detectedClientName = spreadsheet.client_name;
+      
+      // Find client columns
+      const clientColumns = columnsRef.current.filter(col => 
+        col.type === 'client' || 
+        col.key.toLowerCase().includes('client') || 
+        col.key.toLowerCase().includes('לקוח') ||
+        col.title?.toLowerCase().includes('לקוח') ||
+        col.title?.toLowerCase().includes('client')
+      );
+      
+      // Extract all client names from rows
+      const clientNames = new Set();
+      if (clientColumns.length > 0) {
+        rowsDataRef.current.forEach(row => {
+          clientColumns.forEach(col => {
+            const value = row[col.key];
+            if (value && typeof value === 'string' && value.trim()) {
+              clientNames.add(value.trim());
+            }
+          });
+        });
+      }
+      
+      // If we found client names and no client is assigned yet, try to link
+      if (clientNames.size > 0 && !detectedClientId) {
+        const clientNamesArray = Array.from(clientNames);
+        
+        // Try to find matching client in system
+        try {
+          const allClients = await base44.entities.Client.list();
+          const matchedClient = allClients.find(c => 
+            clientNamesArray.some(name => 
+              c.name?.toLowerCase() === name.toLowerCase()
+            )
+          );
+          
+          if (matchedClient) {
+            detectedClientId = matchedClient.id;
+            detectedClientName = matchedClient.name;
+            console.log('✓ [AUTO-LINK] Linked spreadsheet to client:', matchedClient.name);
+          }
+        } catch (e) {
+          console.warn('Failed to auto-link client:', e);
+        }
+      }
+      
       const dataToSave = {
         columns: columnsRef.current,
         rows_data: rowsDataRef.current,
@@ -258,7 +307,9 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         theme_settings: themeSettingsRef.current,
         saved_views: savedViewsRef.current,
         active_view_id: activeViewIdRef.current,
-        charts: chartsRef.current
+        charts: chartsRef.current,
+        client_id: detectedClientId,
+        client_name: detectedClientName
       };
 
       await base44.entities.CustomSpreadsheet.update(spreadsheet.id, dataToSave);
@@ -270,7 +321,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       console.error('❌ [SAVE] Error:', error);
       toast.error('שגיאה בשמירה: ' + (error.message || 'לא ידוע'));
     }
-  }, [spreadsheet?.id, onUpdate, showSubHeaders]);
+  }, [spreadsheet?.id, spreadsheet?.client_id, spreadsheet?.client_name, onUpdate, showSubHeaders]);
 
   const handleUndo = useCallback(() => {
     if (historyIndex <= 0) { toast.error('אין מה לבטל'); return; }
