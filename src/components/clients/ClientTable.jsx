@@ -67,6 +67,7 @@ export default function ClientTable({
         <TableRow>
           {selectionMode && <TableHead className="w-12"></TableHead>}
           <TableHead className="text-right font-semibold">שם</TableHead>
+          <TableHead className="text-right font-semibold">שלב</TableHead>
           <TableHead className="text-right font-semibold">טלפון</TableHead>
           <TableHead className="text-right font-semibold">אימייל</TableHead>
           <TableHead className="text-right font-semibold">חברה</TableHead>
@@ -77,7 +78,7 @@ export default function ClientTable({
         <TableBody>
           {clients.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={selectionMode ? 8 : 7} className="text-center py-8 text-slate-500">
+              <TableCell colSpan={selectionMode ? 9 : 8} className="text-center py-8 text-slate-500">
                 אין לקוחות להצגה
               </TableCell>
             </TableRow>
@@ -100,12 +101,15 @@ export default function ClientTable({
                     </TableCell>
                   )}
                   <TableCell className="font-medium">
-                    <div className="flex items-center gap-2">
-                      {client.stage && (() => {
-                        const stageOptions = client.custom_stage_options || DEFAULT_STAGE_OPTIONS;
-                        const currentStage = stageOptions.find(s => s.value === client.stage);
-                        if (currentStage) {
-                          return (
+                    <span>{client.name}</span>
+                  </TableCell>
+                  <TableCell>
+                    {client.stage && (() => {
+                      const stageOptions = client.custom_stage_options || DEFAULT_STAGE_OPTIONS;
+                      const currentStage = stageOptions.find(s => s.value === client.stage);
+                      if (currentStage) {
+                        return (
+                          <div className="flex items-center gap-2">
                             <div 
                               className="w-3 h-3 rounded-full flex-shrink-0 animate-pulse"
                               style={{ 
@@ -113,14 +117,13 @@ export default function ClientTable({
                                 boxShadow: `0 0 8px ${currentStage.glow}, 0 0 12px ${currentStage.glow}`,
                                 border: '1px solid white'
                               }}
-                              title={currentStage.label}
                             />
-                          );
-                        }
-                        return null;
-                      })()}
-                      <span>{client.name}</span>
-                    </div>
+                            <span className="text-sm text-slate-700">{currentStage.label}</span>
+                          </div>
+                        );
+                      }
+                      return <span className="text-xs text-slate-400">לא הוגדר</span>;
+                    })()}
                   </TableCell>
                   <TableCell>
                     {hasValidPhone ? (

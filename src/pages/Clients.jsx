@@ -78,6 +78,7 @@ export default function ClientsPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [sourceFilter, setSourceFilter] = useState("all");
   const [budgetFilter, setBudgetFilter] = useState("all");
+  const [stageFilter, setStageFilter] = useState("all");
   const [sortBy, setSortBy] = useState("name");
   const [viewMode, setViewMode] = useState(() => {
     try {
@@ -133,8 +134,9 @@ export default function ClientsPage() {
         const matchesStatus = statusFilter === "all" || client.status === statusFilter;
         const matchesSource = sourceFilter === "all" || client.source === sourceFilter;
         const matchesBudget = budgetFilter === "all" || client.budget_range && client.budget_range.includes(budgetFilter);
+        const matchesStage = stageFilter === "all" || client.stage === stageFilter;
 
-        return matchesSearch && matchesStatus && matchesSource && matchesBudget;
+        return matchesSearch && matchesStatus && matchesSource && matchesBudget && matchesStage;
       }).
       sort((a, b) => {
         switch (sortBy) {
@@ -896,6 +898,20 @@ export default function ClientsPage() {
                 <SelectItem value="status">לפי סטטוס</SelectItem>
               </SelectContent>
             </Select>
+
+            <Select value={stageFilter} onValueChange={setStageFilter}>
+              <SelectTrigger className="w-full lg:w-40">
+                <SelectValue placeholder="שלב" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">כל השלבים</SelectItem>
+                <SelectItem value="ברור_תכן">ברור תכן</SelectItem>
+                <SelectItem value="תיק_מידע">תיק מידע</SelectItem>
+                <SelectItem value="היתרים">היתרים</SelectItem>
+                <SelectItem value="ביצוע">ביצוע</SelectItem>
+                <SelectItem value="סיום">סיום</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
@@ -1001,7 +1017,7 @@ export default function ClientsPage() {
                   <h3 className="text-xl font-semibold text-slate-600 mb-2">
                     {searchTerm || statusFilter !== "all" || sourceFilter !== "all" || budgetFilter !== "all" ? "לא נמצאו לקוחות" : "אין לקוחות עדיין"}
                   </h3>
-                  {!searchTerm && statusFilter === "all" && sourceFilter === "all" && budgetFilter === "all" && canCreateClient && (
+                  {!searchTerm && statusFilter === "all" && sourceFilter === "all" && budgetFilter === "all" && stageFilter === "all" && canCreateClient && (
                     <Button onClick={() => setShowForm(true)} className="mt-4 bg-[#2C3A50] hover:bg-[#1f2937]">
                       <Plus className="w-4 h-4 ml-2" />
                       הוסף לקוח ראשון
@@ -1126,7 +1142,7 @@ export default function ClientsPage() {
                   <h3 className="text-xl font-semibold text-slate-600 mb-2">
                     {searchTerm || statusFilter !== "all" || sourceFilter !== "all" || budgetFilter !== "all" ? "לא נמצאו לקוחות" : "אין לקוחות עדיין"}
                   </h3>
-                  {!searchTerm && statusFilter === "all" && sourceFilter === "all" && budgetFilter === "all" && canCreateClient && (
+                  {!searchTerm && statusFilter === "all" && sourceFilter === "all" && budgetFilter === "all" && stageFilter === "all" && canCreateClient && (
                     <Button onClick={() => setShowForm(true)} className="mt-4 bg-[#2C3A50] hover:bg-[#1f2937]">
                       <Plus className="w-4 h-4 ml-2" />
                       הוסף לקוח ראשון
@@ -1393,7 +1409,7 @@ export default function ClientsPage() {
                         <div className="col-span-full text-center py-16">
                           <Users className="w-16 h-16 mx-auto mb-4" style={{ color: iconColor }} />
                           <h3 className="text-xl font-semibold text-slate-600 mb-2">
-                            {searchTerm || statusFilter !== "all" || sourceFilter !== "all" || budgetFilter !== "all" ? "לא נמצאו לקוחות" : "אין לקוחות עדיין"}
+                            {searchTerm || statusFilter !== "all" || sourceFilter !== "all" || budgetFilter !== "all" || stageFilter !== "all" ? "לא נמצאו לקוחות" : "אין לקוחות עדיין"}
                           </h3>
                           {!searchTerm && statusFilter === "all" && sourceFilter === "all" && budgetFilter === "all" && canCreateClient &&
                             <Button onClick={() => setShowForm(true)} className="mt-4 bg-[#2C3A50] hover:bg-[#1f2937]">
