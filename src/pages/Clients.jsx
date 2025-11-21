@@ -1003,6 +1003,7 @@ export default function ClientsPage() {
             onToggleSelect={toggleSelect}
             onCopy={duplicateClient}
             onDelete={handleDelete}
+            onRefresh={loadClients}
           />
         ) : viewMode === "compact" ? (
           <ScrollArea className="h-[calc(100vh-380px)] rounded-md pr-4">

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +21,9 @@ import {
   Trash2,
   Plus
 } from "lucide-react";
+import { StageDisplay } from "@/components/spreadsheets/GenericSpreadsheet";
+import { base44 } from "@/api/base44Client";
+import { toast } from "sonner";
 
 // Default stage options
 const DEFAULT_STAGE_OPTIONS = [
@@ -59,8 +62,22 @@ export default function ClientTable({
   selectedIds = [], 
   onToggleSelect,
   onCopy,
-  onDelete 
+  onDelete,
+  onRefresh
 }) {
+  const [editingStage, setEditingStage] = useState(null);
+
+  const handleStageChange = async (clientId, newStage) => {
+    try {
+      await base44.entities.Client.update(clientId, { stage: newStage });
+      toast.success('השלב עודכן בהצלחה');
+      setEditingStage(null);
+      if (onRefresh) onRefresh();
+    } catch (error) {
+      console.error('Error updating stage:', error);
+      toast.error('שגיאה בעדכון השלב');
+    }
+  };
   return (
     <div className="rounded-lg border border-slate-200 bg-white overflow-hidden">
       <Table>
@@ -103,27 +120,15 @@ export default function ClientTable({
                   <TableCell className="font-medium">
                     <span>{client.name}</span>
                   </TableCell>
-                  <TableCell>
-                    {client.stage && (() => {
-                      const stageOptions = client.custom_stage_options || DEFAULT_STAGE_OPTIONS;
-                      const currentStage = stageOptions.find(s => s.value === client.stage);
-                      if (currentStage) {
-                        return (
-                          <div className="flex items-center gap-2">
-                            <div 
-                              className="w-3 h-3 rounded-full flex-shrink-0 animate-pulse"
-                              style={{ 
-                                backgroundColor: currentStage.color,
-                                boxShadow: `0 0 8px ${currentStage.glow}, 0 0 12px ${currentStage.glow}`,
-                                border: '1px solid white'
-                              }}
-                            />
-                            <span className="text-sm text-slate-700">{currentStage.label}</span>
-                          </div>
-                        );
-                      }
-                      return <span className="text-xs text-slate-400">לא הוגדר</span>;
-                    })()}
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <StageDisplay
+                      value={client.stage}
+                      options={client.custom_stage_options || DEFAULT_STAGE_OPTIONS}
+                      onChange={(newStage) => handleStageChange(client.id, newStage)}
+                      isEditing={editingStage === client.id}
+                      onStartEdit={() => setEditingStage(client.id)}
+                      onEndEdit={() => setEditingStage(null)}
+                    />
                   </TableCell>
                   <TableCell>
                     {hasValidPhone ? (
