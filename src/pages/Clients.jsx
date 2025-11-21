@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Client, Project, TimeLog } from "@/entities/all";
 import { Button } from "@/components/ui/button";
@@ -67,6 +66,7 @@ import GoogleSheetsImporter from "../components/clients/GoogleSheetsImporter";
 import { useAccessControl, autoAssignToCreator } from "../components/access/AccessValidator";
 import { toast } from "sonner";
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
+import { StageDisplay } from "@/components/spreadsheets/GenericSpreadsheet";
 
 export default function ClientsPage() {
   const [clients, setClients] = useState([]);

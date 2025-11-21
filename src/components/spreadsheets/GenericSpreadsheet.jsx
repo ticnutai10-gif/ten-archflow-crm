@@ -33,7 +33,8 @@ const DEFAULT_STAGE_OPTIONS = [
   { value: 'סיום', label: 'סיום', color: '#6b7280', glow: 'rgba(107, 114, 128, 0.4)' }
 ];
 
-function StageDisplay({ value, column, isEditing, onEdit, editValue, onSave, onCancel, stageOptions = DEFAULT_STAGE_OPTIONS }) {
+// Export StageDisplay for use in other components
+export function StageDisplay({ value, column, isEditing, onEdit, editValue, onSave, onCancel, stageOptions = DEFAULT_STAGE_OPTIONS, compact = false }) {
   const [showPicker, setShowPicker] = useState(false);
   
   const STAGE_OPTIONS = stageOptions;

@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Phone, Mail, MapPin, Building, MoreVertical, Edit, Eye, Copy, Trash2, GripVertical, CheckSquare, Square } from "lucide-react";
+import { StageDisplay } from "@/components/spreadsheets/GenericSpreadsheet";
 
 const STATUS_COLORS = {
   "פוטנציאלי": "bg-amber-100 text-amber-800 border-amber-200",
@@ -120,9 +121,19 @@ export default function ClientCard({
           )}
 
           <div className="flex-1 min-w-0">
-            <CardTitle className="text-lg font-bold text-slate-900 mb-2 truncate">
-              {clientName}
-            </CardTitle>
+            <div className="flex items-center gap-2 mb-2">
+              {client.stage && (
+                <StageDisplay
+                  value={client.stage}
+                  column={{ key: 'stage', title: 'שלב', type: 'stage' }}
+                  stageOptions={client.custom_stage_options}
+                  compact={true}
+                />
+              )}
+              <CardTitle className="text-lg font-bold text-slate-900 truncate">
+                {clientName}
+              </CardTitle>
+            </div>
             <Badge variant="outline" className={`${statusColor} text-xs`}>
               {clientStatus}
             </Badge>
