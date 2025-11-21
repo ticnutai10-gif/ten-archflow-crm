@@ -97,6 +97,116 @@ const COLOR_PALETTES = {
     border: "#f9a8d4",
     hover: "#fbcfe8",
     selected: "#fce7f3"
+  },
+  executive: {
+    name: "יוקרתי מנהלים",
+    headerBg: "#1a1a1a",
+    headerText: "#e8d4b0",
+    cellBg: "#f9f7f4",
+    cellAltBg: "#f2ede6",
+    cellText: "#2d2d2d",
+    border: "#d4c5b0",
+    hover: "#e8dfd2",
+    selected: "#faf6f0"
+  },
+  royal: {
+    name: "מלכותי",
+    headerBg: "#1e3a5f",
+    headerText: "#f0e6d2",
+    cellBg: "#fdfbf7",
+    cellAltBg: "#f7f3ed",
+    cellText: "#2c3e50",
+    border: "#c9b896",
+    hover: "#f0e8d8",
+    selected: "#fdf8f0"
+  },
+  platinum: {
+    name: "פלטינה",
+    headerBg: "#2c3e50",
+    headerText: "#ecf0f1",
+    cellBg: "#fcfcfd",
+    cellAltBg: "#f7f8fa",
+    cellText: "#34495e",
+    border: "#d0d7de",
+    hover: "#eef1f4",
+    selected: "#f5f7fa"
+  },
+  gold: {
+    name: "זהב מבריק",
+    headerBg: "#8b6914",
+    headerText: "#fefcf3",
+    cellBg: "#fffef8",
+    cellAltBg: "#fffbf0",
+    cellText: "#3d3d3d",
+    border: "#d4af37",
+    hover: "#fff9e6",
+    selected: "#fffdf5"
+  },
+  marble: {
+    name: "שיש לבן",
+    headerBg: "#e8e8e8",
+    headerText: "#1a1a1a",
+    cellBg: "#ffffff",
+    cellAltBg: "#fafafa",
+    cellText: "#2d2d2d",
+    border: "#d9d9d9",
+    hover: "#f5f5f5",
+    selected: "#f0f0f0"
+  },
+  emerald: {
+    name: "אמרלד יוקרתי",
+    headerBg: "#0f4c3a",
+    headerText: "#e8f5f1",
+    cellBg: "#fdfffe",
+    cellAltBg: "#f7fdfb",
+    cellText: "#1a4d3e",
+    border: "#b8d4cc",
+    hover: "#f0faf7",
+    selected: "#f5fcfa"
+  },
+  sapphire: {
+    name: "ספיר כחול",
+    headerBg: "#0f2557",
+    headerText: "#e8f0ff",
+    cellBg: "#fcfdff",
+    cellAltBg: "#f7f9ff",
+    cellText: "#1e3a5f",
+    border: "#b8c9e0",
+    hover: "#f0f5ff",
+    selected: "#f5f8ff"
+  },
+  pearl: {
+    name: "פנינה",
+    headerBg: "#f5f5f0",
+    headerText: "#3d3d3d",
+    cellBg: "#ffffff",
+    cellAltBg: "#fafaf8",
+    cellText: "#2d2d2d",
+    border: "#e8e8e0",
+    hover: "#f8f8f5",
+    selected: "#fcfcfa"
+  },
+  crystal: {
+    name: "קריסטל",
+    headerBg: "#e0e8f0",
+    headerText: "#2c3e50",
+    cellBg: "#ffffff",
+    cellAltBg: "#f8fafc",
+    cellText: "#34495e",
+    border: "#c8d8e8",
+    hover: "#f0f4f8",
+    selected: "#f5f8fb"
+  },
+  mahogany: {
+    name: "מהגוני",
+    headerBg: "#4a2c2a",
+    headerText: "#f8e8d4",
+    cellBg: "#fefaf6",
+    cellAltBg: "#faf3ed",
+    cellText: "#3d2624",
+    border: "#d4b8a8",
+    hover: "#f5ece0",
+    selected: "#fbf5f0"
   }
 };
 
