@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Table, Copy, Settings, Palette, Eye, EyeOff, Edit2, X, Download, Grid, Search, Filter, ArrowUp, ArrowDown, ArrowUpDown, XCircle, Undo, Redo, GripVertical, BarChart3, Calculator, Layers, Bookmark, Users, Zap, MessageSquare, Bold, Scissors, Merge, Type } from "lucide-react";
+import { Plus, Trash2, Table, Copy, Settings, Palette, Eye, EyeOff, Edit2, X, Download, Grid, Search, Filter, ArrowUp, ArrowDown, ArrowUpDown, XCircle, Undo, Redo, GripVertical, BarChart3, Calculator, Layers, Bookmark, Users, Zap, MessageSquare, Bold, Scissors, Merge, Type, Circle } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -22,6 +22,79 @@ import ChartViewer from "./ChartViewer";
 import { useAccessControl } from "@/components/access/AccessValidator";
 import ColumnsManagerDialog from "./ColumnsManagerDialog";
 import BulkColumnsDialog from "./BulkColumnsDialog";
+
+// Stage options with colors
+const STAGE_OPTIONS = [
+  { value: 'ברור_תכן', label: 'ברור תכן', color: '#3b82f6', glow: 'rgba(59, 130, 246, 0.4)' },
+  { value: 'תיק_מידע', label: 'תיק מידע', color: '#8b5cf6', glow: 'rgba(139, 92, 246, 0.4)' },
+  { value: 'היתרים', label: 'היתרים', color: '#f59e0b', glow: 'rgba(245, 158, 11, 0.4)' },
+  { value: 'ביצוע', label: 'ביצוע', color: '#10b981', glow: 'rgba(16, 185, 129, 0.4)' },
+  { value: 'סיום', label: 'סיום', color: '#6b7280', glow: 'rgba(107, 114, 128, 0.4)' }
+];
+
+function StageDisplay({ value, column, isEditing, onEdit, editValue, onSave, onCancel }) {
+  const [showPicker, setShowPicker] = useState(false);
+  
+  const currentStage = STAGE_OPTIONS.find(s => s.value === value);
+  
+  if (isEditing) {
+    return (
+      <div className="relative" onClick={(e) => e.stopPropagation()}>
+        <div className="space-y-2 p-2 bg-white rounded-lg shadow-lg border-2 border-purple-300 min-w-[180px]">
+          {STAGE_OPTIONS.map(stage => (
+            <button
+              key={stage.value}
+              onClick={() => {
+                onEdit(stage.value);
+                setTimeout(() => onSave(), 50);
+              }}
+              className="w-full flex items-center gap-3 px-3 py-2 hover:bg-purple-50 rounded-lg transition-all"
+            >
+              <div 
+                className="w-3 h-3 rounded-full"
+                style={{ 
+                  backgroundColor: stage.color,
+                  boxShadow: `0 0 8px ${stage.glow}, 0 0 12px ${stage.glow}`
+                }}
+              />
+              <span className="text-sm font-medium">{stage.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  
+  if (!currentStage) {
+    return (
+      <div className="text-xs text-slate-400 text-center">
+        לחץ לבחירה
+      </div>
+    );
+  }
+  
+  return (
+    <div className="flex items-center justify-center gap-2 group cursor-pointer">
+      <div 
+        className="w-3 h-3 rounded-full transition-all duration-300 group-hover:scale-125"
+        style={{ 
+          backgroundColor: currentStage.color,
+          boxShadow: `0 0 8px ${currentStage.glow}, 0 0 12px ${currentStage.glow}`
+        }}
+      />
+      <span 
+        className="text-sm font-semibold px-3 py-1 rounded-full transition-all duration-300"
+        style={{ 
+          backgroundColor: `${currentStage.color}15`,
+          color: currentStage.color,
+          border: `1px solid ${currentStage.color}40`
+        }}
+      >
+        {currentStage.label}
+      </span>
+    </div>
+  );
+}
 
 export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMode = false, filterByClient = null }) {
   const [columns, setColumns] = useState([]);
@@ -491,12 +564,29 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     
     if (globalFilter) {
       const searchLower = globalFilter.toLowerCase();
-      result = result.filter(row => columns.some(col => String(row[col.key] || '').toLowerCase().includes(searchLower)));
+      result = result.filter(row => columns.some(col => {
+        const val = row[col.key];
+        // For stage columns, search in the label
+        if (col.type === 'stage') {
+          const stage = STAGE_OPTIONS.find(s => s.value === val);
+          return stage?.label.toLowerCase().includes(searchLower);
+        }
+        return String(val || '').toLowerCase().includes(searchLower);
+      }));
     }
     Object.entries(columnFilters).forEach(([columnKey, filterValue]) => {
       if (filterValue) {
         const searchLower = filterValue.toLowerCase();
-        result = result.filter(row => String(row[columnKey] || '').toLowerCase().includes(searchLower));
+        const col = columns.find(c => c.key === columnKey);
+        result = result.filter(row => {
+          const val = row[columnKey];
+          // For stage columns, filter by label
+          if (col?.type === 'stage') {
+            const stage = STAGE_OPTIONS.find(s => s.value === val);
+            return stage?.label.toLowerCase().includes(searchLower);
+          }
+          return String(val || '').toLowerCase().includes(searchLower);
+        });
       }
     });
     if (sortColumn) {
@@ -1166,34 +1256,30 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       return;
     }
 
-    // Enter - Navigate to client page with spreadsheet
+    // Enter - Navigate to client page with spreadsheet (optimized)
     if (event?.key === 'Enter') {
       event.preventDefault();
       const column = columns.find(c => c.key === columnKey);
-      console.log('🔍 [NAVIGATE] Enter pressed', { columnKey, column, isClientColumn: isClientColumn(column) });
-      
+
       if (isClientColumn(column)) {
         const row = filteredAndSortedData.find(r => r.id === rowId);
         const clientName = row?.[columnKey];
-        console.log('🔍 [NAVIGATE] Client name:', clientName);
-        
+
         if (clientName) {
           const client = allClients.find(c => 
             c.name?.toLowerCase() === clientName.toLowerCase()
           );
-          console.log('🔍 [NAVIGATE] Found client:', client);
-          console.log('🔍 [NAVIGATE] Spreadsheet ID:', spreadsheet?.id);
-          
-          if (client && spreadsheet?.id) {
-            const url = createPageUrl(`Clients?clientId=${client.id}&spreadsheetId=${spreadsheet.id}`);
-            console.log('🔍 [NAVIGATE] Navigating to:', url);
-            window.location.href = url;
-          } else if (client) {
-            const url = createPageUrl(`Clients?clientId=${client.id}`);
-            console.log('🔍 [NAVIGATE] Navigating to (no spreadsheet):', url);
-            window.location.href = url;
+
+          if (client) {
+            // Fast navigation using React Router
+            const url = spreadsheet?.id 
+              ? createPageUrl(`Clients?clientId=${client.id}&spreadsheetId=${spreadsheet.id}`)
+              : createPageUrl(`Clients?clientId=${client.id}`);
+
+            // Use programmatic navigation instead of window.location for speed
+            window.history.pushState(null, '', url);
+            window.dispatchEvent(new PopStateEvent('popstate'));
           } else {
-            console.log('❌ [NAVIGATE] Client not found in system');
             toast.error('לקוח לא נמצא במערכת');
           }
         }
@@ -1203,7 +1289,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
 
     if (event?.ctrlKey || event?.metaKey) {
       event.preventDefault();
-      console.log('🔵 [POPOVER] Opening popover for cell', { rowId, columnKey, isClientColumn: isClientColumn(columns.find(c => c.key === columnKey)) });
       setPopoverOpen(`${rowId}_${columnKey}`);
       return;
     }
@@ -1211,6 +1296,14 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     const row = filteredAndSortedData.find(r => r.id === rowId);
     if (!row) return;
     const column = columns.find(c => c.key === columnKey);
+
+    // Stage columns have their own click handler
+    if (column.type === 'stage') {
+      setEditingCell(`${rowId}_${column.key}`);
+      setEditValue(String(row[column.key] || ''));
+      return;
+    }
+
     const currentValue = row[column.key] || '';
     setEditingCell(`${rowId}_${column.key}`);
     setEditValue(String(currentValue));
