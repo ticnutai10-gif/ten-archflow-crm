@@ -1204,7 +1204,6 @@ export default function ClientsPage() {
                             })()}
                             {client.name}
                           </CardTitle>
-                          <div>
                           <div className="flex flex-wrap gap-2">
                             <Badge variant="outline" className={`${statusColors[client.status]} text-xs`}>
                               {client.status}
@@ -1376,7 +1375,6 @@ export default function ClientsPage() {
                                     })()}
                                     {client.name}
                                   </CardTitle>
-                                  <div>
                                 </CardHeader>
                                 <CardContent className="space-y-2 text-xs">
                                   {client.phone && (
