@@ -1031,14 +1031,7 @@ export default function ClientsPage() {
                   <div
                     key={client.id}
                     className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200 hover:shadow-md transition-all cursor-pointer group"
-                    onClick={(e) => {
-                      if (e.ctrlKey || e.metaKey) {
-                        e.preventDefault();
-                        window.location.href = createPageUrl('Folders') + `?client_id=${client.id}&client_name=${encodeURIComponent(client.name)}`;
-                      } else {
-                        handleViewDetails(client);
-                      }
-                    }}>
+                    onClick={() => handleViewDetails(client)}>
                     <div className="flex items-center gap-4 flex-1 min-w-0">
                       {selectionMode && (
                         <button
@@ -1080,8 +1073,13 @@ export default function ClientsPage() {
                             return null;
                           })()}
                           <h3 
-                            className="font-semibold text-slate-900 truncate hover:text-blue-600 transition-colors"
-                            title="Ctrl+Click לפתיחת תיקייה"
+                            className="font-semibold text-slate-900 truncate hover:text-blue-600 transition-colors cursor-pointer"
+                            onClick={(e) => {
+                              if (e.ctrlKey || e.metaKey) {
+                                e.stopPropagation();
+                                handleViewDetails(client);
+                              }
+                            }}
                           >
                             {highlightText(client.name, searchTerm)}
                           </h3>
@@ -1201,10 +1199,9 @@ export default function ClientsPage() {
                                 if (e.ctrlKey || e.metaKey) {
                                   e.preventDefault();
                                   e.stopPropagation();
-                                  window.location.href = createPageUrl('Folders') + `?client_id=${client.id}&client_name=${encodeURIComponent(client.name)}`;
+                                  handleViewDetails(client);
                                 }
                               }}
-                              title="Ctrl+Click לפתיחת תיקייה"
                             >
                               {client.name}
                             </CardTitle>
@@ -1370,8 +1367,14 @@ export default function ClientsPage() {
                                       return null;
                                     })()}
                                     <CardTitle 
-                                      className="text-sm font-semibold hover:text-blue-600 transition-colors"
-                                      title="Ctrl+Click לפתיחת תיקייה"
+                                      className="text-sm font-semibold hover:text-blue-600 transition-colors cursor-pointer"
+                                      onClick={(e) => {
+                                        if (e.ctrlKey || e.metaKey) {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          handleViewDetails(client);
+                                        }
+                                      }}
                                     >
                                       {client.name}
                                     </CardTitle>

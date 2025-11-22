@@ -417,13 +417,13 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
   };
 
   const handleCellClick = (clientId, columnKey, event) => {
-    // Ctrl+Click on name column - open folder
+    // Ctrl+Click on name column - open client details
     if ((event.ctrlKey || event.metaKey) && columnKey === 'name') {
       event.preventDefault();
       event.stopPropagation();
       const client = localClients.find(c => c.id === clientId);
       if (client) {
-        window.location.href = createPageUrl('Folders') + `?client_id=${client.id}&client_name=${encodeURIComponent(client.name)}`;
+        onView(client);
       }
       return;
     }
