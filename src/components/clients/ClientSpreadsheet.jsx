@@ -295,36 +295,10 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
       return;
     }
     
-    // Don't override local changes - merge incoming data
-    setLocalClients(prevLocal => {
-      // If no local data yet, use incoming clients
-      if (!prevLocal || prevLocal.length === 0) {
-        return clients;
-      }
-      
-      // Merge: keep local changes but add new clients from server
-      const localMap = new Map(prevLocal.map(c => [c.id, c]));
-      const incomingMap = new Map(clients.map(c => [c.id, c]));
-      
-      const merged = clients.map(serverClient => {
-        const localClient = localMap.get(serverClient.id);
-        if (!localClient) return serverClient;
-        
-        // If local version was updated more recently, keep it
-        if (localClient.updated_date && serverClient.updated_date) {
-          const localTime = new Date(localClient.updated_date).getTime();
-          const serverTime = new Date(serverClient.updated_date).getTime();
-          if (localTime > serverTime) {
-            console.log('🔄 [SPREADSHEET] Keeping newer local version for:', localClient.name);
-            return localClient;
-          }
-        }
-        
-        return serverClient;
-      });
-      
-      return merged;
-    });
+    console.log('📊 [SPREADSHEET] Updating from clients prop, count:', clients.length);
+    
+    // תמיד השתמש בנתונים מהשרת - זו מקור האמת
+    setLocalClients(clients);
   }, [clients]);
 
   // Listen for client updates

@@ -176,19 +176,10 @@ export default function ClientsPage() {
   useEffect(() => {
     const handleClientUpdate = (event) => {
       console.log('📬 [CLIENTS PAGE] Received client:updated event:', event.detail);
-      const updatedClient = event.detail;
       
-      // עדכון מיידי בממשק
-      if (updatedClient?.id) {
-        setClients(prev => prev.map(c => 
-          c.id === updatedClient.id ? { ...c, ...updatedClient } : c
-        ));
-        console.log('✅ [CLIENTS PAGE] Updated client locally:', updatedClient.name, 'Stage:', updatedClient.stage);
-      }
-      
-      // טען מחדש מהשרת לסנכרון מלא
-      console.log('🔄 [CLIENTS PAGE] Reloading all clients...');
-      setTimeout(() => loadClients(), 100);
+      // טען מחדש מהשרת מיידית - זו מקור האמת
+      console.log('🔄 [CLIENTS PAGE] Reloading all clients from server...');
+      loadClients();
     };
     
     window.addEventListener('client:updated', handleClientUpdate);
