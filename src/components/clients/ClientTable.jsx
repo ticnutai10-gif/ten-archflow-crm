@@ -108,13 +108,13 @@ export default function ClientTable({
                 <TableRow 
                   key={client.id} 
                   className="hover:bg-slate-50 cursor-pointer"
-                  onClick={() => onView?.(client)}
+                  onClick={() => { if (typeof onView === 'function') onView(client); }}
                 >
                   {selectionMode && (
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <Checkbox
                         checked={selectedIds.includes(client.id)}
-                        onCheckedChange={() => onToggleSelect?.(client.id)}
+                        onCheckedChange={() => { if (typeof onToggleSelect === 'function') onToggleSelect(client.id); }}
                       />
                     </TableCell>
                   )}
@@ -159,7 +159,7 @@ export default function ClientTable({
                       </div>
                     ) : (
                       <button
-                        onClick={(e) => { e.stopPropagation(); onEdit?.(client); }}
+                        onClick={(e) => { e.stopPropagation(); if (typeof onEdit === 'function') onEdit(client); }}
                         className="flex items-center gap-2 text-slate-400 hover:text-blue-600 transition-colors group/phone px-2 py-1 rounded hover:bg-blue-50"
                         title="הוסף מספר טלפון"
                       >
@@ -207,22 +207,22 @@ export default function ClientTable({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => onView?.(client)}>
+                        <DropdownMenuItem onClick={() => { if (typeof onView === 'function') onView(client); }}>
                           <Eye className="w-4 h-4 ml-2" />
                           פתח דף לקוח
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={(e) => {
                           e.stopPropagation();
-                          if (onEdit) onEdit(client);
+                          if (typeof onEdit === 'function') onEdit(client);
                         }}>
                           <Edit className="w-4 h-4 ml-2" />
                           ערוך
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onCopy?.(client)}>
+                        <DropdownMenuItem onClick={() => { if (typeof onCopy === 'function') onCopy(client); }}>
                           <Copy className="w-4 h-4 ml-2" />
                           העתק
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onDelete?.(client.id)} className="text-red-600">
+                        <DropdownMenuItem onClick={() => { if (typeof onDelete === 'function') onDelete(client.id); }} className="text-red-600">
                           <Trash2 className="w-4 h-4 ml-2" />
                           מחק
                         </DropdownMenuItem>
