@@ -2463,10 +2463,25 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
 
                               <PopoverTrigger asChild>
                                 <div className="text-sm w-full" dir="rtl">
-                                  {column.key === 'name' && client.stage ? (
+                                  {column.key === 'name' ? (
                                     <div className="flex items-center gap-2">
                                       {(() => {
-                                        const currentStage = STAGE_OPTIONS.find(s => s.value === client.stage);
+                                        // מצא עמודת שלבים בטבלה
+                                        const stageColumn = columns.find(col => col.type === 'stage' || col.key === 'stage');
+                                        if (!stageColumn) return null;
+                                        
+                                        // קבל את ערך השלב מהמקום הנכון
+                                        let stageValue = '';
+                                        if (stageColumn.key === 'stage') {
+                                          stageValue = client.stage;
+                                        } else if (stageColumn.key.startsWith('cf:')) {
+                                          const slug = stageColumn.key.slice(3);
+                                          stageValue = client.custom_data?.[slug];
+                                        }
+                                        
+                                        if (!stageValue) return null;
+                                        
+                                        const currentStage = STAGE_OPTIONS.find(s => s.value === stageValue);
                                         if (currentStage) {
                                           return (
                                             <Circle 
