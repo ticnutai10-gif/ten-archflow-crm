@@ -298,19 +298,19 @@ export default function ClientForm({ client, onSubmit, onCancel }) {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
 
-                <div className="space-y-2 md:col-span-2">
-                  <Label className="text-sm font-medium text-slate-700">שלב בפרויקט</Label>
-                  <div className="p-4 border-2 border-slate-200 rounded-lg bg-slate-50/50">
-                    <StageDisplay
-                      value={formData.stage}
-                      options={formData.custom_stage_options || DEFAULT_STAGE_OPTIONS}
-                      onChange={(newStage) => updateField('stage', newStage)}
-                      isEditing={true}
-                      onStartEdit={() => {}}
-                      onEndEdit={() => {}}
-                    />
-                  </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-slate-700">שלב בפרויקט</Label>
+                <div className="p-4 border-2 border-slate-200 rounded-lg bg-slate-50/50">
+                  <StageDisplay
+                    value={formData.stage}
+                    options={formData.custom_stage_options || DEFAULT_STAGE_OPTIONS}
+                    onChange={(newStage) => updateField('stage', newStage)}
+                    isEditing={true}
+                    onStartEdit={() => {}}
+                    onEndEdit={() => {}}
+                  />
                 </div>
               </div>
             </div>
