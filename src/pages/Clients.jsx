@@ -1194,24 +1194,12 @@ export default function ClientsPage() {
                             }}
                           >
                             {client.stage && (() => {
-                              const DEFAULT_STAGE_OPTIONS = [
-                                { value: 'ברור_תכן', label: 'ברור תכן', color: '#3b82f6', glow: 'rgba(59, 130, 246, 0.4)' },
-                                { value: 'תיק_מידע', label: 'תיק מידע', color: '#8b5cf6', glow: 'rgba(139, 92, 246, 0.4)' },
-                                { value: 'היתרים', label: 'היתרים', color: '#f59e0b', glow: 'rgba(245, 158, 11, 0.4)' },
-                                { value: 'ביצוע', label: 'ביצוע', color: '#10b981', glow: 'rgba(16, 185, 129, 0.4)' },
-                                { value: 'סיום', label: 'סיום', color: '#6b7280', glow: 'rgba(107, 114, 128, 0.4)' }
-                              ];
-                              const stageOptions = client.custom_stage_options || DEFAULT_STAGE_OPTIONS;
-                              const currentStage = stageOptions.find(s => s.value === client.stage);
+                              const currentStage = STAGE_OPTIONS.find(s => s.value === client.stage);
                               if (currentStage) {
                                 return (
-                                  <div 
-                                    className="w-3 h-3 rounded-full flex-shrink-0 animate-pulse"
-                                    style={{ 
-                                      backgroundColor: currentStage.color,
-                                      boxShadow: `0 0 8px ${currentStage.glow}, 0 0 12px ${currentStage.glow}`,
-                                      border: '1px solid white'
-                                    }}
+                                  <Circle 
+                                    className="w-3 h-3 flex-shrink-0 fill-current"
+                                    style={{ color: currentStage.color }}
                                     title={currentStage.label}
                                   />
                                 );
