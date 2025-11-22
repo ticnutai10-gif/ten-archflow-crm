@@ -25,7 +25,13 @@ import { createPageUrl } from "@/utils";
 
 const ICON_COLOR = "#2C3A50";
 
-
+const STAGE_OPTIONS = [
+  { value: 'ברור_תכן', label: 'ברור תכן', color: '#3b82f6' },
+  { value: 'תיק_מידע', label: 'תיק מידע', color: '#8b5cf6' },
+  { value: 'היתרים', label: 'היתרים', color: '#f59e0b' },
+  { value: 'ביצוע', label: 'ביצוע', color: '#10b981' },
+  { value: 'סיום', label: 'סיום', color: '#6b7280' }
+];
 
 const statusColors = {
   'פוטנציאלי': 'bg-amber-100 text-amber-800 border-amber-200',
@@ -2390,7 +2396,29 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
 
                               <PopoverTrigger asChild>
                                 <div className="text-sm w-full" dir="rtl">
-                                  {column.type === 'status' ?
+                                  {column.key === 'name' && client.stage ? (
+                                    <div className="flex items-center gap-2">
+                                      {(() => {
+                                        const currentStage = STAGE_OPTIONS.find(s => s.value === client.stage);
+                                        if (currentStage) {
+                                          return (
+                                            <Circle 
+                                              className="w-2.5 h-2.5 flex-shrink-0 fill-current"
+                                              style={{ color: currentStage.color }}
+                                              title={currentStage.label}
+                                            />
+                                          );
+                                        }
+                                        return null;
+                                      })()}
+                                      <span style={{
+                                        color: column.type === 'email' || column.type === 'phone' ? '#000000' : 'inherit',
+                                        fontWeight: column.type === 'email' || column.type === 'phone' ? '500' : 'normal'
+                                      }}>
+                                        {String(cellValue)}
+                                      </span>
+                                    </div>
+                                  ) : column.type === 'status' ?
                                 <Badge variant="outline" className={statusColors[cellValue] || 'bg-slate-100 text-slate-800'}>
                                       {cellValue}
                                     </Badge> :
