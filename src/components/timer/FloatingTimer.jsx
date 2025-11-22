@@ -398,24 +398,20 @@ export default function FloatingTimer() {
     }
   }, [accessLoading]);
 
-  // האזן לעדכוני לקוחות
+  // האזן לעדכוני לקוחות - נקה קאש וטען מהשרת
   useEffect(() => {
     const handleClientUpdate = (event) => {
       const updatedClient = event.detail;
       if (!updatedClient?.id) return;
       
-      console.log('⏱️ [TIMER] Client updated, refreshing cache:', updatedClient);
+      console.log('⏱️ [TIMER] Client updated, clearing cache and reloading:', updatedClient);
       
-      // עדכן מיידי בקאש
-      if (clientsCache) {
-        clientsCache = clientsCache.map(c => 
-          c.id === updatedClient.id ? { ...c, ...updatedClient } : c
-        );
-        setClients(clientsCache);
-      }
+      // נקה קאש מיידית
+      clientsCache = null;
+      clientsCacheTime = 0;
       
-      // טען מחדש מהשרת אחרי עיכוב קטן
-      setTimeout(() => loadData(true), 500);
+      // טען מחדש מהשרת
+      loadData(true);
     };
     
     window.addEventListener('client:updated', handleClientUpdate);

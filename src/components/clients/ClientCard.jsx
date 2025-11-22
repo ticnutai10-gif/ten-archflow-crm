@@ -42,7 +42,9 @@ export default function ClientCard({
   console.log('[ClientCard] Props received:', { 
     hasOnEdit: typeof onEdit === 'function',
     hasOnView: typeof onView === 'function',
-    hasOnToggleSelect: typeof onToggleSelect === 'function'
+    hasOnToggleSelect: typeof onToggleSelect === 'function',
+    clientName: client?.name,
+    clientStage: client?.stage
   });
   if (!client) {
     return null;
