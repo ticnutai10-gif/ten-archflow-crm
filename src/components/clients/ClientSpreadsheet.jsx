@@ -20,10 +20,19 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import HelpIcon from "@/components/ui/HelpIcon";
 import { Checkbox } from "@/components/ui/checkbox";
 import { StageDisplay } from "@/components/spreadsheets/GenericSpreadsheet";
+import StageOptionsManager from "@/components/spreadsheets/StageOptionsManager";
 import { base44 } from "@/api/base44Client";
 import { createPageUrl } from "@/utils";
 
 const ICON_COLOR = "#2C3A50";
+
+const DEFAULT_STAGE_OPTIONS = [
+  { value: 'ברור_תכן', label: 'ברור תכן', color: '#3b82f6', glow: 'rgba(59, 130, 246, 0.4)' },
+  { value: 'תיק_מידע', label: 'תיק מידע', color: '#8b5cf6', glow: 'rgba(139, 92, 246, 0.4)' },
+  { value: 'היתרים', label: 'היתרים', color: '#f59e0b', glow: 'rgba(245, 158, 11, 0.4)' },
+  { value: 'ביצוע', label: 'ביצוע', color: '#10b981', glow: 'rgba(16, 185, 129, 0.4)' },
+  { value: 'סיום', label: 'סיום', color: '#6b7280', glow: 'rgba(107, 114, 128, 0.4)' }
+];
 
 const statusColors = {
   'פוטנציאלי': 'bg-amber-100 text-amber-800 border-amber-200',
@@ -76,7 +85,8 @@ const loadSettings = () => {
       return {
         ...parsed,
         showSubHeaders: parsed.showSubHeaders !== undefined ? parsed.showSubHeaders : false,
-        subHeaders: parsed.subHeaders || {}
+        subHeaders: parsed.subHeaders || {},
+        customStageOptions: parsed.customStageOptions || DEFAULT_STAGE_OPTIONS
       };
     }
   } catch (e) {
@@ -85,7 +95,7 @@ const loadSettings = () => {
   return null;
 };
 
-const saveSettings = (columns, cellStyles, showSubHeaders, subHeaders) => {
+const saveSettings = (columns, cellStyles, showSubHeaders, subHeaders, customStageOptions) => {
   try {
     const settings = {
       columns: columns.map((col) => ({
@@ -99,6 +109,7 @@ const saveSettings = (columns, cellStyles, showSubHeaders, subHeaders) => {
       cellStyles: cellStyles || {},
       showSubHeaders: showSubHeaders,
       subHeaders: subHeaders || {},
+      customStageOptions: customStageOptions || DEFAULT_STAGE_OPTIONS,
       timestamp: new Date().toISOString()
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
@@ -265,6 +276,11 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
   const [autoCloseEdit, setAutoCloseEdit] = useState(true);
   const [smoothScroll, setSmoothScroll] = useState(true);
   const [showHistory, setShowHistory] = useState(false);
+  const [showStageManager, setShowStageManager] = useState(false);
+  const [customStageOptions, setCustomStageOptions] = useState(() => {
+    const saved = loadSettings();
+    return saved?.customStageOptions || DEFAULT_STAGE_OPTIONS;
+  });
 
   const [newColumnName, setNewColumnName] = useState("");
   const [newColumnType, setNewColumnType] = useState("text");
@@ -283,9 +299,9 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
   useEffect(() => {
     if (columns.length > 0) {
       console.log('💾 Saving settings');
-      saveSettings(columns, cellStyles, showSubHeaders, subHeaders);
+      saveSettings(columns, cellStyles, showSubHeaders, subHeaders, customStageOptions);
     }
-  }, [columns, cellStyles, showSubHeaders, subHeaders]);
+  }, [columns, cellStyles, showSubHeaders, subHeaders, customStageOptions]);
 
   useEffect(() => {
     if (editingColumnKey && columnEditRef.current) {
@@ -1504,6 +1520,16 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
               {showSubHeaders ? 'הסתר כותרות משנה' : 'הוסף כותרות משנה'}
             </Button>
 
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShowStageManager(true)}
+              className="gap-2 h-8 hover:bg-purple-50"
+            >
+              <Circle className="w-3 h-3 text-purple-600" />
+              ניהול שלבים
+            </Button>
+
             {selectedHeaders.size > 0 &&
             <>
                 <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
@@ -2679,6 +2705,16 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
           </SheetContent>
         </Sheet>
       }
+
+      <StageOptionsManager
+        open={showStageManager}
+        onClose={() => setShowStageManager(false)}
+        stageOptions={customStageOptions}
+        onSave={(newOptions) => {
+          setCustomStageOptions(newOptions);
+          toast.success('✓ אפשרויות שלבים עודכנו');
+        }}
+      />
     </div>);
 
 }
