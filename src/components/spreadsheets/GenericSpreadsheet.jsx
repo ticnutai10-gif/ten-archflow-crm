@@ -2361,7 +2361,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                               onSave={saveEdit} 
                                               onCancel={() => { setEditingCell(null); setEditValue(""); }} 
                                               stageOptions={customStageOptions}
-                                              onDirectSave={(stageValue) => {
+                                              onDirectSave={async (stageValue) => {
                                                 console.log('🟣 [STAGE SAVE] Direct save called with:', stageValue);
                                                 const updatedRows = rowsData.map(r => 
                                                   r.id === row.id ? { ...r, [column.key]: stageValue } : r
@@ -2371,6 +2371,45 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                                 setEditingCell(null);
                                                 setEditValue("");
                                                 rowsDataRef.current = updatedRows;
+                                                
+                                                // Find and update the actual client in the database
+                                                const clientColumns = columnsRef.current.filter(col => 
+                                                  col.type === 'client' || 
+                                                  col.key.toLowerCase().includes('client') || 
+                                                  col.key.toLowerCase().includes('לקוח') ||
+                                                  col.title?.toLowerCase().includes('לקוח') ||
+                                                  col.title?.toLowerCase().includes('client')
+                                                );
+                                                
+                                                if (clientColumns.length > 0) {
+                                                  const clientName = row[clientColumns[0].key];
+                                                  console.log('🔍 [STAGE SAVE] Looking for client:', clientName);
+                                                  
+                                                  if (clientName) {
+                                                    try {
+                                                      const matchingClient = allClients.find(c => 
+                                                        c.name?.toLowerCase() === clientName.toLowerCase()
+                                                      );
+                                                      
+                                                      if (matchingClient) {
+                                                        console.log('✅ [STAGE SAVE] Found client, updating stage:', matchingClient.id, stageValue);
+                                                        await base44.entities.Client.update(matchingClient.id, { stage: stageValue });
+                                                        
+                                                        // Get updated client and dispatch event
+                                                        const updatedClient = await base44.entities.Client.get(matchingClient.id);
+                                                        window.dispatchEvent(new CustomEvent('client:updated', {
+                                                          detail: updatedClient
+                                                        }));
+                                                        console.log('📢 [STAGE SAVE] Client updated and event dispatched');
+                                                      } else {
+                                                        console.log('⚠️ [STAGE SAVE] Client not found in system');
+                                                      }
+                                                    } catch (error) {
+                                                      console.error('❌ [STAGE SAVE] Error updating client:', error);
+                                                    }
+                                                  }
+                                                }
+                                                
                                                 setTimeout(() => {
                                                   saveToHistory(columnsRef.current, updatedRows, cellStylesRef.current, cellNotesRef.current);
                                                   saveToBackend();

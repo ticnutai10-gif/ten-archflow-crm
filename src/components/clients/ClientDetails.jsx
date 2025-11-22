@@ -412,7 +412,7 @@ export default function ClientDetails({ client, onBack, onEdit }) {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full" dir="rtl">
-          <TabsList className="grid w-full grid-cols-8 bg-white shadow-sm">
+          <TabsList className="grid w-full grid-cols-7 bg-white shadow-sm">
             <TabsTrigger value="timeline" className="gap-2">
               <Clock className="w-4 h-4" />
               ציר זמן
@@ -424,10 +424,6 @@ export default function ClientDetails({ client, onBack, onEdit }) {
             <TabsTrigger value="tasks" className="gap-2">
               <CheckCircle className="w-4 h-4" />
               משימות
-            </TabsTrigger>
-            <TabsTrigger value="spreadsheets" className="gap-2">
-              <FileText className="w-4 h-4" />
-              טבלאות
             </TabsTrigger>
             <TabsTrigger value="time" className="gap-2">
               <Clock className="w-4 h-4" />
@@ -489,10 +485,6 @@ export default function ClientDetails({ client, onBack, onEdit }) {
 
           <TabsContent value="tasks" className="mt-6">
             <ClientTasks client={client} />
-          </TabsContent>
-
-          <TabsContent value="spreadsheets" className="mt-6">
-            <ClientSpreadsheets clientId={client.id} clientName={client.name} />
           </TabsContent>
 
           <TabsContent value="time" className="mt-6">
