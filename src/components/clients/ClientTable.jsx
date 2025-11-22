@@ -73,14 +73,31 @@ export default function ClientTable({
   // האזן לעדכוני לקוחות
   useEffect(() => {
     const handleClientUpdate = (event) => {
-      console.log('📬 [CLIENT TABLE] Received client update:', event.detail);
+      console.log('📋 [CLIENT TABLE] 📬 Received client:updated event:', {
+        hasDetail: !!event.detail,
+        clientId: event.detail?.id,
+        clientName: event.detail?.name,
+        clientStage: event.detail?.stage,
+        fullData: event.detail
+      });
+      
       if (typeof onRefresh === 'function') {
-        setTimeout(() => onRefresh(), 100);
+        console.log('🔄 [CLIENT TABLE] Calling onRefresh in 100ms...');
+        setTimeout(() => {
+          console.log('🔄 [CLIENT TABLE] Executing onRefresh now');
+          onRefresh();
+        }, 100);
+      } else {
+        console.log('⚠️ [CLIENT TABLE] onRefresh is not a function!');
       }
     };
     
     window.addEventListener('client:updated', handleClientUpdate);
-    return () => window.removeEventListener('client:updated', handleClientUpdate);
+    console.log('👂 [CLIENT TABLE] Event listener registered');
+    return () => {
+      console.log('🔇 [CLIENT TABLE] Event listener removed');
+      window.removeEventListener('client:updated', handleClientUpdate);
+    };
   }, [onRefresh]);
 
   return (

@@ -175,17 +175,22 @@ export default function ClientsPage() {
 
   useEffect(() => {
     const handleClientUpdate = (event) => {
-      console.log('📬 [CLIENTS PAGE] Received client:updated event:', event.detail);
+      console.log('📄 [CLIENTS PAGE] 📬 Received client:updated event:', {
+        hasDetail: !!event.detail,
+        clientId: event.detail?.id,
+        clientName: event.detail?.name,
+        clientStage: event.detail?.stage,
+        fullData: event.detail
+      });
       
-      // טען מחדש מהשרת מיידית - זו מקור האמת
-      console.log('🔄 [CLIENTS PAGE] Reloading all clients from server...');
+      console.log('🔄 [CLIENTS PAGE] Calling loadClients()...');
       loadClients();
     };
     
     window.addEventListener('client:updated', handleClientUpdate);
-    console.log('👂 [CLIENTS PAGE] Listening for client updates');
+    console.log('👂 [CLIENTS PAGE] Event listener registered');
     return () => {
-      console.log('🔇 [CLIENTS PAGE] Stopped listening');
+      console.log('🔇 [CLIENTS PAGE] Event listener removed');
       window.removeEventListener('client:updated', handleClientUpdate);
     };
   }, []);
@@ -218,16 +223,23 @@ export default function ClientsPage() {
   }, [clients]);
 
   const loadClients = async () => {
+    console.log('📄 [CLIENTS PAGE] 🔄 loadClients() called');
     setIsLoading(true);
     try {
-      console.log('📊 [CLIENTS PAGE] Loading clients...');
+      console.log('📄 [CLIENTS PAGE] 📤 Fetching from server...');
       const clientsData = await base44.entities.Client.list('-created_date');
-      console.log('📊 [CLIENTS PAGE] Loaded from server:', clientsData.length);
+      console.log('📄 [CLIENTS PAGE] 📥 Received from server:', {
+        count: clientsData.length,
+        firstClient: clientsData[0] ? {
+          name: clientsData[0].name,
+          stage: clientsData[0].stage
+        } : null
+      });
 
       // ✅ סינון לפי הרשאות
+      console.log('📄 [CLIENTS PAGE] 🔍 Filtering clients...');
       const filteredData = filterClients(clientsData);
-
-      console.log('✅ [CLIENTS PAGE] After filtering:', {
+      console.log('📄 [CLIENTS PAGE] ✅ After filtering:', {
         total: clientsData.length,
         filtered: filteredData.length,
         userEmail: me?.email,
@@ -259,13 +271,15 @@ export default function ClientsPage() {
         }
       }
 
-      console.log('✅ [CLIENTS] Loaded and cleaned:', uniqueClients.length, 'clients');
+      console.log('📄 [CLIENTS PAGE] ✅ Setting clients state with', uniqueClients.length, 'items');
       setClients(uniqueClients);
+      console.log('📄 [CLIENTS PAGE] 💾 Clients state updated');
     } catch (error) {
-      console.error('❌ [CLIENTS] Error loading clients:', error);
+      console.error('📄 [CLIENTS PAGE] ❌ Error loading clients:', error);
       toast.error('שגיאה בטעינת לקוחות');
     }
     setIsLoading(false);
+    console.log('📄 [CLIENTS PAGE] ✅ loadClients() completed');
   };
 
   const handleSubmit = async (clientData) => {

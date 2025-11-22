@@ -290,15 +290,24 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
   const tableContainerRef = useRef(null);
 
   useEffect(() => {
+    console.log('📊 [SPREADSHEET] 🔄 clients prop changed:', {
+      hasClients: !!clients,
+      count: clients?.length,
+      firstClient: clients?.[0] ? {
+        name: clients[0].name,
+        stage: clients[0].stage
+      } : null
+    });
+    
     if (!clients || clients.length === 0) {
+      console.log('📊 [SPREADSHEET] No clients, clearing local state');
       setLocalClients([]);
       return;
     }
     
-    console.log('📊 [SPREADSHEET] Updating from clients prop, count:', clients.length);
-    
-    // תמיד השתמש בנתונים מהשרת - זו מקור האמת
+    console.log('📊 [SPREADSHEET] Setting localClients with', clients.length, 'items');
     setLocalClients(clients);
+    console.log('✅ [SPREADSHEET] localClients updated');
   }, [clients]);
 
   // Listen for client updates

@@ -139,22 +139,41 @@ export default function ClientDetails({ client, onBack, onEdit }) {
   }, []);
 
   const handleStageChange = async (newStage) => {
+    console.log('🎯 [CLIENT DETAILS] handleStageChange called:', {
+      clientId: currentClient.id,
+      clientName: currentClient.name,
+      oldStage: currentClient.stage,
+      newStage: newStage
+    });
+    
     setIsUpdatingStage(true);
     try {
+      console.log('📤 [CLIENT DETAILS] Sending update to server...');
       await base44.entities.Client.update(currentClient.id, { stage: newStage });
+      console.log('✅ [CLIENT DETAILS] Update sent successfully');
       
       // טען מחדש את הלקוח מהשרת כדי לקבל את הגרסה העדכנית
+      console.log('🔄 [CLIENT DETAILS] Reloading client from server...');
       const updatedClient = await base44.entities.Client.get(currentClient.id);
+      console.log('📥 [CLIENT DETAILS] Client reloaded:', {
+        name: updatedClient.name,
+        stage: updatedClient.stage,
+        fullData: updatedClient
+      });
+      
       setCurrentClient(updatedClient);
+      console.log('💾 [CLIENT DETAILS] Local state updated');
       
       // שלח אירוע עם כל הנתונים של הלקוח
+      console.log('📢 [CLIENT DETAILS] Dispatching client:updated event...');
       window.dispatchEvent(new CustomEvent('client:updated', {
         detail: updatedClient
       }));
+      console.log('✅ [CLIENT DETAILS] Event dispatched successfully');
       
       toast.success('השלב עודכן בהצלחה');
     } catch (error) {
-      console.error('Error updating stage:', error);
+      console.error('❌ [CLIENT DETAILS] Error updating stage:', error);
       toast.error('שגיאה בעדכון השלב');
     } finally {
       setIsUpdatingStage(false);

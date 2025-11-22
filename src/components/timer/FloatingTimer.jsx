@@ -402,20 +402,34 @@ export default function FloatingTimer() {
   useEffect(() => {
     const handleClientUpdate = (event) => {
       const updatedClient = event.detail;
-      if (!updatedClient?.id) return;
+      console.log('⏱️ [TIMER] 📬 Received client:updated event:', {
+        hasClient: !!updatedClient,
+        clientId: updatedClient?.id,
+        clientName: updatedClient?.name,
+        clientStage: updatedClient?.stage,
+        fullData: updatedClient
+      });
       
-      console.log('⏱️ [TIMER] Client updated, clearing cache and reloading:', updatedClient);
+      if (!updatedClient?.id) {
+        console.log('⚠️ [TIMER] No client ID in event, ignoring');
+        return;
+      }
       
-      // נקה קאש מיידית
+      console.log('🧹 [TIMER] Clearing cache...');
       clientsCache = null;
       clientsCacheTime = 0;
+      console.log('✅ [TIMER] Cache cleared');
       
-      // טען מחדש מהשרת
+      console.log('🔄 [TIMER] Reloading data from server...');
       loadData(true);
     };
     
     window.addEventListener('client:updated', handleClientUpdate);
-    return () => window.removeEventListener('client:updated', handleClientUpdate);
+    console.log('👂 [TIMER] Event listener registered');
+    return () => {
+      console.log('🔇 [TIMER] Event listener removed');
+      window.removeEventListener('client:updated', handleClientUpdate);
+    };
   }, []);
 
   useEffect(() => {

@@ -39,12 +39,13 @@ export default function ClientCard({
   isDraggable = false,
   dragHandleProps = {}
   }) {
-  console.log('[ClientCard] Props received:', { 
-    hasOnEdit: typeof onEdit === 'function',
-    hasOnView: typeof onView === 'function',
-    hasOnToggleSelect: typeof onToggleSelect === 'function',
+  console.log('🎴 [CLIENT CARD] Rendering:', { 
+    clientId: client?.id,
     clientName: client?.name,
-    clientStage: client?.stage
+    clientStage: client?.stage,
+    stageColor: client?.stage ? STAGE_OPTIONS.find(s => s.value === client.stage)?.color : null,
+    hasOnEdit: typeof onEdit === 'function',
+    hasOnView: typeof onView === 'function'
   });
   if (!client) {
     return null;
