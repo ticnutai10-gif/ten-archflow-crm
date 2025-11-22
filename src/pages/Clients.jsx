@@ -51,6 +51,7 @@ import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import { UploadFile } from "@/integrations/Core";
 import { base44 } from "@/api/base44Client";
+import { createPageUrl } from "@/utils";
 
 import ClientForm from "../components/clients/ClientForm";
 import ClientCard from "../components/clients/ClientCard";
@@ -1030,7 +1031,14 @@ export default function ClientsPage() {
                   <div
                     key={client.id}
                     className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200 hover:shadow-md transition-all cursor-pointer group"
-                    onClick={() => handleViewDetails(client)}>
+                    onClick={(e) => {
+                      if (e.ctrlKey || e.metaKey) {
+                        e.preventDefault();
+                        window.location.href = createPageUrl('Folders') + `?client_id=${client.id}&client_name=${encodeURIComponent(client.name)}`;
+                      } else {
+                        handleViewDetails(client);
+                      }
+                    }}>
                     <div className="flex items-center gap-4 flex-1 min-w-0">
                       {selectionMode && (
                         <button
@@ -1071,7 +1079,12 @@ export default function ClientsPage() {
                             }
                             return null;
                           })()}
-                          <h3 className="font-semibold text-slate-900 truncate">{highlightText(client.name, searchTerm)}</h3>
+                          <h3 
+                            className="font-semibold text-slate-900 truncate hover:text-blue-600 transition-colors"
+                            title="Ctrl+Click לפתיחת תיקייה"
+                          >
+                            {highlightText(client.name, searchTerm)}
+                          </h3>
                           <Badge variant="outline" className={`${statusColors[client.status]} text-xs`}>
                             {client.status}
                           </Badge>
@@ -1182,7 +1195,19 @@ export default function ClientsPage() {
                               }
                               return null;
                             })()}
-                            <CardTitle className="text-xl font-bold text-slate-900">{client.name}</CardTitle>
+                            <CardTitle 
+                              className="text-xl font-bold text-slate-900 hover:text-blue-600 transition-colors cursor-pointer"
+                              onClick={(e) => {
+                                if (e.ctrlKey || e.metaKey) {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  window.location.href = createPageUrl('Folders') + `?client_id=${client.id}&client_name=${encodeURIComponent(client.name)}`;
+                                }
+                              }}
+                              title="Ctrl+Click לפתיחת תיקייה"
+                            >
+                              {client.name}
+                            </CardTitle>
                           </div>
                           <div className="flex flex-wrap gap-2">
                             <Badge variant="outline" className={`${statusColors[client.status]} text-xs`}>
@@ -1309,7 +1334,14 @@ export default function ClientsPage() {
                               <Card
                                 key={client.id}
                                 className="cursor-pointer hover:shadow-md transition-all bg-white"
-                                onClick={() => handleViewDetails(client)}>
+                                onClick={(e) => {
+                                  if (e.ctrlKey || e.metaKey) {
+                                    e.preventDefault();
+                                    window.location.href = createPageUrl('Folders') + `?client_id=${client.id}&client_name=${encodeURIComponent(client.name)}`;
+                                  } else {
+                                    handleViewDetails(client);
+                                  }
+                                }}>
                                 <CardHeader className="pb-2">
                                   <div className="flex items-center gap-2">
                                     {client.stage && (() => {
@@ -1337,7 +1369,12 @@ export default function ClientsPage() {
                                       }
                                       return null;
                                     })()}
-                                    <CardTitle className="text-sm font-semibold">{client.name}</CardTitle>
+                                    <CardTitle 
+                                      className="text-sm font-semibold hover:text-blue-600 transition-colors"
+                                      title="Ctrl+Click לפתיחת תיקייה"
+                                    >
+                                      {client.name}
+                                    </CardTitle>
                                   </div>
                                 </CardHeader>
                                 <CardContent className="space-y-2 text-xs">
