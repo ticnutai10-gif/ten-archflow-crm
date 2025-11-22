@@ -582,6 +582,12 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
         delete dataToSave.created_by;
 
         await Client.update(clientId, dataToSave);
+        
+        // שלח אירוע עדכון עם כל הנתונים המעודכנים
+        window.dispatchEvent(new CustomEvent('client:updated', {
+          detail: updatedClient
+        }));
+        
         toast.success('התא עודכן');
       } catch (error) {
         console.error('Error saving cell:', error);
