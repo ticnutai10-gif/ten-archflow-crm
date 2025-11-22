@@ -138,7 +138,7 @@ export function StageDisplay({ value, column, isEditing, onEdit, editValue, onSa
   );
 }
 
-export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMode = false, filterByClient = null }) {
+export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMode = false, filterByClient = null, onBack = null }) {
   const [columns, setColumns] = useState([]);
   const [rowsData, setRowsData] = useState([]);
   const [editingCell, setEditingCell] = useState(null);
@@ -1827,6 +1827,22 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
 
       <Card className="shadow-lg">
         <CardHeader className="border-b space-y-4">
+          {!fullScreenMode && (
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (onBack) {
+                  onBack();
+                } else {
+                  window.history.back();
+                }
+              }}
+              className="gap-2 mb-4"
+            >
+              <ArrowUp className="w-4 h-4" />
+              חזרה לרשימת טבלאות
+            </Button>
+          )}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3 flex-wrap">
               <Table className="w-6 h-6 text-purple-600" />
