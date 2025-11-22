@@ -51,6 +51,8 @@ export default function ClientDetails({ client, onBack, onEdit }) {
   const [activeTab, setActiveTab] = useState('timeline');
 
   const loadClientData = useCallback(async () => {
+    if (!client?.id) return;
+    
     setIsLoading(true);
     try {
       const [projectsData, quotesData, invoicesData, timeLogsData] = await Promise.all([
@@ -60,7 +62,6 @@ export default function ClientDetails({ client, onBack, onEdit }) {
         base44.entities.TimeLog.filter({ client_id: client.id }, '-log_date', 50).catch(() => [])
       ]);
 
-      // ✅ הגנה על כל התוצאות
       setProjects(Array.isArray(projectsData) ? projectsData : []);
       setQuotes(Array.isArray(quotesData) ? quotesData : []);
       setInvoices(Array.isArray(invoicesData) ? invoicesData : []);
@@ -74,13 +75,12 @@ export default function ClientDetails({ client, onBack, onEdit }) {
     } finally {
       setIsLoading(false);
     }
-  }, [client.id]);
+  }, [client?.id]);
 
   useEffect(() => {
     loadClientData();
   }, [loadClientData]);
 
-  // Auto-switch to spreadsheets tab if spreadsheetId in URL
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const spreadsheetId = urlParams.get('spreadsheetId');
@@ -89,12 +89,17 @@ export default function ClientDetails({ client, onBack, onEdit }) {
     }
   }, []);
 
+  if (!client) {
+    return (
+      <div className="p-6 text-center text-slate-500">
+        לא נמצא לקוח
+      </div>
+    );
+  }
+
   const totalRevenue = invoices
     .filter(inv => inv?.status === 'paid')
     .reduce((sum, inv) => sum + (inv?.amount || 0), 0);
-
-  // totalQuoted is declared in the outline but not used in the UI for display
-  // const totalQuoted = quotes.reduce((sum, q) => sum + (q.amount || 0), 0);
 
   const totalHours = timeLogs.reduce((sum, log) => sum + (log?.duration_seconds || 0) / 3600, 0);
 
@@ -105,7 +110,7 @@ export default function ClientDetails({ client, onBack, onEdit }) {
         <div className="flex items-center justify-between">
           <Button
             variant="outline"
-            onClick={onBack}
+            onClick={() => onBack?.()}
             className="gap-2 bg-white hover:bg-slate-50">
             <ArrowRight className="w-4 h-4" style={{ color: iconColor }} />
             חזרה
@@ -125,11 +130,11 @@ export default function ClientDetails({ client, onBack, onEdit }) {
             <div className="flex items-start justify-between">
               <div>
                 <CardTitle className="text-3xl font-bold text-slate-900 mb-3">
-                  {client.name}
+                  {client.name || 'ללא שם'}
                 </CardTitle>
                 <div className="flex flex-wrap gap-2">
-                  <Badge variant="outline" className={statusColors[client.status]}>
-                    {client.status}
+                  <Badge variant="outline" className={statusColors[client.status] || statusColors["פוטנציאלי"]}>
+                    {client.status || 'פוטנציאלי'}
                   </Badge>
                   {client.source && (
                     <Badge variant="outline" className="bg-slate-100 text-slate-700">
@@ -229,14 +234,16 @@ export default function ClientDetails({ client, onBack, onEdit }) {
                   </div>
                 )}
 
-                <div className="flex items-center gap-3 text-slate-700">
-                  <Calendar className="w-5 h-5" style={{ color: iconColor }} />
-                  <span>
-                    נוצר: {format(new Date(client.created_date), "dd/MM/yyyy", { locale: he })}
-                  </span>
-                </div>
+                {client.created_date && (
+                  <div className="flex items-center gap-3 text-slate-700">
+                    <Calendar className="w-5 h-5" style={{ color: iconColor }} />
+                    <span>
+                      נוצר: {format(new Date(client.created_date), "dd/MM/yyyy", { locale: he })}
+                    </span>
+                  </div>
+                )}
 
-                {client.tags && client.tags.length > 0 && (
+                {client.tags && Array.isArray(client.tags) && client.tags.length > 0 && (
                   <div className="flex flex-wrap gap-2 mt-2">
                     {client.tags.map((tag, i) => (
                       <Badge key={i} variant="outline" className="bg-slate-50">
@@ -297,12 +304,10 @@ export default function ClientDetails({ client, onBack, onEdit }) {
             </TabsTrigger>
           </TabsList>
 
-          {/* Timeline Tab - NEW! */}
           <TabsContent value="timeline" className="mt-6">
             <ClientTimeline clientId={client.id} clientName={client.name} />
           </TabsContent>
 
-          {/* Projects Tab */}
           <TabsContent value="projects" className="mt-6">
             <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
               <CardHeader>
@@ -320,7 +325,9 @@ export default function ClientDetails({ client, onBack, onEdit }) {
                         <div className="flex items-start justify-between">
                           <div>
                             <h3 className="font-semibold text-slate-900">{project.name}</h3>
-                            <p className="text-sm text-slate-600 mt-1">{project.description}</p>
+                            {project.description && (
+                              <p className="text-sm text-slate-600 mt-1">{project.description}</p>
+                            )}
                           </div>
                           <Badge variant="outline">{project.status}</Badge>
                         </div>
@@ -337,17 +344,14 @@ export default function ClientDetails({ client, onBack, onEdit }) {
             </Card>
           </TabsContent>
 
-          {/* Tasks Tab */}
           <TabsContent value="tasks" className="mt-6">
             <ClientTasks clientId={client.id} clientName={client.name} />
           </TabsContent>
 
-          {/* Spreadsheets Tab */}
           <TabsContent value="spreadsheets" className="mt-6">
             <ClientSpreadsheets clientId={client.id} clientName={client.name} />
           </TabsContent>
 
-          {/* Time Tab */}
           <TabsContent value="time" className="mt-6">
             <TimeLogView 
               client={client} 
@@ -356,17 +360,14 @@ export default function ClientDetails({ client, onBack, onEdit }) {
             />
           </TabsContent>
 
-          {/* Files Tab */}
           <TabsContent value="files" className="mt-6">
             <ClientFiles client={client} clientId={client.id} />
           </TabsContent>
 
-          {/* Sheets Tab */}
           <TabsContent value="sheets" className="mt-6">
             <ClientSheets client={client} clientId={client.id} />
           </TabsContent>
 
-          {/* Communication Tab */}
           <TabsContent value="communication" className="mt-6">
             <ClientCommunication client={client} clientId={client.id} />
           </TabsContent>
