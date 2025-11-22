@@ -22,6 +22,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 
 import { base44 } from "@/api/base44Client";
 import { createPageUrl } from "@/utils";
+import { StageDisplay } from "@/components/spreadsheets/GenericSpreadsheet";
 
 const ICON_COLOR = "#2C3A50";
 
@@ -564,11 +565,12 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
         delete dataToSave.updated_date;
         delete dataToSave.created_by;
 
-        await Client.update(clientId, dataToSave);
+        await base44.entities.Client.update(clientId, dataToSave);
         
-        // שלח אירוע עדכון עם כל הנתונים המעודכנים
+        // Get updated client and dispatch event
+        const refreshedClient = await base44.entities.Client.get(clientId);
         window.dispatchEvent(new CustomEvent('client:updated', {
-          detail: updatedClient
+          detail: refreshedClient
         }));
         
         toast.success('התא עודכן');
@@ -2375,7 +2377,68 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                             borderColor: isSelected ? '#a855f7' : cellStyle.borderColor || '#e2e8f0'
                           }}>
 
-                          {isEditing ?
+                          {column.type === 'stage' ? (
+                            <div className="flex items-center justify-center">
+                              <StageDisplay 
+                                value={cellValue}
+                                column={column}
+                                isEditing={isEditing}
+                                onEdit={(val) => setEditValue(val)}
+                                editValue={editValue}
+                                onSave={saveEdit}
+                                onCancel={() => {
+                                  setEditingCell(null);
+                                  setEditValue("");
+                                }}
+                                stageOptions={STAGE_OPTIONS}
+                                onDirectSave={async (stageValue) => {
+                                  console.log('🟣 [STAGE SAVE] Direct save called with:', stageValue);
+                                  
+                                  let updatedClient = { ...client };
+                                  
+                                  if (columnKey.startsWith('cf:')) {
+                                    const slug = columnKey.slice(3);
+                                    updatedClient = {
+                                      ...updatedClient,
+                                      custom_data: {
+                                        ...(updatedClient.custom_data || {}),
+                                        [slug]: stageValue
+                                      }
+                                    };
+                                  } else {
+                                    updatedClient = {
+                                      ...updatedClient,
+                                      [columnKey]: stageValue
+                                    };
+                                  }
+                                  
+                                  setLocalClients(prev => prev.map(c => c.id === client.id ? updatedClient : c));
+                                  setEditingCell(null);
+                                  setEditValue("");
+                                  
+                                  try {
+                                    const dataToSave = { ...updatedClient };
+                                    delete dataToSave.id;
+                                    delete dataToSave.created_date;
+                                    delete dataToSave.updated_date;
+                                    delete dataToSave.created_by;
+                                    
+                                    await base44.entities.Client.update(client.id, dataToSave);
+                                    
+                                    const refreshedClient = await base44.entities.Client.get(client.id);
+                                    window.dispatchEvent(new CustomEvent('client:updated', {
+                                      detail: refreshedClient
+                                    }));
+                                    
+                                    toast.success('✓ שלב עודכן');
+                                  } catch (error) {
+                                    console.error('Error saving stage:', error);
+                                    toast.error('שגיאה בשמירת השלב');
+                                  }
+                                }}
+                              />
+                            </div>
+                          ) : isEditing ?
                           <Input
                             ref={editInputRef}
                             value={editValue}
@@ -2613,6 +2676,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                         <SelectItem value="phone">טלפון</SelectItem>
                         <SelectItem value="email">אימייל</SelectItem>
                         <SelectItem value="date">תאריך</SelectItem>
+                        <SelectItem value="stage">🔵 שלבים (מואר)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
