@@ -46,7 +46,9 @@ import {
   RefreshCw,
   ChevronDown,
   MoreVertical,
-  Circle
+  Circle,
+  DollarSign,
+  ArrowUpDown
 } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
@@ -889,22 +891,27 @@ export default function ClientsPage() {
       </div>
 
 
-      {/* שורת החיפוש והפילטרים */}
+      {/* Compact Search and Filters */}
       <Card className="mb-6 shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-        <CardContent className="p-6">
-          <div className="flex flex-col lg:flex-row gap-4" dir="rtl">
-            <div className="relative flex-1">
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5" style={{ color: iconColor }} />
+        <CardContent className="p-4">
+          <div className="flex items-center gap-2 flex-wrap" dir="rtl">
+            {/* Search */}
+            <div className="relative flex-1 min-w-[250px]">
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
               <Input
                 placeholder="חיפוש לקוח (שם, טלפון, אימייל)..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pr-10 text-right" />
+                className="pr-9 bg-white h-9 text-sm"
+              />
             </div>
 
+            {/* Compact Icon Filters */}
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full lg:w-40">
-                <SelectValue placeholder="סטטוס" />
+              <SelectTrigger className="w-9 h-9 p-0 bg-white border-slate-300" title="סטטוס">
+                <div className="flex items-center justify-center w-full">
+                  <Circle className="w-4 h-4 text-slate-600" />
+                </div>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">כל הסטטוסים</SelectItem>
@@ -915,8 +922,10 @@ export default function ClientsPage() {
             </Select>
 
             <Select value={sourceFilter} onValueChange={setSourceFilter}>
-              <SelectTrigger className="w-full lg:w-40">
-                <SelectValue placeholder="מקור הגעה" />
+              <SelectTrigger className="w-9 h-9 p-0 bg-white border-slate-300" title="מקור">
+                <div className="flex items-center justify-center w-full">
+                  <Users className="w-4 h-4 text-slate-600" />
+                </div>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">כל המקורות</SelectItem>
@@ -929,8 +938,10 @@ export default function ClientsPage() {
             </Select>
 
             <Select value={budgetFilter} onValueChange={setBudgetFilter}>
-              <SelectTrigger className="w-full lg:w-40">
-                <SelectValue placeholder="טווח תקציב" />
+              <SelectTrigger className="w-9 h-9 p-0 bg-white border-slate-300" title="תקציב">
+                <div className="flex items-center justify-center w-full">
+                  <DollarSign className="w-4 h-4 text-slate-600" />
+                </div>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">כל התקציבים</SelectItem>
@@ -942,8 +953,10 @@ export default function ClientsPage() {
             </Select>
 
             <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-full lg:w-40">
-                <SelectValue placeholder="מיון" />
+              <SelectTrigger className="w-9 h-9 p-0 bg-white border-slate-300" title="מיון">
+                <div className="flex items-center justify-center w-full">
+                  <ArrowUpDown className="w-4 h-4 text-slate-600" />
+                </div>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="name">לפי שם</SelectItem>
@@ -953,8 +966,10 @@ export default function ClientsPage() {
             </Select>
 
             <Select value={stageFilter} onValueChange={setStageFilter}>
-              <SelectTrigger className="w-full lg:w-40">
-                <SelectValue placeholder="שלב" />
+              <SelectTrigger className="w-9 h-9 p-0 bg-white border-slate-300" title="שלב">
+                <div className="flex items-center justify-center w-full">
+                  <Filter className="w-4 h-4 text-slate-600" />
+                </div>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">כל השלבים</SelectItem>
