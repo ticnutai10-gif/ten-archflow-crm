@@ -72,28 +72,28 @@ export default function ClientCard({
   };
 
   const handleEditClick = (e) => {
-    e.stopPropagation();
+    if (e) e.stopPropagation();
     if (typeof onEdit === 'function') {
       onEdit();
     }
   };
 
   const handleViewClick = (e) => {
-    e.stopPropagation();
+    if (e) e.stopPropagation();
     if (typeof onView === 'function') {
       onView();
     }
   };
 
   const handleCopyClick = (e) => {
-    e.stopPropagation();
+    if (e) e.stopPropagation();
     if (typeof onCopy === 'function') {
       onCopy();
     }
   };
 
   const handleDeleteClick = (e) => {
-    e.stopPropagation();
+    if (e) e.stopPropagation();
     if (typeof onDelete === 'function') {
       onDelete();
     }
@@ -174,7 +174,10 @@ export default function ClientCard({
                   <Eye className="w-4 h-4 ml-2" />
                   צפה בפרטים
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleEditClick}>
+                <DropdownMenuItem onClick={(e) => {
+                  e.stopPropagation();
+                  if (typeof onEdit === 'function') onEdit();
+                }}>
                   <Edit className="w-4 h-4 ml-2" />
                   ערוך
                 </DropdownMenuItem>
