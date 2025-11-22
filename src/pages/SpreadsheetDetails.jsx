@@ -55,11 +55,11 @@ export default function SpreadsheetDetailsPage() {
         <div className="flex items-center justify-between">
           <Button
             variant="outline"
-            onClick={() => navigate(createPageUrl('CustomSpreadsheets'))}
+            onClick={() => window.location.href = createPageUrl('CustomSpreadsheets')}
             className="gap-2"
           >
             <ArrowRight className="w-4 h-4" />
-            חזרה לטבלאות
+            חזרה לטבלאות מותאמות
           </Button>
           
           <Button
