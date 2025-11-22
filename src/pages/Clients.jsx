@@ -273,13 +273,21 @@ export default function ClientsPage() {
       console.log('Starting client submission...', clientData);
 
       if (editingClient) {
-        console.log('Updating existing client:', editingClient.id);
+        console.log('Updating existing client:', editingClient.id, 'with stage:', clientData.stage);
+        
+        // עדכן בשרת
         await base44.entities.Client.update(editingClient.id, clientData);
+        
+        // טען את הלקוח המעודכן מהשרת
+        const updatedClient = await base44.entities.Client.get(editingClient.id);
+        console.log('✅ Client updated on server, reloaded:', updatedClient.name, 'Stage:', updatedClient.stage);
 
+        // שלח אירוע עם כל הנתונים המעודכנים מהשרת
         try {
           window.dispatchEvent(new CustomEvent('client:updated', {
-            detail: { id: editingClient.id, ...clientData }
+            detail: updatedClient
           }));
+          console.log('📢 Dispatched client:updated event with:', updatedClient.stage);
         } catch (e) {
           console.warn('client:updated event dispatch failed', e);
         }
