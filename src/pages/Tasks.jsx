@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
@@ -43,7 +42,6 @@ import TaskTemplates from "../components/tasks/TaskTemplates";
 import TaskKanban from "../components/tasks/TaskKanban";
 import TaskWorkflow from "../components/tasks/TaskWorkflow";
 import ReminderManager from "../components/reminders/ReminderManager";
-import GenericSpreadsheet from "../components/spreadsheets/GenericSpreadsheet";
 import { toast } from "sonner";
 import { useAccessControl } from "@/components/access/AccessValidator";
 
@@ -61,11 +59,6 @@ export default function TasksPage() {
   const [editingTask, setEditingTask] = useState(null);
   const [viewMode, setViewMode] = useState("list");
   const [showTemplates, setShowTemplates] = useState(false);
-  const [customSpreadsheets, setCustomSpreadsheets] = useState([]);
-  const [selectedSpreadsheet, setSelectedSpreadsheet] = useState(null);
-  const [showCreateSpreadsheet, setShowCreateSpreadsheet] = useState(false);
-  const [newSpreadsheetName, setNewSpreadsheetName] = useState("");
-  const [newSpreadsheetDescription, setNewSpreadsheetDescription] = useState("");
 
   const { me, isAdmin, isManagerPlus, filterClients, filterProjects, loading: accessLoading } = useAccessControl();
 
@@ -128,23 +121,6 @@ export default function TasksPage() {
     }
   };
 
-  const loadCustomSpreadsheets = async () => {
-    try {
-      console.log('🔄 [TASKS] Loading spreadsheets...');
-      const spreadsheets = await base44.entities.CustomSpreadsheet.list('-created_date').catch((e) => {
-        console.error('Error loading spreadsheets:', e);
-        return [];
-      });
-      const validSpreadsheets = Array.isArray(spreadsheets) ? spreadsheets : [];
-      console.log('✅ [TASKS] Loaded spreadsheets:', validSpreadsheets.length);
-      console.log('📋 [TASKS] Sample spreadsheets:', validSpreadsheets.slice(0, 3).map(s => ({ id: s.id, name: s.name })));
-      setCustomSpreadsheets(validSpreadsheets);
-    } catch (error) {
-      console.error("❌ [TASKS] Error loading spreadsheets:", error);
-      setCustomSpreadsheets([]);
-    }
-  };
-
   useEffect(() => {
     console.log('🎯 [TASKS] useEffect triggered', { 
       hasMe: !!me, 
@@ -156,7 +132,6 @@ export default function TasksPage() {
     
     if (!accessLoading) {
       loadTasks();
-      loadCustomSpreadsheets();
     }
   }, [accessLoading, isAdmin, isManagerPlus]);
 
@@ -281,53 +256,7 @@ export default function TasksPage() {
     }
   };
 
-  const handleCreateSpreadsheet = async () => {
-    if (!newSpreadsheetName.trim()) {
-      toast.error('נא להזין שם לטבלה');
-      return;
-    }
 
-    try {
-      const newSpreadsheet = await base44.entities.CustomSpreadsheet.create({
-        name: newSpreadsheetName.trim(),
-        description: newSpreadsheetDescription.trim(),
-        columns: [
-          { key: 'col1', title: 'עמודה 1', width: '200px', type: 'text', visible: true, required: false },
-          { key: 'col2', title: 'עמודה 2', width: '200px', type: 'text', visible: true, required: false }
-        ],
-        rows_data: [],
-        cell_styles: {},
-        sub_headers: {},
-        show_sub_headers: false
-      });
-
-      await loadCustomSpreadsheets();
-      setSelectedSpreadsheet(newSpreadsheet);
-      setShowCreateSpreadsheet(false);
-      setNewSpreadsheetName("");
-      setNewSpreadsheetDescription("");
-      toast.success('הטבלה נוצרה בהצלחה');
-    } catch (error) {
-      console.error("Error creating spreadsheet:", error);
-      toast.error('שגיאה ביצירת הטבלה');
-    }
-  };
-
-  const handleDeleteSpreadsheet = async (spreadsheetId) => {
-    if (!confirm('למחוק את הטבלה הזו? פעולה זו אינה הפיכה.')) return;
-
-    try {
-      await base44.entities.CustomSpreadsheet.delete(spreadsheetId);
-      await loadCustomSpreadsheets();
-      if (selectedSpreadsheet?.id === spreadsheetId) {
-        setSelectedSpreadsheet(null);
-      }
-      toast.success('הטבלה נמחקה');
-    } catch (error) {
-      console.error("Error deleting spreadsheet:", error);
-      toast.error('שגיאה במחיקת הטבלה');
-    }
-  };
 
   const uniqueClients = [...new Set(tasks.map(t => t.client_name).filter(Boolean))];
 
@@ -403,19 +332,7 @@ export default function TasksPage() {
 
         <TaskStats tasks={tasks} loading={loading} />
 
-        <Tabs defaultValue="tasks" className="w-full" dir="rtl">
-          <TabsList className="grid w-full grid-cols-2 mb-6">
-            <TabsTrigger value="tasks">
-              משימות ({filteredTasks.length})
-              {loading && <span className="mr-2 text-xs">⏳</span>}
-            </TabsTrigger>
-            <TabsTrigger value="spreadsheets">
-              טבלאות ({customSpreadsheets.length})
-              {loading && <span className="mr-2 text-xs">⏳</span>}
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="tasks">
+        <div className="w-full" dir="rtl">
             <div className="space-y-4">
               <div className="bg-white rounded-xl shadow-sm p-6">
                 <div className="flex items-center gap-2 mb-4">
@@ -686,133 +603,7 @@ export default function TasksPage() {
                 )}
               </div>
             </div>
-          </TabsContent>
-
-          <TabsContent value="spreadsheets">
-            <div className="space-y-6">
-              {!selectedSpreadsheet ? (
-                <div className="bg-white rounded-xl shadow-sm p-6">
-                  <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-xl font-bold text-slate-900">הטבלאות שלי</h2>
-                    <Button onClick={() => setShowCreateSpreadsheet(true)} className="bg-purple-600 hover:bg-purple-700 gap-2">
-                      <Plus className="w-4 h-4" />
-                      טבלה חדשה
-                    </Button>
-                  </div>
-
-                  {/* Debug info */}
-                  <div className="mb-4 p-3 bg-purple-50 border border-purple-200 rounded text-xs text-purple-800">
-                    📊 נמצאו {customSpreadsheets.length} טבלאות במערכת
-                  </div>
-
-                  {showCreateSpreadsheet && (
-                    <div className="mb-6 p-4 border border-purple-200 rounded-lg bg-purple-50">
-                      <h3 className="font-semibold mb-3 text-purple-900">יצירת טבלה חדשה</h3>
-                      <div className="space-y-3">
-                        <Input
-                          placeholder="שם הטבלה"
-                          value={newSpreadsheetName}
-                          onChange={(e) => setNewSpreadsheetName(e.target.value)}
-                          className="text-right"
-                          dir="rtl"
-                        />
-                        <Input
-                          placeholder="תיאור (אופציונלי)"
-                          value={newSpreadsheetDescription}
-                          onChange={(e) => setNewSpreadsheetDescription(e.target.value)}
-                          className="text-right"
-                          dir="rtl"
-                        />
-                        <div className="flex gap-2">
-                          <Button onClick={handleCreateSpreadsheet} className="bg-purple-600 hover:bg-purple-700">
-                            צור טבלה
-                          </Button>
-                          <Button variant="outline" onClick={() => {
-                            setShowCreateSpreadsheet(false);
-                            setNewSpreadsheetName("");
-                            setNewSpreadsheetDescription("");
-                          }}>
-                            ביטול
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {customSpreadsheets.length === 0 ? (
-                    <div className="text-center py-12 bg-slate-50 rounded-lg">
-                      <Table2 className="w-16 h-16 mx-auto text-slate-400 mb-4" />
-                      <p className="text-slate-600 mb-4">אין טבלאות עדיין</p>
-                      <Button onClick={() => setShowCreateSpreadsheet(true)} variant="outline">
-                        <Plus className="w-4 h-4 ml-2" />
-                        צור טבלה ראשונה
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {customSpreadsheets.map((spreadsheet) => (
-                        <div
-                          key={spreadsheet.id}
-                          className="border border-slate-200 rounded-xl p-4 hover:shadow-lg transition-all cursor-pointer bg-white"
-                          onClick={() => setSelectedSpreadsheet(spreadsheet)}
-                        >
-                          <div className="flex items-start justify-between mb-3">
-                            <div className="flex items-center gap-2 flex-1">
-                              <div className="p-2 bg-purple-100 rounded-lg">
-                                <Table2 className="w-5 h-5 text-purple-600" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <h3 className="font-semibold text-slate-900 truncate">{spreadsheet.name}</h3>
-                                {spreadsheet.description && (
-                                  <p className="text-xs text-slate-500 mt-1 truncate">{spreadsheet.description}</p>
-                                )}
-                              </div>
-                            </div>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
-                                  <MoreVertical className="w-4 h-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" dir="rtl">
-                                <DropdownMenuItem 
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteSpreadsheet(spreadsheet.id);
-                                  }} 
-                                  className="text-red-600"
-                                >
-                                  <Trash2 className="w-4 h-4 ml-2" />
-                                  מחק טבלה
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                          <div className="text-xs text-slate-500">
-                            {spreadsheet.rows_data?.length || 0} שורות • {spreadsheet.columns?.length || 0} עמודות
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <>
-                  <div className="bg-white rounded-xl shadow-sm p-4">
-                    <Button variant="outline" onClick={() => setSelectedSpreadsheet(null)} className="gap-2">
-                      <ChevronRight className="w-4 h-4" />
-                      חזרה לרשימת הטבלאות
-                    </Button>
-                  </div>
-                  <GenericSpreadsheet
-                    spreadsheet={selectedSpreadsheet}
-                    onUpdate={loadCustomSpreadsheets}
-                  />
-                </>
-              )}
-            </div>
-          </TabsContent>
-        </Tabs>
+        </div>
       </div>
 
       {showForm && (
