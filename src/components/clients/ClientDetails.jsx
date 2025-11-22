@@ -20,7 +20,8 @@ import {
   Briefcase,
   MessageSquare,
   CheckCircle,
-  Globe
+  Globe,
+  Circle
 } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
@@ -39,6 +40,14 @@ const statusColors = {
   "פעיל": "bg-green-100 text-green-800 border-green-200",
   "לא פעיל": "bg-red-100 text-red-800 border-red-200"
 };
+
+const STAGE_OPTIONS = [
+  { value: 'ברור_תכן', label: 'ברור תכן', color: '#3b82f6' },
+  { value: 'תיק_מידע', label: 'תיק מידע', color: '#8b5cf6' },
+  { value: 'היתרים', label: 'היתרים', color: '#f59e0b' },
+  { value: 'ביצוע', label: 'ביצוע', color: '#10b981' },
+  { value: 'סיום', label: 'סיום', color: '#6b7280' }
+];
 
 const iconColor = "#2C3A50";
 
@@ -175,17 +184,12 @@ export default function ClientDetails({ client, onBack, onEdit }) {
               <div>
                 <CardTitle className="text-3xl font-bold text-slate-900 mb-3 flex items-center gap-3">
                   {currentClient.stage && (() => {
-                    const stageOptions = currentClient.custom_stage_options || DEFAULT_STAGE_OPTIONS;
-                    const currentStage = stageOptions.find(s => s.value === currentClient.stage);
+                    const currentStage = STAGE_OPTIONS.find(s => s.value === currentClient.stage);
                     if (currentStage) {
                       return (
-                        <div 
-                          className="w-4 h-4 rounded-full flex-shrink-0 animate-pulse"
-                          style={{ 
-                            backgroundColor: currentStage.color,
-                            boxShadow: `0 0 8px ${currentStage.glow}, 0 0 12px ${currentStage.glow}`,
-                            border: '1px solid white'
-                          }}
+                        <Circle 
+                          className="w-4 h-4 flex-shrink-0 fill-current"
+                          style={{ color: currentStage.color }}
                           title={currentStage.label}
                         />
                       );
@@ -196,8 +200,7 @@ export default function ClientDetails({ client, onBack, onEdit }) {
                 </CardTitle>
                 <div className="flex flex-wrap gap-2">
                   {currentClient.stage && (() => {
-                    const stageOptions = currentClient.custom_stage_options || DEFAULT_STAGE_OPTIONS;
-                    const currentStage = stageOptions.find(s => s.value === currentClient.stage);
+                    const currentStage = STAGE_OPTIONS.find(s => s.value === currentClient.stage);
                     if (currentStage) {
                       return (
                         <Badge variant="outline" className="bg-slate-100 text-slate-700">
