@@ -165,6 +165,16 @@ export default function ClientsPage() {
   }, [accessLoading]);
 
   useEffect(() => {
+    const handleClientUpdate = () => {
+      console.log('🔄 [CLIENTS PAGE] Client updated, reloading...');
+      loadClients();
+    };
+    
+    window.addEventListener('client:updated', handleClientUpdate);
+    return () => window.removeEventListener('client:updated', handleClientUpdate);
+  }, []);
+
+  useEffect(() => {
     try {
       localStorage.setItem('clients-view-mode', viewMode);
     } catch {}

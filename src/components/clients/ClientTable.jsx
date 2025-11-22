@@ -77,6 +77,16 @@ export default function ClientTable({
       await base44.entities.Client.update(clientId, { stage: newStage });
       toast.success('השלב עודכן בהצלחה');
       setEditingStage(null);
+      
+      // Dispatch update event
+      try {
+        window.dispatchEvent(new CustomEvent('client:updated', {
+          detail: { id: clientId, stage: newStage }
+        }));
+      } catch (e) {
+        console.warn('client:updated event dispatch failed', e);
+      }
+      
       if (onRefresh) onRefresh();
     } catch (error) {
       console.error('Error updating stage:', error);
