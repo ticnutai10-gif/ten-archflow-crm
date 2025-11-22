@@ -398,51 +398,30 @@ export default function FloatingTimer() {
     }
   }, [accessLoading]);
 
-  // האזן לעדכוני לקוחות - נקה קאש וטען מהשרת
+  // Listen for client updates - update cache only
   useEffect(() => {
     const handleClientUpdate = (event) => {
       const updatedClient = event.detail;
-      console.log('⏱️ [TIMER] 📬 Received client:updated event:', {
-        hasClient: !!updatedClient,
-        clientId: updatedClient?.id,
-        clientName: updatedClient?.name,
-        clientStage: updatedClient?.stage,
-        fullData: updatedClient
-      });
+      if (!updatedClient?.id) return;
       
-      if (!updatedClient?.id) {
-        console.log('⚠️ [TIMER] No client ID in event, ignoring');
-        return;
+      // Update cache in place instead of full reload
+      if (clientsCache) {
+        clientsCache = clientsCache.map(c => 
+          c.id === updatedClient.id ? { ...c, ...updatedClient } : c
+        );
       }
       
-      console.log('🧹 [TIMER] Clearing cache...');
-      clientsCache = null;
-      clientsCacheTime = 0;
-      console.log('✅ [TIMER] Cache cleared');
-      
-      console.log('🔄 [TIMER] Reloading data from server...');
-      loadData(true);
+      // Update local state
+      setClients(prev => prev.map(c => 
+        c.id === updatedClient.id ? { ...c, ...updatedClient } : c
+      ));
     };
     
     window.addEventListener('client:updated', handleClientUpdate);
-    console.log('👂 [TIMER] Event listener registered');
-    return () => {
-      console.log('🔇 [TIMER] Event listener removed');
-      window.removeEventListener('client:updated', handleClientUpdate);
-    };
+    return () => window.removeEventListener('client:updated', handleClientUpdate);
   }, []);
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (popoverOpen) {
-        console.log('🔄 [TIMER] Auto-refreshing cache...');
-        clientsCache = null;
-        loadData();
-      }
-    }, CACHE_DURATION);
-
-    return () => clearInterval(interval);
-  }, [popoverOpen]);
+  // Removed auto-refresh interval to reduce load
 
   const savePrefs = React.useCallback((patch) => {
     setPrefs((prev) => {

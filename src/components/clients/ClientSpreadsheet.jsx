@@ -311,14 +311,14 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
     console.log('✅ [SPREADSHEET] localClients updated');
   }, [clients]);
 
-  // Listen for client updates
+  // Listen for client updates - optimized
   useEffect(() => {
     const handleClientUpdate = (event) => {
-      const { id, stage } = event.detail || {};
-      if (!id) return;
+      const updatedClient = event.detail;
+      if (!updatedClient?.id) return;
       
       setLocalClients(prev => prev.map(c => 
-        c.id === id ? { ...c, stage } : c
+        c.id === updatedClient.id ? { ...c, ...updatedClient } : c
       ));
     };
     
@@ -326,11 +326,22 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
     return () => window.removeEventListener('client:updated', handleClientUpdate);
   }, []);
 
+  // Debounced save to reduce localStorage writes
+  const saveTimeoutRef = useRef(null);
+  
   useEffect(() => {
     if (columns.length > 0) {
-      console.log('💾 Saving settings');
-      saveSettings(columns, cellStyles, showSubHeaders, subHeaders);
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+      
+      saveTimeoutRef.current = setTimeout(() => {
+        console.log('💾 Saving settings (debounced)');
+        saveSettings(columns, cellStyles, showSubHeaders, subHeaders);
+      }, 500);
     }
+    
+    return () => {
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    };
   }, [columns, cellStyles, showSubHeaders, subHeaders]);
 
   useEffect(() => {
