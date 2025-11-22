@@ -39,59 +39,63 @@ export default function ClientCard({
   isDraggable = false,
   dragHandleProps = {}
 }) {
-  useEffect(() => {
-    console.log('🔍 [ClientCard] Received props:', {
-      client,
-      clientType: typeof client,
-      clientKeys: client ? Object.keys(client) : 'null',
-      hasName: client?.name !== undefined,
-      nameValue: client?.name,
-      nameType: typeof client?.name
-    });
-  }, [client]);
-
   if (!client) {
-    console.error('❌ [ClientCard] Client is null/undefined!');
     return null;
   }
 
   if (typeof client !== 'object') {
-    console.error('❌ [ClientCard] Client is not an object:', client);
     return null;
   }
 
-  let clientName = 'לקוח ללא שם';
-  let clientStatus = 'פוטנציאלי';
-  
-  try {
-    clientName = client.name || client.client_name || 'לקוח ללא שם';
-    clientStatus = client.status || 'פוטנציאלי';
-    
-    console.log('✅ [ClientCard] Processed values:', {
-      id: client.id,
-      clientName,
-      clientStatus
-    });
-  } catch (error) {
-    console.error('❌ [ClientCard] Error processing client:', error, client);
-    return null;
-  }
-
+  const clientName = client.name || client.client_name || 'לקוח ללא שם';
+  const clientStatus = client.status || 'פוטנציאלי';
   const statusColor = STATUS_COLORS[clientStatus] || STATUS_COLORS["פוטנציאלי"];
 
   const handleCardClick = (e) => {
     if (selectionMode) {
       e.stopPropagation();
-      onToggleSelect?.();
+      if (typeof onToggleSelect === 'function') {
+        onToggleSelect();
+      }
     } else {
-      onView?.();
+      if (typeof onView === 'function') {
+        onView();
+      }
     }
   };
 
   const handleLongPress = (e) => {
-    if (!selectionMode && onEnterSelectionMode) {
+    if (!selectionMode && typeof onEnterSelectionMode === 'function') {
       e.preventDefault();
       onEnterSelectionMode();
+    }
+  };
+
+  const handleEditClick = (e) => {
+    e.stopPropagation();
+    if (typeof onEdit === 'function') {
+      onEdit();
+    }
+  };
+
+  const handleViewClick = (e) => {
+    e.stopPropagation();
+    if (typeof onView === 'function') {
+      onView();
+    }
+  };
+
+  const handleCopyClick = (e) => {
+    e.stopPropagation();
+    if (typeof onCopy === 'function') {
+      onCopy();
+    }
+  };
+
+  const handleDeleteClick = (e) => {
+    e.stopPropagation();
+    if (typeof onDelete === 'function') {
+      onDelete();
     }
   };
 
@@ -111,7 +115,9 @@ export default function ClientCard({
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                onToggleSelect?.();
+                if (typeof onToggleSelect === 'function') {
+                  onToggleSelect();
+                }
               }}
               className="flex-shrink-0 mt-1"
             >
@@ -164,22 +170,19 @@ export default function ClientCard({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" dir="rtl">
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onView?.(); }}>
+                <DropdownMenuItem onClick={handleViewClick}>
                   <Eye className="w-4 h-4 ml-2" />
                   צפה בפרטים
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit?.(); }}>
+                <DropdownMenuItem onClick={handleEditClick}>
                   <Edit className="w-4 h-4 ml-2" />
                   ערוך
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onCopy?.(); }}>
+                <DropdownMenuItem onClick={handleCopyClick}>
                   <Copy className="w-4 h-4 ml-2" />
                   שכפל
                 </DropdownMenuItem>
-                <DropdownMenuItem 
-                  onClick={(e) => { e.stopPropagation(); onDelete?.(); }}
-                  className="text-red-600"
-                >
+                <DropdownMenuItem onClick={handleDeleteClick} className="text-red-600">
                   <Trash2 className="w-4 h-4 ml-2" />
                   מחק
                 </DropdownMenuItem>
