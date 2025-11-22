@@ -478,6 +478,13 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
       return;
     }
 
+    // For stage columns, set editing stage instead of regular edit
+    if (column.type === 'stage') {
+      const cellKey = `${clientId}_${columnKey}`;
+      setEditingStage(cellKey);
+      return;
+    }
+
     const client = localClients.find((c) => c.id === clientId);
     if (!client) return;
 
@@ -2367,14 +2374,16 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                               <PopoverTrigger asChild>
                                 <div className="text-sm w-full" dir="rtl">
                                   {column.type === 'stage' ?
-                                <div onClick={(e) => e.stopPropagation()}>
+                                <div>
                                     <StageDisplay
                                       value={cellValue}
-                                      options={client.custom_stage_options}
-                                      onChange={async (newStage) => {
+                                      stageOptions={customStageOptions}
+                                      isEditing={editingStage === cellKey}
+                                      onDirectSave={async (newStage) => {
                                         try {
                                           await base44.entities.Client.update(client.id, { stage: newStage });
                                           setLocalClients(prev => prev.map(c => c.id === client.id ? {...c, stage: newStage} : c));
+                                          setEditingStage(null);
                                           toast.success('השלב עודכן');
                                         } catch (error) {
                                           console.error('Error updating stage:', error);
