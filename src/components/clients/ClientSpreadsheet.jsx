@@ -19,20 +19,13 @@ import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import HelpIcon from "@/components/ui/HelpIcon";
 import { Checkbox } from "@/components/ui/checkbox";
-import { StageDisplay } from "@/components/spreadsheets/GenericSpreadsheet";
-import StageOptionsManager from "@/components/spreadsheets/StageOptionsManager";
+
 import { base44 } from "@/api/base44Client";
 import { createPageUrl } from "@/utils";
 
 const ICON_COLOR = "#2C3A50";
 
-const DEFAULT_STAGE_OPTIONS = [
-  { value: 'ברור_תכן', label: 'ברור תכן', color: '#3b82f6', glow: 'rgba(59, 130, 246, 0.4)' },
-  { value: 'תיק_מידע', label: 'תיק מידע', color: '#8b5cf6', glow: 'rgba(139, 92, 246, 0.4)' },
-  { value: 'היתרים', label: 'היתרים', color: '#f59e0b', glow: 'rgba(245, 158, 11, 0.4)' },
-  { value: 'ביצוע', label: 'ביצוע', color: '#10b981', glow: 'rgba(16, 185, 129, 0.4)' },
-  { value: 'סיום', label: 'סיום', color: '#6b7280', glow: 'rgba(107, 114, 128, 0.4)' }
-];
+
 
 const statusColors = {
   'פוטנציאלי': 'bg-amber-100 text-amber-800 border-amber-200',
@@ -53,7 +46,6 @@ const COLORS = [
 
 const fixedDefaultColumns = [
 { key: 'name', title: 'שם לקוח', width: '200px', type: 'text', required: true },
-{ key: 'stage', title: 'שלבים', width: '180px', type: 'stage', required: false },
 { key: 'name_clean', title: 'שם נקי', width: '200px', type: 'text', required: false },
 { key: 'phone', title: 'טלפון', width: '150px', type: 'phone', required: false },
 { key: 'email', title: 'אימייל', width: '150px', type: 'email', required: false },
@@ -85,8 +77,7 @@ const loadSettings = () => {
       return {
         ...parsed,
         showSubHeaders: parsed.showSubHeaders !== undefined ? parsed.showSubHeaders : false,
-        subHeaders: parsed.subHeaders || {},
-        customStageOptions: parsed.customStageOptions || DEFAULT_STAGE_OPTIONS
+        subHeaders: parsed.subHeaders || {}
       };
     }
   } catch (e) {
@@ -95,7 +86,7 @@ const loadSettings = () => {
   return null;
 };
 
-const saveSettings = (columns, cellStyles, showSubHeaders, subHeaders, customStageOptions) => {
+const saveSettings = (columns, cellStyles, showSubHeaders, subHeaders) => {
   try {
     const settings = {
       columns: columns.map((col) => ({
@@ -109,7 +100,6 @@ const saveSettings = (columns, cellStyles, showSubHeaders, subHeaders, customSta
       cellStyles: cellStyles || {},
       showSubHeaders: showSubHeaders,
       subHeaders: subHeaders || {},
-      customStageOptions: customStageOptions || DEFAULT_STAGE_OPTIONS,
       timestamp: new Date().toISOString()
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
@@ -220,7 +210,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
     hasOnEdit: typeof onEdit === 'function',
     hasOnView: typeof onView === 'function'
   });
-  const [editingStage, setEditingStage] = useState(null);
+
   const [columns, setColumns] = useState(() => {
     const saved = loadSettings();
     if (saved && saved.columns) {
@@ -281,11 +271,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
   const [autoCloseEdit, setAutoCloseEdit] = useState(true);
   const [smoothScroll, setSmoothScroll] = useState(true);
   const [showHistory, setShowHistory] = useState(false);
-  const [showStageManager, setShowStageManager] = useState(false);
-  const [customStageOptions, setCustomStageOptions] = useState(() => {
-    const saved = loadSettings();
-    return saved?.customStageOptions || DEFAULT_STAGE_OPTIONS;
-  });
+
 
   const [newColumnName, setNewColumnName] = useState("");
   const [newColumnType, setNewColumnType] = useState("text");
@@ -338,9 +324,9 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
   useEffect(() => {
     if (columns.length > 0) {
       console.log('💾 Saving settings');
-      saveSettings(columns, cellStyles, showSubHeaders, subHeaders, customStageOptions);
+      saveSettings(columns, cellStyles, showSubHeaders, subHeaders);
     }
-  }, [columns, cellStyles, showSubHeaders, subHeaders, customStageOptions]);
+  }, [columns, cellStyles, showSubHeaders, subHeaders]);
 
   useEffect(() => {
     if (editingColumnKey && columnEditRef.current) {
@@ -516,12 +502,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
       return;
     }
 
-    // For stage columns, set editing stage instead of regular edit
-    if (column.type === 'stage') {
-      const cellKey = `${clientId}_${columnKey}`;
-      setEditingStage(cellKey);
-      return;
-    }
+
 
     const client = localClients.find((c) => c.id === clientId);
     if (!client) return;
@@ -1566,15 +1547,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
               {showSubHeaders ? 'הסתר כותרות משנה' : 'הוסף כותרות משנה'}
             </Button>
 
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setShowStageManager(true)}
-              className="gap-2 h-8 hover:bg-purple-50"
-            >
-              <Circle className="w-3 h-3 text-purple-600" />
-              ניהול שלבים
-            </Button>
+
 
             {selectedHeaders.size > 0 &&
             <>
@@ -2417,44 +2390,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
 
                               <PopoverTrigger asChild>
                                 <div className="text-sm w-full" dir="rtl">
-                                  {column.type === 'stage' ?
-                                <div>
-                                    <StageDisplay
-                                      value={cellValue}
-                                      stageOptions={customStageOptions}
-                                      isEditing={editingStage === cellKey}
-                                      onDirectSave={async (newStage) => {
-                                        console.log('🔵 [SPREADSHEET] Saving stage:', { clientId: client.id, clientName: client.name, newStage });
-                                        try {
-                                          await base44.entities.Client.update(client.id, { stage: newStage });
-                                          console.log('✅ [SPREADSHEET] Stage saved to DB');
-                                          
-                                          setLocalClients(prev => {
-                                            const updated = prev.map(c => c.id === client.id ? {...c, stage: newStage} : c);
-                                            console.log('🔄 [SPREADSHEET] Local clients updated');
-                                            return updated;
-                                          });
-                                          
-                                          setEditingStage(null);
-                                          toast.success('השלב עודכן');
-                                          
-                                          // Dispatch update event
-                                          try {
-                                            console.log('📢 [SPREADSHEET] Dispatching client:updated event');
-                                            window.dispatchEvent(new CustomEvent('client:updated', {
-                                              detail: { id: client.id, stage: newStage }
-                                            }));
-                                          } catch (e) {
-                                            console.warn('❌ [SPREADSHEET] Event dispatch failed', e);
-                                          }
-                                        } catch (error) {
-                                          console.error('❌ [SPREADSHEET] Error updating stage:', error);
-                                          toast.error('שגיאה בעדכון השלב');
-                                        }
-                                      }}
-                                    />
-                                  </div> :
-                                column.type === 'status' ?
+                                  {column.type === 'status' ?
                                 <Badge variant="outline" className={statusColors[cellValue] || 'bg-slate-100 text-slate-800'}>
                                       {cellValue}
                                     </Badge> :
@@ -2778,15 +2714,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
         </Sheet>
       }
 
-      <StageOptionsManager
-        open={showStageManager}
-        onClose={() => setShowStageManager(false)}
-        stageOptions={customStageOptions}
-        onSave={(newOptions) => {
-          setCustomStageOptions(newOptions);
-          toast.success('✓ אפשרויות שלבים עודכנו');
-        }}
-      />
+
     </div>);
 
 }
