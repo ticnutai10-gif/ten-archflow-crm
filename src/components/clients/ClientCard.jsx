@@ -130,7 +130,7 @@ export default function ClientCard({
           )}
 
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-2">
+            <CardTitle className="text-lg font-bold text-slate-900 truncate flex items-center gap-2 mb-2">
               {client.stage && (() => {
                 const stageOptions = client.custom_stage_options || DEFAULT_STAGE_OPTIONS;
                 const currentStage = stageOptions.find(s => s.value === client.stage);
@@ -149,10 +149,9 @@ export default function ClientCard({
                 }
                 return null;
               })()}
-              <CardTitle className="text-lg font-bold text-slate-900 truncate">
-                {clientName}
-              </CardTitle>
-            </div>
+              {clientName}
+            </CardTitle>
+            <div>
             <Badge variant="outline" className={`${statusColor} text-xs`}>
               {clientStatus}
             </Badge>

@@ -1046,7 +1046,15 @@ export default function ClientsPage() {
                       )}
 
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
+                        <h3 
+                          className="font-semibold text-slate-900 truncate hover:text-blue-600 transition-colors cursor-pointer flex items-center gap-2"
+                          onClick={(e) => {
+                            if (e.ctrlKey || e.metaKey) {
+                              e.stopPropagation();
+                              handleViewDetails(client);
+                            }
+                          }}
+                        >
                           {client.stage && (() => {
                             const DEFAULT_STAGE_OPTIONS = [
                               { value: 'ברור_תכן', label: 'ברור תכן', color: '#3b82f6', glow: 'rgba(59, 130, 246, 0.4)' },
@@ -1072,17 +1080,9 @@ export default function ClientsPage() {
                             }
                             return null;
                           })()}
-                          <h3 
-                            className="font-semibold text-slate-900 truncate hover:text-blue-600 transition-colors cursor-pointer"
-                            onClick={(e) => {
-                              if (e.ctrlKey || e.metaKey) {
-                                e.stopPropagation();
-                                handleViewDetails(client);
-                              }
-                            }}
-                          >
-                            {highlightText(client.name, searchTerm)}
-                          </h3>
+                          {highlightText(client.name, searchTerm)}
+                        </h3>
+                        <div className="flex items-center gap-2">
                           <Badge variant="outline" className={`${statusColors[client.status]} text-xs`}>
                             {client.status}
                           </Badge>
@@ -1167,7 +1167,16 @@ export default function ClientsPage() {
                     <CardHeader className="pb-3">
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
+                          <CardTitle 
+                            className="text-xl font-bold text-slate-900 hover:text-blue-600 transition-colors cursor-pointer flex items-center gap-2 mb-2"
+                            onClick={(e) => {
+                              if (e.ctrlKey || e.metaKey) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleViewDetails(client);
+                              }
+                            }}
+                          >
                             {client.stage && (() => {
                               const DEFAULT_STAGE_OPTIONS = [
                                 { value: 'ברור_תכן', label: 'ברור תכן', color: '#3b82f6', glow: 'rgba(59, 130, 246, 0.4)' },
@@ -1193,19 +1202,9 @@ export default function ClientsPage() {
                               }
                               return null;
                             })()}
-                            <CardTitle 
-                              className="text-xl font-bold text-slate-900 hover:text-blue-600 transition-colors cursor-pointer"
-                              onClick={(e) => {
-                                if (e.ctrlKey || e.metaKey) {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  handleViewDetails(client);
-                                }
-                              }}
-                            >
-                              {client.name}
-                            </CardTitle>
-                          </div>
+                            {client.name}
+                          </CardTitle>
+                          <div>
                           <div className="flex flex-wrap gap-2">
                             <Badge variant="outline" className={`${statusColors[client.status]} text-xs`}>
                               {client.status}
@@ -1340,7 +1339,16 @@ export default function ClientsPage() {
                                   }
                                 }}>
                                 <CardHeader className="pb-2">
-                                  <div className="flex items-center gap-2">
+                                  <CardTitle 
+                                    className="text-sm font-semibold hover:text-blue-600 transition-colors cursor-pointer flex items-center gap-2"
+                                    onClick={(e) => {
+                                      if (e.ctrlKey || e.metaKey) {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        handleViewDetails(client);
+                                      }
+                                    }}
+                                  >
                                     {client.stage && (() => {
                                       const DEFAULT_STAGE_OPTIONS = [
                                         { value: 'ברור_תכן', label: 'ברור תכן', color: '#3b82f6', glow: 'rgba(59, 130, 246, 0.4)' },
@@ -1366,19 +1374,9 @@ export default function ClientsPage() {
                                       }
                                       return null;
                                     })()}
-                                    <CardTitle 
-                                      className="text-sm font-semibold hover:text-blue-600 transition-colors cursor-pointer"
-                                      onClick={(e) => {
-                                        if (e.ctrlKey || e.metaKey) {
-                                          e.preventDefault();
-                                          e.stopPropagation();
-                                          handleViewDetails(client);
-                                        }
-                                      }}
-                                    >
-                                      {client.name}
-                                    </CardTitle>
-                                  </div>
+                                    {client.name}
+                                  </CardTitle>
+                                  <div>
                                 </CardHeader>
                                 <CardContent className="space-y-2 text-xs">
                                   {client.phone && (

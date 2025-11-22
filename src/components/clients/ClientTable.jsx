@@ -119,9 +119,29 @@ export default function ClientTable({
                     </TableCell>
                   )}
                   <TableCell className="font-medium">
-                    <span className="hover:text-blue-600 transition-colors">
-                      {client.name}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      {client.stage && (() => {
+                        const stageOptions = client.custom_stage_options || DEFAULT_STAGE_OPTIONS;
+                        const currentStage = stageOptions.find(s => s.value === client.stage);
+                        if (currentStage) {
+                          return (
+                            <div 
+                              className="w-3 h-3 rounded-full flex-shrink-0 animate-pulse"
+                              style={{ 
+                                backgroundColor: currentStage.color,
+                                boxShadow: `0 0 8px ${currentStage.glow}, 0 0 12px ${currentStage.glow}`,
+                                border: '1px solid white'
+                              }}
+                              title={currentStage.label}
+                            />
+                          );
+                        }
+                        return null;
+                      })()}
+                      <span className="hover:text-blue-600 transition-colors">
+                        {client.name}
+                      </span>
+                    </div>
                   </TableCell>
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <StageDisplay
