@@ -476,6 +476,21 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     toast.success('✓ פעולה שוחזרה');
   }, [history, historyIndex, saveToBackend]);
 
+  // Listen for client updates
+  useEffect(() => {
+    const handleClientUpdate = (event) => {
+      const { id, stage } = event.detail || {};
+      if (!id) return;
+      
+      setRowsData(prev => prev.map(row => 
+        row.client_id === id ? { ...row, stage } : row
+      ));
+    };
+    
+    window.addEventListener('client:updated', handleClientUpdate);
+    return () => window.removeEventListener('client:updated', handleClientUpdate);
+  }, []);
+
   useEffect(() => {
     const handleKeyDown = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); handleUndo(); }
