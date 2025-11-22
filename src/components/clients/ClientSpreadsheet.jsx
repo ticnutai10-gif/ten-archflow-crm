@@ -2284,7 +2284,10 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                                 size="icon"
                                 variant="ghost"
                                 className="h-8 w-8"
-                                onClick={() => onView?.(client)}>
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (typeof onView === 'function') onView(client);
+                                }}>
 
                                 <Eye className="w-4 h-4 text-blue-600" />
                               </Button>
@@ -2294,7 +2297,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                                 className="h-8 w-8"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  if (onEdit) onEdit(client);
+                                  if (typeof onEdit === 'function') onEdit(client);
                                 }}>
 
                                 <Edit className="w-4 h-4 text-green-600" />
