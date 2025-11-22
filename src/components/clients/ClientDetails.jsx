@@ -345,7 +345,7 @@ export default function ClientDetails({ client, onBack, onEdit }) {
           </TabsContent>
 
           <TabsContent value="tasks" className="mt-6">
-            <ClientTasks clientId={client.id} clientName={client.name} />
+            <ClientTasks client={client} />
           </TabsContent>
 
           <TabsContent value="spreadsheets" className="mt-6">
