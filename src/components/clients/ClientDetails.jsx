@@ -110,14 +110,14 @@ export default function ClientDetails({ client, onBack, onEdit }) {
         <div className="flex items-center justify-between">
           <Button
             variant="outline"
-            onClick={() => onBack?.()}
+            onClick={() => { if (typeof onBack === 'function') onBack(); }}
             className="gap-2 bg-white hover:bg-slate-50">
             <ArrowRight className="w-4 h-4" style={{ color: iconColor }} />
             חזרה
           </Button>
 
           <Button
-            onClick={() => onEdit?.()}
+            onClick={() => { if (typeof onEdit === 'function') onEdit(); }}
             className="gap-2 bg-[#2C3A50] hover:bg-[#1f2937] text-white">
             <Edit className="w-4 h-4" />
             ערוך לקוח
