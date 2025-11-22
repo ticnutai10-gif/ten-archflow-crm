@@ -38,7 +38,12 @@ export default function ClientCard({
   onEnterSelectionMode,
   isDraggable = false,
   dragHandleProps = {}
-}) {
+  }) {
+  console.log('[ClientCard] Props received:', { 
+    hasOnEdit: typeof onEdit === 'function',
+    hasOnView: typeof onView === 'function',
+    hasOnToggleSelect: typeof onToggleSelect === 'function'
+  });
   if (!client) {
     return null;
   }
