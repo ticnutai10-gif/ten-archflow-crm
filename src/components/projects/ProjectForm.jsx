@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,24 +27,6 @@ export default function ProjectForm({ project, clients, onSubmit, onCancel }) {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // ✅ הגנה מלאה על clients prop
-  const safeClients = useMemo(() => {
-    if (!clients) {
-      console.warn('⚠️ [ProjectForm] clients is null/undefined');
-      return [];
-    }
-    if (!Array.isArray(clients)) {
-      console.error('❌ [ProjectForm] clients is not an array!', {
-        type: typeof clients,
-        value: clients
-      });
-      return [];
-    }
-    const valid = clients.filter(c => c && typeof c === 'object' && c.name);
-    console.log('✅ [ProjectForm] safeClients:', valid.length);
-    return valid;
-  }, [clients]);
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.name || !formData.client_name) return;
@@ -62,7 +44,7 @@ export default function ProjectForm({ project, clients, onSubmit, onCancel }) {
   };
 
   const handleClientChange = (clientName) => {
-    const selectedClient = safeClients.find(c => c.name === clientName);
+    const selectedClient = clients.find(c => c.name === clientName);
     updateField('client_name', clientName);
     updateField('client_id', selectedClient?.id || '');
   };
@@ -100,13 +82,9 @@ export default function ProjectForm({ project, clients, onSubmit, onCancel }) {
                   <SelectValue placeholder="בחר לקוח" />
                 </SelectTrigger>
                 <SelectContent>
-                  {safeClients.length === 0 ? (
-                    <SelectItem value={null} disabled>אין לקוחות זמינים</SelectItem>
-                  ) : (
-                    safeClients.map(client => (
-                      <SelectItem key={client.id} value={client.name}>{client.name}</SelectItem>
-                    ))
-                  )}
+                  {clients.map(client => (
+                    <SelectItem key={client.id} value={client.name}>{client.name}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
