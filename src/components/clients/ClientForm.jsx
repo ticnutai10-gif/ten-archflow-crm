@@ -123,7 +123,7 @@ export default function ClientForm({ client, onSubmit, onCancel }) {
           )}
         </DialogHeader>
 
-        <ScrollArea className="flex-1 px-6 max-h-[calc(95vh-180px)]">
+        <div className="flex-1 px-6 overflow-y-auto" style={{ maxHeight: 'calc(95vh - 180px)' }}>
           <form onSubmit={handleSubmit} className="space-y-6 py-4">
             {/* מידע בסיסי */}
             <div className="space-y-4">
@@ -362,7 +362,7 @@ export default function ClientForm({ client, onSubmit, onCancel }) {
             {/* רווח נוסף בתחתית */}
             <div className="h-6"></div>
           </form>
-        </ScrollArea>
+        </div>
 
         <DialogFooter className="flex-shrink-0 px-6 py-4 border-t bg-slate-50">
           <div className="flex gap-3 w-full">
