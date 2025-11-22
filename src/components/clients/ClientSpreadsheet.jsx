@@ -238,6 +238,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
   const [editingCell, setEditingCell] = useState(null);
   const [editValue, setEditValue] = useState("");
   const [fullScreen, setFullScreen] = useState(false);
+  const cardRef = useRef(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isDropdownSettingsOpen, setIsDropdownSettingsOpen] = useState(false);
   const [showDebugPanel, setShowDebugPanel] = useState(false);
@@ -359,6 +360,18 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
     window.addEventListener('mouseup', handleMouseUp);
     return () => window.removeEventListener('mouseup', handleMouseUp);
   }, [isDragging]);
+
+  // Handle fullscreen toggle and ESC key
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape' && fullScreen) {
+        setFullScreen(false);
+      }
+    };
+    
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [fullScreen]);
 
   const visibleColumns = useMemo(() => {
     const visible = columns.filter((col) => col.visible !== false);
@@ -1300,7 +1313,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
   }
 
   return (
-    <div className="w-full overflow-visible" dir="rtl">
+    <div className={`w-full overflow-visible ${fullScreen ? 'fixed inset-0 z-[9999] bg-white p-4' : ''}`} dir="rtl">
       {showDebugPanel &&
       <div className="fixed top-4 left-4 bg-red-600 text-white p-4 rounded-lg shadow-2xl z-[9999] max-w-sm" dir="rtl">
           <div className="font-bold text-lg mb-2 flex items-center justify-between">
@@ -1337,7 +1350,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
         </div>
       }
 
-      <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm rounded-2xl" dir="rtl">
+      <Card ref={cardRef} className={`shadow-lg border-0 bg-white/80 backdrop-blur-sm rounded-2xl ${fullScreen ? 'h-full flex flex-col' : ''}`} dir="rtl">
         <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-white">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -1451,7 +1464,8 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                 size="icon"
                 onClick={() => {
                   setFullScreen(!fullScreen);
-                }}>
+                }}
+                title={fullScreen ? 'מצב רגיל (ESC)' : 'מסך מלא'}>
 
                 {fullScreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
               </Button>
@@ -1751,12 +1765,13 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
           </div>
         )}
 
-      <CardContent className="p-0">
+      <CardContent className={`p-0 ${fullScreen ? 'flex-1 flex flex-col' : ''}`}>
         <div
             ref={tableContainerRef}
             className="border border-slate-200 overflow-auto"
             style={{
-              maxHeight: fullScreen ? '85vh' : '70vh',
+              height: fullScreen ? '100%' : 'auto',
+              maxHeight: fullScreen ? '100%' : '70vh',
               width: '100%',
               position: 'relative'
             }}
