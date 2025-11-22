@@ -216,6 +216,7 @@ function ColorPicker({ onApply, currentStyle = {}, onClose }) {
 }
 
 export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }) {
+  const [editingStage, setEditingStage] = useState(null);
   const [columns, setColumns] = useState(() => {
     const saved = loadSettings();
     if (saved && saved.columns) {
