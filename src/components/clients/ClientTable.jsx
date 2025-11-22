@@ -146,11 +146,9 @@ export default function ClientTable({
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <StageDisplay
                       value={client.stage}
-                      options={client.custom_stage_options || DEFAULT_STAGE_OPTIONS}
-                      onChange={(newStage) => handleStageChange(client.id, newStage)}
+                      stageOptions={client.custom_stage_options || DEFAULT_STAGE_OPTIONS}
                       isEditing={editingStage === client.id}
-                      onStartEdit={() => setEditingStage(client.id)}
-                      onEndEdit={() => setEditingStage(null)}
+                      onDirectSave={(newStage) => handleStageChange(client.id, newStage)}
                     />
                   </TableCell>
                   <TableCell>
