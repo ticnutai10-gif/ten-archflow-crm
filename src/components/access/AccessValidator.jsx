@@ -174,8 +174,8 @@ export function useAccessControl() {
     }
 
     if (!me) {
-      console.log('⚠️ [ACCESS] filterClients: No user');
-      return [];
+      console.log('⚠️ [ACCESS] filterClients: No user - returning all clients (public access)');
+      return allClients;
     }
 
     // Admin/Manager Plus/SuperAdmin רואים הכל
