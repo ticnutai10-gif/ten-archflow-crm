@@ -573,12 +573,16 @@ export default function ClientsPage() {
   }
 
   if (selectedClient) {
+    // Find the latest version of the client from the clients array
+    const latestClient = clients.find(c => c.id === selectedClient.id) || selectedClient;
+    
     return (
       <ClientDetails
-        client={selectedClient}
+        key={latestClient.id}
+        client={latestClient}
         onBack={() => setSelectedClient(null)}
         onEdit={() => {
-          setEditingClient(selectedClient);
+          setEditingClient(latestClient);
           setShowForm(true);
           setSelectedClient(null);
         }} />);

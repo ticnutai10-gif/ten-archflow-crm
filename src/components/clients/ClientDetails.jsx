@@ -52,6 +52,13 @@ export default function ClientDetails({ client, onBack, onEdit }) {
 
   const [currentClient, setCurrentClient] = useState(client);
 
+  // Update currentClient when client prop changes
+  useEffect(() => {
+    if (client) {
+      setCurrentClient(client);
+    }
+  }, [client]);
+
   const loadClientData = useCallback(async () => {
     if (!client?.id) return;
     
