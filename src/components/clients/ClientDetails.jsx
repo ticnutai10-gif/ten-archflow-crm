@@ -50,24 +50,29 @@ export default function ClientDetails({ client, onBack, onEdit }) {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('timeline');
 
+  const [currentClient, setCurrentClient] = useState(client);
+
   const loadClientData = useCallback(async () => {
     if (!client?.id) return;
     
     setIsLoading(true);
     try {
-      const [projectsData, quotesData, invoicesData, timeLogsData] = await Promise.all([
+      const [clientData, projectsData, quotesData, invoicesData, timeLogsData] = await Promise.all([
+        base44.entities.Client.get(client.id).catch(() => client),
         base44.entities.Project.filter({ client_id: client.id }, '-created_date', 50).catch(() => []),
         base44.entities.Quote.filter({ client_id: client.id }, '-created_date', 50).catch(() => []),
         base44.entities.Invoice.filter({ client_id: client.id }, '-created_date', 50).catch(() => []),
         base44.entities.TimeLog.filter({ client_id: client.id }, '-log_date', 50).catch(() => [])
       ]);
 
+      setCurrentClient(clientData || client);
       setProjects(Array.isArray(projectsData) ? projectsData : []);
       setQuotes(Array.isArray(quotesData) ? quotesData : []);
       setInvoices(Array.isArray(invoicesData) ? invoicesData : []);
       setTimeLogs(Array.isArray(timeLogsData) ? timeLogsData : []);
     } catch (error) {
       console.error("Error loading client data:", error);
+      setCurrentClient(client);
       setProjects([]);
       setQuotes([]);
       setInvoices([]);
@@ -82,12 +87,31 @@ export default function ClientDetails({ client, onBack, onEdit }) {
   }, [loadClientData]);
 
   useEffect(() => {
+    const handleClientUpdate = (event) => {
+      if (event.detail?.id === client?.id) {
+        loadClientData();
+      }
+    };
+    
+    window.addEventListener('client:updated', handleClientUpdate);
+    return () => window.removeEventListener('client:updated', handleClientUpdate);
+  }, [client?.id, loadClientData]);
+
+  useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const spreadsheetId = urlParams.get('spreadsheetId');
     if (spreadsheetId) {
       setActiveTab('spreadsheets');
     }
   }, []);
+
+  const DEFAULT_STAGE_OPTIONS = [
+    { value: 'ברור_תכן', label: 'ברור תכן', color: '#3b82f6', glow: 'rgba(59, 130, 246, 0.4)' },
+    { value: 'תיק_מידע', label: 'תיק מידע', color: '#8b5cf6', glow: 'rgba(139, 92, 246, 0.4)' },
+    { value: 'היתרים', label: 'היתרים', color: '#f59e0b', glow: 'rgba(245, 158, 11, 0.4)' },
+    { value: 'ביצוע', label: 'ביצוע', color: '#10b981', glow: 'rgba(16, 185, 129, 0.4)' },
+    { value: 'סיום', label: 'סיום', color: '#6b7280', glow: 'rgba(107, 114, 128, 0.4)' }
+  ];
 
   if (!client) {
     return (
@@ -129,23 +153,53 @@ export default function ClientDetails({ client, onBack, onEdit }) {
           <CardHeader className="bg-gradient-to-r from-slate-50 to-white border-b">
             <div className="flex items-start justify-between">
               <div>
-                <CardTitle className="text-3xl font-bold text-slate-900 mb-3">
-                  {client.name || 'ללא שם'}
+                <CardTitle className="text-3xl font-bold text-slate-900 mb-3 flex items-center gap-3">
+                  {currentClient.stage && (() => {
+                    const stageOptions = currentClient.custom_stage_options || DEFAULT_STAGE_OPTIONS;
+                    const currentStage = stageOptions.find(s => s.value === currentClient.stage);
+                    if (currentStage) {
+                      return (
+                        <div 
+                          className="w-4 h-4 rounded-full flex-shrink-0 animate-pulse"
+                          style={{ 
+                            backgroundColor: currentStage.color,
+                            boxShadow: `0 0 8px ${currentStage.glow}, 0 0 12px ${currentStage.glow}`,
+                            border: '1px solid white'
+                          }}
+                          title={currentStage.label}
+                        />
+                      );
+                    }
+                    return null;
+                  })()}
+                  {currentClient.name || 'ללא שם'}
                 </CardTitle>
                 <div className="flex flex-wrap gap-2">
-                  <Badge variant="outline" className={statusColors[client.status] || statusColors["פוטנציאלי"]}>
-                    {client.status || 'פוטנציאלי'}
+                  {currentClient.stage && (() => {
+                    const stageOptions = currentClient.custom_stage_options || DEFAULT_STAGE_OPTIONS;
+                    const currentStage = stageOptions.find(s => s.value === currentClient.stage);
+                    if (currentStage) {
+                      return (
+                        <Badge variant="outline" className="bg-slate-100 text-slate-700">
+                          שלב: {currentStage.label}
+                        </Badge>
+                      );
+                    }
+                    return null;
+                  })()}
+                  <Badge variant="outline" className={statusColors[currentClient.status] || statusColors["פוטנציאלי"]}>
+                    {currentClient.status || 'פוטנציאלי'}
                   </Badge>
-                  {client.source && (
+                  {currentClient.source && (
                     <Badge variant="outline" className="bg-slate-100 text-slate-700">
                       <TrendingUp className="w-3 h-3 ml-1" />
-                      {client.source}
+                      {currentClient.source}
                     </Badge>
                   )}
-                  {client.budget_range && (
+                  {currentClient.budget_range && (
                     <Badge variant="outline" className="bg-slate-100 text-slate-700">
                       <DollarSign className="w-3 h-3 ml-1" />
-                      {client.budget_range}
+                      {currentClient.budget_range}
                     </Badge>
                   )}
                 </div>
