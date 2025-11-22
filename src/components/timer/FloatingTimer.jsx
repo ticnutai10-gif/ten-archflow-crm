@@ -5,10 +5,18 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Timer as TimerIcon, Play, Pause, RefreshCcw, Square, Save, Clock, Settings, BookmarkPlus, Trash2, Plus, Loader2, Calendar, Pencil } from 'lucide-react';
+import { Timer as TimerIcon, Play, Pause, RefreshCcw, Square, Save, Clock, Settings, BookmarkPlus, Trash2, Plus, Loader2, Calendar, Pencil, Circle } from 'lucide-react';
 import { Client, TimeLog } from "@/entities/all";
 import { logInfo, logWarn, logError, logEntry } from "@/components/utils/debugLog";
 import { useAccessControl } from "@/components/access/AccessValidator";
+
+const STAGE_OPTIONS = [
+  { value: 'ברור_תכן', label: 'ברור תכן', color: '#3b82f6' },
+  { value: 'תיק_מידע', label: 'תיק מידע', color: '#8b5cf6' },
+  { value: 'היתרים', label: 'היתרים', color: '#f59e0b' },
+  { value: 'ביצוע', label: 'ביצוע', color: '#10b981' },
+  { value: 'סיום', label: 'סיום', color: '#6b7280' }
+];
 
 // פונקציה לבדוק אם מספר טלפון תקין
 const isValidPhone = (phone) => {
@@ -891,6 +899,8 @@ ${context}
 
                         filtered.map((c) => {
                           const isRecent = !query && (prefs.recentClients || []).some((r) => r.id === c.id);
+                          const currentStage = c.stage ? STAGE_OPTIONS.find(s => s.value === c.stage) : null;
+                          
                           return (
                             <button
                               key={c.id}
@@ -905,7 +915,16 @@ ${context}
                               }}>
 
                                   <div className="flex items-center justify-between w-full">
-                                    <span className="text-sm text-slate-900 truncate font-semibold">{c.name || "ללא שם"}</span>
+                                    <div className="flex items-center gap-2">
+                                      {currentStage && (
+                                        <Circle 
+                                          className="w-3 h-3 flex-shrink-0 fill-current"
+                                          style={{ color: currentStage.color }}
+                                          title={currentStage.label}
+                                        />
+                                      )}
+                                      <span className="text-sm text-slate-900 truncate font-semibold">{c.name || "ללא שם"}</span>
+                                    </div>
                                     {isRecent && <span className="text-[10px] text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full mr-2 font-medium">אחרון</span>}
                                   </div>
                                   {(c.company || c.email || c.phone) &&

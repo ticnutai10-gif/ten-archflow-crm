@@ -327,6 +327,21 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
     });
   }, [clients]);
 
+  // Listen for client updates
+  useEffect(() => {
+    const handleClientUpdate = (event) => {
+      const { id, stage } = event.detail || {};
+      if (!id) return;
+      
+      setLocalClients(prev => prev.map(c => 
+        c.id === id ? { ...c, stage } : c
+      ));
+    };
+    
+    window.addEventListener('client:updated', handleClientUpdate);
+    return () => window.removeEventListener('client:updated', handleClientUpdate);
+  }, []);
+
   useEffect(() => {
     if (columns.length > 0) {
       console.log('💾 Saving settings');
