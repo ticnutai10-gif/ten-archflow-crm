@@ -2396,8 +2396,8 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                                   
                                   let updatedClient = { ...client };
                                   
-                                  if (columnKey.startsWith('cf:')) {
-                                    const slug = columnKey.slice(3);
+                                  if (column.key.startsWith('cf:')) {
+                                    const slug = column.key.slice(3);
                                     updatedClient = {
                                       ...updatedClient,
                                       custom_data: {
@@ -2408,7 +2408,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                                   } else {
                                     updatedClient = {
                                       ...updatedClient,
-                                      [columnKey]: stageValue
+                                      [column.key]: stageValue
                                     };
                                   }
                                   
