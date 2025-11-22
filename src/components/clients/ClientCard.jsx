@@ -151,7 +151,6 @@ export default function ClientCard({
               })()}
               {clientName}
             </CardTitle>
-            <div>
             <Badge variant="outline" className={`${statusColor} text-xs`}>
               {clientStatus}
             </Badge>
