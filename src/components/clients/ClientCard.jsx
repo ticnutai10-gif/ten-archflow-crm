@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Phone, Mail, MapPin, Building, MoreVertical, Edit, Eye, Copy, Trash2, GripVertical, CheckSquare, Square } from "lucide-react";
+import { createPageUrl } from "@/utils";
 
 // Default stage options - same as spreadsheet
 const DEFAULT_STAGE_OPTIONS = [

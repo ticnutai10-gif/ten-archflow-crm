@@ -21,6 +21,7 @@ import HelpIcon from "@/components/ui/HelpIcon";
 import { Checkbox } from "@/components/ui/checkbox";
 import { StageDisplay } from "@/components/spreadsheets/GenericSpreadsheet";
 import { base44 } from "@/api/base44Client";
+import { createPageUrl } from "@/utils";
 
 const ICON_COLOR = "#2C3A50";
 
@@ -416,6 +417,17 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
   };
 
   const handleCellClick = (clientId, columnKey, event) => {
+    // Ctrl+Click on name column - open folder
+    if ((event.ctrlKey || event.metaKey) && columnKey === 'name') {
+      event.preventDefault();
+      event.stopPropagation();
+      const client = localClients.find(c => c.id === clientId);
+      if (client) {
+        window.location.href = createPageUrl('Folders') + `?client_id=${client.id}&client_name=${encodeURIComponent(client.name)}`;
+      }
+      return;
+    }
+
     if (event.altKey) {
       event.preventDefault();
       event.stopPropagation();

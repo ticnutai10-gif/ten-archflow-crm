@@ -24,6 +24,7 @@ import {
 import { StageDisplay } from "@/components/spreadsheets/GenericSpreadsheet";
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
+import { createPageUrl } from "@/utils";
 
 // Default stage options
 const DEFAULT_STAGE_OPTIONS = [
@@ -118,7 +119,18 @@ export default function ClientTable({
                     </TableCell>
                   )}
                   <TableCell className="font-medium">
-                    <span>{client.name}</span>
+                    <span 
+                      className="hover:text-blue-600 transition-colors cursor-pointer"
+                      onClick={(e) => {
+                        if (e.ctrlKey || e.metaKey) {
+                          e.stopPropagation();
+                          window.location.href = createPageUrl('Folders') + `?client_id=${client.id}&client_name=${encodeURIComponent(client.name)}`;
+                        }
+                      }}
+                      title="Ctrl+Click לפתיחת תיקייה"
+                    >
+                      {client.name}
+                    </span>
                   </TableCell>
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <StageDisplay
