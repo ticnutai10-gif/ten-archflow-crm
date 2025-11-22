@@ -23,7 +23,7 @@ export default function SpreadsheetDetailsPage() {
 
       if (!spreadsheetId) {
         toast.error('לא נמצא מזהה טבלה');
-        navigate(createPageUrl('Tasks'));
+        navigate(createPageUrl('CustomSpreadsheets'));
         return;
       }
 
@@ -32,7 +32,7 @@ export default function SpreadsheetDetailsPage() {
     } catch (error) {
       console.error("Error loading spreadsheet:", error);
       toast.error('שגיאה בטעינת הטבלה');
-      navigate(createPageUrl('Tasks'));
+      navigate(createPageUrl('CustomSpreadsheets'));
     } finally {
       setLoading(false);
     }
@@ -55,11 +55,11 @@ export default function SpreadsheetDetailsPage() {
         <div className="flex items-center justify-between">
           <Button
             variant="outline"
-            onClick={() => navigate(createPageUrl('Tasks'))}
+            onClick={() => navigate(createPageUrl('CustomSpreadsheets'))}
             className="gap-2"
           >
             <ArrowRight className="w-4 h-4" />
-            חזרה למשימות
+            חזרה לטבלאות
           </Button>
           
           <Button
