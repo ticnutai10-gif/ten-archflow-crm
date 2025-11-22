@@ -2738,85 +2738,161 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                 <h4 className="font-semibold text-slate-700 mb-3 flex items-center gap-2">
                   <Table className="w-4 h-4" />
                   רשימת עמודות
+                  <span className="text-xs text-slate-500 font-normal">(גרור לשינוי סדר)</span>
                 </h4>
 
-                <div className="space-y-2">
-                  {columns.map((col) => (
-                    <div
-                      key={col.key}
-                      className="group p-4 border-2 rounded-xl hover:border-blue-300 hover:shadow-md transition-all bg-white">
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                          <Switch
-                            checked={col.visible !== false}
-                            onCheckedChange={() => toggleColumnVisibility(col.key)}
-                            disabled={col.required || col.key === 'actions'}
-                          />
+                <DragDropContext onDragEnd={(result) => {
+                  if (!result.destination) return;
+                  
+                  const sourceIndex = result.source.index;
+                  const destIndex = result.destination.index;
+                  
+                  const sourceColumn = columns[sourceIndex];
+                  if (sourceColumn.required || sourceColumn.key === 'actions') {
+                    toast.error('לא ניתן לגרור עמודה זו');
+                    return;
+                  }
+                  
+                  const newColumns = Array.from(columns);
+                  const [removed] = newColumns.splice(sourceIndex, 1);
+                  newColumns.splice(destIndex, 0, removed);
+                  
+                  setColumns(newColumns);
+                  toast.success('סדר העמודות עודכן');
+                }}>
+                  <Droppable droppableId="columns-panel">
+                    {(provided) => (
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.droppableProps}
+                        className="space-y-2"
+                      >
+                        {columns.map((col, index) => (
+                          <Draggable
+                            key={col.key}
+                            draggableId={col.key}
+                            index={index}
+                            isDragDisabled={col.required || col.key === 'actions'}
+                          >
+                            {(provided, snapshot) => (
+                              <div
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                {...provided.dragHandleProps}
+                                className={`group p-4 border-2 rounded-xl hover:border-blue-300 hover:shadow-md transition-all bg-white ${
+                                  snapshot.isDragging ? 'shadow-2xl opacity-80 rotate-2 scale-105' : ''
+                                }`}
+                                style={{
+                                  ...provided.draggableProps.style
+                                }}
+                              >
+                                <div className="flex items-center justify-between gap-3">
+                                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                                    <Switch
+                                      checked={col.visible !== false}
+                                      onCheckedChange={() => toggleColumnVisibility(col.key)}
+                                      disabled={col.required || col.key === 'actions'}
+                                    />
 
-                          <div className="flex-1 min-w-0">
-                            {editingInPanel === col.key ? (
-                              <div className="flex items-center gap-2">
-                                <Input
-                                  value={editingPanelTitle}
-                                  onChange={(e) => setEditingPanelTitle(e.target.value)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') saveColumnTitleInPanel(col.key);
-                                    if (e.key === 'Escape') {
-                                      setEditingInPanel(null);
-                                      setEditingPanelTitle("");
-                                    }
-                                  }}
-                                  onBlur={() => saveColumnTitleInPanel(col.key)}
-                                  className="h-8 text-sm"
-                                  autoFocus
-                                />
-                              </div>
-                            ) : (
-                              <>
-                                <div className="font-semibold text-slate-900 truncate">
-                                  {col.title}
-                                </div>
-                                <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-2">
-                                  <span className="truncate">{col.key}</span>
-                                  {col.required && (
-                                    <Badge variant="outline" className="text-xs bg-blue-50 border-blue-200">
-                                      חובה
-                                    </Badge>
+                                    <div className="flex-1 min-w-0">
+                                      {editingInPanel === col.key ? (
+                                        <div className="flex items-center gap-2">
+                                          <Input
+                                            value={editingPanelTitle}
+                                            onChange={(e) => setEditingPanelTitle(e.target.value)}
+                                            onKeyDown={(e) => {
+                                              if (e.key === 'Enter') saveColumnTitleInPanel(col.key);
+                                              if (e.key === 'Escape') {
+                                                setEditingInPanel(null);
+                                                setEditingPanelTitle("");
+                                              }
+                                            }}
+                                            onBlur={() => saveColumnTitleInPanel(col.key)}
+                                            className="h-8 text-sm"
+                                            autoFocus
+                                          />
+                                        </div>
+                                      ) : (
+                                        <>
+                                          <div className="font-semibold text-slate-900 truncate flex items-center gap-2">
+                                            {col.title}
+                                            {cellStyles[`header_${col.key}`]?.backgroundColor && (
+                                              <div 
+                                                className="w-3 h-3 rounded-full border"
+                                                style={{ 
+                                                  backgroundColor: cellStyles[`header_${col.key}`].backgroundColor,
+                                                  borderColor: cellStyles[`header_${col.key}`].borderColor || '#e2e8f0'
+                                                }}
+                                                title="צבע כותרת"
+                                              />
+                                            )}
+                                          </div>
+                                          <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-2">
+                                            <span className="truncate">{col.key}</span>
+                                            {col.required && (
+                                              <Badge variant="outline" className="text-xs bg-blue-50 border-blue-200">
+                                                חובה
+                                              </Badge>
+                                            )}
+                                          </div>
+                                        </>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {!col.required && col.key !== 'actions' && (
+                                    <div className="flex items-center gap-1 transition-opacity">
+                                      <Popover>
+                                        <PopoverTrigger asChild>
+                                          <Button
+                                            size="icon"
+                                            variant="ghost"
+                                            className="h-8 w-8 hover:bg-purple-100"
+                                            title="צבע כותרת">
+                                            <Palette className="w-4 h-4 text-purple-600" />
+                                          </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0" side="left" align="start">
+                                          <ColorPicker
+                                            currentStyle={cellStyles[`header_${col.key}`] || {}}
+                                            onApply={(style) => applyHeaderStyle(col.key, style)}
+                                            onClose={() => {}}
+                                          />
+                                        </PopoverContent>
+                                      </Popover>
+
+                                      <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-8 w-8 hover:bg-blue-100"
+                                        onClick={() => {
+                                          setEditingInPanel(col.key);
+                                          setEditingPanelTitle(col.title);
+                                        }}
+                                        title="ערוך שם">
+                                        <Edit2 className="w-4 h-4 text-blue-600" />
+                                      </Button>
+
+                                      <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-8 w-8 hover:bg-red-100"
+                                        onClick={() => deleteColumn(col.key)}
+                                        title="מחק עמודה">
+                                        <Trash2 className="w-4 h-4 text-red-600" />
+                                      </Button>
+                                    </div>
                                   )}
                                 </div>
-                              </>
+                              </div>
                             )}
-                          </div>
-                        </div>
-
-                        {!col.required && col.key !== 'actions' && (
-                          <div className="flex items-center gap-1 transition-opacity">
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-8 w-8 hover:bg-blue-100"
-                              onClick={() => {
-                                setEditingInPanel(col.key);
-                                setEditingPanelTitle(col.title);
-                              }}
-                              title="ערוך שם">
-                              <Edit2 className="w-4 h-4 text-blue-600" />
-                            </Button>
-
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-8 w-8 hover:bg-red-100"
-                              onClick={() => deleteColumn(col.key)}
-                              title="מחק עמודה">
-                              <Trash2 className="w-4 h-4 text-red-600" />
-                            </Button>
-                          </div>
-                        )}
+                          </Draggable>
+                        ))}
+                        {provided.placeholder}
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    )}
+                  </Droppable>
+                </DragDropContext>
               </div>
             </div>
           </ScrollArea>
