@@ -55,6 +55,11 @@ export default function ClientDetails({ client, onBack, onEdit }) {
   // Update currentClient when client prop changes
   useEffect(() => {
     if (client) {
+      console.log('🔄 [CLIENT DETAILS] Client prop changed:', { 
+        id: client.id, 
+        name: client.name, 
+        stage: client.stage 
+      });
       setCurrentClient(client);
     }
   }, [client]);
@@ -95,13 +100,21 @@ export default function ClientDetails({ client, onBack, onEdit }) {
 
   useEffect(() => {
     const handleClientUpdate = (event) => {
+      console.log('📬 [CLIENT DETAILS] Received client:updated event:', event.detail);
       if (event.detail?.id === client?.id) {
+        console.log('✅ [CLIENT DETAILS] Event matches current client, reloading...');
         loadClientData();
+      } else {
+        console.log('⏭️ [CLIENT DETAILS] Event for different client, ignoring');
       }
     };
     
     window.addEventListener('client:updated', handleClientUpdate);
-    return () => window.removeEventListener('client:updated', handleClientUpdate);
+    console.log('👂 [CLIENT DETAILS] Listening for updates on client:', client?.id);
+    return () => {
+      console.log('🔇 [CLIENT DETAILS] Stopped listening');
+      window.removeEventListener('client:updated', handleClientUpdate);
+    };
   }, [client?.id, loadClientData]);
 
   useEffect(() => {

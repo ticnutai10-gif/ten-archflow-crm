@@ -165,13 +165,18 @@ export default function ClientsPage() {
   }, [accessLoading]);
 
   useEffect(() => {
-    const handleClientUpdate = () => {
-      console.log('🔄 [CLIENTS PAGE] Client updated, reloading...');
+    const handleClientUpdate = (event) => {
+      console.log('📬 [CLIENTS PAGE] Received client:updated event:', event.detail);
+      console.log('🔄 [CLIENTS PAGE] Reloading all clients...');
       loadClients();
     };
     
     window.addEventListener('client:updated', handleClientUpdate);
-    return () => window.removeEventListener('client:updated', handleClientUpdate);
+    console.log('👂 [CLIENTS PAGE] Listening for client updates');
+    return () => {
+      console.log('🔇 [CLIENTS PAGE] Stopped listening');
+      window.removeEventListener('client:updated', handleClientUpdate);
+    };
   }, []);
 
   useEffect(() => {

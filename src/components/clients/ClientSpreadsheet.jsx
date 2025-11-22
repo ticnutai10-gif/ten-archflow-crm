@@ -2390,22 +2390,31 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                                       stageOptions={customStageOptions}
                                       isEditing={editingStage === cellKey}
                                       onDirectSave={async (newStage) => {
+                                        console.log('🔵 [SPREADSHEET] Saving stage:', { clientId: client.id, clientName: client.name, newStage });
                                         try {
                                           await base44.entities.Client.update(client.id, { stage: newStage });
-                                          setLocalClients(prev => prev.map(c => c.id === client.id ? {...c, stage: newStage} : c));
+                                          console.log('✅ [SPREADSHEET] Stage saved to DB');
+                                          
+                                          setLocalClients(prev => {
+                                            const updated = prev.map(c => c.id === client.id ? {...c, stage: newStage} : c);
+                                            console.log('🔄 [SPREADSHEET] Local clients updated');
+                                            return updated;
+                                          });
+                                          
                                           setEditingStage(null);
                                           toast.success('השלב עודכן');
                                           
                                           // Dispatch update event
                                           try {
+                                            console.log('📢 [SPREADSHEET] Dispatching client:updated event');
                                             window.dispatchEvent(new CustomEvent('client:updated', {
                                               detail: { id: client.id, stage: newStage }
                                             }));
                                           } catch (e) {
-                                            console.warn('client:updated event dispatch failed', e);
+                                            console.warn('❌ [SPREADSHEET] Event dispatch failed', e);
                                           }
                                         } catch (error) {
-                                          console.error('Error updating stage:', error);
+                                          console.error('❌ [SPREADSHEET] Error updating stage:', error);
                                           toast.error('שגיאה בעדכון השלב');
                                         }
                                       }}
