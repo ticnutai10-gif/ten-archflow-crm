@@ -2395,6 +2395,15 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                                           setLocalClients(prev => prev.map(c => c.id === client.id ? {...c, stage: newStage} : c));
                                           setEditingStage(null);
                                           toast.success('השלב עודכן');
+                                          
+                                          // Dispatch update event
+                                          try {
+                                            window.dispatchEvent(new CustomEvent('client:updated', {
+                                              detail: { id: client.id, stage: newStage }
+                                            }));
+                                          } catch (e) {
+                                            console.warn('client:updated event dispatch failed', e);
+                                          }
                                         } catch (error) {
                                           console.error('Error updating stage:', error);
                                           toast.error('שגיאה בעדכון השלב');
