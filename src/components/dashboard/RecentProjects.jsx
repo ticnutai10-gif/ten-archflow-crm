@@ -37,22 +37,31 @@ export default function RecentProjects({ projects = [], isLoading, onUpdate }) {
   const [clientsLimit, setClientsLimit] = useState('10');
   const [clientsFilter, setClientsFilter] = useState('all');
   const [recentClients, setRecentClients] = useState([]);
+  const [allProjects, setAllProjects] = useState([]);
 
-  // Load clients to get stage info and recent clients
+  // Load clients and projects
   useEffect(() => {
-    const loadClients = async () => {
+    const loadData = async () => {
       try {
-        const clientsData = await base44.entities.Client.list('-created_date');
+        const [clientsData, projectsData] = await Promise.all([
+          base44.entities.Client.list('-created_date').catch(() => []),
+          base44.entities.Project.list().catch(() => [])
+        ]);
+        
         const validClients = Array.isArray(clientsData) ? clientsData : [];
+        const validProjects = Array.isArray(projectsData) ? projectsData : [];
+        
         setClients(validClients);
         setRecentClients(validClients);
+        setAllProjects(validProjects);
       } catch (error) {
-        console.error('Error loading clients:', error);
+        console.error('Error loading data:', error);
         setClients([]);
         setRecentClients([]);
+        setAllProjects([]);
       }
     };
-    loadClients();
+    loadData();
   }, []);
 
   useEffect(() => {
@@ -162,11 +171,24 @@ export default function RecentProjects({ projects = [], isLoading, onUpdate }) {
   // Filter and limit clients
   const filteredClients = recentClients.filter(client => {
     if (clientsFilter === 'all') return true;
+    
+    // Filter by client status
     if (clientsFilter === 'active') return client.status === 'פעיל';
     if (clientsFilter === 'potential') return client.status === 'פוטנציאלי';
     if (clientsFilter === 'inactive') return client.status === 'לא פעיל';
-    // Filter by stage
-    return client.stage === clientsFilter;
+    
+    // Filter by client stage
+    if (['ברור_תכן', 'תיק_מידע', 'היתרים', 'ביצוע', 'סיום'].includes(clientsFilter)) {
+      return client.stage === clientsFilter;
+    }
+    
+    // Filter by project status
+    if (['הצעת מחיר', 'תכנון', 'היתרים_פרויקט', 'ביצוע_פרויקט', 'הושלם', 'מבוטל'].includes(clientsFilter)) {
+      const clientProjects = allProjects.filter(p => p.client_id === client.id || p.client_name === client.name);
+      return clientProjects.some(p => p.status === clientsFilter);
+    }
+    
+    return false;
   }).slice(0, parseInt(clientsLimit));
 
   const statusColors = {
@@ -214,6 +236,7 @@ export default function RecentProjects({ projects = [], isLoading, onUpdate }) {
             setClientsFilter={setClientsFilter}
             statusColors={statusColors}
             formatDate={formatDate}
+            allProjects={allProjects}
           />
         </TabsContent>
       </Tabs>
@@ -429,7 +452,8 @@ function ClientsTab({
   clientsFilter, 
   setClientsFilter,
   statusColors,
-  formatDate
+  formatDate,
+  allProjects
 }) {
   const DEFAULT_STAGE_OPTIONS = [
     { value: 'ברור_תכן', label: 'ברור תכן', color: '#3b82f6', glow: 'rgba(59, 130, 246, 0.4)' },
@@ -460,19 +484,28 @@ function ClientsTab({
         <div className="flex items-center gap-2">
           <span className="text-sm text-slate-600">סינון:</span>
           <Select value={clientsFilter} onValueChange={setClientsFilter}>
-            <SelectTrigger className="w-32">
+            <SelectTrigger className="w-40">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">הכל</SelectItem>
+              <div className="px-2 py-1 text-xs font-semibold text-slate-500 bg-slate-100">סטטוס לקוח</div>
               <SelectItem value="active">פעילים</SelectItem>
               <SelectItem value="potential">פוטנציאליים</SelectItem>
               <SelectItem value="inactive">לא פעילים</SelectItem>
+              <div className="px-2 py-1 text-xs font-semibold text-slate-500 bg-slate-100">שלבי לקוח</div>
               {DEFAULT_STAGE_OPTIONS.map(stage => (
                 <SelectItem key={stage.value} value={stage.value}>
                   {stage.label}
                 </SelectItem>
               ))}
+              <div className="px-2 py-1 text-xs font-semibold text-slate-500 bg-slate-100">שלבי פרויקט</div>
+              <SelectItem value="הצעת מחיר">הצעת מחיר</SelectItem>
+              <SelectItem value="תכנון">תכנון</SelectItem>
+              <SelectItem value="היתרים_פרויקט">היתרים</SelectItem>
+              <SelectItem value="ביצוע_פרויקט">ביצוע</SelectItem>
+              <SelectItem value="הושלם">הושלם</SelectItem>
+              <SelectItem value="מבוטל">מבוטל</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -491,6 +524,8 @@ function ClientsTab({
           clients.map((client) => {
             const stageOptions = client.custom_stage_options || DEFAULT_STAGE_OPTIONS;
             const currentStage = client.stage ? stageOptions.find(s => s.value === client.stage) : null;
+            const clientProjects = allProjects?.filter(p => p.client_id === client.id || p.client_name === client.name) || [];
+            const activeProjectsCount = clientProjects.filter(p => p.status !== 'הושלם' && p.status !== 'מבוטל').length;
 
             return (
               <Link 
@@ -536,6 +571,13 @@ function ClientsTab({
                         
                         {client.email && (
                           <div className="truncate text-xs">{client.email}</div>
+                        )}
+
+                        {activeProjectsCount > 0 && (
+                          <div className="flex items-center gap-2 text-xs text-blue-600 font-medium">
+                            <Briefcase className="w-3 h-3 flex-shrink-0" />
+                            <span>{activeProjectsCount} פרויקטים פעילים</span>
+                          </div>
                         )}
 
                         <div className="flex items-center gap-2 text-xs text-slate-500">
