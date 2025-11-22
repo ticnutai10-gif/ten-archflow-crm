@@ -21,11 +21,14 @@ import {
   MessageSquare,
   CheckCircle,
   Globe,
-  Circle
+  Circle,
+  ChevronDown
 } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import { base44 } from "@/api/base44Client";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
 
 import ClientFiles from "./ClientFiles";
 import ClientCommunication from "./ClientCommunication";
@@ -60,6 +63,7 @@ export default function ClientDetails({ client, onBack, onEdit }) {
   const [activeTab, setActiveTab] = useState('timeline');
 
   const [currentClient, setCurrentClient] = useState(client);
+  const [isUpdatingStage, setIsUpdatingStage] = useState(false);
 
   // Update currentClient when client prop changes
   useEffect(() => {
@@ -134,13 +138,24 @@ export default function ClientDetails({ client, onBack, onEdit }) {
     }
   }, []);
 
-  const DEFAULT_STAGE_OPTIONS = [
-    { value: 'ברור_תכן', label: 'ברור תכן', color: '#3b82f6', glow: 'rgba(59, 130, 246, 0.4)' },
-    { value: 'תיק_מידע', label: 'תיק מידע', color: '#8b5cf6', glow: 'rgba(139, 92, 246, 0.4)' },
-    { value: 'היתרים', label: 'היתרים', color: '#f59e0b', glow: 'rgba(245, 158, 11, 0.4)' },
-    { value: 'ביצוע', label: 'ביצוע', color: '#10b981', glow: 'rgba(16, 185, 129, 0.4)' },
-    { value: 'סיום', label: 'סיום', color: '#6b7280', glow: 'rgba(107, 114, 128, 0.4)' }
-  ];
+  const handleStageChange = async (newStage) => {
+    setIsUpdatingStage(true);
+    try {
+      await base44.entities.Client.update(currentClient.id, { stage: newStage });
+      setCurrentClient({ ...currentClient, stage: newStage });
+      
+      window.dispatchEvent(new CustomEvent('client:updated', {
+        detail: { id: currentClient.id, stage: newStage }
+      }));
+      
+      toast.success('השלב עודכן בהצלחה');
+    } catch (error) {
+      console.error('Error updating stage:', error);
+      toast.error('שגיאה בעדכון השלב');
+    } finally {
+      setIsUpdatingStage(false);
+    }
+  };
 
   if (!client) {
     return (
@@ -199,17 +214,45 @@ export default function ClientDetails({ client, onBack, onEdit }) {
                   {currentClient.name || 'ללא שם'}
                 </CardTitle>
                 <div className="flex flex-wrap gap-2">
-                  {currentClient.stage && (() => {
-                    const currentStage = STAGE_OPTIONS.find(s => s.value === currentClient.stage);
-                    if (currentStage) {
-                      return (
-                        <Badge variant="outline" className="bg-slate-100 text-slate-700">
-                          שלב: {currentStage.label}
-                        </Badge>
-                      );
-                    }
-                    return null;
-                  })()}
+                  <Select 
+                    value={currentClient.stage || ''} 
+                    onValueChange={handleStageChange}
+                    disabled={isUpdatingStage}
+                  >
+                    <SelectTrigger className="w-[200px] h-8" style={{ 
+                      borderColor: currentClient.stage ? STAGE_OPTIONS.find(s => s.value === currentClient.stage)?.color : undefined,
+                      color: currentClient.stage ? STAGE_OPTIONS.find(s => s.value === currentClient.stage)?.color : undefined
+                    }}>
+                      <SelectValue placeholder="בחר שלב">
+                        {currentClient.stage && (() => {
+                          const currentStage = STAGE_OPTIONS.find(s => s.value === currentClient.stage);
+                          return currentStage ? (
+                            <div className="flex items-center gap-2">
+                              <Circle 
+                                className="w-3 h-3 flex-shrink-0 fill-current"
+                                style={{ color: currentStage.color }}
+                              />
+                              <span>{currentStage.label}</span>
+                            </div>
+                          ) : 'בחר שלב';
+                        })()}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {STAGE_OPTIONS.map(stage => (
+                        <SelectItem key={stage.value} value={stage.value}>
+                          <div className="flex items-center gap-2">
+                            <Circle 
+                              className="w-3 h-3 flex-shrink-0 fill-current"
+                              style={{ color: stage.color }}
+                            />
+                            <span>{stage.label}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  
                   <Badge variant="outline" className={statusColors[currentClient.status] || statusColors["פוטנציאלי"]}>
                     {currentClient.status || 'פוטנציאלי'}
                   </Badge>
