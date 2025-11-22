@@ -112,7 +112,7 @@ export default function ClientDetails({ client, onBack, onEdit }) {
           </Button>
 
           <Button
-            onClick={onEdit}
+            onClick={() => onEdit?.()}
             className="gap-2 bg-[#2C3A50] hover:bg-[#1f2937] text-white">
             <Edit className="w-4 h-4" />
             ערוך לקוח
