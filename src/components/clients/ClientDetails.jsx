@@ -142,10 +142,14 @@ export default function ClientDetails({ client, onBack, onEdit }) {
     setIsUpdatingStage(true);
     try {
       await base44.entities.Client.update(currentClient.id, { stage: newStage });
-      setCurrentClient({ ...currentClient, stage: newStage });
       
+      // טען מחדש את הלקוח מהשרת כדי לקבל את הגרסה העדכנית
+      const updatedClient = await base44.entities.Client.get(currentClient.id);
+      setCurrentClient(updatedClient);
+      
+      // שלח אירוע עם כל הנתונים של הלקוח
       window.dispatchEvent(new CustomEvent('client:updated', {
-        detail: { id: currentClient.id, stage: newStage }
+        detail: updatedClient
       }));
       
       toast.success('השלב עודכן בהצלחה');

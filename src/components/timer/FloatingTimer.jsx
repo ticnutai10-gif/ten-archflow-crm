@@ -355,25 +355,24 @@ export default function FloatingTimer() {
     return () => window.removeEventListener("keydown", onKey);
   }, [toggleDebug]);
 
-  const loadData = async () => {
+  const loadData = async (forceRefresh = false) => {
     try {
       console.log('⏱️ [TIMER] Loading clients...');
 
       const now = Date.now();
-      if (clientsCache && now - clientsCacheTime < CACHE_DURATION) {
+      if (!forceRefresh && clientsCache && now - clientsCacheTime < CACHE_DURATION) {
         console.log('✅ [TIMER] Using cached clients:', clientsCache.length);
         setClients(clientsCache);
         return;
       }
 
-      console.log('🔄 [TIMER] Cache expired or empty, fetching from server...');
+      console.log('🔄 [TIMER] Fetching from server...');
       const allowedClients = await getAllowedClientsForTimer();
 
       // ✅ הגנה על תוצאות
       const validClients = Array.isArray(allowedClients) ? allowedClients : [];
 
       console.log('✅ [TIMER] Received clients from server:', validClients.length);
-      console.log('📋 [TIMER] Sample clients:', validClients.slice(0, 5).map((c) => ({ name: c.name, phone: c.phone })));
 
       // כבר לא מסננים לפי טלפון - מציגים את כל הלקוחות
       clientsCache = validClients;
@@ -398,6 +397,30 @@ export default function FloatingTimer() {
       loadData();
     }
   }, [accessLoading]);
+
+  // האזן לעדכוני לקוחות
+  useEffect(() => {
+    const handleClientUpdate = (event) => {
+      const updatedClient = event.detail;
+      if (!updatedClient?.id) return;
+      
+      console.log('⏱️ [TIMER] Client updated, refreshing cache:', updatedClient);
+      
+      // עדכן מיידי בקאש
+      if (clientsCache) {
+        clientsCache = clientsCache.map(c => 
+          c.id === updatedClient.id ? { ...c, ...updatedClient } : c
+        );
+        setClients(clientsCache);
+      }
+      
+      // טען מחדש מהשרת אחרי עיכוב קטן
+      setTimeout(() => loadData(true), 500);
+    };
+    
+    window.addEventListener('client:updated', handleClientUpdate);
+    return () => window.removeEventListener('client:updated', handleClientUpdate);
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {

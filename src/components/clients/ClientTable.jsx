@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -69,6 +69,19 @@ export default function ClientTable({
     hasOnEdit: typeof onEdit === 'function',
     hasOnView: typeof onView === 'function'
   });
+
+  // האזן לעדכוני לקוחות
+  useEffect(() => {
+    const handleClientUpdate = (event) => {
+      console.log('📬 [CLIENT TABLE] Received client update:', event.detail);
+      if (typeof onRefresh === 'function') {
+        setTimeout(() => onRefresh(), 100);
+      }
+    };
+    
+    window.addEventListener('client:updated', handleClientUpdate);
+    return () => window.removeEventListener('client:updated', handleClientUpdate);
+  }, [onRefresh]);
 
   return (
     <div className="rounded-lg border border-slate-200 bg-white overflow-hidden">

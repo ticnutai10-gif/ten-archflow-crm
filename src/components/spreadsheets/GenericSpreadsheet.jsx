@@ -479,12 +479,23 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   // Listen for client updates
   useEffect(() => {
     const handleClientUpdate = (event) => {
-      const { id, stage } = event.detail || {};
-      if (!id) return;
+      const updatedClient = event.detail || {};
+      if (!updatedClient.id) return;
       
-      setRowsData(prev => prev.map(row => 
-        row.client_id === id ? { ...row, stage } : row
-      ));
+      console.log('📬 [GENERIC SPREADSHEET] Received client update:', updatedClient);
+      
+      // עדכן את השורות עם כל הנתונים העדכניים של הלקוח
+      setRowsData(prev => prev.map(row => {
+        if (row.client_id === updatedClient.id) {
+          return { 
+            ...row, 
+            stage: updatedClient.stage,
+            name: updatedClient.name,
+            // עדכן כל שדה אחר שרלוונטי
+          };
+        }
+        return row;
+      }));
     };
     
     window.addEventListener('client:updated', handleClientUpdate);
