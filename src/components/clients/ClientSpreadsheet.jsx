@@ -440,7 +440,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
       event.stopPropagation();
       const client = localClients.find(c => c.id === clientId);
       if (client) {
-        onView(client);
+        onView?.(client);
       }
       return;
     }
@@ -2284,7 +2284,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                                 size="icon"
                                 variant="ghost"
                                 className="h-8 w-8"
-                                onClick={() => onView(client)}>
+                                onClick={() => onView?.(client)}>
 
                                 <Eye className="w-4 h-4 text-blue-600" />
                               </Button>
@@ -2292,7 +2292,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                                 size="icon"
                                 variant="ghost"
                                 className="h-8 w-8"
-                                onClick={() => onEdit(client)}>
+                                onClick={() => onEdit?.(client)}>
 
                                 <Edit className="w-4 h-4 text-green-600" />
                               </Button>
