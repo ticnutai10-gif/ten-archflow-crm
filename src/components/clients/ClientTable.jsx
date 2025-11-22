@@ -66,6 +66,10 @@ export default function ClientTable({
   onDelete,
   onRefresh
 }) {
+  console.log('[ClientTable] Props received:', { 
+    hasOnEdit: typeof onEdit === 'function',
+    hasOnView: typeof onView === 'function'
+  });
   const [editingStage, setEditingStage] = useState(null);
 
   const handleStageChange = async (clientId, newStage) => {

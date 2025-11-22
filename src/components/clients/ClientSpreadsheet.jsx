@@ -216,6 +216,10 @@ function ColorPicker({ onApply, currentStyle = {}, onClose }) {
 }
 
 export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }) {
+  console.log('[ClientSpreadsheet] Props received:', { 
+    hasOnEdit: typeof onEdit === 'function',
+    hasOnView: typeof onView === 'function'
+  });
   const [editingStage, setEditingStage] = useState(null);
   const [columns, setColumns] = useState(() => {
     const saved = loadSettings();
