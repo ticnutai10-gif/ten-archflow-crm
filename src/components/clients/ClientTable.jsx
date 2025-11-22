@@ -211,7 +211,10 @@ export default function ClientTable({
                           <Eye className="w-4 h-4 ml-2" />
                           פתח דף לקוח
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onEdit?.(client)}>
+                        <DropdownMenuItem onClick={(e) => {
+                          e.stopPropagation();
+                          if (onEdit) onEdit(client);
+                        }}>
                           <Edit className="w-4 h-4 ml-2" />
                           ערוך
                         </DropdownMenuItem>

@@ -2292,7 +2292,10 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                                 size="icon"
                                 variant="ghost"
                                 className="h-8 w-8"
-                                onClick={() => onEdit?.(client)}>
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (onEdit) onEdit(client);
+                                }}>
 
                                 <Edit className="w-4 h-4 text-green-600" />
                               </Button>
