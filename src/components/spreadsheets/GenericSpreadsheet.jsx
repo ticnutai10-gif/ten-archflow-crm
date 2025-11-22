@@ -52,7 +52,7 @@ export function StageDisplay({ value, column, isEditing, onEdit, editValue, onSa
                 // Use direct save if available, otherwise use the old method
                 if (onDirectSave) {
                   onDirectSave(stage.value);
-                } else {
+                } else if (typeof onEdit === 'function' && typeof onSave === 'function') {
                   onEdit(stage.value);
                   setTimeout(() => onSave(), 100);
                 }
@@ -90,8 +90,12 @@ export function StageDisplay({ value, column, isEditing, onEdit, editValue, onSa
             <button
               key={stage.value}
               onClick={() => {
-                onEdit(stage.value);
-                setTimeout(() => onSave(), 50);
+                if (onDirectSave) {
+                  onDirectSave(stage.value);
+                } else if (typeof onEdit === 'function' && typeof onSave === 'function') {
+                  onEdit(stage.value);
+                  setTimeout(() => onSave(), 50);
+                }
               }}
               className="w-full flex items-center gap-3 px-3 py-2 hover:bg-purple-50 rounded-lg transition-all"
             >
