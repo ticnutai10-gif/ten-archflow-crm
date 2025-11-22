@@ -119,16 +119,7 @@ export default function ClientTable({
                     </TableCell>
                   )}
                   <TableCell className="font-medium">
-                    <span 
-                      className="hover:text-blue-600 transition-colors cursor-pointer"
-                      onClick={(e) => {
-                        if (e.ctrlKey || e.metaKey) {
-                          e.stopPropagation();
-                          window.location.href = createPageUrl('Folders') + `?client_id=${client.id}&client_name=${encodeURIComponent(client.name)}`;
-                        }
-                      }}
-                      title="Ctrl+Click לפתיחת תיקייה"
-                    >
+                    <span className="hover:text-blue-600 transition-colors">
                       {client.name}
                     </span>
                   </TableCell>
