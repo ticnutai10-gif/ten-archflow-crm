@@ -33,6 +33,7 @@ import TimerLogs from "../components/dashboard/TimerLogs";
 import ReminderManager from "../components/reminders/ReminderManager";
 import DashboardSettings from "../components/dashboard/DashboardSettings";
 import UpcomingMeetings from "../components/dashboard/UpcomingMeetings";
+import RecentClients from "../components/dashboard/RecentClients";
 
 const VIEW_MODE_OPTIONS = [
   { value: 'list', label: 'שורות', icon: LayoutList },
@@ -71,6 +72,7 @@ export default function Dashboard() {
   const [quotes, setQuotes] = useState([]);
   const [timeLogs, setTimeLogs] = useState([]);
   const [upcomingMeetings, setUpcomingMeetings] = useState([]);
+  const [recentClients, setRecentClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showDashboardSettings, setShowDashboardSettings] = useState(false);
 
@@ -106,7 +108,8 @@ export default function Dashboard() {
         tasks: false,
         quotes: false,
         timeLogs: false,
-        meetings: false
+        meetings: false,
+        clients: false
       };
     }
   });
@@ -124,6 +127,7 @@ export default function Dashboard() {
         showQuoteStatus: dp.showQuoteStatus !== undefined ? dp.showQuoteStatus : true,
         showTimerLogs: dp.showTimerLogs !== undefined ? dp.showTimerLogs : true,
         showMeetings: dp.showMeetings !== undefined ? dp.showMeetings : true,
+        showRecentClients: dp.showRecentClients !== undefined ? dp.showRecentClients : true,
       };
     } catch (e) {
       return {
@@ -134,6 +138,7 @@ export default function Dashboard() {
         showQuoteStatus: true,
         showTimerLogs: true,
         showMeetings: true,
+        showRecentClients: true,
       };
     }
   });
@@ -246,6 +251,7 @@ export default function Dashboard() {
       setQuotes(validQuotes.slice(0, 5));
       setTimeLogs(validTimeLogs);
       setUpcomingMeetings(futureMeetings.slice(0, 10));
+      setRecentClients(validClients);
     } catch (error) {
       console.error('Error loading dashboard data:', error);
     }
@@ -271,6 +277,7 @@ export default function Dashboard() {
         showQuoteStatus: dp.showQuoteStatus !== undefined ? dp.showQuoteStatus : true,
         showTimerLogs: dp.showTimerLogs !== undefined ? dp.showTimerLogs : true,
         showMeetings: dp.showMeetings !== undefined ? dp.showMeetings : true,
+        showRecentClients: dp.showRecentClients !== undefined ? dp.showRecentClients : true,
       });
     };
     window.addEventListener("preferences:changed", onPrefsChanged);
@@ -586,6 +593,34 @@ export default function Dashboard() {
                 {expandedCards.meetings && (
                   <CardContent className="p-0">
                     <UpcomingMeetings meetings={upcomingMeetings} isLoading={loading} onUpdate={loadDashboardData} />
+                  </CardContent>
+                )}
+              </Card>
+            )}
+
+            {dashboardSettings.showRecentClients && (
+              <Card className="bg-white shadow-md">
+                <CardHeader 
+                  className={`border-b cursor-pointer hover:bg-slate-50 transition-colors ${compactHeaders ? 'py-3' : ''}`}
+                  onClick={() => toggleCard('clients')}
+                >
+                  <CardTitle className={`flex items-center justify-between ${compactHeaders ? 'text-sm' : 'text-base'}`}>
+                    <span className="text-right">לקוחות אחרונים</span>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-slate-500 ${compactHeaders ? 'text-xs' : 'text-sm'}`}>
+                        {recentClients.length}
+                      </span>
+                      {expandedCards.clients ? (
+                        <ChevronUp className="w-5 h-5 text-slate-400" />
+                      ) : (
+                        <ChevronDown className="w-5 h-5 text-slate-400" />
+                      )}
+                    </div>
+                  </CardTitle>
+                </CardHeader>
+                {expandedCards.clients && (
+                  <CardContent className="p-0">
+                    <RecentClients clients={recentClients} isLoading={loading} />
                   </CardContent>
                 )}
               </Card>
