@@ -245,6 +245,7 @@ export default function ClientSpreadsheets({ clientId, clientName }) {
           onUpdate={loadSpreadsheets}
           fullScreenMode={false}
           filterByClient={clientName}
+          onBack={() => setSelectedSpreadsheet(null)}
         />
       )}
 
