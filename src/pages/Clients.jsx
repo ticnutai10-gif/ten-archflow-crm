@@ -51,7 +51,7 @@ import {
   ArrowUpDown,
   GitBranch,
   BarChart,
-  Timeline
+  Clock
 } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
@@ -867,7 +867,7 @@ export default function ClientsPage() {
               <DropdownMenuItem
                 onClick={() => setViewMode("timeline")}
                 className={`flex items-center gap-3 cursor-pointer ${viewMode === "timeline" ? "bg-blue-50 text-blue-700" : ""}`}>
-                <Timeline className="w-4 h-4" style={{ color: viewMode === "timeline" ? undefined : iconColor }} />
+                <Clock className="w-4 h-4" style={{ color: viewMode === "timeline" ? undefined : iconColor }} />
                 <span className="flex-1">ציר זמן</span>
                 {viewMode === "timeline" && <Eye className="w-4 h-4 text-blue-600" />}
               </DropdownMenuItem>
