@@ -1382,122 +1382,168 @@ export default function ClientsPage() {
             </div>
           </ScrollArea>
         ) : viewMode === "kanban" ? (
-          <div className="h-[calc(100vh-380px)] overflow-x-auto">
-            <div className="flex gap-4 min-w-max pb-4">
-              {['פוטנציאלי', 'פעיל', 'לא פעיל'].map((status) => {
-                const statusClients = filteredAndSortedClients.filter(c => c.status === status);
-                return (
-                  <div key={status} className="flex-shrink-0 w-80">
-                    <div className={`rounded-lg border-2 ${
-                      status === 'פוטנציאלי' ? 'border-amber-200 bg-amber-50' :
-                      status === 'פעיל' ? 'border-green-200 bg-green-50' :
-                      'border-slate-200 bg-slate-50'
-                    } p-4`}>
-                      <div className="flex items-center justify-between mb-4">
-                        <h3 className="font-bold text-lg">{status}</h3>
-                        <Badge variant="outline" className="bg-white">
-                          {statusClients.length}
-                        </Badge>
-                      </div>
+          <DragDropContext onDragEnd={async (result) => {
+            if (!result.destination) return;
+            
+            const sourceStage = result.source.droppableId;
+            const destStage = result.destination.droppableId;
+            
+            if (sourceStage === destStage) return;
+            
+            const clientId = result.draggableId;
+            const client = clients.find(c => c.id === clientId);
+            
+            if (!client) return;
+            
+            try {
+              await base44.entities.Client.update(clientId, { stage: destStage });
+              toast.success(`${client.name} עודכן לשלב ${STAGE_OPTIONS.find(s => s.value === destStage)?.label}`);
+              loadClients();
+            } catch (error) {
+              console.error('Error updating client stage:', error);
+              toast.error('שגיאה בעדכון שלב הלקוח');
+            }
+          }}>
+            <div className="h-[calc(100vh-380px)] overflow-x-auto">
+              <div className="flex gap-4 min-w-max pb-4">
+                {STAGE_OPTIONS.map((stageOption) => {
+                  const stageClients = filteredAndSortedClients.filter(c => c.stage === stageOption.value);
+                  const totalValue = stageClients.reduce((sum, c) => {
+                    if (!c.budget_range) return sum;
+                    const match = c.budget_range.match(/(\d+)/g);
+                    return sum + (match ? parseInt(match[match.length - 1]) * 1000 : 0);
+                  }, 0);
 
-                      <ScrollArea className="h-[calc(100vh-500px)]">
-                        <div className="space-y-3 pr-2"> {/* Added pr-2 for scrollbar spacing */}
-                          {isLoading ?
-                            Array(3).fill(0).map((_, i) => (
-                              <Card key={i} className="h-32">
-                                <CardHeader className="pb-2"><Skeleton className="h-4 w-3/4" /></CardHeader>
-                                <CardContent className="space-y-2 text-xs">
-                                  <Skeleton className="h-3 w-full" />
-                                  <Skeleton className="h-3 w-5/6" />
-                                  <Skeleton className="h-3 w-2/3" />
-                                </CardContent>
-                              </Card>
-                            ))
-                          : statusClients.length === 0 ? (
-                            <div className="text-center py-8 text-slate-400 text-sm">
-                              אין לקוחות בסטטוס זה
-                            </div>
-                          ) : (
-                            statusClients.map((client) => (
-                              <Card
-                                key={client.id}
-                                className="cursor-pointer hover:shadow-md transition-all bg-white"
-                                onClick={(e) => {
-                                  if (e.ctrlKey || e.metaKey) {
-                                    e.preventDefault();
-                                    window.location.href = createPageUrl('Folders') + `?client_id=${client.id}&client_name=${encodeURIComponent(client.name)}`;
-                                  } else {
-                                    handleViewDetails(client);
-                                  }
-                                }}>
-                                <CardHeader className="pb-2">
-                                  <CardTitle 
-                                    className="text-sm font-semibold hover:text-blue-600 transition-colors cursor-pointer flex items-center gap-2"
-                                    onClick={(e) => {
-                                      if (e.ctrlKey || e.metaKey) {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        handleViewDetails(client);
-                                      }
-                                    }}
-                                  >
-                                    {client.stage && (() => {
-                                      const currentStage = STAGE_OPTIONS.find(s => s.value === client.stage);
-                                      if (currentStage) {
-                                        return (
-                                          <Circle 
-                                            className="w-2.5 h-2.5 flex-shrink-0 fill-current"
-                                            style={{ color: currentStage.color }}
-                                            title={currentStage.label}
-                                          />
-                                        );
-                                      }
-                                      return null;
-                                    })()}
-                                    {client.name}
-                                  </CardTitle>
-                                </CardHeader>
-                                <CardContent className="space-y-2 text-xs">
-                                  {client.phone && (
-                                    <div className="flex items-center gap-1 text-slate-600">
-                                      <Phone className="w-3 h-3" style={{ color: iconColor }} />
-                                      <span className="truncate">{highlightText(client.phone, searchTerm)}</span>
-                                    </div>
-                                  )}
-                                  {client.email && (
-                                    <div className="flex items-center gap-1 text-slate-600">
-                                      <Mail className="w-3 h-3" style={{ color: iconColor }} />
-                                      <span className="truncate">{highlightText(client.email, searchTerm)}</span>
-                                    </div>
-                                  )}
-                                  {client.company && (
-                                    <div className="flex items-center gap-1 text-slate-600">
-                                      <Building className="w-3 h-3" style={{ color: iconColor }} />
-                                      <span className="truncate">{client.company}</span>
-                                    </div>
-                                  )}
-                                  <div className="flex gap-2 mt-2">
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-7 text-xs"
-                                      onClick={(e) => { e.stopPropagation(); handleEdit(client); }}>
-                                      <Edit className="w-3 h-3 ml-1" style={{ color: iconColor }} />
-                                      ערוך
-                                    </Button>
-                                  </div>
-                                </CardContent>
-                              </Card>
-                            ))
-                          )}
+                  return (
+                    <div key={stageOption.value} className="flex-shrink-0 w-80">
+                      <div 
+                        className="rounded-lg border-2 p-4"
+                        style={{ 
+                          borderColor: stageOption.color + '40',
+                          backgroundColor: stageOption.color + '08'
+                        }}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className="font-bold text-lg">{stageOption.label}</h3>
+                          <Badge 
+                            className="text-white"
+                            style={{ backgroundColor: stageOption.color }}
+                          >
+                            {stageClients.length}
+                          </Badge>
                         </div>
-                      </ScrollArea>
+
+                        {totalValue > 0 && (
+                          <div className="flex items-center gap-1 text-sm font-semibold mb-3 text-green-700">
+                            <DollarSign className="w-4 h-4" />
+                            <span>₪{(totalValue / 1000).toFixed(0)}K</span>
+                          </div>
+                        )}
+
+                        <Droppable droppableId={stageOption.value}>
+                          {(provided, snapshot) => (
+                            <div
+                              ref={provided.innerRef}
+                              {...provided.droppableProps}
+                              className={`min-h-[200px] transition-colors ${snapshot.isDraggingOver ? 'bg-blue-50/50' : ''}`}
+                            >
+                              <ScrollArea className="h-[calc(100vh-550px)]">
+                                <div className="space-y-3 pr-2">
+                                  {isLoading ?
+                                    Array(3).fill(0).map((_, i) => (
+                                      <Card key={i} className="h-32">
+                                        <CardHeader className="pb-2"><Skeleton className="h-4 w-3/4" /></CardHeader>
+                                        <CardContent className="space-y-2 text-xs">
+                                          <Skeleton className="h-3 w-full" />
+                                          <Skeleton className="h-3 w-5/6" />
+                                          <Skeleton className="h-3 w-2/3" />
+                                        </CardContent>
+                                      </Card>
+                                    ))
+                                  : stageClients.length === 0 ? (
+                                    <div className="text-center py-8 text-slate-400 text-sm">
+                                      גרור לקוח לכאן
+                                    </div>
+                                  ) : (
+                                    stageClients.map((client, index) => (
+                                      <Draggable key={client.id} draggableId={client.id} index={index}>
+                                        {(provided, snapshot) => (
+                                          <div
+                                            ref={provided.innerRef}
+                                            {...provided.draggableProps}
+                                            {...provided.dragHandleProps}
+                                          >
+                                            <Card
+                                              className={`cursor-grab active:cursor-grabbing hover:shadow-md transition-all bg-white ${
+                                                snapshot.isDragging ? 'shadow-xl rotate-2 scale-105' : ''
+                                              }`}
+                                              onClick={(e) => {
+                                                if (e.ctrlKey || e.metaKey) {
+                                                  e.preventDefault();
+                                                  window.location.href = createPageUrl('Folders') + `?client_id=${client.id}&client_name=${encodeURIComponent(client.name)}`;
+                                                } else {
+                                                  handleViewDetails(client);
+                                                }
+                                              }}
+                                            >
+                                              <CardHeader className="pb-2">
+                                                <CardTitle className="text-sm font-semibold hover:text-blue-600 transition-colors cursor-pointer flex items-center gap-2">
+                                                  <Circle 
+                                                    className="w-2.5 h-2.5 flex-shrink-0 fill-current"
+                                                    style={{ color: stageOption.color }}
+                                                  />
+                                                  {client.name}
+                                                </CardTitle>
+                                              </CardHeader>
+                                              <CardContent className="space-y-2 text-xs">
+                                                {client.phone && (
+                                                  <div className="flex items-center gap-1 text-slate-600">
+                                                    <Phone className="w-3 h-3" style={{ color: iconColor }} />
+                                                    <span className="truncate">{client.phone}</span>
+                                                  </div>
+                                                )}
+                                                {client.email && (
+                                                  <div className="flex items-center gap-1 text-slate-600">
+                                                    <Mail className="w-3 h-3" style={{ color: iconColor }} />
+                                                    <span className="truncate">{client.email}</span>
+                                                  </div>
+                                                )}
+                                                {client.budget_range && (
+                                                  <Badge className="text-xs bg-green-100 text-green-700 mt-2">
+                                                    {client.budget_range}
+                                                  </Badge>
+                                                )}
+                                                <div className="flex gap-2 mt-2">
+                                                  <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-7 text-xs"
+                                                    onClick={(e) => { e.stopPropagation(); handleEdit(client); }}
+                                                  >
+                                                    <Edit className="w-3 h-3 ml-1" style={{ color: iconColor }} />
+                                                    ערוך
+                                                  </Button>
+                                                </div>
+                                              </CardContent>
+                                            </Card>
+                                          </div>
+                                        )}
+                                      </Draggable>
+                                    ))
+                                  )}
+                                  {provided.placeholder}
+                                </div>
+                              </ScrollArea>
+                            </div>
+                          )}
+                        </Droppable>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          </DragDropContext>
         ) : ( // Default to Grid view for DND
           <DragDropContext onDragEnd={onDragEnd}>
             <Droppable droppableId="clients-grid">
