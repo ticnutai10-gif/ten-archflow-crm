@@ -11,6 +11,7 @@ import { createPageUrl } from '@/utils';
 import SubTaskForm from '../components/projects/SubTaskForm';
 import ProjectGantt from '../components/projects/ProjectGantt';
 import ProjectResourceView from '../components/projects/ProjectResourceView';
+import ProjectSummaryReport from '../components/projects/ProjectSummaryReport';
 
 export default function ProjectDetails() {
   const navigate = useNavigate();
@@ -154,6 +155,10 @@ export default function ProjectDetails() {
               <Users className="w-4 h-4" />
               משאבים
             </TabsTrigger>
+            <TabsTrigger value="summary" className="gap-2">
+              <BarChart3 className="w-4 h-4" />
+              סיכום AI
+            </TabsTrigger>
           </TabsList>
 
           {/* Tasks List */}
@@ -252,7 +257,12 @@ export default function ProjectDetails() {
           <TabsContent value="resources">
             <ProjectResourceView projectId={project.id} />
           </TabsContent>
-        </Tabs>
+
+          {/* AI Summary */}
+          <TabsContent value="summary">
+            <ProjectSummaryReport projectId={project.id} projectName={project.name} />
+          </TabsContent>
+          </Tabs>
 
         {/* SubTask Form Modal */}
         {showSubTaskForm && (
