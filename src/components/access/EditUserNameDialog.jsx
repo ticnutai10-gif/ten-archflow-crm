@@ -179,11 +179,11 @@ export default function EditUserNameDialog({ open, onClose, userEmail, currentFu
           }
           
           addDebugStep(`✅ Backend function הצליח!`, 'success');
-          addDebugStep(`שם חדש במערכת: "${response.data.user?.full_name}"`, 'success');
+          addDebugStep(`שם חדש במערכת: "${response.data.user?.display_name}"`, 'success');
           addDebugStep(`אימות שרת: ${response.data.verified ? 'כן ✅' : 'לא ⚠️'}`, response.data.verified ? 'success' : 'warning');
           
           if (response.data.verified) {
-            toast.success(`✅ השם עודכן בהצלחה ל-"${response.data.user.full_name}"!`);
+            toast.success(`✅ השם עודכן בהצלחה ל-"${response.data.user.display_name}"!`);
             
             addDebugStep('🔄 מרענן נתונים בעמוד...', 'info');
             if (onSuccess) {

@@ -106,7 +106,7 @@ Deno.serve(async (req) => {
               'Content-Type': 'application/json',
               'Prefer': 'return=representation'
             },
-            body: JSON.stringify({ full_name: fullName.trim() })
+            body: JSON.stringify({ display_name: fullName.trim() })
           });
           
           if (!response.ok) {
@@ -125,7 +125,7 @@ Deno.serve(async (req) => {
           log('🔧 Method 2: Trying SDK service role update...');
           const updateResult = await base44.asServiceRole.entities.User.update(
             targetUser.id, 
-            { full_name: fullName.trim() }
+            { display_name: fullName.trim() }
           );
           log('✅ SDK update completed', { 
             result: updateResult,
@@ -180,11 +180,11 @@ Deno.serve(async (req) => {
     
     log('✅ Verification complete', { 
       expectedName: fullName.trim(),
-      actualName: verifiedUser.full_name,
-      match: verifiedUser.full_name === fullName.trim()
+      actualName: verifiedUser.display_name,
+      match: verifiedUser.display_name === fullName.trim()
     });
 
-    const success = verifiedUser.full_name === fullName.trim();
+    const success = verifiedUser.display_name === fullName.trim();
 
     return Response.json({
       success,
@@ -192,12 +192,12 @@ Deno.serve(async (req) => {
       user: {
         id: verifiedUser.id,
         email: verifiedUser.email,
-        full_name: verifiedUser.full_name
+        display_name: verifiedUser.display_name
       },
       debugLog,
       message: success ? 
-        `השם עודכן בהצלחה ל-"${verifiedUser.full_name}"` : 
-        `העדכון בוצע אך השם לא השתנה. שם נוכחי: "${verifiedUser.full_name}"`
+        `השם עודכן בהצלחה ל-"${verifiedUser.display_name}"` : 
+        `העדכון בוצע אך השם לא השתנה. שם נוכחי: "${verifiedUser.display_name}"`
     });
 
   } catch (error) {

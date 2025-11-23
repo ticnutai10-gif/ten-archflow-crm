@@ -162,7 +162,7 @@ export default function Layout({ children, currentPageName }) {
 
   const getUserDisplayName = useCallback(() => {
     if (!user) return null;
-    return user.full_name || user.email?.split('@')[0] || 'משתמש';
+    return user.display_name || user.full_name || user.email?.split('@')[0] || 'משתמש';
   }, [user]);
 
   const handleLogout = useCallback(async () => {
