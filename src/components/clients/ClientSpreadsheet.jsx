@@ -2351,6 +2351,24 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
 
                                 <Edit className="w-4 h-4 text-green-600" />
                               </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-8 w-8"
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  if (!confirm(`האם למחוק את ${client.name}? פעולה זו אינה הפיכה.`)) return;
+                                  try {
+                                    await base44.entities.Client.delete(client.id);
+                                    toast.success('הלקוח נמחק בהצלחה');
+                                    window.location.reload();
+                                  } catch (error) {
+                                    toast.error('שגיאה במחיקת הלקוח');
+                                  }
+                                }}>
+
+                                <Trash2 className="w-4 h-4 text-red-600" />
+                              </Button>
                             </div>
                           </td>);
 
