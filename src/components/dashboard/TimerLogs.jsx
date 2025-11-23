@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,7 +20,8 @@ import {
   Square,
   Users,
   Mail,
-  UserCircle
+  UserCircle,
+  ChevronDown
 } from 'lucide-react';
 import { Table as UITable, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
@@ -630,22 +630,26 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate }) {
         </div>
       ) : null}
 
-      {/* כלי בקרה */}
-      <div className="flex-shrink-0 overflow-x-auto">
-        <div className="flex flex-col md:flex-row md:flex-wrap items-stretch gap-3 p-4 min-w-0 whitespace-nowrap md:whitespace-normal">
-          <div className="relative flex-1 min-w-0">
+      {/* כלי בקרה - שורה אחת קומפקטית */}
+      <div className="flex-shrink-0 bg-white border-b border-slate-200">
+        <div className="flex items-center gap-2 p-3 flex-wrap">
+          {/* חיפוש */}
+          <div className="relative flex-1 min-w-[200px] max-w-[300px]">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <Input
-              placeholder="חיפוש לקוח או פעילות..."
+              placeholder="חיפוש..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pr-10 w-full"
+              className="pr-10 h-9 text-sm"
             />
           </div>
 
+          {/* פילטר לקוחות */}
           <Select value={clientFilter} onValueChange={setClientFilter}>
-            <SelectTrigger className="w-full md:w-48">
-              <SelectValue placeholder="כל הלקוחות" />
+            <SelectTrigger className="w-9 h-9 p-0" title="לקוח">
+              <div className="flex items-center justify-center w-full">
+                <User className="w-4 h-4 text-slate-600" />
+              </div>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">כל הלקוחות</SelectItem>
@@ -655,87 +659,84 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate }) {
             </SelectContent>
           </Select>
 
-          {/* פילטר משתמשים מתקדם */}
-          <div className="relative w-full md:w-64">
-            <Select value={userFilter} onValueChange={setUserFilter}>
-              <SelectTrigger className="w-full">
-                <div className="flex items-center gap-2">
-                  <UserCircle className="w-4 h-4" />
-                  <SelectValue placeholder="כל המשתמשים" />
+          {/* פילטר משתמשים */}
+          <Select value={userFilter} onValueChange={setUserFilter}>
+            <SelectTrigger className="w-9 h-9 p-0" title="משתמש">
+              <div className="flex items-center justify-center w-full">
+                <UserCircle className="w-4 h-4 text-slate-600" />
+              </div>
+            </SelectTrigger>
+            <SelectContent className="w-80">
+              <div className="p-2 border-b sticky top-0 bg-white z-10">
+                <div className="relative">
+                  <Search className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Input
+                    placeholder="חפש משתמש..."
+                    value={userSearchTerm}
+                    onChange={(e) => setUserSearchTerm(e.target.value)}
+                    className="pr-8 h-9 text-sm"
+                    onClick={(e) => e.stopPropagation()}
+                  />
                 </div>
-              </SelectTrigger>
-              <SelectContent className="w-80">
-                <div className="p-2 border-b sticky top-0 bg-white z-10">
-                  <div className="relative">
-                    <Search className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <Input
-                      placeholder="חפש לפי שם או מייל..."
-                      value={userSearchTerm}
-                      onChange={(e) => setUserSearchTerm(e.target.value)}
-                      className="pr-8 h-9 text-sm"
-                      onClick={(e) => e.stopPropagation()}
-                    />
+              </div>
+
+              <SelectItem value="all">
+                <div className="flex items-center gap-2 py-1">
+                  <Users className="w-4 h-4 text-slate-500" />
+                  <div>
+                    <div className="font-medium">כל המשתמשים</div>
+                    <div className="text-xs text-slate-500">{allUsers.length} משתמשים</div>
                   </div>
                 </div>
+              </SelectItem>
 
-                <SelectItem value="all">
-                  <div className="flex items-center gap-2 py-1">
-                    <Users className="w-4 h-4 text-slate-500" />
-                    <div>
-                      <div className="font-medium">כל המשתמשים</div>
-                      <div className="text-xs text-slate-500">{allUsers.length} משתמשים במערכת</div>
+              {allUsers.length === 0 ? (
+                <div className="p-4 text-center text-slate-500 text-sm">
+                  <p className="font-semibold mb-2">⚠️ אין משתמשים</p>
+                  <p className="text-xs">לא נמצאו רישומי זמן עם created_by</p>
+                </div>
+              ) : (
+                <div className="max-h-96 overflow-y-auto">
+                  {filteredUsers.length === 0 ? (
+                    <div className="p-4 text-center text-slate-500 text-sm">
+                      אין תוצאות
                     </div>
-                  </div>
-                </SelectItem>
-
-                {allUsers.length === 0 ? (
-                  <div className="p-4 text-center text-slate-500 text-sm">
-                    <p className="font-semibold mb-2">⚠️ אין משתמשים</p>
-                    <p className="text-xs">לא נמצאו רישומי זמן עם created_by תקין</p>
-                  </div>
-                ) : (
-                  <div className="max-h-96 overflow-y-auto">
-                    {filteredUsers.length === 0 ? (
-                      <div className="p-4 text-center text-slate-500 text-sm">
-                        אין תוצאות לחיפוש
-                      </div>
-                    ) : (
-                      filteredUsers.map(user => (
-                        <SelectItem key={user.id} value={user.id}>
-                          <div className="flex items-center gap-3 py-1">
-                            <Avatar className="w-8 h-8">
-                              <AvatarFallback className="text-xs bg-gradient-to-br from-blue-500 to-purple-600 text-white">
-                                {user.name.substring(0, 2).toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 min-w-0">
-                              <div className="font-medium text-sm truncate">{user.full_name || user.name}</div>
-                              <div className="text-xs text-slate-500 truncate flex items-center gap-1">
-                                <Mail className="w-3 h-3" />
-                                {user.email || user.id}
-                              </div>
-                              <div className="flex items-center gap-2 mt-1">
-                                <Badge variant="outline" className="text-[10px] px-1 py-0">
-                                  {Math.round(user.totalHours * 10) / 10}ש׳
-                                </Badge>
-                                <Badge variant="outline" className="text-[10px] px-1 py-0">
-                                  {user.clients.length} לקוחות
-                                </Badge>
-                              </div>
+                  ) : (
+                    filteredUsers.map(user => (
+                      <SelectItem key={user.id} value={user.id}>
+                        <div className="flex items-center gap-3 py-1">
+                          <Avatar className="w-8 h-8">
+                            <AvatarFallback className="text-xs bg-gradient-to-br from-blue-500 to-purple-600 text-white">
+                              {user.name.substring(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-sm truncate">{user.full_name || user.name}</div>
+                            <div className="text-xs text-slate-500 truncate">{user.email || user.id}</div>
+                            <div className="flex items-center gap-2 mt-1">
+                              <Badge variant="outline" className="text-[10px] px-1 py-0">
+                                {Math.round(user.totalHours * 10) / 10}ש׳
+                              </Badge>
+                              <Badge variant="outline" className="text-[10px] px-1 py-0">
+                                {user.clients.length} לקוחות
+                              </Badge>
                             </div>
                           </div>
-                        </SelectItem>
-                      ))
-                    )}
-                  </div>
-                )}
-              </SelectContent>
-            </Select>
-          </div>
+                        </div>
+                      </SelectItem>
+                    ))
+                  )}
+                </div>
+              )}
+            </SelectContent>
+          </Select>
 
+          {/* פילטר זמן */}
           <Select value={timeFilter} onValueChange={setTimeFilter}>
-            <SelectTrigger className="w-full md:w-40">
-              <SelectValue placeholder="תקופה" />
+            <SelectTrigger className="w-9 h-9 p-0" title="תקופה">
+              <div className="flex items-center justify-center w-full">
+                <Calendar className="w-4 h-4 text-slate-600" />
+              </div>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">כל התקופות</SelectItem>
@@ -745,81 +746,101 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate }) {
             </SelectContent>
           </Select>
 
-          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+          {/* מפריד */}
+          <div className="h-6 w-px bg-slate-300"></div>
+
+          {/* סטטיסטיקות */}
+          <Button
+            variant={showStats ? "default" : "ghost"}
+            size="icon"
+            onClick={() => setShowStats(!showStats)}
+            title={showStats ? 'הסתר סטטיסטיקות' : 'הצג סטטיסטיקות'}
+            className="h-9 w-9"
+          >
+            <BarChart3 className="w-4 h-4" />
+          </Button>
+
+          {/* תצוגות */}
+          <div className="flex items-center gap-0.5 bg-slate-100 rounded-md p-0.5">
             <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowStats(!showStats)}
-              title={showStats ? 'הסתר סטטיסטיקות' : 'הצג סטטיסטיקות'}
-              className="shrink-0"
+              variant={!summaryMode && viewMode === 'list' ? 'default' : 'ghost'}
+              size="icon"
+              className={!summaryMode && viewMode === 'list' ? 'h-8 w-8 bg-slate-900 text-white' : 'h-8 w-8'}
+              onClick={() => { setSummaryMode(false); setViewMode('list'); }}
+              title="רשימה"
             >
-              <BarChart3 className="w-4 h-4 ml-2" />
-              {showStats ? 'הסתר סטטיסטיקות' : 'סטטיסטיקות'}
+              <List className="w-4 h-4" />
             </Button>
+            <Button
+              variant={!summaryMode && viewMode === 'table' ? 'default' : 'ghost'}
+              size="icon"
+              className={!summaryMode && viewMode === 'table' ? 'h-8 w-8 bg-slate-900 text-white' : 'h-8 w-8'}
+              onClick={() => { setSummaryMode(false); setViewMode('table'); }}
+              title="טבלה"
+            >
+              <TableIcon className="w-4 h-4" />
+            </Button>
+          </div>
 
-            {/* Toggle view mode icons */}
-            <div className="flex items-center gap-1 bg-white border rounded-md p-1 shrink-0">
-              <Button
-                variant={!summaryMode && viewMode === 'list' ? 'default' : 'ghost'}
-                size="icon"
-                className={!summaryMode && viewMode === 'list' ? 'h-8 w-8 bg-slate-900 text-white' : 'h-8 w-8'}
-                onClick={() => { setSummaryMode(false); setViewMode('list'); }}
-                title="תצוגת רשימה"
-              >
-                <List className="w-4 h-4" />
-              </Button>
-              <Button
-                variant={!summaryMode && viewMode === 'table' ? 'default' : 'ghost'}
-                size="icon"
-                className={!summaryMode && viewMode === 'table' ? 'h-8 w-8 bg-slate-900 text-white' : 'h-8 w-8'}
-                onClick={() => { setSummaryMode(false); setViewMode('table'); }}
-                title="תצוגת טבלה לפריטים"
-              >
-                <TableIcon className="w-4 h-4" />
-              </Button>
-            </div>
+          {/* סיכום */}
+          <div className="flex items-center gap-1 bg-slate-100 rounded-md p-0.5">
+            <Button
+              variant={summaryMode ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setSummaryMode((v) => !v)}
+              title="סיכום"
+              className="h-8 px-2 text-xs"
+            >
+              סיכום
+            </Button>
+            <Select value={summaryGranularity} onValueChange={setSummaryGranularity}>
+              <SelectTrigger className="w-20 h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="day">יום</SelectItem>
+                <SelectItem value="week">שבוע</SelectItem>
+                <SelectItem value="month">חודש</SelectItem>
+                <SelectItem value="year">שנה</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-            {/* Summary mode toggle + granularity */}
-            <div className="flex items-center gap-2 bg-white border rounded-md p-1 pl-2 shrink-0">
-              <Button
-                variant={summaryMode ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setSummaryMode((v) => !v)}
-                title="סיכום טבלאי לפי לקוח"
-              >
-                סיכום
-              </Button>
-              <Select value={summaryGranularity} onValueChange={setSummaryGranularity}>
-                <SelectTrigger className="w-28 h-8">
-                  <SelectValue placeholder="גרנולריות" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="day">יום</SelectItem>
-                  <SelectItem value="week">שבוע</SelectItem>
-                  <SelectItem value="month">חודש</SelectItem>
-                  <SelectItem value="year">שנה</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          {/* מפריד */}
+          <div className="h-6 w-px bg-slate-300"></div>
 
-            {/* Selection mode controls */}
-            <div className="flex items-center gap-2 w-full md:w-auto">
-                <Button
-                  variant={selectionMode ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => { setSelectionMode(v => !v); setSelectedIds([]); }}
-                  className={selectionMode ? "bg-purple-600 hover:bg-purple-700 text-white" : ""}
-                  title="מצב בחירה מרובה"
-                >
-                  {selectionMode ? 'בטל בחירה' : 'בחירה'}
-                </Button>
-                {selectionMode && (
-                  <>
-                    <Button variant="outline" size="sm" onClick={selectAll}>בחר הכל</Button>
-                    <Button variant="destructive" size="sm" onClick={bulkDelete} disabled={selectedIds.length === 0}>מחק נבחרים ({selectedIds.length})</Button>
-                  </>
-                )}
-            </div>
+          {/* בחירה */}
+          <Button
+            variant={selectionMode ? "default" : "ghost"}
+            size="icon"
+            onClick={() => { setSelectionMode(v => !v); setSelectedIds([]); }}
+            className={selectionMode ? "h-9 w-9 bg-purple-600 hover:bg-purple-700 text-white" : "h-9 w-9"}
+            title={selectionMode ? 'בטל בחירה' : 'בחירה מרובה'}
+          >
+            {selectionMode ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+          </Button>
+          
+          {selectionMode && (
+            <>
+              <Button variant="outline" size="sm" onClick={selectAll} className="h-9 text-xs px-2">
+                בחר הכל
+              </Button>
+              <Button 
+                variant="destructive" 
+                size="sm" 
+                onClick={bulkDelete} 
+                disabled={selectedIds.length === 0}
+                className="h-9 text-xs px-2"
+              >
+                <Trash2 className="w-3 h-3 ml-1" />
+                {selectedIds.length > 0 && `(${selectedIds.length})`}
+              </Button>
+            </>
+          )}
+
+          {/* סה"כ רישומים */}
+          <div className="mr-auto text-xs text-slate-500 font-medium">
+            {filteredLogs.length} / {safeTimeLogs.length}
           </div>
         </div>
       </div>
@@ -1058,9 +1079,17 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate }) {
                         </div>
 
                         {log.notes && (
-                          <p className="text-sm text-slate-600 bg-slate-50 p-2 rounded truncate">
-                            {log.notes}
-                          </p>
+                          <div className="mt-2">
+                            <details className="group">
+                              <summary className="text-sm text-slate-600 bg-slate-50 p-2 rounded cursor-pointer hover:bg-slate-100 transition-colors list-none flex items-center justify-between">
+                                <span className="truncate flex-1">{log.notes}</span>
+                                <ChevronDown className="w-4 h-4 text-slate-400 group-open:rotate-180 transition-transform flex-shrink-0 mr-2" />
+                              </summary>
+                              <div className="mt-2 text-sm text-slate-600 bg-slate-50 p-3 rounded border border-slate-200">
+                                {log.notes}
+                              </div>
+                            </details>
+                          </div>
                         )}
                       </div>
 
