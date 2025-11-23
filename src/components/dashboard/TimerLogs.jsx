@@ -617,7 +617,7 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate }) {
   console.log('🎨 [TimerLogs] Rendering main component...');
 
   return (
-    <div className="h-[400px] flex flex-col">
+    <div className="flex flex-col" style={{ minHeight: '400px', maxHeight: '600px' }}>
       {/* מידע על המצב */}
       {safeTimeLogs.length === 0 ? (
         <div className="p-4 text-center text-slate-500">אין רישומי זמן</div>
@@ -910,7 +910,7 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate }) {
       )}
 
       {/* Scrollable content */}
-      <div className="flex-1 overflow-y-auto px-6">
+      <div className="flex-1 overflow-y-auto px-4 py-2">
         {/* Summary table mode */}
         {summaryMode ? (
           <div className="bg-white border border-slate-200 rounded-lg overflow-auto">
