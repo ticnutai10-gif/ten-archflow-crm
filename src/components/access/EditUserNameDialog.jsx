@@ -12,48 +12,64 @@ export default function EditUserNameDialog({ open, onClose, userEmail, currentFu
   const [fullName, setFullName] = useState("");
   const [saving, setSaving] = useState(false);
   const [debugInfo, setDebugInfo] = useState("");
+  const [debugSteps, setDebugSteps] = useState([]);
 
   useEffect(() => {
     if (open) {
       console.log('🔧 [EDIT USER NAME] Dialog opened with:', { userEmail, currentFullName });
       setFullName(currentFullName || "");
       setDebugInfo("");
+      setDebugSteps([]);
     }
   }, [open, currentFullName, userEmail]);
 
+  const addDebugStep = (step, status = 'info') => {
+    const timestamp = new Date().toLocaleTimeString('he-IL');
+    setDebugSteps(prev => [...prev, { step, status, timestamp }]);
+    console.log(`[${timestamp}] [${status.toUpperCase()}] ${step}`);
+  };
+
   const verifyUpdate = async (email, expectedName, maxAttempts = 5) => {
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      console.log(`🔍 [VERIFY] Attempt ${attempt}/${maxAttempts} - Checking if name updated...`);
-      setDebugInfo(`בודק אם השם השתנה (ניסיון ${attempt}/${maxAttempts})...`);
+      addDebugStep(`אימות ניסיון ${attempt}/${maxAttempts}...`, 'info');
       
       try {
-        const freshUsers = await UserEntity.list().catch(() => base44.asServiceRole.entities.User.list());
+        let freshUsers;
+        try {
+          freshUsers = await UserEntity.list();
+          addDebugStep(`נטענו ${freshUsers.length} משתמשים לאימות (UserEntity)`, 'info');
+        } catch (e) {
+          freshUsers = await base44.asServiceRole.entities.User.list();
+          addDebugStep(`נטענו ${freshUsers.length} משתמשים לאימות (asServiceRole)`, 'info');
+        }
+        
         const updatedUser = freshUsers.find(u => u.email?.toLowerCase().trim() === email.toLowerCase().trim());
         
-        console.log(`🔍 [VERIFY] Attempt ${attempt} result:`, {
-          expectedName,
-          actualName: updatedUser?.full_name,
-          match: updatedUser?.full_name === expectedName
-        });
+        if (!updatedUser) {
+          addDebugStep(`⚠️ משתמש לא נמצא באימות!`, 'warning');
+          continue;
+        }
         
-        if (updatedUser?.full_name === expectedName) {
-          console.log(`✅ [VERIFY] SUCCESS on attempt ${attempt}!`);
-          setDebugInfo(`✅ העדכון אומת בהצלחה!`);
+        addDebugStep(`בדיקה: "${updatedUser.full_name}" vs "${expectedName}"`, 'info');
+        
+        if (updatedUser.full_name === expectedName) {
+          addDebugStep(`✅ אימות הצליח! השם תואם בדיוק`, 'success');
           return true;
+        } else {
+          addDebugStep(`⚠️ השם עדיין לא השתנה: "${updatedUser.full_name}"`, 'warning');
         }
       } catch (e) {
-        console.warn(`⚠️ [VERIFY] Error on attempt ${attempt}:`, e);
+        addDebugStep(`❌ שגיאה באימות: ${e.message}`, 'error');
       }
       
       if (attempt < maxAttempts) {
-        const waitTime = attempt * 500; // Progressive backoff: 500ms, 1000ms, 1500ms, etc.
-        console.log(`⏳ [VERIFY] Waiting ${waitTime}ms before next attempt...`);
-        setDebugInfo(`ממתין ${waitTime}ms לפני ניסיון נוסף...`);
+        const waitTime = attempt * 500;
+        addDebugStep(`⏳ ממתין ${waitTime}ms לפני ניסיון נוסף...`, 'info');
         await new Promise(resolve => setTimeout(resolve, waitTime));
       }
     }
     
-    console.warn(`⚠️ [VERIFY] Failed to verify after ${maxAttempts} attempts`);
+    addDebugStep(`⚠️ האימות נכשל אחרי ${maxAttempts} ניסיונות`, 'warning');
     return false;
   };
 
@@ -69,123 +85,145 @@ export default function EditUserNameDialog({ open, onClose, userEmail, currentFu
     }
 
     setSaving(true);
+    setDebugSteps([]);
     setDebugInfo("🚀 מתחיל שמירה...");
+    addDebugStep('התחלת תהליך שמירה', 'info');
     
     try {
       const newName = fullName.trim();
-      console.log('💾 [EDIT USER NAME] Starting save...', { 
-        userEmail, 
-        fullName: newName 
-      });
+      addDebugStep(`שם חדש: "${newName}" | אימייל: ${userEmail}`, 'info');
       
-      setDebugInfo("🔍 בודק משתמש נוכחי...");
-      
-      // Get current user to check if we're editing ourselves
+      // Step 1: Get current user
+      addDebugStep('שלב 1: בודק משתמש מחובר...', 'info');
       const currentUser = await base44.auth.me().catch(() => null);
-      console.log('👤 [EDIT USER NAME] Current user:', currentUser?.email);
+      addDebugStep(`משתמש מחובר: ${currentUser?.email || 'לא נמצא'}`, currentUser ? 'success' : 'warning');
       
-      // Step 1: Find target user
-      setDebugInfo("📋 טוען רשימת משתמשים...");
+      // Step 2: Load all users
+      addDebugStep('שלב 2: טוען רשימת כל המשתמשים...', 'info');
       let allUsers;
+      let loadMethod = '';
+      
       try {
         allUsers = await UserEntity.list();
-        console.log('📋 [EDIT USER NAME] Loaded users via UserEntity:', allUsers.length);
+        loadMethod = 'UserEntity.list()';
+        addDebugStep(`✅ נטענו ${allUsers.length} משתמשים דרך UserEntity`, 'success');
       } catch (e) {
-        console.warn('⚠️ [EDIT USER NAME] UserEntity.list failed, trying asServiceRole:', e);
-        allUsers = await base44.asServiceRole.entities.User.list();
-        console.log('📋 [EDIT USER NAME] Loaded users via asServiceRole:', allUsers.length);
+        addDebugStep(`⚠️ UserEntity.list() נכשל: ${e.message}`, 'warning');
+        try {
+          allUsers = await base44.asServiceRole.entities.User.list();
+          loadMethod = 'asServiceRole';
+          addDebugStep(`✅ נטענו ${allUsers.length} משתמשים דרך asServiceRole`, 'success');
+        } catch (e2) {
+          addDebugStep(`❌ גם asServiceRole נכשל: ${e2.message}`, 'error');
+          throw new Error('לא ניתן לטעון משתמשים: ' + e2.message);
+        }
       }
       
+      // Step 3: Find target user
+      addDebugStep(`שלב 3: מחפש משתמש עם אימייל ${userEmail}...`, 'info');
       const targetUser = allUsers.find(u => 
         u.email?.toLowerCase().trim() === userEmail.toLowerCase().trim()
       );
       
       if (!targetUser) {
-        console.error('❌ [EDIT USER NAME] Target user not found:', userEmail);
-        setDebugInfo(`❌ משתמש לא נמצא: ${userEmail}`);
-        toast.error('משתמש לא נמצא במערכת');
-        setSaving(false);
-        return;
+        addDebugStep(`❌ משתמש לא נמצא! חיפשנו: "${userEmail}"`, 'error');
+        addDebugStep(`משתמשים זמינים: ${allUsers.map(u => u.email).join(', ')}`, 'info');
+        throw new Error('משתמש לא נמצא במערכת');
       }
 
-      console.log('✅ [EDIT USER NAME] Target user found:', { 
-        id: targetUser.id, 
-        email: targetUser.email,
-        currentName: targetUser.full_name,
-        newName
-      });
+      addDebugStep(`✅ משתמש נמצא! ID: ${targetUser.id}, שם נוכחי: "${targetUser.full_name || 'ריק'}"`, 'success');
       
-      // Step 2: Perform the update
+      // Step 4: Perform the update
       const isSelf = currentUser && currentUser.email?.toLowerCase() === userEmail.toLowerCase();
+      addDebugStep(`שלב 4: מבצע עדכון... (עורך את ${isSelf ? 'עצמי' : 'משתמש אחר'})`, 'info');
       
       if (isSelf) {
-        console.log('✏️ [EDIT USER NAME] Updating SELF via updateMe');
-        setDebugInfo("💾 מעדכן את המשתמש הנוכחי...");
+        addDebugStep('משתמש מעדכן את עצמו - משתמש ב-updateMe()', 'info');
         
-        await base44.auth.updateMe({ full_name: newName });
-        console.log('✅ [EDIT USER NAME] Self update complete');
+        try {
+          await base44.auth.updateMe({ full_name: newName });
+          addDebugStep(`✅ base44.auth.updateMe() הצליח!`, 'success');
+        } catch (e) {
+          addDebugStep(`❌ base44.auth.updateMe() נכשל: ${e.message}`, 'error');
+          throw e;
+        }
         
       } else {
-        console.log('✏️ [EDIT USER NAME] Updating OTHER USER');
-        setDebugInfo(`💾 מעדכן משתמש: ${targetUser.email}...`);
+        addDebugStep('מעדכן משתמש אחר - מנסה מספר שיטות...', 'info');
         
-        // Try all methods until one succeeds
-        let updateSuccess = false;
         const methods = [
-          { name: 'UserEntity.update', fn: () => UserEntity.update(targetUser.id, { full_name: newName }) },
-          { name: 'asServiceRole', fn: () => base44.asServiceRole.entities.User.update(targetUser.id, { full_name: newName }) },
-          { name: 'base44.entities.User', fn: () => base44.entities.User.update(targetUser.id, { full_name: newName }) }
+          { 
+            name: 'base44.asServiceRole.entities.User.update()', 
+            fn: () => base44.asServiceRole.entities.User.update(targetUser.id, { full_name: newName }) 
+          },
+          { 
+            name: 'UserEntity.update()', 
+            fn: () => UserEntity.update(targetUser.id, { full_name: newName }) 
+          },
+          { 
+            name: 'base44.entities.User.update()', 
+            fn: () => base44.entities.User.update(targetUser.id, { full_name: newName }) 
+          }
         ];
+        
+        let updateSuccess = false;
+        let lastError = null;
         
         for (const method of methods) {
           try {
-            console.log(`💾 [EDIT USER NAME] Trying: ${method.name}`);
+            addDebugStep(`מנסה: ${method.name}...`, 'info');
             await method.fn();
             updateSuccess = true;
-            console.log(`✅ [EDIT USER NAME] ${method.name} SUCCESS`);
+            addDebugStep(`✅ ${method.name} הצליח!`, 'success');
             break;
           } catch (e) {
-            console.warn(`⚠️ [EDIT USER NAME] ${method.name} failed:`, e);
+            lastError = e;
+            addDebugStep(`❌ ${method.name} נכשל: ${e.message}`, 'error');
           }
         }
         
         if (!updateSuccess) {
-          throw new Error('כל שיטות העדכון נכשלו');
+          addDebugStep(`❌ כל שיטות העדכון נכשלו!`, 'error');
+          throw new Error('כל שיטות העדכון נכשלו. שגיאה אחרונה: ' + (lastError?.message || 'לא ידוע'));
         }
       }
       
-      // Step 3: Verify the update with retry logic
-      console.log('🔍 [EDIT USER NAME] Starting verification process...');
+      // Step 5: Verify the update
+      addDebugStep('שלב 5: מאמת שהשינוי נשמר...', 'info');
       const verified = await verifyUpdate(userEmail, newName);
       
       if (verified) {
-        toast.success(`✅ השם עודכן ואומת בהצלחה!`);
+        addDebugStep(`✅ האימות הצליח! השם "${newName}" נשמר במערכת`, 'success');
+        toast.success(`✅ השם עודכן ואומת בהצלחה ל-"${newName}"!`);
       } else {
+        addDebugStep(`⚠️ לא הצלחנו לאמת את השינוי אחרי 5 ניסיונות`, 'warning');
         toast.warning('⚠️ השם עודכן אך לא אומת במלואו. אנא רענן את הדף.');
       }
       
-      // Step 4: Refresh data
-      setDebugInfo("🔄 מרענן נתונים...");
+      // Step 6: Refresh data
+      addDebugStep('שלב 6: מרענן נתונים בעמוד...', 'info');
       if (onSuccess) {
-        console.log('🔄 [EDIT USER NAME] Calling onSuccess to refresh data');
         await onSuccess();
+        addDebugStep('✅ נתוני הדף רוענן בהצלחה', 'success');
       }
       
-      // Step 5: Wait before closing
-      await new Promise(resolve => setTimeout(resolve, 800));
+      // Step 7: Wait before closing
+      addDebugStep('שלב 7: ממתין לפני סגירה...', 'info');
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       // Close dialog
-      console.log('🚪 [EDIT USER NAME] Closing dialog');
+      addDebugStep('✅ תהליך הושלם בהצלחה! סוגר חלון...', 'success');
       onClose();
       
     } catch (error) {
-      console.error('❌ [EDIT USER NAME] Error updating user:', {
+      console.error('❌ [EDIT USER NAME] CRITICAL ERROR:', {
         error,
         message: error.message,
         stack: error.stack,
         response: error.response?.data
       });
       
+      addDebugStep(`❌ שגיאה קריטית: ${error.message}`, 'error');
       setDebugInfo(`❌ שגיאה: ${error.message}`);
       toast.error(`שגיאה בעדכון השם: ${error.message || 'שגיאה לא ידועה'}`);
       
@@ -247,16 +285,28 @@ export default function EditUserNameDialog({ open, onClose, userEmail, currentFu
             </p>
           </div>
 
-          {debugInfo && (
-            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs text-slate-700 text-right space-y-1">
-              <div className="flex items-center gap-2">
-                {saving ? (
-                  <Loader2 className="w-3 h-3 animate-spin text-blue-600" />
-                ) : (
-                  <CheckCircle2 className="w-3 h-3 text-green-600" />
-                )}
-                <span className="font-mono">{debugInfo}</span>
-              </div>
+          {/* Debug Info Panel */}
+          {(debugInfo || debugSteps.length > 0) && (
+            <div className="bg-slate-900 text-slate-100 border border-slate-700 rounded-lg p-3 text-xs font-mono max-h-64 overflow-y-auto">
+              <div className="font-bold mb-2 text-green-400">🔍 Debug Log:</div>
+              {debugSteps.map((step, index) => (
+                <div key={index} className="flex items-start gap-2 py-1 border-b border-slate-700 last:border-0">
+                  <span className="text-slate-500 flex-shrink-0">{step.timestamp}</span>
+                  <span className={`flex-1 ${
+                    step.status === 'success' ? 'text-green-400' :
+                    step.status === 'error' ? 'text-red-400' :
+                    step.status === 'warning' ? 'text-yellow-400' :
+                    'text-slate-300'
+                  }`}>
+                    {step.step}
+                  </span>
+                </div>
+              ))}
+              {debugInfo && (
+                <div className="mt-2 pt-2 border-t border-slate-700 text-blue-400">
+                  {saving ? '⏳' : '✅'} {debugInfo}
+                </div>
+              )}
             </div>
           )}
         </div>
