@@ -13,6 +13,7 @@ import FloatingTimer from "@/components/timer/FloatingTimer";
 import ReminderPopup from "@/components/reminders/ReminderPopup";
 import FloatingDebugPanel from "@/components/debug/FloatingDebugPanel";
 import NotificationBell from "@/components/notifications/NotificationBell";
+import FloatingAIButton from "@/components/ai/FloatingAIButton";
 import { base44 } from "@/api/base44Client";
 
 const ACCENT_COLOR = "#2C3A50";
@@ -29,6 +30,7 @@ const THEMES = {
 
 const MENU_ITEMS = [
   { name: "Dashboard", icon: Home, path: "Dashboard" },
+  { name: "צ'אט AI", icon: MessageSquare, path: "AIChat" },
   { name: "לקוחות", icon: Users, path: "Clients" },
   { name: "פרויקטים", icon: Briefcase, path: "Projects" },
   { name: "הצעות מחיר", icon: Calculator, path: "Quotes" },
@@ -601,7 +603,8 @@ export default function Layout({ children, currentPageName }) {
         <FloatingTimer />
         <ReminderPopup />
         <FloatingDebugPanel />
-      </div>
-    </SidebarProvider>
-  );
-}
+        <FloatingAIButton />
+        </div>
+        </SidebarProvider>
+        );
+        }

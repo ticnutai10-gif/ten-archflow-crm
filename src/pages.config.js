@@ -28,6 +28,7 @@ import CustomSpreadsheets from './pages/CustomSpreadsheets';
 import Integrations from './pages/Integrations';
 import ProjectDetails from './pages/ProjectDetails';
 import CommunicationHub from './pages/CommunicationHub';
+import AIChat from './pages/AIChat';
 import __Layout from './Layout.jsx';
 
 
@@ -62,6 +63,7 @@ export const PAGES = {
     "Integrations": Integrations,
     "ProjectDetails": ProjectDetails,
     "CommunicationHub": CommunicationHub,
+    "AIChat": AIChat,
 }
 
 export const pagesConfig = {
