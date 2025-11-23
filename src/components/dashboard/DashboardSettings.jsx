@@ -52,7 +52,7 @@ export default function DashboardSettings({ visible, settings, onChange, onClose
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh]" dir="rtl">
+      <DialogContent className="max-w-2xl" dir="rtl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-right text-xl">
             <Settings className="h-6 w-6" />
@@ -60,7 +60,7 @@ export default function DashboardSettings({ visible, settings, onChange, onClose
           </DialogTitle>
         </DialogHeader>
         
-        <ScrollArea className="max-h-[calc(90vh-120px)] pr-4">
+        <div className="max-h-[60vh] overflow-y-auto pr-2">
           <div className="space-y-6">
             <Card>
               <CardHeader>
@@ -213,7 +213,7 @@ export default function DashboardSettings({ visible, settings, onChange, onClose
               </CardContent>
             </Card>
           </div>
-        </ScrollArea>
+        </div>
       </DialogContent>
     </Dialog>
   );

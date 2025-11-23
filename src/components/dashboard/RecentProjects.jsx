@@ -293,7 +293,7 @@ function ProjectsTab({
       )}
 
       <div className="p-4 space-y-3 max-h-96 overflow-y-auto">
-        {validProjects.map((project, index) => {
+        {projects.length === 0 ? null : validProjects.map((project, index) => {
           if (!project || typeof project !== 'object') {
             console.error(`❌ [RecentProjects] Skipping invalid project at index ${index}:`, project);
             return null;
