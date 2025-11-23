@@ -12,6 +12,9 @@ import SubTaskForm from '../components/projects/SubTaskForm';
 import ProjectGantt from '../components/projects/ProjectGantt';
 import ProjectResourceView from '../components/projects/ProjectResourceView';
 import ProjectSummaryReport from '../components/projects/ProjectSummaryReport';
+import AIClientChatbot from '../components/communication/AIClientChatbot';
+import AIProgressSummary from '../components/communication/AIProgressSummary';
+import AIContentGenerator from '../components/communication/AIContentGenerator';
 
 export default function ProjectDetails() {
   const navigate = useNavigate();
@@ -21,6 +24,8 @@ export default function ProjectDetails() {
   const [showSubTaskForm, setShowSubTaskForm] = useState(false);
   const [editingSubTask, setEditingSubTask] = useState(null);
   const [activeTab, setActiveTab] = useState('tasks');
+  const [client, setClient] = useState(null);
+  const [projects, setProjects] = useState([]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -40,6 +45,18 @@ export default function ProjectDetails() {
     try {
       const projectData = await base44.entities.Project.get(projectId);
       setProject(projectData);
+      
+      // Load client and their projects
+      if (projectData.client_id) {
+        const clientData = await base44.entities.Client.get(projectData.client_id).catch(() => null);
+        setClient(clientData);
+        
+        if (clientData) {
+          const clientProjects = await base44.entities.Project.filter({ client_id: clientData.id }).catch(() => []);
+          setProjects(clientProjects);
+        }
+      }
+      
       loadSubTasks(projectId);
     } catch (error) {
       console.error('Error loading project:', error);
@@ -142,7 +159,7 @@ export default function ProjectDetails() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-6">
+          <TabsList className="mb-6 grid grid-cols-3 md:grid-cols-7 gap-2">
             <TabsTrigger value="tasks" className="gap-2">
               <ListTodo className="w-4 h-4" />
               משימות
@@ -158,6 +175,15 @@ export default function ProjectDetails() {
             <TabsTrigger value="summary" className="gap-2">
               <BarChart3 className="w-4 h-4" />
               סיכום AI
+            </TabsTrigger>
+            <TabsTrigger value="chatbot" className="gap-2">
+              צ'אטבוט
+            </TabsTrigger>
+            <TabsTrigger value="progress" className="gap-2">
+              סיכום ללקוח
+            </TabsTrigger>
+            <TabsTrigger value="content" className="gap-2">
+              יצירת תוכן
             </TabsTrigger>
           </TabsList>
 
@@ -261,6 +287,21 @@ export default function ProjectDetails() {
           {/* AI Summary */}
           <TabsContent value="summary">
             <ProjectSummaryReport projectId={project.id} projectName={project.name} />
+          </TabsContent>
+
+          {/* AI Chatbot */}
+          <TabsContent value="chatbot">
+            <AIClientChatbot client={client} projects={projects} />
+          </TabsContent>
+
+          {/* AI Progress Summary */}
+          <TabsContent value="progress">
+            <AIProgressSummary project={project} client={client} />
+          </TabsContent>
+
+          {/* AI Content Generator */}
+          <TabsContent value="content">
+            <AIContentGenerator project={project} />
           </TabsContent>
           </Tabs>
 

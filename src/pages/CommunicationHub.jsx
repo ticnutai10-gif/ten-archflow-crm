@@ -10,6 +10,7 @@ import ClientMessaging from "../components/communication/ClientMessaging";
 import MeetingScheduler from "../components/communication/MeetingScheduler";
 import NotificationManager from "../components/communication/NotificationManager";
 import CommunicationHistory from "../components/communication/CommunicationHistory";
+import AIClientChatbot from "../components/communication/AIClientChatbot";
 
 export default function CommunicationHub() {
   const [clients, setClients] = useState([]);
@@ -22,6 +23,7 @@ export default function CommunicationHub() {
     upcomingMeetings: 0,
     pendingNotifications: 0
   });
+  const [projects, setProjects] = useState([]);
 
   useEffect(() => {
     loadData();
@@ -30,15 +32,17 @@ export default function CommunicationHub() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [clientsData, messagesData, meetingsData] = await Promise.all([
+      const [clientsData, messagesData, meetingsData, projectsData] = await Promise.all([
         base44.entities.Client.list(),
         base44.entities.CommunicationMessage.list('-created_date', 100),
-        base44.entities.Meeting.list('-meeting_date', 50)
+        base44.entities.Meeting.list('-meeting_date', 50),
+        base44.entities.Project.list()
       ]);
 
       setClients(clientsData || []);
       setMessages(messagesData || []);
       setMeetings(meetingsData || []);
+      setProjects(projectsData || []);
 
       // Calculate stats
       const now = new Date();
@@ -111,7 +115,7 @@ export default function CommunicationHub() {
         <Card className="bg-white shadow-lg">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <CardHeader className="border-b">
-              <TabsList className="grid grid-cols-4 w-full">
+              <TabsList className="grid grid-cols-2 md:grid-cols-5 w-full gap-2">
                 <TabsTrigger value="messages" className="gap-2">
                   <MessageSquare className="w-4 h-4" />
                   הודעות
@@ -128,6 +132,9 @@ export default function CommunicationHub() {
                 <TabsTrigger value="notifications" className="gap-2">
                   <Bell className="w-4 h-4" />
                   התראות
+                </TabsTrigger>
+                <TabsTrigger value="chatbot" className="gap-2">
+                  צ'אטבוט AI
                 </TabsTrigger>
                 <TabsTrigger value="history" className="gap-2">
                   <Send className="w-4 h-4" />
@@ -160,6 +167,13 @@ export default function CommunicationHub() {
                   clients={clients}
                   onUpdate={loadData}
                   isLoading={loading}
+                />
+              </TabsContent>
+
+              <TabsContent value="chatbot">
+                <AIClientChatbot 
+                  client={clients[0]}
+                  projects={projects}
                 />
               </TabsContent>
 
