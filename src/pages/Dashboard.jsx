@@ -21,7 +21,12 @@ import {
   Maximize2,
   Eye,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Columns,
+  BarChart3,
+  Calendar,
+  TrendingUp,
+  Activity
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -36,6 +41,11 @@ import DashboardSettings from "../components/dashboard/DashboardSettings";
 import UpcomingMeetings from "../components/dashboard/UpcomingMeetings";
 import ProjectsOverview from "../components/dashboard/ProjectsOverview";
 import DashboardCustomizer from "../components/dashboard/DashboardCustomizer";
+import KanbanView from "../components/dashboard/KanbanView";
+import TimelineView from "../components/dashboard/TimelineView";
+import AnalyticsView from "../components/dashboard/AnalyticsView";
+import HeatmapView from "../components/dashboard/HeatmapView";
+import TrendsView from "../components/dashboard/TrendsView";
 
 const VIEW_MODE_OPTIONS = [
   { value: 'list', label: 'שורות', icon: LayoutList },
@@ -43,6 +53,11 @@ const VIEW_MODE_OPTIONS = [
   { value: 'grid-medium', label: 'רשת בינונית (3 עמודות)', icon: LayoutGrid },
   { value: 'grid-large', label: 'רשת גדולה (2 עמודות)', icon: Grid2x2 },
   { value: 'vertical', label: 'אנכי (עמודה אחת)', icon: AlignLeft },
+  { value: 'kanban', label: 'לוח קנבן', icon: Columns },
+  { value: 'timeline', label: 'ציר זמן', icon: Calendar },
+  { value: 'analytics', label: 'אנליטיקה חזותית', icon: BarChart3 },
+  { value: 'heatmap', label: 'מפת חום פעילות', icon: Activity },
+  { value: 'trends', label: 'גרף מגמות', icon: TrendingUp },
 ];
 
 const getGridClass = (viewMode) => {
@@ -57,6 +72,12 @@ const getGridClass = (viewMode) => {
       return 'grid grid-cols-1 md:grid-cols-2 gap-6';
     case 'vertical':
       return 'flex flex-col gap-4 max-w-2xl mx-auto';
+    case 'kanban':
+    case 'timeline':
+    case 'analytics':
+    case 'heatmap':
+    case 'trends':
+      return 'flex flex-col gap-6 w-full';
     default:
       return 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6';
   }
@@ -75,6 +96,9 @@ export default function Dashboard() {
   const [timeLogs, setTimeLogs] = useState([]);
   const [upcomingMeetings, setUpcomingMeetings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [allClients, setAllClients] = useState([]);
+  const [allProjects, setAllProjects] = useState([]);
+  const [allTasks, setAllTasks] = useState([]);
   const [showDashboardSettings, setShowDashboardSettings] = useState(false);
   const [showCustomizer, setShowCustomizer] = useState(false);
   const [dashboardCards, setDashboardCards] = useState(() => {
@@ -288,6 +312,11 @@ export default function Dashboard() {
       setQuotes(validQuotes.slice(0, 5));
       setTimeLogs(validTimeLogs);
       setUpcomingMeetings(futureMeetings.slice(0, 10));
+      
+      // Store full data for special views
+      setAllClients(validClients);
+      setAllProjects(validProjects);
+      setAllTasks(validTasks);
     } catch (error) {
       console.error('Error loading dashboard data:', error);
     }
@@ -499,9 +528,51 @@ export default function Dashboard() {
         )}
 
         <div dir="rtl">
-          {!compactHeaders && (
+          {!compactHeaders && !['kanban', 'timeline', 'analytics', 'heatmap', 'trends'].includes(viewMode) && (
             <h2 className="text-xl font-bold text-slate-800 mb-4 text-right">פעילויות אחרונות</h2>
           )}
+
+          {/* Special Views */}
+          {viewMode === 'kanban' && (
+            <KanbanView tasks={allTasks} onUpdate={loadDashboardData} />
+          )}
+
+          {viewMode === 'timeline' && (
+            <TimelineView 
+              tasks={upcomingTasks} 
+              meetings={upcomingMeetings} 
+              projects={recentProjects} 
+            />
+          )}
+
+          {viewMode === 'analytics' && (
+            <AnalyticsView 
+              clients={allClients}
+              projects={allProjects}
+              tasks={allTasks}
+              quotes={quotes}
+            />
+          )}
+
+          {viewMode === 'heatmap' && (
+            <HeatmapView 
+              tasks={allTasks}
+              timeLogs={timeLogs}
+              meetings={upcomingMeetings}
+            />
+          )}
+
+          {viewMode === 'trends' && (
+            <TrendsView 
+              clients={allClients}
+              projects={allProjects}
+              tasks={allTasks}
+              quotes={quotes}
+            />
+          )}
+
+          {/* Regular Grid Views */}
+          {!['kanban', 'timeline', 'analytics', 'heatmap', 'trends'].includes(viewMode) && (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 auto-rows-min" dir="rtl">
             {dashboardCards.map(card => {
               if (!card.visible) return null;
@@ -696,6 +767,7 @@ export default function Dashboard() {
               return null;
             })}
           </div>
+          )}
         </div>
       </div>
 
