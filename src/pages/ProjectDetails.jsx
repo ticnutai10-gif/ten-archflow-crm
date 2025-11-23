@@ -15,6 +15,7 @@ import ProjectSummaryReport from '../components/projects/ProjectSummaryReport';
 import AIClientChatbot from '../components/communication/AIClientChatbot';
 import AIProgressSummary from '../components/communication/AIProgressSummary';
 import AIContentGenerator from '../components/communication/AIContentGenerator';
+import ProjectAIAssistant from '../components/communication/ProjectAIAssistant';
 
 export default function ProjectDetails() {
   const navigate = useNavigate();
@@ -159,7 +160,7 @@ export default function ProjectDetails() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-6 grid grid-cols-3 md:grid-cols-7 gap-2">
+          <TabsList className="mb-6 grid grid-cols-2 md:grid-cols-4 gap-2">
             <TabsTrigger value="tasks" className="gap-2">
               <ListTodo className="w-4 h-4" />
               משימות
@@ -172,18 +173,8 @@ export default function ProjectDetails() {
               <Users className="w-4 h-4" />
               משאבים
             </TabsTrigger>
-            <TabsTrigger value="summary" className="gap-2">
-              <BarChart3 className="w-4 h-4" />
-              סיכום AI
-            </TabsTrigger>
-            <TabsTrigger value="chatbot" className="gap-2">
-              צ'אטבוט
-            </TabsTrigger>
-            <TabsTrigger value="progress" className="gap-2">
-              סיכום ללקוח
-            </TabsTrigger>
-            <TabsTrigger value="content" className="gap-2">
-              יצירת תוכן
+            <TabsTrigger value="ai-assistant" className="gap-2">
+              עוזר AI
             </TabsTrigger>
           </TabsList>
 
@@ -285,23 +276,13 @@ export default function ProjectDetails() {
           </TabsContent>
 
           {/* AI Summary */}
-          <TabsContent value="summary">
-            <ProjectSummaryReport projectId={project.id} projectName={project.name} />
-          </TabsContent>
-
-          {/* AI Chatbot */}
-          <TabsContent value="chatbot">
-            <AIClientChatbot client={client} projects={projects} />
-          </TabsContent>
-
-          {/* AI Progress Summary */}
-          <TabsContent value="progress">
-            <AIProgressSummary project={project} client={client} />
-          </TabsContent>
-
-          {/* AI Content Generator */}
-          <TabsContent value="content">
-            <AIContentGenerator project={project} />
+          {/* AI Assistant - All-in-one */}
+          <TabsContent value="ai-assistant">
+            <ProjectAIAssistant 
+              project={project} 
+              client={client}
+              subtasks={subtasks}
+            />
           </TabsContent>
           </Tabs>
 
