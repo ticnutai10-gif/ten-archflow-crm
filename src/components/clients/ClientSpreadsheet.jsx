@@ -260,6 +260,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
   const [selectedHeaders, setSelectedHeaders] = useState(new Set());
   const [selectionMode, setSelectionMode] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [selectedRows, setSelectedRows] = useState(new Set());
 
   const [draggedColumn, setDraggedColumn] = useState(null);
 
@@ -371,14 +372,22 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
   // Handle fullscreen toggle and ESC key
   useEffect(() => {
     const handleEscape = (e) => {
-      if (e.key === 'Escape' && fullScreen) {
-        setFullScreen(false);
+      if (e.key === 'Escape') {
+        if (fullScreen) {
+          setFullScreen(false);
+        }
+        if (selectionMode) {
+          setSelectionMode(false);
+          setSelectedRows(new Set());
+          setSelectedCells(new Set());
+          setSelectedHeaders(new Set());
+        }
       }
     };
     
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
-  }, [fullScreen]);
+  }, [fullScreen, selectionMode]);
 
   const visibleColumns = useMemo(() => {
     const visible = columns.filter((col) => col.visible !== false);
@@ -1280,9 +1289,22 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
   const clearSelection = () => {
     setSelectedCells(new Set());
     setSelectedHeaders(new Set());
+    setSelectedRows(new Set());
     setSelectionMode(false);
     setIsDragging(false);
     toast.info('הבחירה נוקתה');
+  };
+
+  const toggleRowSelection = (clientId) => {
+    setSelectedRows(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(clientId)) {
+        newSet.delete(clientId);
+      } else {
+        newSet.add(clientId);
+      }
+      return newSet;
+    });
   };
 
   const toggleSubHeaders = () => {
@@ -1537,6 +1559,24 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
 
             <Button
               size="sm"
+              variant={selectionMode ? "default" : "outline"}
+              onClick={() => {
+                const newMode = !selectionMode;
+                setSelectionMode(newMode);
+                if (!newMode) {
+                  setSelectedRows(new Set());
+                  setSelectedCells(new Set());
+                  setSelectedHeaders(new Set());
+                }
+              }}
+              className={`gap-2 h-8 ${selectionMode ? 'bg-purple-600 hover:bg-purple-700 text-white' : ''}`}
+            >
+              <Checkbox className="w-3 h-3" />
+              {selectionMode ? 'סגור בחירה' : 'בחירה מרובה'}
+            </Button>
+
+            <Button
+              size="sm"
               onClick={addQuickColumn}
               className="bg-[#2C3A50] hover:bg-[#1f2937] text-white gap-2 h-8"
             >
@@ -1602,6 +1642,12 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
             </Button>
 
 
+
+            {selectedRows.size > 0 &&
+              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                נבחרו {selectedRows.size} שורות
+              </Badge>
+            }
 
             {selectedHeaders.size > 0 &&
             <>
@@ -2326,6 +2372,37 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                 {localClients.map((client, rowIndex) =>
                   <tr key={client.id} className={rowIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
                     {visibleColumns.map((column, colIndex) => {
+                      // Add checkbox in first column when in selection mode
+                      if (colIndex === 0 && selectionMode) {
+                        return (
+                          <React.Fragment key={column.key}>
+                            <td
+                              className={`border border-slate-200 p-2 ${
+                                colIndex === 0 ? 'sticky right-0 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]' : ''
+                              }`}
+                              style={{
+                                width: '40px',
+                                minWidth: '40px',
+                                maxWidth: '40px',
+                                backgroundColor: colIndex === 0 ? rowIndex % 2 === 0 ? '#ffffff' : '#f8fafc' : 'inherit'
+                              }}
+                            >
+                              <div className="flex items-center justify-center">
+                                <Checkbox
+                                  checked={selectedRows.has(client.id)}
+                                  onCheckedChange={() => toggleRowSelection(client.id)}
+                                  className="cursor-pointer"
+                                />
+                              </div>
+                            </td>
+                            {renderRegularCell(client, column, colIndex, rowIndex)}
+                          </React.Fragment>
+                        );
+                      }
+                      
+                      return renderRegularCell(client, column, colIndex, rowIndex);
+                      
+                      function renderRegularCell(client, column, colIndex, rowIndex) {
                       const cellKey = `${client.id}_${column.key}`;
                       const isEditing = editingCell === cellKey;
                       const cellStyle = cellStyles[cellKey] || {};
@@ -2686,6 +2763,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                             </Popover>
                           }
                         </td>);
+                      }
 
                     })}
                   </tr>
