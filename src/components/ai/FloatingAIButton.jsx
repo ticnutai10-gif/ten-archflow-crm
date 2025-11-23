@@ -320,7 +320,12 @@ ${upcomingMeetings.slice(0, 3).map(m => `- ${m.title} עם ${m.participants?.joi
                               </span>
                               <Button
                                 size="sm"
-                                onClick={() => executeAction(action)}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  console.log('🖱️ Button clicked!', action);
+                                  executeAction(action);
+                                }}
                                 className="h-6 px-2 bg-blue-600 hover:bg-blue-700 text-xs"
                               >
                                 <CheckCircle className="w-3 h-3 ml-1" />

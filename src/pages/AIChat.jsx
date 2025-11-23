@@ -358,7 +358,12 @@ ${communications.slice(0, 5).map(c => `- ${c.subject || c.body?.substring(0, 50)
                                 </span>
                                 <Button
                                   size="sm"
-                                  onClick={() => executeAction(action)}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    console.log('🖱️ Button clicked!', action);
+                                    executeAction(action);
+                                  }}
                                   className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
                                 >
                                   <CheckCircle className="w-4 h-4 ml-1" />
