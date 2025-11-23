@@ -43,17 +43,32 @@ export default function AIChat() {
           body: params.body
         });
         toast.success('✉️ אימייל נשלח בהצלחה!');
+        
       } else if (action.type === 'CREATE_TASK') {
         console.log('✅ Creating task...');
+        
+        // Parse due_date if it's a relative term
+        let dueDate = params.due_date;
+        if (dueDate === 'מחר') {
+          const tomorrow = new Date();
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          dueDate = tomorrow.toISOString().split('T')[0];
+        } else if (dueDate === 'היום') {
+          dueDate = new Date().toISOString().split('T')[0];
+        }
+        
         const newTask = await base44.entities.Task.create({
           title: params.title,
           priority: params.priority || 'בינונית',
-          due_date: params.due_date,
+          due_date: dueDate,
           status: 'חדשה',
-          description: params.description || ''
+          description: params.description || '',
+          client_name: params.client_name || '',
+          project_name: params.project_name || ''
         });
         console.log('✅ Task created:', newTask);
         toast.success('✅ משימה נוצרה בהצלחה!');
+        
       } else if (action.type === 'SCHEDULE_MEETING') {
         console.log('📅 Scheduling meeting...');
         
@@ -61,29 +76,82 @@ export default function AIChat() {
         const title = params.title || 
                      (params.client_name ? `פגישה עם ${params.client_name}` : 'פגישה חדשה');
         
-        // Parse date - handle "מחר", specific dates, etc.
-        let meetingDate = params.date;
-        if (meetingDate === 'מחר') {
+        // Handle different date formats
+        let meetingDate = null;
+        
+        // Option 1: date_time as ISO string (e.g., "2025-11-23T13:00:00")
+        if (params.date_time) {
+          meetingDate = params.date_time;
+        }
+        // Option 2: Separate date and time
+        else if (params.date && params.time) {
+          meetingDate = `${params.date}T${params.time}:00`;
+        }
+        // Option 3: Just date
+        else if (params.date) {
+          let dateStr = params.date;
+          
+          // Handle relative dates
+          if (dateStr === 'מחר') {
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            dateStr = tomorrow.toISOString().split('T')[0];
+          } else if (dateStr === 'היום') {
+            dateStr = new Date().toISOString().split('T')[0];
+          }
+          
+          // Add default time if not provided
+          const time = params.time || '09:00';
+          meetingDate = `${dateStr}T${time}:00`;
+        }
+        // Option 4: No date provided - use tomorrow at 10:00
+        else {
           const tomorrow = new Date();
           tomorrow.setDate(tomorrow.getDate() + 1);
-          meetingDate = tomorrow.toISOString().split('T')[0];
+          meetingDate = `${tomorrow.toISOString().split('T')[0]}T10:00:00`;
         }
         
-        // Add time if provided
-        if (params.time && meetingDate) {
-          meetingDate = `${meetingDate}T${params.time}:00`;
+        // Find client by name if provided
+        let clientId = params.client_id;
+        let clientName = params.client_name;
+        
+        if (clientName && !clientId) {
+          try {
+            const clients = await base44.entities.Client.list();
+            const client = clients.find(c => 
+              c.name?.includes(clientName.trim()) || 
+              c.name?.toLowerCase() === clientName.toLowerCase()
+            );
+            if (client) {
+              clientId = client.id;
+              clientName = client.name;
+            }
+          } catch (e) {
+            console.warn('Could not fetch clients:', e);
+          }
         }
         
-        const newMeeting = await base44.entities.Meeting.create({
+        const meetingData = {
           title,
           meeting_date: meetingDate,
-          participants: params.participants?.split(';') || [],
           status: 'מתוכננת',
           location: params.location || '',
-          description: params.description || (params.client_name ? `פגישה עם ${params.client_name}` : '')
-        });
-        console.log('📅 Meeting created:', newMeeting);
+          description: params.description || (clientName ? `פגישה עם ${clientName}` : ''),
+          participants: params.participants?.split(';').filter(p => p.trim()) || [],
+          meeting_type: params.meeting_type || 'פגישת תכנון'
+        };
+        
+        if (clientId) meetingData.client_id = clientId;
+        if (clientName) meetingData.client_name = clientName;
+        if (params.project_id) meetingData.project_id = params.project_id;
+        if (params.project_name) meetingData.project_name = params.project_name;
+        
+        console.log('📅 Creating meeting with data:', meetingData);
+        
+        const newMeeting = await base44.entities.Meeting.create(meetingData);
+        console.log('✅ Meeting created:', newMeeting);
         toast.success(`📅 פגישה "${title}" נקבעה בהצלחה!`);
+        
       } else if (action.type === 'UPDATE_CLIENT_STAGE') {
         console.log('🎯 Updating client stage...');
         const clientsToUpdate = params.clients?.split(';') || [];
@@ -106,8 +174,10 @@ export default function AIChat() {
         
         console.log(`✅ Updated ${updated} clients`);
         toast.success(`🎯 ${updated} לקוחות עודכנו לשלב ${newStage}!`);
+        
       } else if (action.type === 'PREDICT_TIMELINE') {
         toast.info(`📊 חיזוי ציר זמן לפרויקט "${params.project_name}" בוצע - ראה תוצאות בצ'אט`);
+        
       } else if (action.type === 'SUGGEST_RESOURCES') {
         toast.info(`👥 הצעת משאבים לפרויקט "${params.project_name}" בוצעה - ראה המלצות בצ'אט`);
       }
@@ -230,18 +300,44 @@ ${communications.slice(0, 5).map(c => `- ${c.subject || c.body?.substring(0, 50)
 3. לחשב סבירות להשלמה במועד על בסיס נתונים היסטוריים
 4. להציע אומדן שעות עבודה ריאליסטי
 
-הוראות:
+הוראות קריטיות לפעולות:
 1. ענה בצורה מפורטת, מועילה ומקצועית בהתבסס על כל הנתונים
 2. כאשר מבקשים חיזוי או המלצות - נתח את הנתונים ההיסטוריים והסבר את ההיגיון
-3. הצע פעולות מעקב ספציפיות בפורמט: [ACTION: סוג_פעולה | פרמטרים]
-   סוגי פעולות זמינים:
-   - SEND_EMAIL: to: כתובת, subject: נושא, body: תוכן
-   - CREATE_TASK: title: כותרת, priority: עדיפות, due_date: תאריך, description: תיאור
-   - UPDATE_PROJECT: project_id: מזהה, field: שדה, value: ערך
-   - SCHEDULE_MEETING: title: כותרת_הפגישה (חובה!), date: תאריך (YYYY-MM-DD או "מחר"), time: שעה (HH:MM), client_name: שם_לקוח, participants: משתתפים, location: מיקום, description: תיאור
-   - UPDATE_CLIENT_STAGE: clients: שמות_לקוחות, stage: שלב_חדש (ברור_תכן/תיק_מידע/היתרים/ביצוע/סיום)
-   - PREDICT_TIMELINE: project_name: שם_הפרויקט, project_type: סוג, estimated_area: שטח_משוער, complexity: רמת_מורכבות (נמוכה/בינונית/גבוהה)
-   - SUGGEST_RESOURCES: project_name: שם_הפרויקט, duration_days: משך_צפוי, required_skills: מיומנויות_נדרשות
+3. הצע פעולות מעקב ספציפיות בפורמט מדויק: [ACTION: סוג_פעולה | פרמטרים]
+
+סוגי פעולות זמינים (פורמט מדויק!):
+
+📧 SEND_EMAIL - דוגמה:
+[ACTION: SEND_EMAIL | to: user@example.com, subject: נושא הדואר, body: תוכן המייל]
+
+✅ CREATE_TASK - דוגמה:
+[ACTION: CREATE_TASK | title: שם המשימה, priority: גבוהה, due_date: 2025-11-25, description: תיאור המשימה, client_name: שם הלקוח]
+* due_date יכול להיות: YYYY-MM-DD, "מחר", "היום"
+* priority: נמוכה/בינונית/גבוהה/דחופה
+
+📅 SCHEDULE_MEETING - דוגמה:
+[ACTION: SCHEDULE_MEETING | title: שם הפגישה, date_time: 2025-11-23T14:00:00, client_name: שם הלקוח, location: מיקום, description: תיאור]
+* date_time חייב להיות בפורמט: YYYY-MM-DDTHH:MM:SS (לדוגמה: 2025-11-23T14:00:00)
+* או שימוש ב: date: 2025-11-23, time: 14:00 (נפרד)
+* title הוא שדה חובה!
+* אם לא מצוין תאריך - משתמש במחר בשעה 10:00
+
+🎯 UPDATE_CLIENT_STAGE - דוגמה:
+[ACTION: UPDATE_CLIENT_STAGE | clients: שם לקוח 1;שם לקוח 2, stage: ביצוע]
+* שלבים אפשריים: ברור_תכן, תיק_מידע, היתרים, ביצוע, סיום
+
+📊 PREDICT_TIMELINE - דוגמה:
+[ACTION: PREDICT_TIMELINE | project_name: שם הפרויקט, project_type: בית פרטי, complexity: בינונית]
+
+👥 SUGGEST_RESOURCES - דוגמה:
+[ACTION: SUGGEST_RESOURCES | project_name: שם הפרויקט, duration_days: 180]
+
+חשוב מאוד:
+- תאריכים חייבים להיות בפורמט ISO: YYYY-MM-DD
+- תאריך+שעה חייבים להיות בפורמט: YYYY-MM-DDTHH:MM:SS
+- כל הפרמטרים מופרדים בפסיק ורווח: ", "
+- משתמש ב-"date_time" ולא ב-"date" ו-"time" נפרדים (אלא אם כן ממש צריך)
+- כותרת (title) היא חובה בפגישות!
 4. כשמשתמש מבקש עזרה, הצע פעולות קונקרטיות שיעזרו לו
 5. השתמש במידע ההיסטורי כדי לתת המלצות חכמות, מבוססות-נתונים ומותאמות אישית
 6. בחיזויים - ציין את רמת הביטחון והנחות היסוד

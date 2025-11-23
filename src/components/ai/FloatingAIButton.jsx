@@ -22,7 +22,6 @@ export default function FloatingAIButton() {
       
       // Parse params string more carefully
       if (action.params && typeof action.params === 'string') {
-        // Split by comma, but be careful with commas inside values
         const parts = action.params.split(/,(?=\s*\w+:)/);
         parts.forEach(p => {
           const colonIndex = p.indexOf(':');
@@ -44,47 +43,100 @@ export default function FloatingAIButton() {
           body: params.body
         });
         toast.success('✉️ אימייל נשלח בהצלחה!');
+        
       } else if (action.type === 'CREATE_TASK') {
         console.log('✅ Creating task...');
+        
+        let dueDate = params.due_date;
+        if (dueDate === 'מחר') {
+          const tomorrow = new Date();
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          dueDate = tomorrow.toISOString().split('T')[0];
+        } else if (dueDate === 'היום') {
+          dueDate = new Date().toISOString().split('T')[0];
+        }
+        
         const newTask = await base44.entities.Task.create({
           title: params.title,
           priority: params.priority || 'בינונית',
-          due_date: params.due_date,
+          due_date: dueDate,
           status: 'חדשה',
-          description: params.description || ''
+          description: params.description || '',
+          client_name: params.client_name || '',
+          project_name: params.project_name || ''
         });
         console.log('✅ Task created:', newTask);
         toast.success('✅ משימה נוצרה בהצלחה!');
+        
       } else if (action.type === 'SCHEDULE_MEETING') {
         console.log('📅 Scheduling meeting...');
         
-        // Build title from available info if not provided
         const title = params.title || 
                      (params.client_name ? `פגישה עם ${params.client_name}` : 'פגישה חדשה');
         
-        // Parse date - handle "מחר", specific dates, etc.
-        let meetingDate = params.date;
-        if (meetingDate === 'מחר') {
+        let meetingDate = null;
+        
+        if (params.date_time) {
+          meetingDate = params.date_time;
+        } else if (params.date && params.time) {
+          meetingDate = `${params.date}T${params.time}:00`;
+        } else if (params.date) {
+          let dateStr = params.date;
+          if (dateStr === 'מחר') {
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            dateStr = tomorrow.toISOString().split('T')[0];
+          } else if (dateStr === 'היום') {
+            dateStr = new Date().toISOString().split('T')[0];
+          }
+          const time = params.time || '09:00';
+          meetingDate = `${dateStr}T${time}:00`;
+        } else {
           const tomorrow = new Date();
           tomorrow.setDate(tomorrow.getDate() + 1);
-          meetingDate = tomorrow.toISOString().split('T')[0];
+          meetingDate = `${tomorrow.toISOString().split('T')[0]}T10:00:00`;
         }
         
-        // Add time if provided
-        if (params.time && meetingDate) {
-          meetingDate = `${meetingDate}T${params.time}:00`;
+        let clientId = params.client_id;
+        let clientName = params.client_name;
+        
+        if (clientName && !clientId) {
+          try {
+            const clients = await base44.entities.Client.list();
+            const client = clients.find(c => 
+              c.name?.includes(clientName.trim()) || 
+              c.name?.toLowerCase() === clientName.toLowerCase()
+            );
+            if (client) {
+              clientId = client.id;
+              clientName = client.name;
+            }
+          } catch (e) {
+            console.warn('Could not fetch clients:', e);
+          }
         }
         
-        const newMeeting = await base44.entities.Meeting.create({
+        const meetingData = {
           title,
           meeting_date: meetingDate,
-          participants: params.participants?.split(';') || [],
           status: 'מתוכננת',
           location: params.location || '',
-          description: params.description || (params.client_name ? `פגישה עם ${params.client_name}` : '')
-        });
-        console.log('📅 Meeting created:', newMeeting);
+          description: params.description || (clientName ? `פגישה עם ${clientName}` : ''),
+          participants: params.participants?.split(';').filter(p => p.trim()) || [],
+          meeting_type: params.meeting_type || 'פגישת תכנון'
+        };
+        
+        if (clientId) meetingData.client_id = clientId;
+        if (clientName) meetingData.client_name = clientName;
+        if (params.project_id) meetingData.project_id = params.project_id;
+        if (params.project_name) meetingData.project_name = params.project_name;
+        
+        console.log('📅 Creating meeting with data:', meetingData);
+        
+        const newMeeting = await base44.entities.Meeting.create(meetingData);
+        console.log('✅ Meeting created:', newMeeting);
         toast.success(`📅 פגישה "${title}" נקבעה בהצלחה!`);
+        
       } else if (action.type === 'UPDATE_CLIENT_STAGE') {
         console.log('🎯 Updating client stage...');
         const clientsToUpdate = params.clients?.split(';') || [];
@@ -107,6 +159,7 @@ export default function FloatingAIButton() {
         
         console.log(`✅ Updated ${updated} clients`);
         toast.success(`🎯 ${updated} לקוחות עודכנו לשלב!`);
+        
       } else if (action.type === 'PREDICT_TIMELINE') {
         toast.info(`📊 חיזוי ציר זמן בוצע`);
       } else if (action.type === 'SUGGEST_RESOURCES') {
