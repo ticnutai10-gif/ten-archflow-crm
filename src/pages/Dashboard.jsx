@@ -571,61 +571,65 @@ export default function Dashboard() {
               );
             }
 
-            if (card.id === 'quoteStatus' && dashboardSettings.showQuoteStatus) {
-              return (
-                <Card key={card.id} className={`bg-white shadow-md ${sizeClass}`}>
-                <CardHeader 
-                  className={`border-b cursor-pointer hover:bg-slate-50 transition-colors ${compactHeaders ? 'py-3' : ''}`}
-                  onClick={() => toggleCard('quotes')}
-                >
-                  <CardTitle className={`flex items-center justify-between ${compactHeaders ? 'text-sm' : 'text-base'}`}>
-                    <span className="text-right">הצעות מחיר</span>
-                    <div className="flex items-center gap-2">
-                      <span className={`text-slate-500 ${compactHeaders ? 'text-xs' : 'text-sm'}`}>
-                        {quotes.length}
-                      </span>
-                      {expandedCards.quotes ? (
-                        <ChevronUp className="w-5 h-5 text-slate-400" />
-                      ) : (
-                        <ChevronDown className="w-5 h-5 text-slate-400" />
-                      )}
-                    </div>
-                  </CardTitle>
-                </CardHeader>
-                {expandedCards.quotes && (
-                  <CardContent className="p-0">
-                    <QuoteStatus quotes={quotes} isLoading={loading} />
-                  </CardContent>
-                )}
-              </Card>
-            )}
+              if (card.id === 'quoteStatus' && dashboardSettings.showQuoteStatus) {
+                return (
+                  <Card key={card.id} className={`bg-white shadow-md ${sizeClass}`}>
+                    <CardHeader 
+                      className={`border-b cursor-pointer hover:bg-slate-50 transition-colors ${compactHeaders ? 'py-3' : ''}`}
+                      onClick={() => toggleCard('quotes')}
+                    >
+                      <CardTitle className={`flex items-center justify-between ${compactHeaders ? 'text-sm' : 'text-base'}`}>
+                        <span className="text-right">הצעות מחיר</span>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-slate-500 ${compactHeaders ? 'text-xs' : 'text-sm'}`}>
+                            {quotes.length}
+                          </span>
+                          {expandedCards.quotes ? (
+                            <ChevronUp className="w-5 h-5 text-slate-400" />
+                          ) : (
+                            <ChevronDown className="w-5 h-5 text-slate-400" />
+                          )}
+                        </div>
+                      </CardTitle>
+                    </CardHeader>
+                    {expandedCards.quotes && (
+                      <CardContent className="p-0">
+                        <QuoteStatus quotes={quotes} isLoading={loading} />
+                      </CardContent>
+                    )}
+                  </Card>
+                );
+              }
 
-                  <CardHeader 
-                    className={`border-b cursor-pointer hover:bg-slate-50 transition-colors ${compactHeaders ? 'py-3' : ''}`}
-                    onClick={() => toggleCard('timeLogs')}
-                  >
-                    <CardTitle className={`flex items-center justify-between ${compactHeaders ? 'text-sm' : 'text-base'}`}>
-                      <span className="text-right">לוגי זמן</span>
-                      <div className="flex items-center gap-2">
-                        <span className={`text-slate-500 ${compactHeaders ? 'text-xs' : 'text-sm'}`}>
-                          {timeLogs.length}
-                        </span>
-                        {expandedCards.timeLogs ? (
-                          <ChevronUp className="w-5 h-5 text-slate-400" />
-                        ) : (
-                          <ChevronDown className="w-5 h-5 text-slate-400" />
-                        )}
-                      </div>
-                    </CardTitle>
-                  </CardHeader>
-                  {expandedCards.timeLogs && (
-                    <CardContent className="p-0">
-                      <TimerLogs timeLogs={timeLogs} isLoading={loading} onUpdate={loadDashboardData} />
-                    </CardContent>
-                  )}
-                </Card>
-              );
-            }
+              if (card.id === 'timerLogs' && dashboardSettings.showTimerLogs) {
+                return (
+                  <Card key={card.id} className={`bg-white shadow-md ${sizeClass}`}>
+                    <CardHeader 
+                      className={`border-b cursor-pointer hover:bg-slate-50 transition-colors ${compactHeaders ? 'py-3' : ''}`}
+                      onClick={() => toggleCard('timeLogs')}
+                    >
+                      <CardTitle className={`flex items-center justify-between ${compactHeaders ? 'text-sm' : 'text-base'}`}>
+                        <span className="text-right">לוגי זמן</span>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-slate-500 ${compactHeaders ? 'text-xs' : 'text-sm'}`}>
+                            {timeLogs.length}
+                          </span>
+                          {expandedCards.timeLogs ? (
+                            <ChevronUp className="w-5 h-5 text-slate-400" />
+                          ) : (
+                            <ChevronDown className="w-5 h-5 text-slate-400" />
+                          )}
+                        </div>
+                      </CardTitle>
+                    </CardHeader>
+                    {expandedCards.timeLogs && (
+                      <CardContent className="p-0">
+                        <TimerLogs timeLogs={timeLogs} isLoading={loading} onUpdate={loadDashboardData} />
+                      </CardContent>
+                    )}
+                  </Card>
+                );
+              }
 
               if (card.id === 'upcomingMeetings' && dashboardSettings.showMeetings) {
                 return (
