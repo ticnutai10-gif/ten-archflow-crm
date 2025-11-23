@@ -175,6 +175,8 @@ export default function AutomationsPage() {
   };
 
   const handleSave = async () => {
+    console.log('💾 Saving rule...', formData);
+    
     if (!formData.name.trim()) {
       toast.error('נא להזין שם לחוק');
       return;
@@ -191,19 +193,30 @@ export default function AutomationsPage() {
     }
 
     try {
+      const dataToSave = {
+        name: formData.name,
+        active: formData.active,
+        trigger: formData.trigger,
+        conditions: formData.conditions || {},
+        actions: formData.actions || []
+      };
+      
+      console.log('📤 Data to save:', dataToSave);
+      
       if (editingRule) {
-        await base44.entities.AutomationRule.update(editingRule.id, formData);
+        await base44.entities.AutomationRule.update(editingRule.id, dataToSave);
         toast.success('✓ החוק עודכן בהצלחה');
       } else {
-        await base44.entities.AutomationRule.create(formData);
+        const created = await base44.entities.AutomationRule.create(dataToSave);
+        console.log('✅ Rule created:', created);
         toast.success('✓ חוק חדש נוצר בהצלחה');
       }
       
       setShowDialog(false);
-      loadRules();
+      await loadRules();
     } catch (error) {
-      console.error('Error saving rule:', error);
-      toast.error('שגיאה בשמירת החוק');
+      console.error('❌ Error saving rule:', error);
+      toast.error('שגיאה בשמירת החוק: ' + (error.message || 'נסה שוב'));
     }
   };
 
@@ -462,7 +475,7 @@ export default function AutomationsPage() {
             </DialogTitle>
           </DialogHeader>
 
-          <ScrollArea className="flex-1 px-6">
+          <div className="flex-1 overflow-y-auto px-6">
             <div className="space-y-6 py-6">
               {/* Basic Info */}
               <div className="space-y-4">
@@ -769,7 +782,7 @@ export default function AutomationsPage() {
                 </div>
               </div>
             </div>
-          </ScrollArea>
+          </div>
 
           <DialogFooter className="border-t pt-4 px-6">
             <div className="flex gap-2 w-full justify-end">
