@@ -18,6 +18,7 @@ import MobileBottomNav from "@/components/mobile/MobileBottomNav";
 import MobileHeader from "@/components/mobile/MobileHeader";
 import MobileSidebar from "@/components/mobile/MobileSidebar";
 import MobileFAB from "@/components/mobile/MobileFAB";
+import InstallPrompt from "@/components/mobile/InstallPrompt";
 import { base44 } from "@/api/base44Client";
 import { useIsMobile } from "@/components/utils/useMediaQuery";
 
@@ -687,6 +688,9 @@ export default function Layout({ children, currentPageName }) {
 
         {/* Mobile FAB */}
         {isMobile && <MobileFAB onAction={handleMobileFAB} />}
+
+        {/* PWA Install Prompt */}
+        <InstallPrompt />
         </div>
         </SidebarProvider>
         );

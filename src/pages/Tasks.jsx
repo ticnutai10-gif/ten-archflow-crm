@@ -2,6 +2,9 @@ import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useIsMobile } from "../components/utils/useMediaQuery";
+import PullToRefresh from "../components/mobile/PullToRefresh";
+import SwipeableCard from "../components/mobile/SwipeableCard";
 import {
   Select,
   SelectContent,
@@ -46,6 +49,7 @@ import { toast } from "sonner";
 import { useAccessControl } from "@/components/access/AccessValidator";
 
 export default function TasksPage() {
+  const isMobile = useIsMobile();
   const [tasks, setTasks] = useState([]);
   const [filteredTasks, setFilteredTasks] = useState([]);
   const [clients, setClients] = useState([]);
@@ -273,11 +277,12 @@ export default function TasksPage() {
   const currentViewConfig = viewModeConfig.find(v => v.id === viewMode) || viewModeConfig[0];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6" dir="rtl">
+    <PullToRefresh onRefresh={loadTasks}>
+    <div className={`min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 ${isMobile ? 'p-3' : 'p-6'}`} dir="rtl">
       <div className="max-w-7xl mx-auto space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white rounded-xl shadow-sm p-6">
+        <div className={`flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white rounded-xl shadow-sm ${isMobile ? 'p-4' : 'p-6'}`}>
           <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold text-slate-900">ניהול משימות</h1>
+            <h1 className={`${isMobile ? 'text-xl' : 'text-3xl'} font-bold text-slate-900`}>ניהול משימות</h1>
             <HelpIcon
               text="מערכת ניהול משימות מתקדמת עם תצוגות שונות, סינון חכם ותזכורות אוטומטיות"
               side="bottom"
@@ -432,13 +437,28 @@ export default function TasksPage() {
                     {filteredTasks.length > 0 && viewMode === 'list' && (
                       <div className="space-y-4">
                         {filteredTasks.map(task => (
-                          <TaskCard
-                            key={task.id}
-                            task={task}
-                            onEdit={handleEdit}
-                            onDelete={handleDelete}
-                            onUpdate={handleTaskUpdate}
-                          />
+                          isMobile ? (
+                            <SwipeableCard
+                              key={task.id}
+                              onEdit={() => handleEdit(task)}
+                              onDelete={() => handleDelete(task.id)}
+                            >
+                              <TaskCard
+                                task={task}
+                                onEdit={handleEdit}
+                                onDelete={handleDelete}
+                                onUpdate={handleTaskUpdate}
+                              />
+                            </SwipeableCard>
+                          ) : (
+                            <TaskCard
+                              key={task.id}
+                              task={task}
+                              onEdit={handleEdit}
+                              onDelete={handleDelete}
+                              onUpdate={handleTaskUpdate}
+                            />
+                          )
                         ))}
                       </div>
                     )}
@@ -632,5 +652,6 @@ export default function TasksPage() {
         />
       )}
     </div>
+    </PullToRefresh>
   );
 }
