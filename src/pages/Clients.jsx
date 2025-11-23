@@ -1068,8 +1068,9 @@ export default function ClientsPage() {
             </Select>
             </>
             )}
-            </CardContent>
-            </Card>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Dialogs and imports */}
       {showImporter &&
@@ -1768,7 +1769,7 @@ export default function ClientsPage() {
           </p>
         </div>
       }
-      </div>
-      </PullToRefresh>
-      );
-      }
+    </div>
+    </PullToRefresh>
+  );
+}
