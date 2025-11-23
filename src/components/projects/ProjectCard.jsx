@@ -90,8 +90,17 @@ export default function ProjectCard({
   const startDateFormatted = formatDate(project.start_date);
   const endDateFormatted = formatDate(project.end_date);
 
+  const handleCardClick = () => {
+    if (!selectionMode) {
+      window.location.href = `/ProjectDetails?project_id=${project.id}`;
+    }
+  };
+
   return (
-    <Card className={`bg-white/80 backdrop-blur-sm hover:shadow-lg transition-all ${selected ? 'ring-2 ring-blue-500' : ''}`}>
+    <Card 
+      className={`bg-white/80 backdrop-blur-sm hover:shadow-lg transition-all cursor-pointer ${selected ? 'ring-2 ring-blue-500' : ''}`}
+      onClick={handleCardClick}
+    >
       <CardHeader className="pb-3">
         <div className="flex justify-between items-start gap-2">
           {selectionMode && (
