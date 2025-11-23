@@ -46,6 +46,8 @@ import TimelineView from "../components/dashboard/TimelineView";
 import AnalyticsView from "../components/dashboard/AnalyticsView";
 import HeatmapView from "../components/dashboard/HeatmapView";
 import TrendsView from "../components/dashboard/TrendsView";
+import { useIsMobile } from "../components/utils/useMediaQuery";
+import PullToRefresh from "../components/mobile/PullToRefresh";
 
 const VIEW_MODE_OPTIONS = [
   { value: 'list', label: 'שורות', icon: LayoutList },
@@ -84,6 +86,7 @@ const getGridClass = (viewMode) => {
 };
 
 export default function Dashboard() {
+  const isMobile = useIsMobile();
   const [stats, setStats] = useState({
     clients: 0,
     projects: 0,
@@ -352,7 +355,8 @@ export default function Dashboard() {
   const CurrentViewIcon = currentViewOption.icon;
 
   return (
-    <div className="p-6 min-h-screen" dir="rtl" style={{ backgroundColor: '#FCF6E3' }}>
+    <PullToRefresh onRefresh={loadDashboardData}>
+    <div className={`${isMobile ? 'p-3 pb-6' : 'p-6'} min-h-screen`} dir="rtl" style={{ backgroundColor: '#FCF6E3' }}>
       <DashboardSettings
         visible={showDashboardSettings}
         settings={dashboardSettings}
@@ -361,29 +365,31 @@ export default function Dashboard() {
       />
 
       <div className="max-w-7xl mx-auto" dir="rtl">
-        <div className="mb-8" dir="rtl">
-          <div className="px-8 py-6 rounded-2xl shadow-md" style={{ backgroundColor: '#2C3E50' }} dir="rtl">
+        <div className={isMobile ? "mb-4" : "mb-8"} dir="rtl">
+          <div className={`${isMobile ? 'px-4 py-4' : 'px-8 py-6'} rounded-2xl shadow-md`} style={{ backgroundColor: '#2C3E50' }} dir="rtl">
             <div className="flex justify-between items-center" dir="rtl">
               <div className="flex-1 text-right" dir="rtl">
-                <h1 className="text-3xl font-bold text-white mb-1 text-right">
-                  ניהול לקוחות CRM
+                <h1 className={`${isMobile ? 'text-xl' : 'text-3xl'} font-bold text-white mb-1 text-right`}>
+                  {isMobile ? 'CRM טננבאום' : 'ניהול לקוחות CRM'}
                 </h1>
+                {!isMobile && (
                 <p className="text-slate-300 text-sm text-right">
                   סקירה כללית על הפעילות העסקית
                 </p>
+                )}
               </div>
-              <div className="flex gap-3" dir="rtl">
-                <ReminderManager />
+              <div className={`flex gap-2 ${isMobile ? 'flex-col' : 'gap-3'}`} dir="rtl">
+                {!isMobile && <ReminderManager />}
                 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button 
                       variant="outline"
-                      size="icon"
+                      size={isMobile ? "sm" : "icon"}
                       title="מצב תצוגה"
-                      className="bg-white/10 border-white/20 hover:bg-white/20 text-white"
+                      className={`bg-white/10 border-white/20 hover:bg-white/20 text-white ${isMobile ? 'px-3' : ''}`}
                     >
-                      <CurrentViewIcon className="w-5 h-5" />
+                      <CurrentViewIcon className={isMobile ? "w-4 h-4" : "w-5 h-5"} />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-64" dir="rtl">
@@ -427,6 +433,8 @@ export default function Dashboard() {
                   </DropdownMenuContent>
                 </DropdownMenu>
 
+                {!isMobile && (
+                <>
                 <Button 
                   variant="outline" 
                   size="icon" 
@@ -446,28 +454,32 @@ export default function Dashboard() {
                 >
                   <Settings className="w-5 h-5" />
                 </Button>
+                </>
+                )}
               </div>
             </div>
           </div>
         </div>
 
         {dashboardSettings.showStats && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8" dir="rtl">
+          <div className={`grid ${isMobile ? 'grid-cols-2 gap-3 mb-4' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8'}`} dir="rtl">
             <Card className="bg-white shadow-md hover:shadow-lg transition-shadow">
-              <CardHeader className={compactHeaders ? "pb-1" : "pb-2"}>
-                <CardTitle className={`text-sm text-slate-600 font-normal text-center ${compactHeaders ? 'text-xs' : ''}`}>
+              <CardHeader className={isMobile ? "pb-1 pt-3" : compactHeaders ? "pb-1" : "pb-2"}>
+                <CardTitle className={`text-slate-600 font-normal text-center ${isMobile ? 'text-xs' : compactHeaders ? 'text-xs' : 'text-sm'}`}>
                   לקוחות פעילים
                 </CardTitle>
               </CardHeader>
-              <CardContent className={compactHeaders ? "pt-2" : ""}>
-                <div className={`font-bold text-center mb-2 ${compactHeaders ? 'text-3xl' : 'text-4xl'}`}>
+              <CardContent className={isMobile ? "pt-1 pb-3" : compactHeaders ? "pt-2" : ""}>
+                <div className={`font-bold text-center ${isMobile ? 'mb-0 text-2xl' : compactHeaders ? 'text-3xl mb-2' : 'text-4xl mb-2'}`}>
                   {stats.clients}
                 </div>
+                {!isMobile && (
                 <Link to={createPageUrl("Clients")} className="block">
                   <Button variant="link" className="w-full text-xs" style={{ color: '#2C3E50' }}>
                     → כל הלקוחות
                   </Button>
                 </Link>
+                )}
               </CardContent>
             </Card>
 
@@ -787,5 +799,6 @@ export default function Dashboard() {
         />
       )}
     </div>
+    </PullToRefresh>
   );
 }

@@ -75,6 +75,9 @@ import GoogleSheetsImporter from "../components/clients/GoogleSheetsImporter";
 import { useAccessControl, autoAssignToCreator } from "../components/access/AccessValidator";
 import { toast } from "sonner";
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
+import { useIsMobile } from "../components/utils/useMediaQuery";
+import SwipeableCard from "../components/mobile/SwipeableCard";
+import PullToRefresh from "../components/mobile/PullToRefresh";
 
 // Stage options
 const STAGE_OPTIONS = [
@@ -117,6 +120,7 @@ export default function ClientsPage() {
 
   // הוספת בדיקת הרשאות
   const { isAdmin, filterClients, canCreateClient, loading: accessLoading, me } = useAccessControl();
+  const isMobile = useIsMobile();
 
   // הוספת קבוע לצבע האייקונים
   const iconColor = "#2C3A50";
@@ -652,31 +656,36 @@ export default function ClientsPage() {
 
   // עדכון כפתור "לקוח חדש" - הצגה רק למי שיכול ליצור
   return (
+    <PullToRefresh onRefresh={loadClients}>
     <div
-      className="p-6 lg:p-8 min-h-screen pl-24 lg:pl-12"
+      className={`${isMobile ? 'p-3' : 'p-6 lg:p-8'} min-h-screen ${isMobile ? 'pb-4' : 'pl-24 lg:pl-12'}`}
       dir="rtl"
       style={{
         backgroundColor: 'var(--bg-cream, #FCF6E3)',
-        width: '100%' // Changed overflow to visible for scrollArea to manage
+        width: '100%'
       }}>
 
       {/* כותרת העמוד */}
+      {!isMobile && (
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-4 gap-4">
         <div className="text-right">
           <h1 className="text-3xl font-bold text-slate-900 mb-2">ניהול לקוחות</h1>
           <p className="text-slate-600">ניהול מאגר הלקוחות והפרויקטים שלהם</p>
         </div>
       </div>
+      )}
 
       {/* סטטיסטיקות */}
+      {!isMobile && (
       <div className="mb-6">
         <ClientStats clients={clients} isLoading={isLoading} />
       </div>
+      )}
 
       {/* כפתורי הפעולה (Toolbar) */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
+      <div className={`flex ${isMobile ? 'flex-col' : 'flex-col lg:flex-row'} justify-between items-start lg:items-center mb-4 gap-3`}>
         {/* Left group of buttons */}
-        <div className="flex flex-wrap gap-3">
+        <div className={`flex flex-wrap gap-2 ${isMobile ? 'w-full' : ''}`}>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="bg-background text-slate-800 px-4 py-2 text-sm font-medium rounded-md inline-flex items-center justify-center whitespace-nowrap ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border hover:text-accent-foreground h-10 gap-2 border-slate-200 hover:bg-slate-50">
@@ -913,7 +922,7 @@ export default function ClientsPage() {
           {canCreateClient && (
             <Button
               onClick={() => setShowForm(true)}
-              className="bg-[#2C3A50] text-white px-6 py-2 text-sm font-medium rounded-xl inline-flex items-center justify-center gap-2 whitespace-nowrap ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-10 hover:bg-[#1f2937] shadow-lg hover:shadow-xl transition-all duration-200">
+              className={`bg-[#2C3A50] text-white ${isMobile ? 'w-full px-4 py-3' : 'px-6 py-2'} text-sm font-medium rounded-xl inline-flex items-center justify-center gap-2 whitespace-nowrap h-10 hover:bg-[#1f2937] shadow-lg hover:shadow-xl transition-all duration-200`}>
               <Plus className="w-5 h-5 ml-2" />
               לקוח חדש
             </Button>
@@ -923,19 +932,65 @@ export default function ClientsPage() {
 
 
       {/* Compact Search and Filters */}
-      <Card className="mb-6 shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-        <CardContent className="p-4">
-          <div className="flex items-center gap-2 flex-wrap" dir="rtl">
+      <Card className={`${isMobile ? 'mb-3' : 'mb-6'} shadow-lg border-0 bg-white/80 backdrop-blur-sm`}>
+        <CardContent className={isMobile ? "p-3" : "p-4"}>
+          <div className={`flex items-center gap-2 ${isMobile ? 'flex-col' : 'flex-wrap'}`} dir="rtl">
             {/* Search */}
-            <div className="relative flex-1 min-w-[250px]">
+            <div className={`relative ${isMobile ? 'w-full' : 'flex-1 min-w-[250px]'}`}>
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
               <Input
-                placeholder="חיפוש לקוח (שם, טלפון, אימייל)..."
+                placeholder="חיפוש לקוח..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pr-9 bg-white h-9 text-sm"
+                className={`pr-9 bg-white ${isMobile ? 'h-11 text-base' : 'h-9 text-sm'}`}
               />
             </div>
+
+            {/* Mobile Filters Row */}
+            {isMobile && (
+              <div className="flex items-center gap-2 w-full overflow-x-auto pb-1">
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="min-w-[120px] h-10 bg-white border-slate-300">
+                    <SelectValue placeholder="סטטוס" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">כל הסטטוסים</SelectItem>
+                    <SelectItem value="פוטנציאלי">פוטנציאלי</SelectItem>
+                    <SelectItem value="פעיל">פעיל</SelectItem>
+                    <SelectItem value="לא פעיל">לא פעיל</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select value={stageFilter} onValueChange={setStageFilter}>
+                  <SelectTrigger className="min-w-[120px] h-10 bg-white border-slate-300">
+                    <SelectValue placeholder="שלב" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">כל השלבים</SelectItem>
+                    <SelectItem value="ברור_תכן">ברור תכן</SelectItem>
+                    <SelectItem value="תיק_מידע">תיק מידע</SelectItem>
+                    <SelectItem value="היתרים">היתרים</SelectItem>
+                    <SelectItem value="ביצוע">ביצוע</SelectItem>
+                    <SelectItem value="סיום">סיום</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select value={sortBy} onValueChange={setSortBy}>
+                  <SelectTrigger className="min-w-[100px] h-10 bg-white border-slate-300">
+                    <SelectValue placeholder="מיון" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="name">שם</SelectItem>
+                    <SelectItem value="created_date">תאריך</SelectItem>
+                    <SelectItem value="status">סטטוס</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Desktop Icon Filters */}
+            {!isMobile && (
+              <>
 
             {/* Compact Icon Filters */}
             <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -1011,9 +1066,10 @@ export default function ClientsPage() {
                 <SelectItem value="סיום">סיום</SelectItem>
               </SelectContent>
             </Select>
-          </div>
-        </CardContent>
-      </Card>
+            </>
+            )}
+            </CardContent>
+            </Card>
 
       {/* Dialogs and imports */}
       {showImporter &&
@@ -1082,7 +1138,76 @@ export default function ClientsPage() {
 
       {/* Main content - SINGLE RENDER */}
       <div ref={scrollContainerRef} style={{ width: '100%' }}>
-        {viewMode === "timeline" ? (
+        {isMobile && viewMode !== "list" && viewMode !== "compact" ? (
+          // Mobile optimized list view
+          <div className="space-y-3">
+            {isLoading ? (
+              Array(5).fill(0).map((_, i) => (
+                <div key={i} className="h-32 bg-slate-200 rounded-lg animate-pulse" />
+              ))
+            ) : filteredAndSortedClients.length === 0 ? (
+              <div className="text-center py-12">
+                <Users className="w-16 h-16 mx-auto mb-4 text-slate-300" />
+                <h3 className="text-lg font-semibold text-slate-600 mb-2">אין לקוחות</h3>
+              </div>
+            ) : (
+              filteredAndSortedClients.map((client) => (
+                <SwipeableCard
+                  key={client.id}
+                  onEdit={() => handleEdit(client)}
+                  onDelete={() => handleDelete(client.id)}
+                  onView={() => handleViewDetails(client)}
+                >
+                  <div
+                    onClick={() => handleViewDetails(client)}
+                    className="p-4 bg-white rounded-lg border border-slate-200 active:bg-slate-50"
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <h3 className="font-bold text-slate-900 text-base">{client.name}</h3>
+                      {client.stage && (() => {
+                        const currentStage = STAGE_OPTIONS.find(s => s.value === client.stage);
+                        return currentStage ? (
+                          <Circle 
+                            className="w-3 h-3 fill-current flex-shrink-0"
+                            style={{ color: currentStage.color }}
+                          />
+                        ) : null;
+                      })()}
+                    </div>
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      <Badge className={statusColors[client.status]} variant="outline">
+                        {client.status}
+                      </Badge>
+                      {client.budget_range && (
+                        <Badge variant="outline" className="text-xs">
+                          {client.budget_range}
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="space-y-1 text-sm text-slate-600">
+                      {client.phone && (
+                        <div className="flex items-center gap-2">
+                          <Phone className="w-4 h-4" />
+                          <a href={`tel:${client.phone}`} className="hover:text-blue-600">
+                            {client.phone}
+                          </a>
+                        </div>
+                      )}
+                      {client.email && (
+                        <div className="flex items-center gap-2">
+                          <Mail className="w-4 h-4" />
+                          <a href={`mailto:${client.email}`} className="hover:text-blue-600 truncate">
+                            {client.email}
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </SwipeableCard>
+              ))
+            )}
+          </div>
+        ) : viewMode === "timeline" ? (
           <ClientTimeline
             clients={filteredAndSortedClients}
             onView={handleViewDetails}
@@ -1636,13 +1761,14 @@ export default function ClientsPage() {
       </div>
 
       {/* Footer */}
-      {!isLoading && filteredAndSortedClients.length > 0 &&
+      {!isLoading && filteredAndSortedClients.length > 0 && !isMobile &&
         <div className="text-center mt-8">
           <p className="text-slate-500">
             מציג {filteredAndSortedClients.length} מתוך {clients.length} לקוחות
           </p>
         </div>
       }
-    </div>
-  );
-}
+      </div>
+      </PullToRefresh>
+      );
+      }
