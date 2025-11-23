@@ -12,6 +12,7 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import FloatingTimer from "@/components/timer/FloatingTimer";
 import ReminderPopup from "@/components/reminders/ReminderPopup";
 import FloatingDebugPanel from "@/components/debug/FloatingDebugPanel";
+import NotificationBell from "@/components/notifications/NotificationBell";
 import { base44 } from "@/api/base44Client";
 
 const ACCENT_COLOR = "#2C3A50";
@@ -415,6 +416,8 @@ export default function Layout({ children, currentPageName }) {
                     </div>
 
                     <div className="flex gap-1 flex-shrink-0">
+                      <NotificationBell />
+
                       <button
                         onClick={handleSwitchUser}
                         className="p-1.5 hover:bg-slate-200 rounded transition-colors duration-200"
@@ -425,7 +428,7 @@ export default function Layout({ children, currentPageName }) {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                         </svg>
                       </button>
-                      
+
                       <button
                         onClick={handleLogout}
                         className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors duration-200"
