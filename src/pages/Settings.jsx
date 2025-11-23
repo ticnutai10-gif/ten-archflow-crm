@@ -8,11 +8,15 @@ import { Settings, Bug, Bell, Palette, Terminal, AlertCircle, CheckCircle, XCirc
 import AppSettings from "@/components/settings/AppSettings";
 import RingtoneManager from "@/components/settings/RingtoneManager";
 import ThemeManager from "@/components/settings/ThemeManager";
+import NotificationSettingsTab from "@/components/settings/NotificationSettingsTab";
 import { toast } from "sonner";
 import { base44 } from "@/api/base44Client";
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = React.useState("general");
+  const [activeTab, setActiveTab] = React.useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('tab') || 'general';
+  });
   const [debugSettings, setDebugSettings] = React.useState(() => {
     try {
       const saved = localStorage.getItem('debug-settings');
@@ -337,6 +341,14 @@ export default function SettingsPage() {
                 </TabsTrigger>
 
                 <TabsTrigger 
+                  value="notifications" 
+                  className="data-[state=active]:bg-[#2C3A50] data-[state=active]:text-white px-6 py-3"
+                >
+                  <Bell className="w-4 h-4 ml-2" />
+                  התראות
+                </TabsTrigger>
+
+                <TabsTrigger 
                   value="debug" 
                   className="data-[state=active]:bg-[#2C3A50] data-[state=active]:text-white px-6 py-3"
                 >
@@ -357,6 +369,10 @@ export default function SettingsPage() {
 
               <TabsContent value="ringtone" className="mt-0">
                 <RingtoneManager />
+              </TabsContent>
+
+              <TabsContent value="notifications" className="mt-0">
+                <NotificationSettingsTab />
               </TabsContent>
 
               <TabsContent value="debug" className="space-y-6 mt-0">
