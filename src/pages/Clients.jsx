@@ -1398,6 +1398,25 @@ export default function ClientsPage() {
             try {
               await base44.entities.Client.update(clientId, { stage: destStage });
               toast.success(`${client.name} עודכן לשלב ${STAGE_OPTIONS.find(s => s.value === destStage)?.label}`);
+              
+              // Trigger automation for stage change
+              try {
+                await base44.functions.invoke('automationEngine', {
+                  trigger: 'client_stage_changed',
+                  data: {
+                    client_id: clientId,
+                    name: client.name,
+                    email: client.email,
+                    phone: client.phone,
+                    old_stage: sourceStage,
+                    new_stage: destStage,
+                    stage: destStage
+                  }
+                });
+              } catch (automationError) {
+                console.warn('Automation engine error:', automationError);
+              }
+              
               loadClients();
             } catch (error) {
               console.error('Error updating client stage:', error);

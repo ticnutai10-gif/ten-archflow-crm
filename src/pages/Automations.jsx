@@ -32,6 +32,13 @@ const TRIGGERS = [
     description: 'מופעל כאשר סטטוס לקוח משתנה (פוטנציאלי/פעיל/לא פעיל)'
   },
   { 
+    value: 'client_stage_changed', 
+    label: 'שלב לקוח השתנה', 
+    icon: User, 
+    color: 'purple',
+    description: 'מופעל כאשר לקוח עובר משלב לשלב בפייפליין (ברור תכן, תיק מידע, וכו\')'
+  },
+  { 
     value: 'project_created', 
     label: 'פרויקט חדש נוצר', 
     icon: Briefcase, 
@@ -115,6 +122,14 @@ const ACTIONS = [
     color: 'purple',
     description: 'צור התראה במערכת למשתמש',
     params: ['user_email', 'title', 'message', 'type']
+  },
+  { 
+    value: 'send_reminder', 
+    label: 'שלח תזכורת', 
+    icon: Clock, 
+    color: 'amber',
+    description: 'שלח תזכורת ללקוח או לצוות',
+    params: ['recipient_email', 'subject', 'message', 'client_name']
   }
 ];
 
@@ -742,6 +757,35 @@ export default function AutomationsPage() {
                                   />
                                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800">
                                     💡 ההודעה תפתח את WhatsApp עם הטקסט מוכן לשליחה
+                                  </div>
+                                </>
+                              )}
+
+                              {action.type === 'send_reminder' && (
+                                <>
+                                  <Input
+                                    placeholder="אימייל מקבל התזכורת (למשל: manager@company.com או {{created_by}})"
+                                    value={action.params?.recipient_email || ""}
+                                    onChange={(e) => updateAction(index, 'recipient_email', e.target.value)}
+                                  />
+                                  <Input
+                                    placeholder="נושא התזכורת"
+                                    value={action.params?.subject || ""}
+                                    onChange={(e) => updateAction(index, 'subject', e.target.value)}
+                                  />
+                                  <Textarea
+                                    placeholder="תוכן התזכורת (אפשר להשתמש ב-{{name}}, {{stage}}, {{status}} וכו')"
+                                    value={action.params?.message || ""}
+                                    onChange={(e) => updateAction(index, 'message', e.target.value)}
+                                    rows={4}
+                                  />
+                                  <Input
+                                    placeholder="שם לקוח (אופציונלי - {{name}} יוחלף אוטומטית)"
+                                    value={action.params?.client_name || ""}
+                                    onChange={(e) => updateAction(index, 'client_name', e.target.value)}
+                                  />
+                                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800">
+                                    💡 התזכורת תישלח למייל הנבחר. השתמש ב-{{name}} לשם הלקוח, {{stage}} לשלב, {{old_stage}} לשלב הקודם
                                   </div>
                                 </>
                               )}
