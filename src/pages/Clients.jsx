@@ -50,8 +50,7 @@ import {
   DollarSign,
   ArrowUpDown,
   GitBranch,
-  BarChart,
-  Clock
+  BarChart
 } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";

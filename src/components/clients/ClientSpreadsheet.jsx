@@ -2451,7 +2451,6 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                                   setEditingCell(null);
                                   setEditValue("");
                                 }}
-                                stageOptions={STAGE_OPTIONS}
                                 stageOptions={stageOptions}
                                 onDirectSave={async (stageValue) => {
                                   console.log('🟣 [STAGE SAVE] Direct save called with:', stageValue);
