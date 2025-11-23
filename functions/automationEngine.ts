@@ -98,12 +98,39 @@ async function actionSendNotification(base44, payload, params = {}) {
   return { type: 'send_notification', ok: true, id: created.id };
 }
 
+async function actionSendReminder(base44, payload, params = {}) {
+  const recipientEmail = applyTemplate(params.recipient_email || payload.email || payload.created_by || '', payload);
+  const subject = applyTemplate(params.subject || 'תזכורת', payload);
+  const message = applyTemplate(params.message || '', payload);
+  
+  if (!recipientEmail || !message) return { type: 'send_reminder', skipped: true, reason: 'missing_params' };
+  
+  // Send email
+  await base44.functions.invoke('sendEmail', {
+    to: recipientEmail,
+    subject: subject,
+    body: message
+  });
+  
+  // Create notification
+  await base44.entities.Notification.create({
+    user_email: recipientEmail,
+    title: subject,
+    message: message,
+    type: 'reminder',
+    read: false
+  });
+  
+  return { type: 'send_reminder', ok: true, recipient: recipientEmail };
+}
+
 const handlers = {
   create_task: actionCreateTask,
   send_email: actionSendEmail,
   update_tasks_status: actionUpdateTasksStatus,
   send_whatsapp: actionSendWhatsApp,
-  send_notification: actionSendNotification
+  send_notification: actionSendNotification,
+  send_reminder: actionSendReminder
 };
 
 Deno.serve(async (req) => {
