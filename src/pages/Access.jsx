@@ -178,7 +178,7 @@ export default function AccessPage() {
       const user = allUsers.find(u => u.email?.toLowerCase() === entry.email?.toLowerCase());
       return {
         ...entry,
-        full_name: user?.full_name || null
+        full_name: user?.display_name || user?.full_name || null
       };
     });
 
@@ -195,7 +195,7 @@ export default function AccessPage() {
             email: user.email,
             role: 'super_admin',
             active: true,
-            full_name: user.full_name || null,
+            full_name: user.display_name || user.full_name || null,
             assigned_clients: [],
             assigned_projects: [],
             isVirtual: true,
