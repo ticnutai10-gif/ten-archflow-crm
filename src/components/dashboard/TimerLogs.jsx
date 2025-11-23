@@ -632,9 +632,9 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate }) {
 
       {/* כלי בקרה - שורה אחת קומפקטית */}
       <div className="flex-shrink-0 bg-white border-b border-slate-200">
-        <div className="flex items-center gap-2 p-3 flex-wrap">
+        <div className="flex items-center gap-2 p-3">
           {/* חיפוש */}
-          <div className="relative flex-1 min-w-[200px] max-w-[300px]">
+          <div className="relative w-48">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <Input
               placeholder="חיפוש..."
