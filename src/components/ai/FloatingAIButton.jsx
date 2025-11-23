@@ -59,18 +59,22 @@ export default function FloatingAIButton() {
       {/* Floating Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 left-6 z-50 w-16 h-16 rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 group"
+        className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110 group"
         style={{
           background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          boxShadow: '0 10px 40px rgba(102, 126, 234, 0.4)'
+          boxShadow: '0 8px 30px rgba(102, 126, 234, 0.3)',
+          border: '1.5px solid rgba(255, 255, 255, 0.3)'
         }}
         title="צ'אט AI"
       >
-        <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center transition-transform group-hover:rotate-12">
+        <div 
+          className="w-10 h-10 bg-white rounded-full flex items-center justify-center transition-transform group-hover:rotate-12"
+          style={{ border: '1.5px solid rgba(102, 126, 234, 0.2)' }}
+        >
           {isOpen ? (
-            <X className="w-6 h-6 text-purple-600" />
+            <X className="w-5 h-5 text-purple-600" />
           ) : (
-            <MessageSquare className="w-6 h-6 text-purple-600" />
+            <MessageSquare className="w-5 h-5 text-purple-600" />
           )}
         </div>
       </button>
@@ -78,7 +82,7 @@ export default function FloatingAIButton() {
       {/* Chat Window */}
       {isOpen && (
         <div
-          className="fixed bottom-24 left-6 z-50 w-96 h-[600px] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-purple-200 animate-in fade-in zoom-in-95 duration-200"
+          className="fixed bottom-24 right-6 z-50 w-96 h-[600px] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-purple-200 animate-in fade-in zoom-in-95 duration-200"
           dir="rtl"
         >
           {/* Header */}
