@@ -56,16 +56,34 @@ export default function AIChat() {
         toast.success('✅ משימה נוצרה בהצלחה!');
       } else if (action.type === 'SCHEDULE_MEETING') {
         console.log('📅 Scheduling meeting...');
+        
+        // Build title from available info if not provided
+        const title = params.title || 
+                     (params.client_name ? `פגישה עם ${params.client_name}` : 'פגישה חדשה');
+        
+        // Parse date - handle "מחר", specific dates, etc.
+        let meetingDate = params.date;
+        if (meetingDate === 'מחר') {
+          const tomorrow = new Date();
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          meetingDate = tomorrow.toISOString().split('T')[0];
+        }
+        
+        // Add time if provided
+        if (params.time && meetingDate) {
+          meetingDate = `${meetingDate}T${params.time}:00`;
+        }
+        
         const newMeeting = await base44.entities.Meeting.create({
-          title: params.title,
-          meeting_date: params.date,
+          title,
+          meeting_date: meetingDate,
           participants: params.participants?.split(';') || [],
           status: 'מתוכננת',
           location: params.location || '',
-          description: params.description || ''
+          description: params.description || (params.client_name ? `פגישה עם ${params.client_name}` : '')
         });
         console.log('📅 Meeting created:', newMeeting);
-        toast.success('📅 פגישה נקבעה בהצלחה!');
+        toast.success(`📅 פגישה "${title}" נקבעה בהצלחה!`);
       } else if (action.type === 'UPDATE_CLIENT_STAGE') {
         console.log('🎯 Updating client stage...');
         const clientsToUpdate = params.clients?.split(';') || [];
@@ -220,7 +238,7 @@ ${communications.slice(0, 5).map(c => `- ${c.subject || c.body?.substring(0, 50)
    - SEND_EMAIL: to: כתובת, subject: נושא, body: תוכן
    - CREATE_TASK: title: כותרת, priority: עדיפות, due_date: תאריך, description: תיאור
    - UPDATE_PROJECT: project_id: מזהה, field: שדה, value: ערך
-   - SCHEDULE_MEETING: title: כותרת, date: תאריך, participants: משתתפים
+   - SCHEDULE_MEETING: title: כותרת_הפגישה (חובה!), date: תאריך (YYYY-MM-DD או "מחר"), time: שעה (HH:MM), client_name: שם_לקוח, participants: משתתפים, location: מיקום, description: תיאור
    - UPDATE_CLIENT_STAGE: clients: שמות_לקוחות, stage: שלב_חדש (ברור_תכן/תיק_מידע/היתרים/ביצוע/סיום)
    - PREDICT_TIMELINE: project_name: שם_הפרויקט, project_type: סוג, estimated_area: שטח_משוער, complexity: רמת_מורכבות (נמוכה/בינונית/גבוהה)
    - SUGGEST_RESOURCES: project_name: שם_הפרויקט, duration_days: משך_צפוי, required_skills: מיומנויות_נדרשות
