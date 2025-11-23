@@ -195,22 +195,22 @@ ${upcomingMeetings.slice(0, 3).map(m => `- ${m.title} עם ${m.participants?.joi
       {/* Floating Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110 group"
+        className="fixed bottom-6 right-6 z-50 w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110 group"
         style={{
           background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          boxShadow: '0 8px 30px rgba(102, 126, 234, 0.3)',
-          border: '1px solid rgba(255, 255, 255, 0.15)'
+          boxShadow: '0 6px 20px rgba(102, 126, 234, 0.25)',
+          border: '0.5px solid rgba(255, 255, 255, 0.1)'
         }}
         title="צ'אט AI"
       >
         <div 
-          className="w-10 h-10 bg-white rounded-full flex items-center justify-center transition-transform group-hover:rotate-12"
-          style={{ border: '1px solid rgba(102, 126, 234, 0.15)' }}
+          className="w-8 h-8 bg-white rounded-full flex items-center justify-center transition-transform group-hover:rotate-12"
+          style={{ border: '0.5px solid rgba(102, 126, 234, 0.1)' }}
         >
           {isOpen ? (
-            <X className="w-5 h-5 text-purple-600" />
+            <X className="w-4 h-4 text-purple-600" />
           ) : (
-            <MessageSquare className="w-5 h-5 text-purple-600" />
+            <MessageSquare className="w-4 h-4 text-purple-600" />
           )}
         </div>
       </button>
