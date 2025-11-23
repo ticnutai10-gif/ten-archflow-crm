@@ -82,8 +82,8 @@ export default function ProjectForm({ project, clients, onSubmit, onCancel }) {
                   <SelectValue placeholder="בחר לקוח" />
                 </SelectTrigger>
                 <SelectContent>
-                  {clients.map(client => (
-                    <SelectItem key={client.id} value={client.name}>{client.name}</SelectItem>
+                  {clients.map((client, index) => (
+                    <SelectItem key={`${client.id}-${index}`} value={client.name}>{client.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
