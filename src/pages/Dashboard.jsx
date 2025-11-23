@@ -33,6 +33,8 @@ import TimerLogs from "../components/dashboard/TimerLogs";
 import ReminderManager from "../components/reminders/ReminderManager";
 import DashboardSettings from "../components/dashboard/DashboardSettings";
 import UpcomingMeetings from "../components/dashboard/UpcomingMeetings";
+import ProjectsOverview from "../components/dashboard/ProjectsOverview";
+import DashboardCustomizer from "../components/dashboard/DashboardCustomizer";
 
 const VIEW_MODE_OPTIONS = [
   { value: 'list', label: 'שורות', icon: LayoutList },
@@ -73,6 +75,31 @@ export default function Dashboard() {
   const [upcomingMeetings, setUpcomingMeetings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showDashboardSettings, setShowDashboardSettings] = useState(false);
+  const [showCustomizer, setShowCustomizer] = useState(false);
+  const [dashboardCards, setDashboardCards] = useState(() => {
+    try {
+      const saved = localStorage.getItem('dashboard-cards-order');
+      return saved ? JSON.parse(saved) : [
+        { id: 'stats', name: 'סטטיסטיקות', visible: true },
+        { id: 'projectsOverview', name: 'סקירת פרויקטים', visible: true },
+        { id: 'recentProjects', name: 'פרויקטים אחרונים', visible: true },
+        { id: 'upcomingTasks', name: 'משימות קרובות', visible: true },
+        { id: 'quoteStatus', name: 'הצעות מחיר', visible: true },
+        { id: 'timerLogs', name: 'לוגי זמן', visible: true },
+        { id: 'upcomingMeetings', name: 'פגישות קרובות', visible: true }
+      ];
+    } catch {
+      return [
+        { id: 'stats', name: 'סטטיסטיקות', visible: true },
+        { id: 'projectsOverview', name: 'סקירת פרויקטים', visible: true },
+        { id: 'recentProjects', name: 'פרויקטים אחרונים', visible: true },
+        { id: 'upcomingTasks', name: 'משימות קרובות', visible: true },
+        { id: 'quoteStatus', name: 'הצעות מחיר', visible: true },
+        { id: 'timerLogs', name: 'לוגי זמן', visible: true },
+        { id: 'upcomingMeetings', name: 'פגישות קרובות', visible: true }
+      ];
+    }
+  });
 
   const [viewMode, setViewMode] = useState(() => {
     try {
@@ -359,6 +386,16 @@ export default function Dashboard() {
                 <Button 
                   variant="outline" 
                   size="icon" 
+                  title="התאמה אישית" 
+                  onClick={() => setShowCustomizer(true)}
+                  className="bg-white/10 border-white/20 hover:bg-white/20 text-white"
+                >
+                  <LayoutGrid className="w-5 h-5" />
+                </Button>
+
+                <Button 
+                  variant="outline" 
+                  size="icon" 
                   title="הגדרות לוח מחוונים" 
                   onClick={() => setShowDashboardSettings(true)}
                   className="bg-white/10 border-white/20 hover:bg-white/20 text-white"
@@ -451,6 +488,12 @@ export default function Dashboard() {
             <h2 className="text-xl font-bold text-slate-800 mb-4 text-right">פעילויות אחרונות</h2>
           )}
           <div className={getGridClass(viewMode)} dir="rtl">
+            {dashboardCards.find(c => c.id === 'projectsOverview')?.visible && (
+              <div className="md:col-span-2">
+                <ProjectsOverview compactHeader={compactHeaders} isExpanded={expandedCards.projectsOverview !== false} />
+              </div>
+            )}
+
             {dashboardSettings.showRecentProjects && (
               <Card className="bg-white shadow-md">
                 <CardHeader 
@@ -593,6 +636,22 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {showCustomizer && (
+        <DashboardCustomizer
+          open={showCustomizer}
+          onClose={() => setShowCustomizer(false)}
+          cards={dashboardCards}
+          onSave={(newCards) => {
+            setDashboardCards(newCards);
+            try {
+              localStorage.setItem('dashboard-cards-order', JSON.stringify(newCards));
+            } catch (e) {
+              console.error('Error saving cards order:', e);
+            }
+          }}
+        />
+      )}
     </div>
   );
 }
