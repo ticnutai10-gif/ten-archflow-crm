@@ -23,6 +23,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { base44 } from "@/api/base44Client";
 import { createPageUrl } from "@/utils";
 import { StageDisplay } from "@/components/spreadsheets/GenericSpreadsheet";
+import StageOptionsManager from "@/components/spreadsheets/StageOptionsManager";
 
 const ICON_COLOR = "#2C3A50";
 
@@ -93,7 +94,7 @@ const loadSettings = () => {
   return null;
 };
 
-const saveSettings = (columns, cellStyles, showSubHeaders, subHeaders) => {
+const saveSettings = (columns, cellStyles, showSubHeaders, subHeaders, stageOptions) => {
   try {
     const settings = {
       columns: columns.map((col) => ({
@@ -107,6 +108,7 @@ const saveSettings = (columns, cellStyles, showSubHeaders, subHeaders) => {
       cellStyles: cellStyles || {},
       showSubHeaders: showSubHeaders,
       subHeaders: subHeaders || {},
+      stageOptions: stageOptions || STAGE_OPTIONS,
       timestamp: new Date().toISOString()
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
@@ -279,6 +281,11 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
   const [autoCloseEdit, setAutoCloseEdit] = useState(true);
   const [smoothScroll, setSmoothScroll] = useState(true);
   const [showHistory, setShowHistory] = useState(false);
+  const [showStageManager, setShowStageManager] = useState(false);
+  const [stageOptions, setStageOptions] = useState(() => {
+    const saved = loadSettings();
+    return saved?.stageOptions || STAGE_OPTIONS;
+  });
 
 
   const [newColumnName, setNewColumnName] = useState("");
@@ -336,7 +343,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
       
       saveTimeoutRef.current = setTimeout(() => {
         console.log('💾 Saving settings (debounced)');
-        saveSettings(columns, cellStyles, showSubHeaders, subHeaders);
+        saveSettings(columns, cellStyles, showSubHeaders, subHeaders, stageOptions);
       }, 500);
     }
     
@@ -1379,6 +1386,16 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
 
                 <Info className="w-4 h-4" />
                 {showShortcuts ? 'הסתר' : 'הצג'} קיצורים
+              </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowStageManager(true)}
+                className="gap-2">
+
+                <Circle className="w-4 h-4" />
+                ניהול שלבים
               </Button>
 
               <DropdownMenu open={isDropdownSettingsOpen} onOpenChange={setIsDropdownSettingsOpen}>
@@ -2435,6 +2452,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                                   setEditValue("");
                                 }}
                                 stageOptions={STAGE_OPTIONS}
+                                stageOptions={stageOptions}
                                 onDirectSave={async (stageValue) => {
                                   console.log('🟣 [STAGE SAVE] Direct save called with:', stageValue);
                                   
@@ -2945,6 +2963,16 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
         </Sheet>
       }
 
+      <StageOptionsManager
+        open={showStageManager}
+        onClose={() => setShowStageManager(false)}
+        stageOptions={stageOptions}
+        onSave={(newStageOptions) => {
+          setStageOptions(newStageOptions);
+          saveSettings(columns, cellStyles, showSubHeaders, subHeaders, newStageOptions);
+          toast.success('הגדרות השלבים עודכנו');
+        }}
+      />
 
     </div>);
 
