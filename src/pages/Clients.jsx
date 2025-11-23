@@ -48,7 +48,10 @@ import {
   MoreVertical,
   Circle,
   DollarSign,
-  ArrowUpDown
+  ArrowUpDown,
+  GitBranch,
+  BarChart,
+  Timeline
 } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
@@ -62,6 +65,9 @@ import ClientDetails from "../components/clients/ClientDetails";
 import ClientStats from "../components/clients/ClientStats";
 import ClientTable from "../components/clients/ClientTable";
 import ClientSpreadsheet from "../components/clients/ClientSpreadsheet";
+import ClientTimeline from "../components/clients/ClientTimeline";
+import ClientPipeline from "../components/clients/ClientPipeline";
+import ClientAnalytics from "../components/clients/ClientAnalytics";
 import { bulkDeleteClients } from "@/functions/bulkDeleteClients";
 import ClientImporter from "../components/clients/ClientImporter";
 import GoogleSheetsManager from "../components/clients/GoogleSheetsManager";
@@ -94,9 +100,9 @@ export default function ClientsPage() {
   const [sortBy, setSortBy] = useState("name");
   const [viewMode, setViewMode] = useState(() => {
     try {
-      return localStorage.getItem('clients-view-mode') || "grid";
+      return localStorage.getItem('clients-view-mode') || "spreadsheet";
     } catch {
-      return "grid";
+      return "spreadsheet";
     }
   });
   const [selectionMode, setSelectionMode] = useState(false);
@@ -855,6 +861,32 @@ export default function ClientsPage() {
                 <span className="flex-1">Excel</span>
                 {viewMode === "spreadsheet" && <Eye className="w-4 h-4 text-blue-600" />}
               </DropdownMenuItem>
+
+              <div className="my-1 h-px bg-slate-200"></div>
+
+              <DropdownMenuItem
+                onClick={() => setViewMode("timeline")}
+                className={`flex items-center gap-3 cursor-pointer ${viewMode === "timeline" ? "bg-blue-50 text-blue-700" : ""}`}>
+                <Timeline className="w-4 h-4" style={{ color: viewMode === "timeline" ? undefined : iconColor }} />
+                <span className="flex-1">ציר זמן</span>
+                {viewMode === "timeline" && <Eye className="w-4 h-4 text-blue-600" />}
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                onClick={() => setViewMode("pipeline")}
+                className={`flex items-center gap-3 cursor-pointer ${viewMode === "pipeline" ? "bg-blue-50 text-blue-700" : ""}`}>
+                <GitBranch className="w-4 h-4" style={{ color: viewMode === "pipeline" ? undefined : iconColor }} />
+                <span className="flex-1">פייפליין מכירות</span>
+                {viewMode === "pipeline" && <Eye className="w-4 h-4 text-blue-600" />}
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                onClick={() => setViewMode("analytics")}
+                className={`flex items-center gap-3 cursor-pointer ${viewMode === "analytics" ? "bg-blue-50 text-blue-700" : ""}`}>
+                <BarChart className="w-4 h-4" style={{ color: viewMode === "analytics" ? undefined : iconColor }} />
+                <span className="flex-1">אנליטיקה מתקדמת</span>
+                {viewMode === "analytics" && <Eye className="w-4 h-4 text-blue-600" />}
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -1051,7 +1083,26 @@ export default function ClientsPage() {
 
       {/* Main content - SINGLE RENDER */}
       <div ref={scrollContainerRef} style={{ width: '100%' }}>
-        {viewMode === "spreadsheet" ? (
+        {viewMode === "timeline" ? (
+          <ClientTimeline
+            clients={filteredAndSortedClients}
+            onView={handleViewDetails}
+            onEdit={handleEdit}
+            isLoading={isLoading}
+          />
+        ) : viewMode === "pipeline" ? (
+          <ClientPipeline
+            clients={filteredAndSortedClients}
+            onView={handleViewDetails}
+            onEdit={handleEdit}
+            isLoading={isLoading}
+          />
+        ) : viewMode === "analytics" ? (
+          <ClientAnalytics
+            clients={filteredAndSortedClients}
+            isLoading={isLoading}
+          />
+        ) : viewMode === "spreadsheet" ? (
           <div key="spreadsheet-view" style={{ width: '100%', overflow: 'visible' }}>
             <ClientSpreadsheet
               clients={filteredAndSortedClients}
