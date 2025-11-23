@@ -514,33 +514,37 @@ export default function Dashboard() {
               if (card.id === 'recentProjects' && dashboardSettings.showRecentProjects) {
                 return (
                   <Card key={card.id} className={`bg-white shadow-md ${sizeClass}`}>
-                <CardHeader 
-                  className={`border-b cursor-pointer hover:bg-slate-50 transition-colors ${compactHeaders ? 'py-3' : ''}`}
-                  onClick={() => toggleCard('projects')}
-                >
-                  <CardTitle className={`flex items-center justify-between ${compactHeaders ? 'text-sm' : 'text-base'}`}>
-                    <span className="text-right">פרויקטים אחרונים</span>
-                    <div className="flex items-center gap-2">
-                      <span className={`text-slate-500 ${compactHeaders ? 'text-xs' : 'text-sm'}`}>
-                        {recentProjects.length}
-                      </span>
-                      {expandedCards.projects ? (
-                        <ChevronUp className="w-5 h-5 text-slate-400" />
-                      ) : (
-                        <ChevronDown className="w-5 h-5 text-slate-400" />
-                      )}
-                    </div>
-                  </CardTitle>
-                </CardHeader>
-                {expandedCards.projects && (
-                  <CardContent className="p-0">
-                    <RecentProjects projects={recentProjects} isLoading={loading} onUpdate={loadDashboardData} />
-                  </CardContent>
-                )}
-              </Card>
-            )}
+                    <CardHeader 
+                      className={`border-b cursor-pointer hover:bg-slate-50 transition-colors ${compactHeaders ? 'py-3' : ''}`}
+                      onClick={() => toggleCard('projects')}
+                    >
+                      <CardTitle className={`flex items-center justify-between ${compactHeaders ? 'text-sm' : 'text-base'}`}>
+                        <span className="text-right">פרויקטים אחרונים</span>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-slate-500 ${compactHeaders ? 'text-xs' : 'text-sm'}`}>
+                            {recentProjects.length}
+                          </span>
+                          {expandedCards.projects ? (
+                            <ChevronUp className="w-5 h-5 text-slate-400" />
+                          ) : (
+                            <ChevronDown className="w-5 h-5 text-slate-400" />
+                          )}
+                        </div>
+                      </CardTitle>
+                    </CardHeader>
+                    {expandedCards.projects && (
+                      <CardContent className="p-0">
+                        <RecentProjects projects={recentProjects} isLoading={loading} onUpdate={loadDashboardData} />
+                      </CardContent>
+                    )}
+                  </Card>
+                );
+              }
 
-                  <CardHeader 
+              if (card.id === 'upcomingTasks' && dashboardSettings.showUpcomingTasks) {
+                return (
+                  <Card key={card.id} className={`bg-white shadow-md ${sizeClass}`}>
+                    <CardHeader 
                     className={`border-b cursor-pointer hover:bg-slate-50 transition-colors ${compactHeaders ? 'py-3' : ''}`}
                     onClick={() => toggleCard('tasks')}
                   >
@@ -623,34 +627,38 @@ export default function Dashboard() {
               );
             }
 
-            if (card.id === 'upcomingMeetings' && dashboardSettings.showMeetings) {
-              return (
-                <Card key={card.id} className={`bg-white shadow-md ${sizeClass}`}>
-                <CardHeader 
-                  className={`border-b cursor-pointer hover:bg-slate-50 transition-colors ${compactHeaders ? 'py-3' : ''}`}
-                  onClick={() => toggleCard('meetings')}
-                >
-                  <CardTitle className={`flex items-center justify-between ${compactHeaders ? 'text-sm' : 'text-base'}`}>
-                    <span className="text-right">פגישות קרובות</span>
-                    <div className="flex items-center gap-2">
-                      <span className={`text-slate-500 ${compactHeaders ? 'text-xs' : 'text-sm'}`}>
-                        {upcomingMeetings.length}
-                      </span>
-                      {expandedCards.meetings ? (
-                        <ChevronUp className="w-5 h-5 text-slate-400" />
-                      ) : (
-                        <ChevronDown className="w-5 h-5 text-slate-400" />
-                      )}
-                    </div>
-                  </CardTitle>
-                </CardHeader>
-                {expandedCards.meetings && (
-                  <CardContent className="p-0">
-                    <UpcomingMeetings meetings={upcomingMeetings} isLoading={loading} onUpdate={loadDashboardData} />
-                  </CardContent>
-                )}
-              </Card>
-            )}
+              if (card.id === 'upcomingMeetings' && dashboardSettings.showMeetings) {
+                return (
+                  <Card key={card.id} className={`bg-white shadow-md ${sizeClass}`}>
+                    <CardHeader 
+                      className={`border-b cursor-pointer hover:bg-slate-50 transition-colors ${compactHeaders ? 'py-3' : ''}`}
+                      onClick={() => toggleCard('meetings')}
+                    >
+                      <CardTitle className={`flex items-center justify-between ${compactHeaders ? 'text-sm' : 'text-base'}`}>
+                        <span className="text-right">פגישות קרובות</span>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-slate-500 ${compactHeaders ? 'text-xs' : 'text-sm'}`}>
+                            {upcomingMeetings.length}
+                          </span>
+                          {expandedCards.meetings ? (
+                            <ChevronUp className="w-5 h-5 text-slate-400" />
+                          ) : (
+                            <ChevronDown className="w-5 h-5 text-slate-400" />
+                          )}
+                        </div>
+                      </CardTitle>
+                    </CardHeader>
+                    {expandedCards.meetings && (
+                      <CardContent className="p-0">
+                        <UpcomingMeetings meetings={upcomingMeetings} isLoading={loading} onUpdate={loadDashboardData} />
+                      </CardContent>
+                    )}
+                  </Card>
+                );
+              }
+
+              return null;
+            })}
           </div>
         </div>
       </div>
