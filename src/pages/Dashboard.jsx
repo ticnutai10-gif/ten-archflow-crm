@@ -135,6 +135,7 @@ export default function Dashboard() {
       const saved = localStorage.getItem('dashboard-expanded-cards');
       return saved ? JSON.parse(saved) : {
         projects: true,
+        clients: true,
         tasks: true,
         quotes: true,
         timeLogs: true,
@@ -143,6 +144,7 @@ export default function Dashboard() {
     } catch {
       return {
         projects: true,
+        clients: true,
         tasks: true,
         quotes: true,
         timeLogs: true,
