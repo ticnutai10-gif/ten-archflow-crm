@@ -27,6 +27,7 @@ import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 
 import RecentProjects from "../components/dashboard/RecentProjects";
+import RecentClients from "../components/dashboard/RecentClients";
 import UpcomingTasks from "../components/dashboard/UpcomingTasks";
 import QuoteStatus from "../components/dashboard/QuoteStatus";
 import TimerLogs from "../components/dashboard/TimerLogs";
@@ -83,6 +84,7 @@ export default function Dashboard() {
         { id: 'stats', name: 'סטטיסטיקות', visible: true, size: 'full' },
         { id: 'projectsOverview', name: 'סקירת פרויקטים', visible: true, size: 'large' },
         { id: 'recentProjects', name: 'פרויקטים אחרונים', visible: true, size: 'medium' },
+        { id: 'recentClients', name: 'לקוחות אחרונים', visible: true, size: 'medium' },
         { id: 'upcomingTasks', name: 'משימות קרובות', visible: true, size: 'medium' },
         { id: 'quoteStatus', name: 'הצעות מחיר', visible: true, size: 'medium' },
         { id: 'timerLogs', name: 'לוגי זמן', visible: true, size: 'medium' },
@@ -93,6 +95,7 @@ export default function Dashboard() {
         { id: 'stats', name: 'סטטיסטיקות', visible: true, size: 'full' },
         { id: 'projectsOverview', name: 'סקירת פרויקטים', visible: true, size: 'large' },
         { id: 'recentProjects', name: 'פרויקטים אחרונים', visible: true, size: 'medium' },
+        { id: 'recentClients', name: 'לקוחות אחרונים', visible: true, size: 'medium' },
         { id: 'upcomingTasks', name: 'משימות קרובות', visible: true, size: 'medium' },
         { id: 'quoteStatus', name: 'הצעות מחיר', visible: true, size: 'medium' },
         { id: 'timerLogs', name: 'לוגי זמן', visible: true, size: 'medium' },
@@ -519,7 +522,7 @@ export default function Dashboard() {
                       onClick={() => toggleCard('projects')}
                     >
                       <CardTitle className={`flex items-center justify-between ${compactHeaders ? 'text-sm' : 'text-base'}`}>
-                        <span className="text-right">פעילות אחרונה (פרויקטים ולקוחות)</span>
+                        <span className="text-right">פרויקטים אחרונים</span>
                         <div className="flex items-center gap-2">
                           <span className={`text-slate-500 ${compactHeaders ? 'text-xs' : 'text-sm'}`}>
                             {recentProjects.length}
@@ -535,6 +538,33 @@ export default function Dashboard() {
                     {expandedCards.projects && (
                       <CardContent className="p-0">
                         <RecentProjects projects={recentProjects} isLoading={loading} onUpdate={loadDashboardData} />
+                      </CardContent>
+                    )}
+                  </Card>
+                );
+              }
+
+              if (card.id === 'recentClients' && dashboardSettings.showRecentProjects) {
+                return (
+                  <Card key={card.id} className={`bg-white shadow-md ${sizeClass}`}>
+                    <CardHeader 
+                      className={`border-b cursor-pointer hover:bg-slate-50 transition-colors ${compactHeaders ? 'py-3' : ''}`}
+                      onClick={() => toggleCard('clients')}
+                    >
+                      <CardTitle className={`flex items-center justify-between ${compactHeaders ? 'text-sm' : 'text-base'}`}>
+                        <span className="text-right">לקוחות אחרונים</span>
+                        <div className="flex items-center gap-2">
+                          {expandedCards.clients ? (
+                            <ChevronUp className="w-5 h-5 text-slate-400" />
+                          ) : (
+                            <ChevronDown className="w-5 h-5 text-slate-400" />
+                          )}
+                        </div>
+                      </CardTitle>
+                    </CardHeader>
+                    {expandedCards.clients && (
+                      <CardContent className="p-0">
+                        <RecentClients isLoading={loading} />
                       </CardContent>
                     )}
                   </Card>
