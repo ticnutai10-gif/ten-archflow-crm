@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MessageSquare, X, Send, Loader2, Sparkles, Mail, CheckCircle, ListTodo } from 'lucide-react';
+import { MessageSquare, X, Send, Loader2, Sparkles, Mail, CheckCircle, ListTodo, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { base44 } from '@/api/base44Client';
@@ -40,6 +40,26 @@ export default function FloatingAIButton() {
           description: params.description || ''
         });
         toast.success('משימה נוצרה בהצלחה!');
+      } else if (action.type === 'UPDATE_CLIENT_STAGE') {
+        const clientsToUpdate = params.clients?.split(';') || [];
+        const newStage = params.stage;
+        
+        const allClients = await base44.entities.Client.list();
+        let updated = 0;
+        
+        for (const clientIdentifier of clientsToUpdate) {
+          const client = allClients.find(c => 
+            c.name?.includes(clientIdentifier.trim()) || 
+            c.id === clientIdentifier.trim()
+          );
+          
+          if (client) {
+            await base44.entities.Client.update(client.id, { stage: newStage });
+            updated++;
+          }
+        }
+        
+        toast.success(`🎯 ${updated} לקוחות עודכנו לשלב!`);
       }
     } catch (error) {
       console.error('Action execution error:', error);
@@ -87,6 +107,9 @@ export default function FloatingAIButton() {
 - ${quotes.length} הצעות מחיר בהמתנה
 - ${timeLogs.length} רישומי זמן אחרונים
 
+פרטי לקוחות:
+${clients.slice(0, 10).map(c => `- ${c.name}: סטטוס ${c.status || 'לא הוגדר'}, שלב: ${c.stage || 'לא הוגדר'}`).join('\n')}
+
 פרטי פרויקטים פעילים:
 ${activeProjects.slice(0, 5).map(p => `- ${p.name} (${p.client_name}): סטטוס ${p.status}, ${p.progress || 0}% התקדמות`).join('\n')}
 
@@ -96,12 +119,16 @@ ${urgentTasks.slice(0, 5).map(t => `- ${t.title} (${t.project_name || 'כללי'
 פגישות קרובות:
 ${upcomingMeetings.slice(0, 3).map(m => `- ${m.title} עם ${m.participants?.join(', ') || 'לא צוין'} בתאריך ${m.meeting_date}`).join('\n')}
 
+שלבי לקוח זמינים: ברור_תכן, תיק_מידע, היתרים, ביצוע, סיום
+
 הוראות:
 1. ענה בצורה מפורטת ומועילה בהתבסס על הנתונים
 2. אם רלוונטי, הצע פעולות מעקב ספציפיות בפורמט: [ACTION: סוג_פעולה | נתונים]
-   סוגי פעולות: CREATE_TASK, SEND_EMAIL, UPDATE_PROJECT, SCHEDULE_MEETING
+   סוגי פעולות: CREATE_TASK, SEND_EMAIL, UPDATE_PROJECT, SCHEDULE_MEETING, UPDATE_CLIENT_STAGE
 3. דוגמה: [ACTION: SEND_EMAIL | to: client@example.com, subject: מעקב פרויקט, body: תוכן...]
 4. דוגמה: [ACTION: CREATE_TASK | title: משימה חדשה, priority: גבוהה, due_date: 2025-12-01]
+5. דוגמה: [ACTION: UPDATE_CLIENT_STAGE | clients: יוסי אשכנזי;דני כהן, stage: ברור_תכן]
+6. כשמבקשים לעדכן שלב לקוח - חפש את שם הלקוח המדויק ברשימת הלקוחות
 `;
 
       const prompt = `${context}\n\nשאלת המשתמש: ${input}`;
@@ -233,9 +260,11 @@ ${upcomingMeetings.slice(0, 3).map(m => `- ${m.title} עם ${m.participants?.joi
                             <div key={idx} className="bg-blue-50 border border-blue-200 rounded-lg p-2 flex items-center gap-2">
                               {action.type === 'SEND_EMAIL' && <Mail className="w-4 h-4 text-blue-600" />}
                               {action.type === 'CREATE_TASK' && <ListTodo className="w-4 h-4 text-blue-600" />}
+                              {action.type === 'UPDATE_CLIENT_STAGE' && <Users className="w-4 h-4 text-orange-600" />}
                               <span className="text-xs text-blue-800 flex-1">
                                 {action.type === 'SEND_EMAIL' && 'שלח אימייל'}
                                 {action.type === 'CREATE_TASK' && 'צור משימה'}
+                                {action.type === 'UPDATE_CLIENT_STAGE' && 'עדכן שלב לקוח'}
                               </span>
                               <Button
                                 size="sm"

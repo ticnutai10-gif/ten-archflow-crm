@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
-import { Loader2, Send, Sparkles, Trash2, Plus, Mail, CheckCircle, ListTodo, Calendar } from 'lucide-react';
+import { Loader2, Send, Sparkles, Trash2, Plus, Mail, CheckCircle, ListTodo, Calendar, Users } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { toast } from 'sonner';
 
@@ -47,6 +47,26 @@ export default function AIChat() {
           status: 'מתוכננת'
         });
         toast.success('📅 פגישה נקבעה בהצלחה!');
+      } else if (action.type === 'UPDATE_CLIENT_STAGE') {
+        const clientsToUpdate = params.clients?.split(';') || [];
+        const newStage = params.stage;
+        
+        const allClients = await base44.entities.Client.list();
+        let updated = 0;
+        
+        for (const clientIdentifier of clientsToUpdate) {
+          const client = allClients.find(c => 
+            c.name?.includes(clientIdentifier.trim()) || 
+            c.id === clientIdentifier.trim()
+          );
+          
+          if (client) {
+            await base44.entities.Client.update(client.id, { stage: newStage });
+            updated++;
+          }
+        }
+        
+        toast.success(`🎯 ${updated} לקוחות עודכנו לשלב ${newStage}!`);
       }
     } catch (error) {
       console.error('Action execution error:', error);
@@ -102,6 +122,9 @@ export default function AIChat() {
 - ${quotes.length} הצעות מחיר בהמתנה
 - ${timeLogs.length} רישומי זמן אחרונים
 
+פרטי לקוחות:
+${clients.slice(0, 15).map(c => `- ${c.name}: סטטוס ${c.status || 'לא הוגדר'}, שלב: ${c.stage || 'לא הוגדר'}`).join('\n')}
+
 פרטי פרויקטים פעילים:
 ${activeProjects.slice(0, 10).map(p => `- ${p.name} (לקוח: ${p.client_name}): סטטוס ${p.status}, התקדמות ${p.progress || 0}%`).join('\n')}
 
@@ -114,6 +137,8 @@ ${upcomingMeetings.slice(0, 5).map(m => `- ${m.title} עם ${m.participants?.joi
 תקשורת אחרונה:
 ${communications.slice(0, 5).map(c => `- ${c.subject || c.body?.substring(0, 50)} (${c.type})`).join('\n')}
 
+שלבי לקוח זמינים: ברור_תכן, תיק_מידע, היתרים, ביצוע, סיום
+
 הוראות:
 1. ענה בצורה מפורטת, מועילה ומקצועית בהתבסס על כל הנתונים
 2. הצע פעולות מעקב ספציפיות בפורמט: [ACTION: סוג_פעולה | פרמטרים]
@@ -122,8 +147,10 @@ ${communications.slice(0, 5).map(c => `- ${c.subject || c.body?.substring(0, 50)
    - CREATE_TASK: title: כותרת, priority: עדיפות, due_date: תאריך, description: תיאור
    - UPDATE_PROJECT: project_id: מזהה, field: שדה, value: ערך
    - SCHEDULE_MEETING: title: כותרת, date: תאריך, participants: משתתפים
+   - UPDATE_CLIENT_STAGE: clients: שמות_לקוחות_מופרדים_בנקודה_פסיק, stage: שלב_חדש (ברור_תכן/תיק_מידע/היתרים/ביצוע/סיום)
 3. כשמשתמש מבקש עזרה, הצע פעולות קונקרטיות שיעזרו לו
 4. השתמש במידע ההיסטורי כדי לתת המלצות חכמות ומותאמות אישית
+5. כשמבקשים לעדכן שלב לקוח - חפש את שם הלקוח המדויק ברשימת הלקוחות ושלח ACTION מתאים
 `;
 
       const prompt = `${context}\n\nשאלת המשתמש: ${input}`;
@@ -242,10 +269,12 @@ ${communications.slice(0, 5).map(c => `- ${c.subject || c.body?.substring(0, 50)
                                 {action.type === 'SEND_EMAIL' && <Mail className="w-5 h-5 text-blue-600" />}
                                 {action.type === 'CREATE_TASK' && <ListTodo className="w-5 h-5 text-purple-600" />}
                                 {action.type === 'SCHEDULE_MEETING' && <Calendar className="w-5 h-5 text-green-600" />}
+                                {action.type === 'UPDATE_CLIENT_STAGE' && <Users className="w-5 h-5 text-orange-600" />}
                                 <span className="text-sm text-slate-700 flex-1 font-medium">
                                   {action.type === 'SEND_EMAIL' && '📧 שלח אימייל'}
                                   {action.type === 'CREATE_TASK' && '✅ צור משימה'}
                                   {action.type === 'SCHEDULE_MEETING' && '📅 קבע פגישה'}
+                                  {action.type === 'UPDATE_CLIENT_STAGE' && '🎯 עדכן שלב לקוח'}
                                 </span>
                                 <Button
                                   size="sm"
