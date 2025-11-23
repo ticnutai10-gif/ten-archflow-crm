@@ -80,26 +80,36 @@ export default function Dashboard() {
     try {
       const saved = localStorage.getItem('dashboard-cards-order');
       return saved ? JSON.parse(saved) : [
-        { id: 'stats', name: 'סטטיסטיקות', visible: true },
-        { id: 'projectsOverview', name: 'סקירת פרויקטים', visible: true },
-        { id: 'recentProjects', name: 'פרויקטים אחרונים', visible: true },
-        { id: 'upcomingTasks', name: 'משימות קרובות', visible: true },
-        { id: 'quoteStatus', name: 'הצעות מחיר', visible: true },
-        { id: 'timerLogs', name: 'לוגי זמן', visible: true },
-        { id: 'upcomingMeetings', name: 'פגישות קרובות', visible: true }
+        { id: 'stats', name: 'סטטיסטיקות', visible: true, size: 'full' },
+        { id: 'projectsOverview', name: 'סקירת פרויקטים', visible: true, size: 'large' },
+        { id: 'recentProjects', name: 'פרויקטים אחרונים', visible: true, size: 'medium' },
+        { id: 'upcomingTasks', name: 'משימות קרובות', visible: true, size: 'medium' },
+        { id: 'quoteStatus', name: 'הצעות מחיר', visible: true, size: 'medium' },
+        { id: 'timerLogs', name: 'לוגי זמן', visible: true, size: 'medium' },
+        { id: 'upcomingMeetings', name: 'פגישות קרובות', visible: true, size: 'medium' }
       ];
     } catch {
       return [
-        { id: 'stats', name: 'סטטיסטיקות', visible: true },
-        { id: 'projectsOverview', name: 'סקירת פרויקטים', visible: true },
-        { id: 'recentProjects', name: 'פרויקטים אחרונים', visible: true },
-        { id: 'upcomingTasks', name: 'משימות קרובות', visible: true },
-        { id: 'quoteStatus', name: 'הצעות מחיר', visible: true },
-        { id: 'timerLogs', name: 'לוגי זמן', visible: true },
-        { id: 'upcomingMeetings', name: 'פגישות קרובות', visible: true }
+        { id: 'stats', name: 'סטטיסטיקות', visible: true, size: 'full' },
+        { id: 'projectsOverview', name: 'סקירת פרויקטים', visible: true, size: 'large' },
+        { id: 'recentProjects', name: 'פרויקטים אחרונים', visible: true, size: 'medium' },
+        { id: 'upcomingTasks', name: 'משימות קרובות', visible: true, size: 'medium' },
+        { id: 'quoteStatus', name: 'הצעות מחיר', visible: true, size: 'medium' },
+        { id: 'timerLogs', name: 'לוגי זמן', visible: true, size: 'medium' },
+        { id: 'upcomingMeetings', name: 'פגישות קרובות', visible: true, size: 'medium' }
       ];
     }
   });
+
+  const getSizeClass = (size) => {
+    const sizeMap = {
+      'small': 'md:col-span-1',
+      'medium': 'md:col-span-2', 
+      'large': 'md:col-span-3',
+      'full': 'md:col-span-4'
+    };
+    return sizeMap[size] || 'md:col-span-2';
+  };
 
   const [viewMode, setViewMode] = useState(() => {
     try {
@@ -487,15 +497,23 @@ export default function Dashboard() {
           {!compactHeaders && (
             <h2 className="text-xl font-bold text-slate-800 mb-4 text-right">פעילויות אחרונות</h2>
           )}
-          <div className={getGridClass(viewMode)} dir="rtl">
-            {dashboardCards.find(c => c.id === 'projectsOverview')?.visible && (
-              <div className="md:col-span-2">
-                <ProjectsOverview compactHeader={compactHeaders} isExpanded={expandedCards.projectsOverview !== false} />
-              </div>
-            )}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 auto-rows-min" dir="rtl">
+            {dashboardCards.map(card => {
+              if (!card.visible) return null;
+              
+              const sizeClass = getSizeClass(card.size);
 
-            {dashboardSettings.showRecentProjects && (
-              <Card className="bg-white shadow-md">
+              if (card.id === 'projectsOverview') {
+                return (
+                  <div key={card.id} className={sizeClass}>
+                    <ProjectsOverview compactHeader={compactHeaders} isExpanded={expandedCards.projectsOverview !== false} />
+                  </div>
+                );
+              }
+
+              if (card.id === 'recentProjects' && dashboardSettings.showRecentProjects) {
+                return (
+                  <Card key={card.id} className={`bg-white shadow-md ${sizeClass}`}>
                 <CardHeader 
                   className={`border-b cursor-pointer hover:bg-slate-50 transition-colors ${compactHeaders ? 'py-3' : ''}`}
                   onClick={() => toggleCard('projects')}
@@ -522,36 +540,36 @@ export default function Dashboard() {
               </Card>
             )}
 
-            {dashboardSettings.showUpcomingTasks && (
-              <Card className="bg-white shadow-md">
-                <CardHeader 
-                  className={`border-b cursor-pointer hover:bg-slate-50 transition-colors ${compactHeaders ? 'py-3' : ''}`}
-                  onClick={() => toggleCard('tasks')}
-                >
-                  <CardTitle className={`flex items-center justify-between ${compactHeaders ? 'text-sm' : 'text-base'}`}>
-                    <span className="text-right">משימות קרובות</span>
-                    <div className="flex items-center gap-2">
-                      <span className={`text-slate-500 ${compactHeaders ? 'text-xs' : 'text-sm'}`}>
-                        {upcomingTasks.length}
-                      </span>
-                      {expandedCards.tasks ? (
-                        <ChevronUp className="w-5 h-5 text-slate-400" />
-                      ) : (
-                        <ChevronDown className="w-5 h-5 text-slate-400" />
-                      )}
-                    </div>
-                  </CardTitle>
-                </CardHeader>
-                {expandedCards.tasks && (
-                  <CardContent className="p-0">
-                    <UpcomingTasks tasks={upcomingTasks} isLoading={loading} onUpdate={loadDashboardData} />
-                  </CardContent>
-                )}
-              </Card>
-            )}
+                  <CardHeader 
+                    className={`border-b cursor-pointer hover:bg-slate-50 transition-colors ${compactHeaders ? 'py-3' : ''}`}
+                    onClick={() => toggleCard('tasks')}
+                  >
+                    <CardTitle className={`flex items-center justify-between ${compactHeaders ? 'text-sm' : 'text-base'}`}>
+                      <span className="text-right">משימות קרובות</span>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-slate-500 ${compactHeaders ? 'text-xs' : 'text-sm'}`}>
+                          {upcomingTasks.length}
+                        </span>
+                        {expandedCards.tasks ? (
+                          <ChevronUp className="w-5 h-5 text-slate-400" />
+                        ) : (
+                          <ChevronDown className="w-5 h-5 text-slate-400" />
+                        )}
+                      </div>
+                    </CardTitle>
+                  </CardHeader>
+                  {expandedCards.tasks && (
+                    <CardContent className="p-0">
+                      <UpcomingTasks tasks={upcomingTasks} isLoading={loading} onUpdate={loadDashboardData} />
+                    </CardContent>
+                  )}
+                </Card>
+              );
+            }
 
-            {dashboardSettings.showQuoteStatus && (
-              <Card className="bg-white shadow-md">
+            if (card.id === 'quoteStatus' && dashboardSettings.showQuoteStatus) {
+              return (
+                <Card key={card.id} className={`bg-white shadow-md ${sizeClass}`}>
                 <CardHeader 
                   className={`border-b cursor-pointer hover:bg-slate-50 transition-colors ${compactHeaders ? 'py-3' : ''}`}
                   onClick={() => toggleCard('quotes')}
@@ -578,36 +596,36 @@ export default function Dashboard() {
               </Card>
             )}
 
-            {dashboardSettings.showTimerLogs && (
-              <Card className="bg-white shadow-md">
-                <CardHeader 
-                  className={`border-b cursor-pointer hover:bg-slate-50 transition-colors ${compactHeaders ? 'py-3' : ''}`}
-                  onClick={() => toggleCard('timeLogs')}
-                >
-                  <CardTitle className={`flex items-center justify-between ${compactHeaders ? 'text-sm' : 'text-base'}`}>
-                    <span className="text-right">לוגי זמן</span>
-                    <div className="flex items-center gap-2">
-                      <span className={`text-slate-500 ${compactHeaders ? 'text-xs' : 'text-sm'}`}>
-                        {timeLogs.length}
-                      </span>
-                      {expandedCards.timeLogs ? (
-                        <ChevronUp className="w-5 h-5 text-slate-400" />
-                      ) : (
-                        <ChevronDown className="w-5 h-5 text-slate-400" />
-                      )}
-                    </div>
-                  </CardTitle>
-                </CardHeader>
-                {expandedCards.timeLogs && (
-                  <CardContent className="p-0">
-                    <TimerLogs timeLogs={timeLogs} isLoading={loading} onUpdate={loadDashboardData} />
-                  </CardContent>
-                )}
-              </Card>
-            )}
+                  <CardHeader 
+                    className={`border-b cursor-pointer hover:bg-slate-50 transition-colors ${compactHeaders ? 'py-3' : ''}`}
+                    onClick={() => toggleCard('timeLogs')}
+                  >
+                    <CardTitle className={`flex items-center justify-between ${compactHeaders ? 'text-sm' : 'text-base'}`}>
+                      <span className="text-right">לוגי זמן</span>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-slate-500 ${compactHeaders ? 'text-xs' : 'text-sm'}`}>
+                          {timeLogs.length}
+                        </span>
+                        {expandedCards.timeLogs ? (
+                          <ChevronUp className="w-5 h-5 text-slate-400" />
+                        ) : (
+                          <ChevronDown className="w-5 h-5 text-slate-400" />
+                        )}
+                      </div>
+                    </CardTitle>
+                  </CardHeader>
+                  {expandedCards.timeLogs && (
+                    <CardContent className="p-0">
+                      <TimerLogs timeLogs={timeLogs} isLoading={loading} onUpdate={loadDashboardData} />
+                    </CardContent>
+                  )}
+                </Card>
+              );
+            }
 
-            {dashboardSettings.showMeetings && (
-              <Card className="bg-white shadow-md">
+            if (card.id === 'upcomingMeetings' && dashboardSettings.showMeetings) {
+              return (
+                <Card key={card.id} className={`bg-white shadow-md ${sizeClass}`}>
                 <CardHeader 
                   className={`border-b cursor-pointer hover:bg-slate-50 transition-colors ${compactHeaders ? 'py-3' : ''}`}
                   onClick={() => toggleCard('meetings')}
