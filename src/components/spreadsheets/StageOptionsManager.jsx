@@ -2,8 +2,9 @@ import React, { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Edit2, Trash2, Circle, Save } from "lucide-react";
+import { Plus, Edit2, Trash2, Circle, Save, GripVertical } from "lucide-react";
 import { toast } from "sonner";
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
 export default function StageOptionsManager({ open, onClose, stageOptions, onSave }) {
   const [editedOptions, setEditedOptions] = useState(stageOptions || []);
@@ -50,6 +51,17 @@ export default function StageOptionsManager({ open, onClose, stageOptions, onSav
     const updated = editedOptions.filter((_, i) => i !== index);
     setEditedOptions(updated);
     toast.success('✓ שלב נמחק');
+  };
+
+  const handleDragEnd = (result) => {
+    if (!result.destination) return;
+
+    const items = Array.from(editedOptions);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
+
+    setEditedOptions(items);
+    toast.success('✓ סדר השלבים עודכן');
   };
 
   const handleSave = () => {
@@ -103,12 +115,24 @@ export default function StageOptionsManager({ open, onClose, stageOptions, onSav
               </div>
             </div>
 
-            <div className="space-y-3">
-              {editedOptions.map((stage, index) => (
-                <div 
-                  key={index} 
-                  className="bg-white border-2 border-slate-200 rounded-lg p-4 hover:border-purple-300 transition-all"
-                >
+            <DragDropContext onDragEnd={handleDragEnd}>
+              <Droppable droppableId="stages-list">
+                {(provided) => (
+                  <div 
+                    ref={provided.innerRef}
+                    {...provided.droppableProps}
+                    className="space-y-3"
+                  >
+                    {editedOptions.map((stage, index) => (
+                      <Draggable key={index} draggableId={`stage-${index}`} index={index}>
+                        {(provided, snapshot) => (
+                          <div 
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            className={`bg-white border-2 border-slate-200 rounded-lg p-4 hover:border-purple-300 transition-all ${
+                              snapshot.isDragging ? 'shadow-xl rotate-1 scale-105' : ''
+                            }`}
+                          >
                   {editingIndex === index ? (
                     <div className="space-y-3">
                       <div className="grid grid-cols-2 gap-3">
@@ -168,6 +192,13 @@ export default function StageOptionsManager({ open, onClose, stageOptions, onSav
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div 
+                          {...provided.dragHandleProps}
+                          className="cursor-grab active:cursor-grabbing hover:bg-slate-100 rounded p-1"
+                          title="גרור לשינוי סדר"
+                        >
+                          <GripVertical className="w-4 h-4 text-slate-400" />
+                        </div>
+                        <div 
                           className="w-4 h-4 rounded-full transition-all"
                           style={{ 
                             backgroundColor: stage.color,
@@ -206,9 +237,15 @@ export default function StageOptionsManager({ open, onClose, stageOptions, onSav
                       </div>
                     </div>
                   )}
-                </div>
-              ))}
-            </div>
+                          </div>
+                        )}
+                      </Draggable>
+                    ))}
+                    {provided.placeholder}
+                  </div>
+                )}
+              </Droppable>
+            </DragDropContext>
 
             <Button
               onClick={handleAddStage}
@@ -220,7 +257,7 @@ export default function StageOptionsManager({ open, onClose, stageOptions, onSav
             </Button>
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
-              💡 <strong>טיפ:</strong> לחץ על עריכה כדי לשנות את שם השלב והצבע שלו. הצבע יוצג בטבלה עם אפקט זוהר
+              💡 <strong>טיפ:</strong> גרור את האייקון ⋮⋮ כדי לשנות את סדר השלבים. לחץ על עריכה לשינוי שם וצבע
             </div>
           </div>
         </div>
