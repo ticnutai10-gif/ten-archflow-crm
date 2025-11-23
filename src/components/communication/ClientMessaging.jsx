@@ -6,9 +6,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Send, Paperclip, Mail, MessageSquare, X, Upload } from "lucide-react";
+import { Send, Paperclip, Mail, MessageSquare, X, Upload, Sparkles } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
+import SmartEmailSuggester from "../ai/SmartEmailSuggester";
 
 export default function ClientMessaging({ clients, messages, onUpdate, isLoading }) {
   const [selectedClient, setSelectedClient] = useState(null);
@@ -18,6 +19,8 @@ export default function ClientMessaging({ clients, messages, onUpdate, isLoading
   const [attachments, setAttachments] = useState([]);
   const [sending, setSending] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [showAISuggester, setShowAISuggester] = useState(false);
+  const [selectedMessageForSuggestion, setSelectedMessageForSuggestion] = useState(null);
 
   const handleFileUpload = async (e) => {
     const files = Array.from(e.target.files || []);
@@ -54,7 +57,23 @@ export default function ClientMessaging({ clients, messages, onUpdate, isLoading
         attachments: attachments.map(a => a.url)
       };
 
-      await base44.entities.CommunicationMessage.create(messageData);
+      const newMessage = await base44.entities.CommunicationMessage.create(messageData);
+
+      // Auto-tag the message
+      if (newMessage?.id) {
+        try {
+          const { autoTagCommunication } = await import('../ai/AutoCommunicationTagger');
+          const tagging = await autoTagCommunication(messageData);
+          await base44.entities.CommunicationMessage.update(newMessage.id, {
+            tags: tagging.tags,
+            sentiment: tagging.sentiment,
+            priority: tagging.priority
+          });
+          console.log('✨ Auto-tagged:', tagging);
+        } catch (e) {
+          console.warn('Auto-tagging failed:', e);
+        }
+      }
 
       // Send email if type is email
       if (messageType === 'email' && selectedClient.email) {
@@ -143,13 +162,27 @@ export default function ClientMessaging({ clients, messages, onUpdate, isLoading
               )}
             </div>
 
+            {/* AI Email Suggester */}
+            {showAISuggester && selectedMessageForSuggestion && (
+              <div className="mb-4">
+                <SmartEmailSuggester
+                  communication={selectedMessageForSuggestion}
+                  onUseSuggestion={(text) => {
+                    setBody(text);
+                    setShowAISuggester(false);
+                    setSelectedMessageForSuggestion(null);
+                  }}
+                />
+              </div>
+            )}
+
             {/* Message History */}
             <div className="flex-1 overflow-y-auto mb-4 space-y-3 max-h-64">
               {clientMessages.length === 0 ? (
                 <p className="text-slate-400 text-center py-8">אין הודעות קודמות</p>
               ) : (
                 clientMessages.map(msg => (
-                  <Card key={msg.id} className={`p-4 ${msg.direction === 'out' ? 'bg-blue-50' : 'bg-slate-50'}`}>
+                  <Card key={msg.id} className={`p-4 ${msg.direction === 'out' ? 'bg-blue-50' : 'bg-slate-50'} relative group`}>
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <Badge variant="outline" className="text-xs">
@@ -163,10 +196,33 @@ export default function ClientMessaging({ clients, messages, onUpdate, isLoading
                         {format(new Date(msg.created_date), 'dd/MM/yyyy HH:mm', { locale: he })}
                       </span>
                     </div>
+                    {msg.direction === 'in' && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity gap-1"
+                        onClick={() => {
+                          setSelectedMessageForSuggestion(msg);
+                          setShowAISuggester(true);
+                        }}
+                      >
+                        <Sparkles className="w-3 h-3" />
+                        הצע תגובה
+                      </Button>
+                    )}
                     {msg.subject && (
                       <div className="font-semibold text-slate-900 mb-1">{msg.subject}</div>
                     )}
                     <p className="text-slate-700 whitespace-pre-wrap">{msg.body}</p>
+                    {msg.tags && msg.tags.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {msg.tags.map((tag, idx) => (
+                          <Badge key={idx} variant="outline" className="text-xs">
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
                     {msg.attachments?.length > 0 && (
                       <div className="mt-2 flex flex-wrap gap-2">
                         {msg.attachments.map((url, idx) => (

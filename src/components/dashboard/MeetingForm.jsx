@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Plus, X } from "lucide-react";
+import SmartAgendaGenerator from "../ai/SmartAgendaGenerator";
 
 export default function MeetingForm({ meeting, clients, projects, initialDate, onSubmit, onCancel }) {
   const getDefaultDate = () => {
@@ -229,7 +230,18 @@ export default function MeetingForm({ meeting, clients, projects, initialDate, o
 
           {/* Agenda */}
           <div className="space-y-2">
-            <Label>סדר יום</Label>
+            <div className="flex items-center justify-between mb-2">
+              <Label>סדר יום</Label>
+              {(formData.client_name || formData.project_name) && (
+                <div className="w-64">
+                  <SmartAgendaGenerator
+                    clientId={clients?.find(c => c.name === formData.client_name)?.id}
+                    projectId={projects?.find(p => p.name === formData.project_name)?.id}
+                    onAgendaGenerated={(items) => setFormData(prev => ({ ...prev, agenda: items }))}
+                  />
+                </div>
+              )}
+            </div>
             <div className="flex gap-2">
               <Input 
                 value={newAgendaItem}
