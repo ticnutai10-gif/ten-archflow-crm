@@ -252,7 +252,11 @@ export default function ProjectDetails() {
           <TabsContent value="resources">
             <ProjectResourceView projectId={project.id} />
           </TabsContent>
-        </Tabs>
+
+          <TabsContent value="reports">
+            <ProjectReports projectId={project.id} />
+          </TabsContent>
+          </Tabs>
 
         {/* SubTask Form Modal */}
         {showSubTaskForm && (
