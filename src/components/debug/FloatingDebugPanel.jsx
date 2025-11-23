@@ -22,8 +22,8 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 
 const DEFAULT_SETTINGS = {
-  showDebugButton: true,
-  showConsoleButton: true
+  showDebugButton: false,
+  showConsoleButton: false
 };
 
 export default function FloatingDebugPanel() {
