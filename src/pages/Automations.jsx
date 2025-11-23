@@ -85,6 +85,14 @@ const ACTIONS = [
     params: ['to', 'subject', 'body']
   },
   { 
+    value: 'send_whatsapp', 
+    label: 'שלח הודעת WhatsApp', 
+    icon: Mail, 
+    color: 'green',
+    description: 'שלח הודעה ל-WhatsApp',
+    params: ['phone', 'message']
+  },
+  { 
     value: 'create_task', 
     label: 'צור משימה', 
     icon: CheckSquare, 
@@ -703,6 +711,25 @@ export default function AutomationsPage() {
                                       <SelectItem value="project_milestone">אבן דרך בפרויקט</SelectItem>
                                     </SelectContent>
                                   </Select>
+                                </>
+                              )}
+
+                              {action.type === 'send_whatsapp' && (
+                                <>
+                                  <Input
+                                    placeholder="מספר טלפון (עם קידומת, למשל: +972501234567 או {{phone}})"
+                                    value={action.params?.phone || ""}
+                                    onChange={(e) => updateAction(index, 'phone', e.target.value)}
+                                  />
+                                  <Textarea
+                                    placeholder="תוכן ההודעה (אפשר להשתמש ב-{{name}}, {{title}} וכו')"
+                                    value={action.params?.message || ""}
+                                    onChange={(e) => updateAction(index, 'message', e.target.value)}
+                                    rows={4}
+                                  />
+                                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800">
+                                    💡 ההודעה תפתח את WhatsApp עם הטקסט מוכן לשליחה
+                                  </div>
                                 </>
                               )}
                             </div>
