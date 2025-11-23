@@ -199,13 +199,13 @@ ${upcomingMeetings.slice(0, 3).map(m => `- ${m.title} עם ${m.participants?.joi
         style={{
           background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
           boxShadow: '0 8px 30px rgba(102, 126, 234, 0.3)',
-          border: '1.5px solid rgba(255, 255, 255, 0.3)'
+          border: '1px solid rgba(255, 255, 255, 0.15)'
         }}
         title="צ'אט AI"
       >
         <div 
           className="w-10 h-10 bg-white rounded-full flex items-center justify-center transition-transform group-hover:rotate-12"
-          style={{ border: '1.5px solid rgba(102, 126, 234, 0.2)' }}
+          style={{ border: '1px solid rgba(102, 126, 234, 0.15)' }}
         >
           {isOpen ? (
             <X className="w-5 h-5 text-purple-600" />

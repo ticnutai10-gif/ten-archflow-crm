@@ -435,7 +435,7 @@ export default function Dashboard() {
                   {stats.clients}
                 </div>
                 <Link to={createPageUrl("Clients")} className="block">
-                  <Button variant="link" className="w-full text-xs text-blue-600">
+                  <Button variant="link" className="w-full text-xs" style={{ color: '#2C3E50' }}>
                     → כל הלקוחות
                   </Button>
                 </Link>
@@ -453,7 +453,7 @@ export default function Dashboard() {
                   {stats.projects}
                 </div>
                 <Link to={createPageUrl("Projects")} className="block">
-                  <Button variant="link" className="w-full text-xs text-blue-600">
+                  <Button variant="link" className="w-full text-xs" style={{ color: '#2C3E50' }}>
                     → כל הפרויקטים
                   </Button>
                 </Link>
@@ -471,7 +471,7 @@ export default function Dashboard() {
                   {stats.quotes}
                 </div>
                 <Link to={createPageUrl("Quotes")} className="block">
-                  <Button variant="link" className="w-full text-xs text-blue-600">
+                  <Button variant="link" className="w-full text-xs" style={{ color: '#2C3E50' }}>
                     → כל ההצעות
                   </Button>
                 </Link>
@@ -489,7 +489,7 @@ export default function Dashboard() {
                   {stats.tasks}
                 </div>
                 <Link to={createPageUrl("Tasks")} className="block">
-                  <Button variant="link" className="w-full text-xs text-blue-600">
+                  <Button variant="link" className="w-full text-xs" style={{ color: '#2C3E50' }}>
                     → כל המשימות
                   </Button>
                 </Link>

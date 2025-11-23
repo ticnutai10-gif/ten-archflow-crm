@@ -324,23 +324,22 @@ export default function Layout({ children, currentPageName }) {
 
           /* Smooth scrollbar */
           ::-webkit-scrollbar {
-            width: 10px;
-            height: 10px;
+            width: 6px;
+            height: 6px;
           }
 
           ::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 10px;
+            background: transparent;
           }
 
           ::-webkit-scrollbar-thumb {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 10px;
+            background: rgba(44, 62, 80, 0.2);
+            border-radius: 3px;
             transition: background 0.3s ease;
           }
 
           ::-webkit-scrollbar-thumb:hover {
-            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+            background: rgba(44, 62, 80, 0.4);
           }
 
           /* Badge animations */
