@@ -68,10 +68,42 @@ async function actionUpdateTasksStatus(base44, payload, params = {}) {
   return { type: 'update_tasks_status', updated: tasks.length, to: toStatus };
 }
 
+async function actionSendWhatsApp(base44, payload, params = {}) {
+  const phone = applyTemplate(params.phone || payload.phone || '', payload);
+  const message = applyTemplate(params.message || '', payload);
+  if (!phone || !message) return { type: 'send_whatsapp', skipped: true, reason: 'missing_params' };
+  
+  // Format phone number (remove spaces, dashes)
+  const cleanPhone = phone.replace(/[\s\-]/g, '');
+  const encodedMessage = encodeURIComponent(message);
+  const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
+  
+  return { type: 'send_whatsapp', ok: true, url: whatsappUrl, phone: cleanPhone };
+}
+
+async function actionSendNotification(base44, payload, params = {}) {
+  const notification = {
+    user_email: applyTemplate(params.user_email || payload.email || '', payload),
+    title: applyTemplate(params.title || 'התראה חדשה', payload),
+    message: applyTemplate(params.message || '', payload),
+    type: params.type || 'status_changed',
+    related_entity: params.related_entity || payload.entity_type || '',
+    related_id: params.related_id || payload.entity_id || payload.id || '',
+    priority: params.priority || 'medium'
+  };
+  
+  if (!notification.user_email) return { type: 'send_notification', skipped: true, reason: 'missing_email' };
+  
+  const created = await base44.entities.Notification.create(notification);
+  return { type: 'send_notification', ok: true, id: created.id };
+}
+
 const handlers = {
   create_task: actionCreateTask,
   send_email: actionSendEmail,
-  update_tasks_status: actionUpdateTasksStatus
+  update_tasks_status: actionUpdateTasksStatus,
+  send_whatsapp: actionSendWhatsApp,
+  send_notification: actionSendNotification
 };
 
 Deno.serve(async (req) => {
