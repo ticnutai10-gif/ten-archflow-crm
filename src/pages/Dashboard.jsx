@@ -131,19 +131,19 @@ export default function Dashboard() {
     try {
       const saved = localStorage.getItem('dashboard-expanded-cards');
       return saved ? JSON.parse(saved) : {
-        projects: false,
-        tasks: false,
-        quotes: false,
-        timeLogs: false,
-        meetings: false
+        projects: true,
+        tasks: true,
+        quotes: true,
+        timeLogs: true,
+        meetings: true
       };
     } catch {
       return {
-        projects: false,
-        tasks: false,
-        quotes: false,
-        timeLogs: false,
-        meetings: false
+        projects: true,
+        tasks: true,
+        quotes: true,
+        timeLogs: true,
+        meetings: true
       };
     }
   });
