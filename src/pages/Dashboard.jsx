@@ -519,7 +519,7 @@ export default function Dashboard() {
                       onClick={() => toggleCard('projects')}
                     >
                       <CardTitle className={`flex items-center justify-between ${compactHeaders ? 'text-sm' : 'text-base'}`}>
-                        <span className="text-right">פרויקטים אחרונים</span>
+                        <span className="text-right">פעילות אחרונה (פרויקטים ולקוחות)</span>
                         <div className="flex items-center gap-2">
                           <span className={`text-slate-500 ${compactHeaders ? 'text-xs' : 'text-sm'}`}>
                             {recentProjects.length}
