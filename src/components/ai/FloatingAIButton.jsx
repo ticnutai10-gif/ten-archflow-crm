@@ -15,32 +15,60 @@ export default function FloatingAIButton() {
   const [loading, setLoading] = useState(false);
 
   const executeAction = async (action) => {
+    console.log('🚀 Executing action:', action);
+    
     try {
       const params = {};
-      action.params.split(',').forEach(p => {
-        const [key, ...valueParts] = p.split(':');
-        if (key && valueParts.length) {
-          params[key.trim()] = valueParts.join(':').trim();
-        }
-      });
+      
+      // Parse params string more carefully
+      if (action.params && typeof action.params === 'string') {
+        // Split by comma, but be careful with commas inside values
+        const parts = action.params.split(/,(?=\s*\w+:)/);
+        parts.forEach(p => {
+          const colonIndex = p.indexOf(':');
+          if (colonIndex > 0) {
+            const key = p.substring(0, colonIndex).trim();
+            const value = p.substring(colonIndex + 1).trim();
+            params[key] = value;
+          }
+        });
+      }
+
+      console.log('📋 Parsed params:', params);
 
       if (action.type === 'SEND_EMAIL') {
+        console.log('📧 Sending email...');
         await base44.integrations.Core.SendEmail({
           to: params.to,
           subject: params.subject,
           body: params.body
         });
-        toast.success('אימייל נשלח בהצלחה!');
+        toast.success('✉️ אימייל נשלח בהצלחה!');
       } else if (action.type === 'CREATE_TASK') {
-        await base44.entities.Task.create({
+        console.log('✅ Creating task...');
+        const newTask = await base44.entities.Task.create({
           title: params.title,
           priority: params.priority || 'בינונית',
           due_date: params.due_date,
           status: 'חדשה',
           description: params.description || ''
         });
-        toast.success('משימה נוצרה בהצלחה!');
+        console.log('✅ Task created:', newTask);
+        toast.success('✅ משימה נוצרה בהצלחה!');
+      } else if (action.type === 'SCHEDULE_MEETING') {
+        console.log('📅 Scheduling meeting...');
+        const newMeeting = await base44.entities.Meeting.create({
+          title: params.title,
+          meeting_date: params.date,
+          participants: params.participants?.split(';') || [],
+          status: 'מתוכננת',
+          location: params.location || '',
+          description: params.description || ''
+        });
+        console.log('📅 Meeting created:', newMeeting);
+        toast.success('📅 פגישה נקבעה בהצלחה!');
       } else if (action.type === 'UPDATE_CLIENT_STAGE') {
+        console.log('🎯 Updating client stage...');
         const clientsToUpdate = params.clients?.split(';') || [];
         const newStage = params.stage;
         
@@ -59,6 +87,7 @@ export default function FloatingAIButton() {
           }
         }
         
+        console.log(`✅ Updated ${updated} clients`);
         toast.success(`🎯 ${updated} לקוחות עודכנו לשלב!`);
       } else if (action.type === 'PREDICT_TIMELINE') {
         toast.info(`📊 חיזוי ציר זמן בוצע`);
@@ -66,8 +95,8 @@ export default function FloatingAIButton() {
         toast.info(`👥 הצעת משאבים בוצעה`);
       }
     } catch (error) {
-      console.error('Action execution error:', error);
-      toast.error('שגיאה בביצוע הפעולה');
+      console.error('❌ Action execution error:', error);
+      toast.error('❌ שגיאה בביצוע הפעולה: ' + (error.message || 'נסה שוב'));
     }
   };
 
