@@ -772,23 +772,25 @@ export default function ClientsPage() {
             </Button>
           )}
 
-          <Button
-            variant={selectionMode ? "default" : "outline"}
-            onClick={toggleSelectionMode}
-            className={selectionMode ? "bg-[#2C3A50] hover:bg-[#1f2937] text-white" : ""}
-            title="מצב בחירה מרובה">
-            {selectionMode ? (
-              <>
-                <CheckSquare className="w-4 h-4 ml-2" />
-                ביטול בחירה
-              </>
-            ) : (
-              <>
-                <Square className="w-4 h-4 ml-2" style={{ color: iconColor }} />
-                מצב בחירה
-              </>
-            )}
-          </Button>
+          {viewMode === 'spreadsheet' && (
+            <Button
+              variant={selectionMode ? "default" : "outline"}
+              onClick={toggleSelectionMode}
+              className={selectionMode ? "bg-[#2C3A50] hover:bg-[#1f2937] text-white" : ""}
+              title="מצב בחירה מרובה בטבלה">
+              {selectionMode ? (
+                <>
+                  <CheckSquare className="w-4 h-4 ml-2" />
+                  ביטול בחירה (ESC)
+                </>
+              ) : (
+                <>
+                  <Square className="w-4 h-4 ml-2" style={{ color: iconColor }} />
+                  בחירה מרובה
+                </>
+              )}
+            </Button>
+          )}
         </div>
 
         {/* Right group of buttons */}
