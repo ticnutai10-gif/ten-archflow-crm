@@ -27,6 +27,7 @@ import DailyReports from './pages/DailyReports';
 import CustomSpreadsheets from './pages/CustomSpreadsheets';
 import Integrations from './pages/Integrations';
 import ProjectDetails from './pages/ProjectDetails';
+import CommunicationHub from './pages/CommunicationHub';
 import __Layout from './Layout.jsx';
 
 
@@ -60,6 +61,7 @@ export const PAGES = {
     "CustomSpreadsheets": CustomSpreadsheets,
     "Integrations": Integrations,
     "ProjectDetails": ProjectDetails,
+    "CommunicationHub": CommunicationHub,
 }
 
 export const pagesConfig = {
