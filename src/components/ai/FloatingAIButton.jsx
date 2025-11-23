@@ -1,17 +1,51 @@
 import React, { useState } from 'react';
-import { MessageSquare, X, Send, Loader2, Sparkles } from 'lucide-react';
+import { MessageSquare, X, Send, Loader2, Sparkles, Mail, CheckCircle, ListTodo } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { base44 } from '@/api/base44Client';
 import ReactMarkdown from 'react-markdown';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
+import { toast } from 'sonner';
 
 export default function FloatingAIButton() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const executeAction = async (action) => {
+    try {
+      const params = {};
+      action.params.split(',').forEach(p => {
+        const [key, ...valueParts] = p.split(':');
+        if (key && valueParts.length) {
+          params[key.trim()] = valueParts.join(':').trim();
+        }
+      });
+
+      if (action.type === 'SEND_EMAIL') {
+        await base44.integrations.Core.SendEmail({
+          to: params.to,
+          subject: params.subject,
+          body: params.body
+        });
+        toast.success('אימייל נשלח בהצלחה!');
+      } else if (action.type === 'CREATE_TASK') {
+        await base44.entities.Task.create({
+          title: params.title,
+          priority: params.priority || 'בינונית',
+          due_date: params.due_date,
+          status: 'חדשה',
+          description: params.description || ''
+        });
+        toast.success('משימה נוצרה בהצלחה!');
+      }
+    } catch (error) {
+      console.error('Action execution error:', error);
+      toast.error('שגיאה בביצוע הפעולה');
+    }
+  };
 
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
@@ -22,26 +56,82 @@ export default function FloatingAIButton() {
     setLoading(true);
 
     try {
-      const [projects, clients, tasks] = await Promise.all([
+      const currentUser = await base44.auth.me();
+      
+      // Load comprehensive data
+      const [projects, clients, tasks, communications, decisions, meetings, quotes, timeLogs] = await Promise.all([
         base44.entities.Project.list('-created_date').catch(() => []),
         base44.entities.Client.list('-created_date').catch(() => []),
-        base44.entities.Task.filter({ status: { $ne: 'הושלמה' } }, '-created_date').catch(() => [])
+        base44.entities.Task.filter({ status: { $ne: 'הושלמה' } }, '-created_date', 50).catch(() => []),
+        base44.entities.CommunicationMessage.list('-created_date', 30).catch(() => []),
+        base44.entities.Decision.list('-created_date', 20).catch(() => []),
+        base44.entities.Meeting.list('-meeting_date', 20).catch(() => []),
+        base44.entities.Quote.filter({ status: 'בהמתנה' }).catch(() => []),
+        base44.entities.TimeLog.filter({ created_by: currentUser.email }, '-log_date', 30).catch(() => [])
       ]);
 
-      const context = `אתה עוזר AI למערכת CRM. יש ${projects.length} פרויקטים, ${clients.length} לקוחות, ${tasks.length} משימות פתוחות.`;
-      const prompt = `${context}\n\nשאלה: ${input}`;
+      const activeProjects = projects.filter(p => p.status !== 'הושלם');
+      const urgentTasks = tasks.filter(t => t.priority === 'דחופה' || t.priority === 'גבוהה');
+      const upcomingMeetings = meetings.filter(m => new Date(m.meeting_date) >= new Date());
+      
+      const context = `
+אתה עוזר AI חכם למערכת CRM של ${currentUser.full_name || currentUser.email}.
+
+סיכום נתונים:
+- ${activeProjects.length} פרויקטים פעילים מתוך ${projects.length}
+- ${clients.length} לקוחות במערכת
+- ${tasks.length} משימות פתוחות (מתוכן ${urgentTasks.length} דחופות)
+- ${communications.length} הודעות תקשורת אחרונות
+- ${decisions.length} החלטות תיעוד אחרונות
+- ${upcomingMeetings.length} פגישות קרובות
+- ${quotes.length} הצעות מחיר בהמתנה
+- ${timeLogs.length} רישומי זמן אחרונים
+
+פרטי פרויקטים פעילים:
+${activeProjects.slice(0, 5).map(p => `- ${p.name} (${p.client_name}): סטטוס ${p.status}, ${p.progress || 0}% התקדמות`).join('\n')}
+
+משימות דחופות:
+${urgentTasks.slice(0, 5).map(t => `- ${t.title} (${t.project_name || 'כללי'}): ${t.status}, יעד: ${t.due_date || 'לא הוגדר'}`).join('\n')}
+
+פגישות קרובות:
+${upcomingMeetings.slice(0, 3).map(m => `- ${m.title} עם ${m.participants?.join(', ') || 'לא צוין'} בתאריך ${m.meeting_date}`).join('\n')}
+
+הוראות:
+1. ענה בצורה מפורטת ומועילה בהתבסס על הנתונים
+2. אם רלוונטי, הצע פעולות מעקב ספציפיות בפורמט: [ACTION: סוג_פעולה | נתונים]
+   סוגי פעולות: CREATE_TASK, SEND_EMAIL, UPDATE_PROJECT, SCHEDULE_MEETING
+3. דוגמה: [ACTION: SEND_EMAIL | to: client@example.com, subject: מעקב פרויקט, body: תוכן...]
+4. דוגמה: [ACTION: CREATE_TASK | title: משימה חדשה, priority: גבוהה, due_date: 2025-12-01]
+`;
+
+      const prompt = `${context}\n\nשאלת המשתמש: ${input}`;
 
       const result = await base44.integrations.Core.InvokeLLM({
         prompt,
         add_context_from_internet: false
       });
 
-      setMessages(prev => [...prev, { role: 'assistant', content: result }]);
+      // Parse actions from response
+      const actions = [];
+      const actionMatches = result.match(/\[ACTION:.*?\]/g);
+      if (actionMatches) {
+        actionMatches.forEach(match => {
+          const actionStr = match.slice(8, -1); // Remove [ACTION: and ]
+          const [type, ...params] = actionStr.split('|').map(s => s.trim());
+          actions.push({ type, params: params.join('|') });
+        });
+      }
+
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: result,
+        actions 
+      }]);
     } catch (error) {
       console.error('Error:', error);
       setMessages(prev => [...prev, { 
         role: 'assistant', 
-        content: 'מצטער, אירעה שגיאה.' 
+        content: 'מצטער, אירעה שגיאה בעיבוד הבקשה.' 
       }]);
     }
     setLoading(false);
@@ -118,22 +208,48 @@ export default function FloatingAIButton() {
             ) : (
               <>
                 {messages.map((msg, i) => (
-                  <div key={i} className={`flex ${msg.role === 'user' ? 'justify-start' : 'justify-end'}`}>
-                    <div
-                      className={`max-w-[85%] rounded-2xl p-3 text-sm ${
-                        msg.role === 'user'
-                          ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white'
-                          : 'bg-white border border-slate-200'
-                      }`}
-                    >
-                      {msg.role === 'assistant' ? (
-                        <div className="prose prose-sm max-w-none">
-                          <ReactMarkdown>{msg.content}</ReactMarkdown>
-                        </div>
-                      ) : (
-                        <p>{msg.content}</p>
-                      )}
+                  <div key={i}>
+                    <div className={`flex ${msg.role === 'user' ? 'justify-start' : 'justify-end'}`}>
+                      <div
+                        className={`max-w-[85%] rounded-2xl p-3 text-sm ${
+                          msg.role === 'user'
+                            ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white'
+                            : 'bg-white border border-slate-200'
+                        }`}
+                      >
+                        {msg.role === 'assistant' ? (
+                          <div className="prose prose-sm max-w-none">
+                            <ReactMarkdown>{msg.content.replace(/\[ACTION:.*?\]/g, '')}</ReactMarkdown>
+                          </div>
+                        ) : (
+                          <p>{msg.content}</p>
+                        )}
+                      </div>
                     </div>
+                    {msg.actions && msg.actions.length > 0 && (
+                      <div className="flex justify-end mt-2">
+                        <div className="max-w-[85%] space-y-2">
+                          {msg.actions.map((action, idx) => (
+                            <div key={idx} className="bg-blue-50 border border-blue-200 rounded-lg p-2 flex items-center gap-2">
+                              {action.type === 'SEND_EMAIL' && <Mail className="w-4 h-4 text-blue-600" />}
+                              {action.type === 'CREATE_TASK' && <ListTodo className="w-4 h-4 text-blue-600" />}
+                              <span className="text-xs text-blue-800 flex-1">
+                                {action.type === 'SEND_EMAIL' && 'שלח אימייל'}
+                                {action.type === 'CREATE_TASK' && 'צור משימה'}
+                              </span>
+                              <Button
+                                size="sm"
+                                onClick={() => executeAction(action)}
+                                className="h-6 px-2 bg-blue-600 hover:bg-blue-700 text-xs"
+                              >
+                                <CheckCircle className="w-3 h-3 ml-1" />
+                                בצע
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
                 {loading && (

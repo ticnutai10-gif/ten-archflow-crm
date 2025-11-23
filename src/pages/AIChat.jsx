@@ -3,14 +3,56 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
-import { Loader2, Send, Sparkles, Trash2, Plus } from 'lucide-react';
+import { Loader2, Send, Sparkles, Trash2, Plus, Mail, CheckCircle, ListTodo, Calendar } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import { toast } from 'sonner';
 
 export default function AIChat() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef(null);
+
+  const executeAction = async (action) => {
+    try {
+      const params = {};
+      action.params.split(',').forEach(p => {
+        const [key, ...valueParts] = p.split(':');
+        if (key && valueParts.length) {
+          params[key.trim()] = valueParts.join(':').trim();
+        }
+      });
+
+      if (action.type === 'SEND_EMAIL') {
+        await base44.integrations.Core.SendEmail({
+          to: params.to,
+          subject: params.subject,
+          body: params.body
+        });
+        toast.success('✉️ אימייל נשלח בהצלחה!');
+      } else if (action.type === 'CREATE_TASK') {
+        await base44.entities.Task.create({
+          title: params.title,
+          priority: params.priority || 'בינונית',
+          due_date: params.due_date,
+          status: 'חדשה',
+          description: params.description || ''
+        });
+        toast.success('✅ משימה נוצרה בהצלחה!');
+      } else if (action.type === 'SCHEDULE_MEETING') {
+        await base44.entities.Meeting.create({
+          title: params.title,
+          meeting_date: params.date,
+          participants: params.participants?.split(';') || [],
+          status: 'מתוכננת'
+        });
+        toast.success('📅 פגישה נקבעה בהצלחה!');
+      }
+    } catch (error) {
+      console.error('Action execution error:', error);
+      toast.error('❌ שגיאה בביצוע הפעולה');
+    }
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -29,21 +71,59 @@ export default function AIChat() {
     setLoading(true);
 
     try {
-      // Build context from recent data
-      const [projects, clients, tasks] = await Promise.all([
+      const currentUser = await base44.auth.me();
+      
+      // Load comprehensive data
+      const [projects, clients, tasks, communications, decisions, meetings, quotes, timeLogs] = await Promise.all([
         base44.entities.Project.list('-created_date').catch(() => []),
         base44.entities.Client.list('-created_date').catch(() => []),
-        base44.entities.Task.filter({ status: { $ne: 'הושלמה' } }, '-created_date').catch(() => [])
+        base44.entities.Task.filter({ status: { $ne: 'הושלמה' } }, '-created_date', 50).catch(() => []),
+        base44.entities.CommunicationMessage.list('-created_date', 30).catch(() => []),
+        base44.entities.Decision.list('-created_date', 20).catch(() => []),
+        base44.entities.Meeting.list('-meeting_date', 20).catch(() => []),
+        base44.entities.Quote.filter({ status: 'בהמתנה' }).catch(() => []),
+        base44.entities.TimeLog.filter({ created_by: currentUser.email }, '-log_date', 30).catch(() => [])
       ]);
 
+      const activeProjects = projects.filter(p => p.status !== 'הושלם');
+      const urgentTasks = tasks.filter(t => t.priority === 'דחופה' || t.priority === 'גבוהה');
+      const upcomingMeetings = meetings.filter(m => new Date(m.meeting_date) >= new Date());
+      
       const context = `
-היי! אתה עוזר AI חכם למערכת CRM.
-יש לך גישה למידע הבא:
-- ${projects.length} פרויקטים
-- ${clients.length} לקוחות
-- ${tasks.length} משימות פתוחות
+אתה עוזר AI חכם למערכת CRM של ${currentUser.full_name || currentUser.email}.
 
-השתמש במידע הזה כדי לענות על שאלות, לתת המלצות, ולסייע למשתמש.
+סיכום נתונים מפורט:
+- ${activeProjects.length} פרויקטים פעילים מתוך ${projects.length} סה"כ
+- ${clients.length} לקוחות במערכת
+- ${tasks.length} משימות פתוחות (${urgentTasks.length} דחופות)
+- ${communications.length} הודעות תקשורת אחרונות
+- ${decisions.length} החלטות תיעוד אחרונות
+- ${upcomingMeetings.length} פגישות קרובות
+- ${quotes.length} הצעות מחיר בהמתנה
+- ${timeLogs.length} רישומי זמן אחרונים
+
+פרטי פרויקטים פעילים:
+${activeProjects.slice(0, 10).map(p => `- ${p.name} (לקוח: ${p.client_name}): סטטוס ${p.status}, התקדמות ${p.progress || 0}%`).join('\n')}
+
+משימות דחופות:
+${urgentTasks.slice(0, 10).map(t => `- ${t.title} (${t.project_name || 'כללי'}): ${t.status}, עדיפות: ${t.priority}, יעד: ${t.due_date || 'לא הוגדר'}`).join('\n')}
+
+פגישות קרובות:
+${upcomingMeetings.slice(0, 5).map(m => `- ${m.title} עם ${m.participants?.join(', ') || 'משתתפים'} ב-${m.meeting_date}`).join('\n')}
+
+תקשורת אחרונה:
+${communications.slice(0, 5).map(c => `- ${c.subject || c.body?.substring(0, 50)} (${c.type})`).join('\n')}
+
+הוראות:
+1. ענה בצורה מפורטת, מועילה ומקצועית בהתבסס על כל הנתונים
+2. הצע פעולות מעקב ספציפיות בפורמט: [ACTION: סוג_פעולה | פרמטרים]
+   סוגי פעולות זמינים:
+   - SEND_EMAIL: to: כתובת, subject: נושא, body: תוכן
+   - CREATE_TASK: title: כותרת, priority: עדיפות, due_date: תאריך, description: תיאור
+   - UPDATE_PROJECT: project_id: מזהה, field: שדה, value: ערך
+   - SCHEDULE_MEETING: title: כותרת, date: תאריך, participants: משתתפים
+3. כשמשתמש מבקש עזרה, הצע פעולות קונקרטיות שיעזרו לו
+4. השתמש במידע ההיסטורי כדי לתת המלצות חכמות ומותאמות אישית
 `;
 
       const prompt = `${context}\n\nשאלת המשתמש: ${input}`;
@@ -53,13 +133,24 @@ export default function AIChat() {
         add_context_from_internet: false
       });
 
-      const aiMessage = { role: 'assistant', content: result };
+      // Parse suggested actions
+      const actions = [];
+      const actionMatches = result.match(/\[ACTION:.*?\]/g);
+      if (actionMatches) {
+        actionMatches.forEach(match => {
+          const actionStr = match.slice(8, -1);
+          const [type, ...params] = actionStr.split('|').map(s => s.trim());
+          actions.push({ type, params: params.join('|') });
+        });
+      }
+
+      const aiMessage = { role: 'assistant', content: result, actions };
       setMessages(prev => [...prev, aiMessage]);
     } catch (error) {
       console.error('Error sending message:', error);
       setMessages(prev => [...prev, { 
         role: 'assistant', 
-        content: 'מצטער, אירעה שגיאה. אנא נסה שוב.' 
+        content: 'מצטער, אירעה שגיאה בעיבוד הבקשה. אנא נסה שוב.' 
       }]);
     }
     setLoading(false);
@@ -122,25 +213,53 @@ export default function AIChat() {
               ) : (
                 <>
                   {messages.map((message, index) => (
-                    <div
-                      key={index}
-                      className={`flex ${message.role === 'user' ? 'justify-start' : 'justify-end'}`}
-                    >
+                    <div key={index} className="space-y-2">
                       <div
-                        className={`max-w-[80%] rounded-2xl p-4 ${
-                          message.role === 'user'
-                            ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white'
-                            : 'bg-white border border-slate-200'
-                        }`}
+                        className={`flex ${message.role === 'user' ? 'justify-start' : 'justify-end'}`}
                       >
-                        {message.role === 'assistant' ? (
-                          <div className="prose prose-sm max-w-none">
-                            <ReactMarkdown>{message.content}</ReactMarkdown>
-                          </div>
-                        ) : (
-                          <p className="text-sm leading-relaxed">{message.content}</p>
-                        )}
+                        <div
+                          className={`max-w-[80%] rounded-2xl p-4 ${
+                            message.role === 'user'
+                              ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white'
+                              : 'bg-white border border-slate-200'
+                          }`}
+                        >
+                          {message.role === 'assistant' ? (
+                            <div className="prose prose-sm max-w-none">
+                              <ReactMarkdown>{message.content.replace(/\[ACTION:.*?\]/g, '')}</ReactMarkdown>
+                            </div>
+                          ) : (
+                            <p className="text-sm leading-relaxed">{message.content}</p>
+                          )}
+                        </div>
                       </div>
+                      {message.actions && message.actions.length > 0 && (
+                        <div className="flex justify-end">
+                          <div className="max-w-[80%] space-y-2">
+                            <p className="text-xs text-slate-500 mb-2">פעולות מוצעות:</p>
+                            {message.actions.map((action, idx) => (
+                              <div key={idx} className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-xl p-3 flex items-center gap-3 shadow-sm hover:shadow-md transition-all">
+                                {action.type === 'SEND_EMAIL' && <Mail className="w-5 h-5 text-blue-600" />}
+                                {action.type === 'CREATE_TASK' && <ListTodo className="w-5 h-5 text-purple-600" />}
+                                {action.type === 'SCHEDULE_MEETING' && <Calendar className="w-5 h-5 text-green-600" />}
+                                <span className="text-sm text-slate-700 flex-1 font-medium">
+                                  {action.type === 'SEND_EMAIL' && '📧 שלח אימייל'}
+                                  {action.type === 'CREATE_TASK' && '✅ צור משימה'}
+                                  {action.type === 'SCHEDULE_MEETING' && '📅 קבע פגישה'}
+                                </span>
+                                <Button
+                                  size="sm"
+                                  onClick={() => executeAction(action)}
+                                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                                >
+                                  <CheckCircle className="w-4 h-4 ml-1" />
+                                  בצע עכשיו
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                   {loading && (
