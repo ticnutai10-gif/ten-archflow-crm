@@ -7,7 +7,6 @@ import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
 import { Pencil, Loader2, User, CheckCircle2, AlertCircle, AlertTriangle } from "lucide-react";
 import { User as UserEntity } from "@/entities/User";
-import { updateUserName } from "@/functions/updateUserName";
 
 export default function EditUserNameDialog({ open, onClose, userEmail, currentFullName, onSuccess }) {
   const [fullName, setFullName] = useState("");
@@ -134,12 +133,12 @@ export default function EditUserNameDialog({ open, onClose, userEmail, currentFu
 
       addDebugStep(`✅ משתמש נמצא! ID: ${targetUser.id}, שם נוכחי: "${targetUser.full_name || 'ריק'}"`, 'success');
       
-      // Step 4: Perform the update using backend function
+      // Step 4: Perform the update
       const isSelf = currentUser && currentUser.email?.toLowerCase() === userEmail.toLowerCase();
       addDebugStep(`שלב 4: מבצע עדכון... (עורך את ${isSelf ? 'עצמי' : 'משתמש אחר'})`, 'info');
       
       if (isSelf) {
-        addDebugStep('משתמש מעדכן את עצמו - משתמש ב-updateMe()', 'info');
+        addDebugStep('🔧 משתמש מעדכן את עצמו - משתמש ב-updateMe()', 'info');
         
         try {
           await base44.auth.updateMe({ full_name: newName });
@@ -150,53 +149,66 @@ export default function EditUserNameDialog({ open, onClose, userEmail, currentFu
         }
         
       } else {
-        addDebugStep('מעדכן משתמש אחר - קורא ל-backend function...', 'info');
+        addDebugStep('🔧 מעדכן משתמש אחר - משתמש ב-Backend Function...', 'info');
         
+        // CRITICAL: Must use backend function for updating other users
+        // Frontend UserEntity.update() reports success but doesn't actually update!
         try {
-          const response = await updateUserName({
+          addDebugStep('📡 קורא ל-backend function: updateUserName', 'info');
+          
+          const response = await base44.functions.invoke('updateUserName', {
             userEmail: userEmail,
             fullName: newName
           });
           
-          addDebugStep('📥 תגובה מהשרת התקבלה', 'info');
+          addDebugStep('📥 תגובה מהשרת התקבלה', 'success');
+          addDebugStep(`תוכן תגובה: ${JSON.stringify(response.data).substring(0, 200)}`, 'info');
           
           if (response.data.debugLog) {
+            addDebugStep('📋 לוג מהשרת:', 'info');
             response.data.debugLog.forEach(log => {
-              addDebugStep(`[SERVER] ${log.message}`, log.data ? 'info' : 'info');
+              const serverMsg = typeof log === 'string' ? log : log.message;
+              addDebugStep(`  [SERVER] ${serverMsg}`, 'info');
             });
           }
           
           if (!response.data.success) {
-            addDebugStep(`❌ השרת דיווח על כשלון: ${response.data.error || response.data.message}`, 'error');
-            throw new Error(response.data.error || response.data.message || 'העדכון נכשל');
+            const errorMsg = response.data.error || response.data.message || 'העדכון נכשל';
+            addDebugStep(`❌ השרת דיווח על כשלון: ${errorMsg}`, 'error');
+            throw new Error(errorMsg);
           }
           
-          addDebugStep(`✅ Backend function הצליח! אימות: ${response.data.verified}`, 'success');
+          addDebugStep(`✅ Backend function הצליח!`, 'success');
           addDebugStep(`שם חדש במערכת: "${response.data.user?.full_name}"`, 'success');
+          addDebugStep(`אימות שרת: ${response.data.verified ? 'כן ✅' : 'לא ⚠️'}`, response.data.verified ? 'success' : 'warning');
           
-          // Skip frontend verification if backend already verified
           if (response.data.verified) {
-            addDebugStep('✅ השרת אימת את השינוי - דילוג על אימות frontend', 'success');
             toast.success(`✅ השם עודכן בהצלחה ל-"${response.data.user.full_name}"!`);
             
-            // Refresh and close
-            addDebugStep('שלב 6: מרענן נתונים בעמוד...', 'info');
+            addDebugStep('🔄 מרענן נתונים בעמוד...', 'info');
             if (onSuccess) {
               await onSuccess();
-              addDebugStep('✅ נתוני הדף רוענן בהצלחה', 'success');
+              addDebugStep('✅ נתוני הדף רוענן', 'success');
             }
             
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            addDebugStep('✅ תהליך הושלם בהצלחה! סוגר חלון...', 'success');
+            await new Promise(resolve => setTimeout(resolve, 800));
+            addDebugStep('✅ סוגר חלון...', 'success');
             onClose();
             setSaving(false);
-            return; // Exit early since we're done
+            return;
+          } else {
+            addDebugStep('⚠️ השרת עדכן אבל לא אימת - ממשיך לאימות frontend', 'warning');
           }
           
         } catch (e) {
-          addDebugStep(`❌ Backend function נכשל: ${e.message}`, 'error');
-          addDebugStep(`פרטי שגיאה: ${JSON.stringify(e.response?.data || e)}`, 'error');
-          throw e;
+          addDebugStep(`❌ קריאה ל-backend function נכשלה!`, 'error');
+          addDebugStep(`שגיאה: ${e.message}`, 'error');
+          
+          if (e.response?.data) {
+            addDebugStep(`תגובת שרת: ${JSON.stringify(e.response.data)}`, 'error');
+          }
+          
+          throw new Error(`Backend function נכשל: ${e.message}`);
         }
       }
       
@@ -259,6 +271,19 @@ export default function EditUserNameDialog({ open, onClose, userEmail, currentFu
         </DialogHeader>
 
         <div className="space-y-4 py-4">
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+            <div className="flex items-start gap-2 text-sm text-amber-900">
+              <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <div className="text-right flex-1">
+                <p className="font-semibold mb-1">⚠️ שימו לב!</p>
+                <p className="text-xs">
+                  שינוי שם משתמש דורש הרשאות מיוחדות ומבוצע דרך שרת backend.
+                  הלוג מטה יציג את כל השלבים בזמן אמת.
+                </p>
+              </div>
+            </div>
+          </div>
+
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
             <div className="flex items-center gap-2 text-sm text-blue-800">
               <User className="w-4 h-4" />
@@ -268,7 +293,7 @@ export default function EditUserNameDialog({ open, onClose, userEmail, currentFu
             </div>
             {currentFullName && (
               <div className="text-xs text-blue-600 mt-1 text-right">
-                שם נוכחי: {currentFullName}
+                שם נוכחי: <strong>{currentFullName}</strong>
               </div>
             )}
           </div>
