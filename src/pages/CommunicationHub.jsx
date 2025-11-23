@@ -10,6 +10,8 @@ import ClientMessaging from "../components/communication/ClientMessaging";
 import MeetingScheduler from "../components/communication/MeetingScheduler";
 import NotificationManager from "../components/communication/NotificationManager";
 import CommunicationHistory from "../components/communication/CommunicationHistory";
+import SmartEmailSuggester from "../components/ai/SmartEmailSuggester";
+import { autoTagCommunication } from "../components/ai/AutoCommunicationTagger";
 import AIClientChatbot from "../components/communication/AIClientChatbot";
 
 export default function CommunicationHub() {
