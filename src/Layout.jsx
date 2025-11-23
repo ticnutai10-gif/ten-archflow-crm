@@ -14,7 +14,12 @@ import ReminderPopup from "@/components/reminders/ReminderPopup";
 import FloatingDebugPanel from "@/components/debug/FloatingDebugPanel";
 import NotificationBell from "@/components/notifications/NotificationBell";
 import FloatingAIButton from "@/components/ai/FloatingAIButton";
+import MobileBottomNav from "@/components/mobile/MobileBottomNav";
+import MobileHeader from "@/components/mobile/MobileHeader";
+import MobileSidebar from "@/components/mobile/MobileSidebar";
+import MobileFAB from "@/components/mobile/MobileFAB";
 import { base44 } from "@/api/base44Client";
+import { useIsMobile } from "@/components/utils/useMediaQuery";
 
 const ACCENT_COLOR = "#2C3A50";
 const ICON_COLOR = "#2C3A50";
@@ -55,7 +60,9 @@ const MENU_ITEMS = [
 ];
 
 export default function Layout({ children, currentPageName }) {
+  const isMobile = useIsMobile();
   const [user, setUser] = useState(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [pinned, setPinned] = useState(() => {
     try {
       return localStorage.getItem('sidebar-pinned') === 'true';
@@ -134,13 +141,17 @@ export default function Layout({ children, currentPageName }) {
     };
   }, []);
 
-  // Update expanded state
+  // Update expanded state (desktop only)
   useEffect(() => {
+    if (isMobile) {
+      setIsExpanded(false);
+      return;
+    }
     const newExpanded = pinned || hovered;
     if (newExpanded !== isExpanded) {
       setIsExpanded(newExpanded);
     }
-  }, [pinned, hovered, isExpanded]);
+  }, [pinned, hovered, isExpanded, isMobile]);
 
   const handleMouseEnter = useCallback(() => {
     setHovered(true);
@@ -199,9 +210,15 @@ export default function Layout({ children, currentPageName }) {
     }
   }, []);
 
+  const handleMobileFAB = (action) => {
+    // Handle quick actions from FAB
+    console.log('FAB action:', action);
+    // You can dispatch events or open modals here
+  };
+
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full" dir="rtl" data-app-root style={{ backgroundColor: 'var(--bg-cream)', overflow: 'visible' }}>
+      <div className="min-h-screen flex w-full" dir="rtl" data-app-root style={{ backgroundColor: 'var(--bg-cream)', overflow: 'visible', paddingTop: isMobile ? '56px' : '0', paddingBottom: isMobile ? '64px' : '0' }}>
         <style>{`
           :root {
             --accent-color: ${ACCENT_COLOR};
@@ -411,12 +428,72 @@ export default function Layout({ children, currentPageName }) {
             color: white !important;
             opacity: 0.9;
           }
+
+          /* Mobile specific styles */
+          @media (max-width: 768px) {
+            .safe-area-pt {
+              padding-top: env(safe-area-inset-top);
+            }
+            .safe-area-pb {
+              padding-bottom: env(safe-area-inset-bottom);
+            }
+            
+            /* Hide desktop elements on mobile */
+            .hide-on-mobile {
+              display: none !important;
+            }
+
+            /* Touch-friendly sizing */
+            button, a, [role="button"] {
+              min-height: 44px;
+              min-width: 44px;
+            }
+
+            /* Prevent text selection on touch */
+            * {
+              -webkit-tap-highlight-color: transparent;
+              -webkit-touch-callout: none;
+            }
+
+            /* Smooth scrolling */
+            html {
+              scroll-behavior: smooth;
+              -webkit-overflow-scrolling: touch;
+            }
+          }
+
+          /* Tablet styles */
+          @media (min-width: 769px) and (max-width: 1024px) {
+            .container {
+              max-width: 100%;
+              padding: 0 2rem;
+            }
+          }
         `}</style>
 
-        {!isExpanded && (
+        {/* Mobile Header */}
+        {isMobile && (
+          <MobileHeader 
+            onMenuClick={() => setMobileMenuOpen(true)}
+            title={MENU_ITEMS.find(item => item.path === currentPageName)?.name || 'CRM'}
+          />
+        )}
+
+        {/* Mobile Sidebar */}
+        {isMobile && (
+          <MobileSidebar
+            isOpen={mobileMenuOpen}
+            onClose={() => setMobileMenuOpen(false)}
+            currentPageName={currentPageName}
+            user={user}
+          />
+        )}
+
+        {!isExpanded && !isMobile && (
           <div className="sidebar-trigger" onMouseEnter={handleMouseEnter} />
         )}
 
+        {!isMobile && (
         <div
           className="order-1 relative sidebar-container"
           style={sidebarStyles}
@@ -567,11 +644,12 @@ export default function Layout({ children, currentPageName }) {
             </div>
           )}
         </div>
+        )}
 
 
 
         <div className="order-2 flex-1 transition-all duration-200" style={{ backgroundColor: 'var(--bg-cream)', overflow: 'visible', width: '100%' }} dir="rtl">
-          {user && (
+          {user && !isMobile && (
             <div className="px-6 py-3" dir="rtl" style={{ backgroundColor: 'var(--bg-cream)' }}>
               <div className="max-w-7xl mx-auto">
                 <div className="flex items-center gap-3" dir="rtl">
@@ -599,10 +677,16 @@ export default function Layout({ children, currentPageName }) {
           </div>
         </div>
 
-        <FloatingTimer />
+        {!isMobile && <FloatingTimer />}
         <ReminderPopup />
-        <FloatingDebugPanel />
-        <FloatingAIButton />
+        {!isMobile && <FloatingDebugPanel />}
+        {!isMobile && <FloatingAIButton />}
+
+        {/* Mobile Bottom Navigation */}
+        {isMobile && <MobileBottomNav />}
+
+        {/* Mobile FAB */}
+        {isMobile && <MobileFAB onAction={handleMobileFAB} />}
         </div>
         </SidebarProvider>
         );
