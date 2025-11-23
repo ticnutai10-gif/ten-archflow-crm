@@ -5,8 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
-import { Pencil, Loader2, User, CheckCircle2, AlertCircle } from "lucide-react";
+import { Pencil, Loader2, User, CheckCircle2, AlertCircle, AlertTriangle } from "lucide-react";
 import { User as UserEntity } from "@/entities/User";
+import { updateUserName } from "@/functions/updateUserName";
 
 export default function EditUserNameDialog({ open, onClose, userEmail, currentFullName, onSuccess }) {
   const [fullName, setFullName] = useState("");
@@ -133,7 +134,7 @@ export default function EditUserNameDialog({ open, onClose, userEmail, currentFu
 
       addDebugStep(`✅ משתמש נמצא! ID: ${targetUser.id}, שם נוכחי: "${targetUser.full_name || 'ריק'}"`, 'success');
       
-      // Step 4: Perform the update
+      // Step 4: Perform the update using backend function
       const isSelf = currentUser && currentUser.email?.toLowerCase() === userEmail.toLowerCase();
       addDebugStep(`שלב 4: מבצע עדכון... (עורך את ${isSelf ? 'עצמי' : 'משתמש אחר'})`, 'info');
       
@@ -149,42 +150,53 @@ export default function EditUserNameDialog({ open, onClose, userEmail, currentFu
         }
         
       } else {
-        addDebugStep('מעדכן משתמש אחר - מנסה מספר שיטות...', 'info');
+        addDebugStep('מעדכן משתמש אחר - קורא ל-backend function...', 'info');
         
-        const methods = [
-          { 
-            name: 'base44.asServiceRole.entities.User.update()', 
-            fn: () => base44.asServiceRole.entities.User.update(targetUser.id, { full_name: newName }) 
-          },
-          { 
-            name: 'UserEntity.update()', 
-            fn: () => UserEntity.update(targetUser.id, { full_name: newName }) 
-          },
-          { 
-            name: 'base44.entities.User.update()', 
-            fn: () => base44.entities.User.update(targetUser.id, { full_name: newName }) 
+        try {
+          const response = await updateUserName({
+            userEmail: userEmail,
+            fullName: newName
+          });
+          
+          addDebugStep('📥 תגובה מהשרת התקבלה', 'info');
+          
+          if (response.data.debugLog) {
+            response.data.debugLog.forEach(log => {
+              addDebugStep(`[SERVER] ${log.message}`, log.data ? 'info' : 'info');
+            });
           }
-        ];
-        
-        let updateSuccess = false;
-        let lastError = null;
-        
-        for (const method of methods) {
-          try {
-            addDebugStep(`מנסה: ${method.name}...`, 'info');
-            await method.fn();
-            updateSuccess = true;
-            addDebugStep(`✅ ${method.name} הצליח!`, 'success');
-            break;
-          } catch (e) {
-            lastError = e;
-            addDebugStep(`❌ ${method.name} נכשל: ${e.message}`, 'error');
+          
+          if (!response.data.success) {
+            addDebugStep(`❌ השרת דיווח על כשלון: ${response.data.error || response.data.message}`, 'error');
+            throw new Error(response.data.error || response.data.message || 'העדכון נכשל');
           }
-        }
-        
-        if (!updateSuccess) {
-          addDebugStep(`❌ כל שיטות העדכון נכשלו!`, 'error');
-          throw new Error('כל שיטות העדכון נכשלו. שגיאה אחרונה: ' + (lastError?.message || 'לא ידוע'));
+          
+          addDebugStep(`✅ Backend function הצליח! אימות: ${response.data.verified}`, 'success');
+          addDebugStep(`שם חדש במערכת: "${response.data.user?.full_name}"`, 'success');
+          
+          // Skip frontend verification if backend already verified
+          if (response.data.verified) {
+            addDebugStep('✅ השרת אימת את השינוי - דילוג על אימות frontend', 'success');
+            toast.success(`✅ השם עודכן בהצלחה ל-"${response.data.user.full_name}"!`);
+            
+            // Refresh and close
+            addDebugStep('שלב 6: מרענן נתונים בעמוד...', 'info');
+            if (onSuccess) {
+              await onSuccess();
+              addDebugStep('✅ נתוני הדף רוענן בהצלחה', 'success');
+            }
+            
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            addDebugStep('✅ תהליך הושלם בהצלחה! סוגר חלון...', 'success');
+            onClose();
+            setSaving(false);
+            return; // Exit early since we're done
+          }
+          
+        } catch (e) {
+          addDebugStep(`❌ Backend function נכשל: ${e.message}`, 'error');
+          addDebugStep(`פרטי שגיאה: ${JSON.stringify(e.response?.data || e)}`, 'error');
+          throw e;
         }
       }
       
@@ -285,28 +297,43 @@ export default function EditUserNameDialog({ open, onClose, userEmail, currentFu
             </p>
           </div>
 
-          {/* Debug Info Panel */}
+          {/* Debug Info Panel - Enhanced */}
           {(debugInfo || debugSteps.length > 0) && (
-            <div className="bg-slate-900 text-slate-100 border border-slate-700 rounded-lg p-3 text-xs font-mono max-h-64 overflow-y-auto">
-              <div className="font-bold mb-2 text-green-400">🔍 Debug Log:</div>
-              {debugSteps.map((step, index) => (
-                <div key={index} className="flex items-start gap-2 py-1 border-b border-slate-700 last:border-0">
-                  <span className="text-slate-500 flex-shrink-0">{step.timestamp}</span>
-                  <span className={`flex-1 ${
-                    step.status === 'success' ? 'text-green-400' :
-                    step.status === 'error' ? 'text-red-400' :
-                    step.status === 'warning' ? 'text-yellow-400' :
-                    'text-slate-300'
-                  }`}>
-                    {step.step}
-                  </span>
-                </div>
-              ))}
-              {debugInfo && (
-                <div className="mt-2 pt-2 border-t border-slate-700 text-blue-400">
-                  {saving ? '⏳' : '✅'} {debugInfo}
-                </div>
-              )}
+            <div className="bg-slate-900 text-slate-100 border border-slate-700 rounded-lg overflow-hidden">
+              <div className="bg-slate-800 px-3 py-2 font-bold text-sm text-green-400 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4" />
+                Debug Log (Real-time)
+              </div>
+              <div className="p-3 text-xs font-mono max-h-96 overflow-y-auto space-y-1">
+                {debugSteps.map((step, index) => (
+                  <div key={index} className="flex items-start gap-2 py-1 hover:bg-slate-800/50 px-1 rounded">
+                    <span className="text-slate-500 flex-shrink-0 text-[10px]">{step.timestamp}</span>
+                    <span className={`flex-1 ${
+                      step.status === 'success' ? 'text-green-400' :
+                      step.status === 'error' ? 'text-red-400' :
+                      step.status === 'warning' ? 'text-yellow-400' :
+                      'text-slate-300'
+                    }`}>
+                      {step.step}
+                    </span>
+                  </div>
+                ))}
+                {debugInfo && (
+                  <div className="mt-2 pt-2 border-t border-slate-700 text-blue-400 px-1">
+                    <div className="flex items-center gap-2">
+                      {saving ? (
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                      ) : (
+                        <CheckCircle2 className="w-3 h-3" />
+                      )}
+                      <span>{debugInfo}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="bg-slate-800 px-3 py-2 text-[10px] text-slate-400 border-t border-slate-700">
+                💡 הלוג מציג את כל השלבים בזמן אמת
+              </div>
             </div>
           )}
         </div>
