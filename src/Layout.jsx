@@ -38,7 +38,7 @@ const MENU_ITEMS = [
   { name: "משימות", icon: CheckSquare2, path: "Tasks" },
   { name: "לוגי זמן", icon: Timer, path: "TimeLogs" },
   { name: "חשבוניות", icon: Receipt, path: "Invoices" },
-  { name: "טבלאות מותאמות", icon: FileText, path: "CustomSpreadsheets" },
+  { name: "טבלאות", icon: FileText, path: "CustomSpreadsheets" },
   { name: "תיקיות", icon: FolderOpen, path: "Folders" },
   { name: "החלטות", icon: MessageSquare, path: "Decisions" },
   { name: "פורטל לקוח", icon: Users, path: "ClientPortal" },
