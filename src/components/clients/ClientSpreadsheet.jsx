@@ -214,11 +214,10 @@ function ColorPicker({ onApply, currentStyle = {}, onClose }) {
 
 }
 
-export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading, selectionMode: externalSelectionMode, onExitSelectionMode }) {
+export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }) {
   console.log('[ClientSpreadsheet] Props received:', { 
     hasOnEdit: typeof onEdit === 'function',
-    hasOnView: typeof onView === 'function',
-    selectionMode: externalSelectionMode
+    hasOnView: typeof onView === 'function'
   });
 
   const [columns, setColumns] = useState(() => {
@@ -259,11 +258,8 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading, 
 
   const [selectedCells, setSelectedCells] = useState(new Set());
   const [selectedHeaders, setSelectedHeaders] = useState(new Set());
-  const [internalSelectionMode, setInternalSelectionMode] = useState(false);
+  const [selectionMode, setSelectionMode] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-  
-  // Use external or internal selection mode
-  const selectionMode = externalSelectionMode !== undefined ? externalSelectionMode : internalSelectionMode;
 
   const [draggedColumn, setDraggedColumn] = useState(null);
 
@@ -375,21 +371,14 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading, 
   // Handle fullscreen toggle and ESC key
   useEffect(() => {
     const handleEscape = (e) => {
-      if (e.key === 'Escape') {
-        if (fullScreen) {
-          setFullScreen(false);
-        } else if (selectionMode) {
-          clearSelection();
-        } else if (editingCell) {
-          setEditingCell(null);
-          setEditValue("");
-        }
+      if (e.key === 'Escape' && fullScreen) {
+        setFullScreen(false);
       }
     };
     
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
-  }, [fullScreen, selectionMode, editingCell]);
+  }, [fullScreen]);
 
   const visibleColumns = useMemo(() => {
     const visible = columns.filter((col) => col.visible !== false);
@@ -505,34 +494,6 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading, 
   };
 
   const handleCellClick = (clientId, columnKey, event) => {
-    // Selection mode + name column = toggle row selection
-    if (selectionMode && columnKey === 'name') {
-      event.preventDefault();
-      event.stopPropagation();
-      
-      // Toggle all cells in this row
-      const rowCellKeys = visibleColumns
-        .filter(col => col.type !== 'actions')
-        .map(col => `${clientId}_${col.key}`);
-      
-      setSelectedCells((prev) => {
-        const newSet = new Set(prev);
-        const allSelected = rowCellKeys.every(key => newSet.has(key));
-        
-        if (allSelected) {
-          // Deselect all cells in row
-          rowCellKeys.forEach(key => newSet.delete(key));
-        } else {
-          // Select all cells in row
-          rowCellKeys.forEach(key => newSet.add(key));
-        }
-        
-        return newSet;
-      });
-      
-      return;
-    }
-    
     // Ctrl+Click on name column - open client details
     if ((event.ctrlKey || event.metaKey) && columnKey === 'name') {
       event.preventDefault();
@@ -559,7 +520,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading, 
         return newSet;
       });
 
-      setInternalSelectionMode(true);
+      setSelectionMode(true);
       setIsDragging(true);
       return;
     }
@@ -809,8 +770,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading, 
     }
 
     setSelectedHeaders(new Set());
-    setInternalSelectionMode(false);
-    onExitSelectionMode?.();
+    setSelectionMode(false);
     toast.success(`${actualHeadersToMerge.length} עמודות מוזגו בהצלחה`);
   };
 
@@ -827,7 +787,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading, 
         }
         return newSet;
       });
-      setInternalSelectionMode(true);
+      setSelectionMode(true);
       return;
     }
 
@@ -845,7 +805,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading, 
         }
         return newSet;
       });
-      setInternalSelectionMode(true);
+      setSelectionMode(true);
       return;
     }
 
@@ -1096,8 +1056,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading, 
     }
 
     setSelectedCells(new Set());
-    setInternalSelectionMode(false);
-    onExitSelectionMode?.();
+    setSelectionMode(false);
     toast.success(`${cellsArray.length} תאים נמחקו`);
   };
 
@@ -1260,8 +1219,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading, 
     }
 
     setSelectedCells(new Set());
-    setInternalSelectionMode(false);
-    onExitSelectionMode?.();
+    setSelectionMode(false);
   };
 
   // NEW: Export selected cells to CSV
@@ -1322,9 +1280,9 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading, 
   const clearSelection = () => {
     setSelectedCells(new Set());
     setSelectedHeaders(new Set());
-    setInternalSelectionMode(false);
+    setSelectionMode(false);
     setIsDragging(false);
-    onExitSelectionMode?.();
+    toast.info('הבחירה נוקתה');
   };
 
   const toggleSubHeaders = () => {
@@ -1819,7 +1777,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading, 
             {/* Help text */}
             <div className="mt-2 text-xs text-slate-600 flex items-center gap-2">
               <Info className="w-3 h-3" />
-              <span>💡 טיפ: לחץ על שם הלקוח לבחירה מהירה של כל השורה | ESC ליציאה ממצב בחירה</span>
+              <span>💡 טיפ: החזק Alt והחלק על תאים נוספים לבחירה מרובה</span>
             </div>
           </div>
         )}
@@ -2204,7 +2162,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading, 
                                     }
                                     return newSet;
                                   });
-                                  setInternalSelectionMode(true);
+                                  setSelectionMode(true);
                                 } else {
                                   setEditingSubHeader(column.key);
                                   setTempSubHeaderValue(subHeaders[column.key] || '');
@@ -2455,31 +2413,30 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading, 
 
                       return (
                         <td
-                         key={column.key}
-                         className={`border border-slate-200 p-2 ${
-                         colIndex === 0 ? 'sticky right-0 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]' : ''} ${
+                          key={column.key}
+                          className={`border border-slate-200 p-2 ${
+                          colIndex === 0 ? 'sticky right-0 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]' : ''} ${
 
-                         column.key !== 'created_date' ? 'cursor-pointer hover:bg-blue-50' : ''} ${
+                          column.key !== 'created_date' ? 'cursor-pointer hover:bg-blue-50' : ''} ${
 
-                         isSelected ? 'ring-2 ring-purple-500 bg-purple-50' : ''} ${
-                         selectionMode && column.key === 'name' ? 'ring-2 ring-blue-400 hover:bg-blue-100' : ''}`
-                         }
-                         onClick={(e) => handleCellClick(client.id, column.key, e)}
-                         onMouseEnter={(e) => handleCellMouseEnter(client.id, column.key, e)}
-                         onMouseDown={(e) => {
-                           if (e.altKey) {
-                             e.preventDefault();
-                           }
-                         }}
-                         style={{
-                           width: column.width,
-                           minWidth: column.width,
-                           maxWidth: column.width,
-                           backgroundColor: isSelected ? '#faf5ff' : colIndex === 0 ? rowIndex % 2 === 0 ? '#ffffff' : '#f8fafc' : cellStyle.backgroundColor || 'inherit',
-                           opacity: cellStyle.opacity ? cellStyle.opacity / 100 : 1,
-                           fontWeight: cellStyle.fontWeight || 'normal',
-                           borderColor: isSelected ? '#a855f7' : cellStyle.borderColor || '#e2e8f0'
-                         }}>
+                          isSelected ? 'ring-2 ring-purple-500 bg-purple-50' : ''}`
+                          }
+                          onClick={(e) => handleCellClick(client.id, column.key, e)}
+                          onMouseEnter={(e) => handleCellMouseEnter(client.id, column.key, e)}
+                          onMouseDown={(e) => {
+                            if (e.altKey) {
+                              e.preventDefault();
+                            }
+                          }}
+                          style={{
+                            width: column.width,
+                            minWidth: column.width,
+                            maxWidth: column.width,
+                            backgroundColor: isSelected ? '#faf5ff' : colIndex === 0 ? rowIndex % 2 === 0 ? '#ffffff' : '#f8fafc' : cellStyle.backgroundColor || 'inherit',
+                            opacity: cellStyle.opacity ? cellStyle.opacity / 100 : 1,
+                            fontWeight: cellStyle.fontWeight || 'normal',
+                            borderColor: isSelected ? '#a855f7' : cellStyle.borderColor || '#e2e8f0'
+                          }}>
 
                           {column.type === 'stage' ? (
                             <div className="flex items-center justify-center">
