@@ -204,11 +204,21 @@ export default function Layout({ children, currentPageName }) {
           :root {
             --accent-color: ${ACCENT_COLOR};
             --icon-color: ${ICON_COLOR};
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --card-shadow-hover: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
           }
-          
+
+          @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800&display=swap');
+
+          * {
+            font-family: 'Heebo', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          }
+
           body {
             overflow-x: auto !important;
             overflow-y: auto !important;
+            transition: background-color 0.3s ease;
           }
 
           #root, [data-app-root] {
@@ -260,6 +270,110 @@ export default function Layout({ children, currentPageName }) {
             height: 100vh;
             z-index: 9999;
             background: transparent;
+          }
+
+          /* Smooth page transitions */
+          [data-app-root] > div {
+            animation: fadeInUp 0.4s ease-out;
+          }
+
+          @keyframes fadeInUp {
+            from {
+              opacity: 0;
+              transform: translateY(20px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+
+          /* Enhanced card styles */
+          .card, [class*="card"] {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 16px;
+          }
+
+          .card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--card-shadow-hover);
+          }
+
+          /* Smooth button transitions */
+          button {
+            transition: all 0.2s ease;
+          }
+
+          button:hover:not(:disabled) {
+            transform: translateY(-1px);
+          }
+
+          button:active:not(:disabled) {
+            transform: translateY(0);
+          }
+
+          /* Input focus styles */
+          input:focus, textarea:focus, select:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            border-color: #667eea;
+            transition: all 0.2s ease;
+          }
+
+          /* Smooth scrollbar */
+          ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+          }
+
+          ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+          }
+
+          ::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+            transition: background 0.3s ease;
+          }
+
+          ::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+          }
+
+          /* Badge animations */
+          .badge, [class*="badge"] {
+            animation: scaleIn 0.2s ease-out;
+          }
+
+          @keyframes scaleIn {
+            from {
+              opacity: 0;
+              transform: scale(0.8);
+            }
+            to {
+              opacity: 1;
+              transform: scale(1);
+            }
+          }
+
+          /* Link hover effect */
+          a {
+            transition: color 0.2s ease;
+          }
+
+          /* Modal overlay animation */
+          [role="dialog"] {
+            animation: modalFadeIn 0.2s ease-out;
+          }
+
+          @keyframes modalFadeIn {
+            from {
+              opacity: 0;
+            }
+            to {
+              opacity: 1;
+            }
           }
           
           [role="tablist"] button[data-state="active"] {
