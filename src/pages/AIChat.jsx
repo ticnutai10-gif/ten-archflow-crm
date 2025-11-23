@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
-import { Loader2, Send, Sparkles, Trash2, Plus, Mail, CheckCircle, ListTodo, Calendar, Users } from 'lucide-react';
+import { Loader2, Send, Sparkles, Trash2, Plus, Mail, CheckCircle, ListTodo, Calendar, Users, TrendingUp, Target } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { toast } from 'sonner';
 
@@ -67,6 +67,10 @@ export default function AIChat() {
         }
         
         toast.success(`🎯 ${updated} לקוחות עודכנו לשלב ${newStage}!`);
+      } else if (action.type === 'PREDICT_TIMELINE') {
+        toast.info(`📊 חיזוי ציר זמן לפרויקט "${params.project_name}" בוצע - ראה תוצאות בצ'אט`);
+      } else if (action.type === 'SUGGEST_RESOURCES') {
+        toast.info(`👥 הצעת משאבים לפרויקט "${params.project_name}" בוצעה - ראה המלצות בצ'אט`);
       }
     } catch (error) {
       console.error('Action execution error:', error);
@@ -94,7 +98,7 @@ export default function AIChat() {
       const currentUser = await base44.auth.me();
       
       // Load comprehensive data
-      const [projects, clients, tasks, communications, decisions, meetings, quotes, timeLogs] = await Promise.all([
+      const [projects, clients, tasks, communications, decisions, meetings, quotes, timeLogs, subtasks, teamMembers] = await Promise.all([
         base44.entities.Project.list('-created_date').catch(() => []),
         base44.entities.Client.list('-created_date').catch(() => []),
         base44.entities.Task.filter({ status: { $ne: 'הושלמה' } }, '-created_date', 50).catch(() => []),
@@ -102,12 +106,38 @@ export default function AIChat() {
         base44.entities.Decision.list('-created_date', 20).catch(() => []),
         base44.entities.Meeting.list('-meeting_date', 20).catch(() => []),
         base44.entities.Quote.filter({ status: 'בהמתנה' }).catch(() => []),
-        base44.entities.TimeLog.filter({ created_by: currentUser.email }, '-log_date', 30).catch(() => [])
+        base44.entities.TimeLog.filter({ created_by: currentUser.email }, '-log_date', 30).catch(() => []),
+        base44.entities.SubTask.list().catch(() => []),
+        base44.entities.TeamMember.filter({ active: true }).catch(() => [])
       ]);
 
       const activeProjects = projects.filter(p => p.status !== 'הושלם');
+      const completedProjects = projects.filter(p => p.status === 'הושלם');
       const urgentTasks = tasks.filter(t => t.priority === 'דחופה' || t.priority === 'גבוהה');
       const upcomingMeetings = meetings.filter(m => new Date(m.meeting_date) >= new Date());
+      
+      // Calculate historical project metrics
+      const historicalMetrics = completedProjects.map(p => {
+        const projectSubtasks = subtasks.filter(st => st.project_id === p.id);
+        const totalEstimatedHours = projectSubtasks.reduce((sum, st) => sum + (st.estimated_hours || 0), 0);
+        const totalActualHours = projectSubtasks.reduce((sum, st) => sum + (st.actual_hours || 0), 0);
+        const startDate = p.start_date ? new Date(p.start_date) : null;
+        const endDate = p.end_date ? new Date(p.end_date) : null;
+        const durationDays = startDate && endDate ? Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) : null;
+        const uniqueAssignees = new Set(projectSubtasks.flatMap(st => st.assigned_to || [])).size;
+        
+        return {
+          name: p.name,
+          type: p.type,
+          durationDays,
+          totalEstimatedHours,
+          totalActualHours,
+          teamSize: uniqueAssignees,
+          budget: p.budget,
+          area: p.area,
+          subtasksCount: projectSubtasks.length
+        };
+      }).filter(m => m.durationDays !== null);
       
       const context = `
 אתה עוזר AI חכם למערכת CRM של ${currentUser.full_name || currentUser.email}.
@@ -121,6 +151,21 @@ export default function AIChat() {
 - ${upcomingMeetings.length} פגישות קרובות
 - ${quotes.length} הצעות מחיר בהמתנה
 - ${timeLogs.length} רישומי זמן אחרונים
+- ${completedProjects.length} פרויקטים שהושלמו (נתונים היסטוריים)
+- ${teamMembers.length} חברי צוות פעילים
+
+נתונים היסטוריים של פרויקטים שהושלמו (לחיזוי):
+${historicalMetrics.slice(0, 10).map(m => 
+  `- ${m.name} (${m.type}): ${m.durationDays} ימים, ${m.teamSize} אנשי צוות, ${m.totalEstimatedHours}/${m.totalActualHours} שעות (משוער/בפועל), ${m.subtasksCount} תת-משימות`
+).join('\n')}
+
+סטטיסטיקה כללית מפרויקטים שהושלמו:
+- משך ממוצע: ${historicalMetrics.length > 0 ? Math.round(historicalMetrics.reduce((sum, m) => sum + m.durationDays, 0) / historicalMetrics.length) : 0} ימים
+- גודל צוות ממוצע: ${historicalMetrics.length > 0 ? Math.round(historicalMetrics.reduce((sum, m) => sum + m.teamSize, 0) / historicalMetrics.length) : 0} אנשים
+- שעות ממוצעות לפרויקט: ${historicalMetrics.length > 0 ? Math.round(historicalMetrics.reduce((sum, m) => sum + m.totalActualHours, 0) / historicalMetrics.length) : 0} שעות
+
+צוות זמין:
+${teamMembers.map(tm => `- ${tm.full_name} (${tm.role}): ${tm.capacity_hours_per_week || 40} שעות/שבוע`).join('\n')}
 
 פרטי לקוחות:
 ${clients.slice(0, 15).map(c => `- ${c.name}: סטטוס ${c.status || 'לא הוגדר'}, שלב: ${c.stage || 'לא הוגדר'}`).join('\n')}
@@ -139,18 +184,28 @@ ${communications.slice(0, 5).map(c => `- ${c.subject || c.body?.substring(0, 50)
 
 שלבי לקוח זמינים: ברור_תכן, תיק_מידע, היתרים, ביצוע, סיום
 
+יכולות ניתוח וחיזוי:
+אתה יכול לנתח את הנתונים ההיסטוריים ולבצע חיזויים מבוססי-נתונים:
+1. לחזות משך פרויקט חדש על בסיס פרויקטים דומים שהושלמו (סוג, גודל, מורכבות)
+2. להמליץ על הרכב צוות אופטימלי על בסיס ניסיון קודם
+3. לחשב סבירות להשלמה במועד על בסיס נתונים היסטוריים
+4. להציע אומדן שעות עבודה ריאליסטי
+
 הוראות:
 1. ענה בצורה מפורטת, מועילה ומקצועית בהתבסס על כל הנתונים
-2. הצע פעולות מעקב ספציפיות בפורמט: [ACTION: סוג_פעולה | פרמטרים]
+2. כאשר מבקשים חיזוי או המלצות - נתח את הנתונים ההיסטוריים והסבר את ההיגיון
+3. הצע פעולות מעקב ספציפיות בפורמט: [ACTION: סוג_פעולה | פרמטרים]
    סוגי פעולות זמינים:
    - SEND_EMAIL: to: כתובת, subject: נושא, body: תוכן
    - CREATE_TASK: title: כותרת, priority: עדיפות, due_date: תאריך, description: תיאור
    - UPDATE_PROJECT: project_id: מזהה, field: שדה, value: ערך
    - SCHEDULE_MEETING: title: כותרת, date: תאריך, participants: משתתפים
-   - UPDATE_CLIENT_STAGE: clients: שמות_לקוחות_מופרדים_בנקודה_פסיק, stage: שלב_חדש (ברור_תכן/תיק_מידע/היתרים/ביצוע/סיום)
-3. כשמשתמש מבקש עזרה, הצע פעולות קונקרטיות שיעזרו לו
-4. השתמש במידע ההיסטורי כדי לתת המלצות חכמות ומותאמות אישית
-5. כשמבקשים לעדכן שלב לקוח - חפש את שם הלקוח המדויק ברשימת הלקוחות ושלח ACTION מתאים
+   - UPDATE_CLIENT_STAGE: clients: שמות_לקוחות, stage: שלב_חדש (ברור_תכן/תיק_מידע/היתרים/ביצוע/סיום)
+   - PREDICT_TIMELINE: project_name: שם_הפרויקט, project_type: סוג, estimated_area: שטח_משוער, complexity: רמת_מורכבות (נמוכה/בינונית/גבוהה)
+   - SUGGEST_RESOURCES: project_name: שם_הפרויקט, duration_days: משך_צפוי, required_skills: מיומנויות_נדרשות
+4. כשמשתמש מבקש עזרה, הצע פעולות קונקרטיות שיעזרו לו
+5. השתמש במידע ההיסטורי כדי לתת המלצות חכמות, מבוססות-נתונים ומותאמות אישית
+6. בחיזויים - ציין את רמת הביטחון והנחות היסוד
 `;
 
       const prompt = `${context}\n\nשאלת המשתמש: ${input}`;
@@ -270,11 +325,15 @@ ${communications.slice(0, 5).map(c => `- ${c.subject || c.body?.substring(0, 50)
                                 {action.type === 'CREATE_TASK' && <ListTodo className="w-5 h-5 text-purple-600" />}
                                 {action.type === 'SCHEDULE_MEETING' && <Calendar className="w-5 h-5 text-green-600" />}
                                 {action.type === 'UPDATE_CLIENT_STAGE' && <Users className="w-5 h-5 text-orange-600" />}
+                                {action.type === 'PREDICT_TIMELINE' && <TrendingUp className="w-5 h-5 text-indigo-600" />}
+                                {action.type === 'SUGGEST_RESOURCES' && <Target className="w-5 h-5 text-pink-600" />}
                                 <span className="text-sm text-slate-700 flex-1 font-medium">
                                   {action.type === 'SEND_EMAIL' && '📧 שלח אימייל'}
                                   {action.type === 'CREATE_TASK' && '✅ צור משימה'}
                                   {action.type === 'SCHEDULE_MEETING' && '📅 קבע פגישה'}
                                   {action.type === 'UPDATE_CLIENT_STAGE' && '🎯 עדכן שלב לקוח'}
+                                  {action.type === 'PREDICT_TIMELINE' && '📊 חזה ציר זמן'}
+                                  {action.type === 'SUGGEST_RESOURCES' && '👥 הצע משאבים'}
                                 </span>
                                 <Button
                                   size="sm"
