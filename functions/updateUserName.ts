@@ -83,28 +83,82 @@ Deno.serve(async (req) => {
     });
 
     // Perform the update using service role
-    log('💾 Updating user name via service role...');
+    log('💾 Attempting to update user name...');
     
-    try {
-      const updateResult = await base44.asServiceRole.entities.User.update(
-        targetUser.id, 
-        { full_name: fullName.trim() }
-      );
-      
-      log('✅ Update API call completed', { 
-        result: updateResult,
-        resultType: typeof updateResult,
-        hasFullName: updateResult?.full_name !== undefined,
-        newFullName: updateResult?.full_name
-      });
-      
-    } catch (updateError) {
-      log('❌ Update failed', { 
-        error: updateError.message,
-        stack: updateError.stack,
-        response: updateError.response?.data
-      });
-      throw updateError;
+    // Try multiple methods to update the user
+    const updateMethods = [
+      {
+        name: 'Supabase Direct Update',
+        fn: async () => {
+          log('🔧 Method 1: Trying Supabase direct update...');
+          const supabaseUrl = Deno.env.get('SUPABASE_URL');
+          const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+          
+          if (!supabaseUrl || !supabaseServiceKey) {
+            throw new Error('Supabase credentials not found');
+          }
+          
+          const response = await fetch(`${supabaseUrl}/rest/v1/users?id=eq.${targetUser.id}`, {
+            method: 'PATCH',
+            headers: {
+              'apikey': supabaseServiceKey,
+              'Authorization': `Bearer ${supabaseServiceKey}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=representation'
+            },
+            body: JSON.stringify({ full_name: fullName.trim() })
+          });
+          
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Supabase update failed: ${response.status} - ${errorText}`);
+          }
+          
+          const result = await response.json();
+          log('✅ Supabase direct update succeeded', { result });
+          return result;
+        }
+      },
+      {
+        name: 'SDK Service Role Update',
+        fn: async () => {
+          log('🔧 Method 2: Trying SDK service role update...');
+          const updateResult = await base44.asServiceRole.entities.User.update(
+            targetUser.id, 
+            { full_name: fullName.trim() }
+          );
+          log('✅ SDK update completed', { 
+            result: updateResult,
+            hasFullName: updateResult?.full_name !== undefined,
+            newFullName: updateResult?.full_name
+          });
+          return updateResult;
+        }
+      }
+    ];
+    
+    let updateSuccess = false;
+    let lastError = null;
+    
+    for (const method of updateMethods) {
+      try {
+        log(`🚀 Trying: ${method.name}...`);
+        const result = await method.fn();
+        updateSuccess = true;
+        log(`✅ ${method.name} succeeded!`, { result });
+        break;
+      } catch (error) {
+        lastError = error;
+        log(`❌ ${method.name} failed`, { 
+          error: error.message,
+          details: error.response?.data || error.stack
+        });
+      }
+    }
+    
+    if (!updateSuccess) {
+      log('❌ All update methods failed!', { lastError: lastError?.message });
+      throw new Error(`All update methods failed. Last error: ${lastError?.message}`);
     }
 
     // Verify the update
