@@ -164,6 +164,33 @@ export default function FloatingAIButton() {
         toast.info(`📊 חיזוי ציר זמן בוצע`);
       } else if (action.type === 'SUGGEST_RESOURCES') {
         toast.info(`👥 הצעת משאבים בוצעה`);
+      } else if (action.type === 'ANALYZE_SENTIMENT') {
+        toast.info(`🎭 ניתוח סנטימנט בוצע`);
+      } else if (action.type === 'SUGGEST_REMINDERS') {
+        const tasks = params.tasks?.split(';') || [];
+        for (const taskTitle of tasks) {
+          try {
+            const allTasks = await base44.entities.Task.list();
+            const task = allTasks.find(t => t.title?.includes(taskTitle.trim()));
+            if (task && !task.reminder_enabled) {
+              await base44.entities.Task.update(task.id, {
+                reminder_enabled: true,
+                reminder_at: params.reminder_time || task.due_date
+              });
+            }
+          } catch (e) {
+            console.warn('Failed to update task reminder:', e);
+          }
+        }
+        toast.success(`⏰ תזכורות הופעלו!`);
+      } else if (action.type === 'SUMMARIZE_PROJECT') {
+        toast.info(`📋 סיכום פרויקט בוצע`);
+      } else if (action.type === 'SUMMARIZE_CLIENT') {
+        toast.info(`👤 סיכום לקוח בוצע`);
+      } else if (action.type === 'GENERATE_QUOTE_DRAFT') {
+        toast.success(`💰 טיוטת הצעת מחיר נוצרה`);
+      } else if (action.type === 'GENERATE_EMAIL_DRAFT') {
+        toast.success(`✉️ טיוטת מייל נוצרה`);
       }
     } catch (error) {
       console.error('❌ Action execution error:', error);
@@ -245,7 +272,7 @@ ${upcomingMeetings.slice(0, 3).map(m => `- ${m.title} עם ${m.participants?.joi
 1. ענה בצורה מפורטת ומועילה בהתבסס על הנתונים
 2. נתח נתונים היסטוריים לחיזויים מבוססי-נתונים
 3. אם רלוונטי, הצע פעולות מעקב ספציפיות בפורמט: [ACTION: סוג_פעולה | נתונים]
-   סוגי פעולות: CREATE_TASK, SEND_EMAIL, UPDATE_PROJECT, SCHEDULE_MEETING, UPDATE_CLIENT_STAGE, PREDICT_TIMELINE, SUGGEST_RESOURCES
+   סוגי פעולות: CREATE_TASK, SEND_EMAIL, SCHEDULE_MEETING, UPDATE_CLIENT_STAGE, ANALYZE_SENTIMENT, SUGGEST_REMINDERS, SUMMARIZE_PROJECT, SUMMARIZE_CLIENT, GENERATE_QUOTE_DRAFT, GENERATE_EMAIL_DRAFT
 4. דוגמה חיזוי: [ACTION: PREDICT_TIMELINE | project_name: פרויקט חדש, project_type: בית פרטי, complexity: בינונית]
 5. דוגמה משאבים: [ACTION: SUGGEST_RESOURCES | project_name: פרויקט חדש, duration_days: 180]
 `;
@@ -382,12 +409,24 @@ ${upcomingMeetings.slice(0, 3).map(m => `- ${m.title} עם ${m.participants?.joi
                               {action.type === 'UPDATE_CLIENT_STAGE' && <Users className="w-4 h-4 text-orange-600" />}
                               {action.type === 'PREDICT_TIMELINE' && <TrendingUp className="w-4 h-4 text-indigo-600" />}
                               {action.type === 'SUGGEST_RESOURCES' && <Target className="w-4 h-4 text-pink-600" />}
+                              {action.type === 'ANALYZE_SENTIMENT' && '🎭'}
+                              {action.type === 'SUGGEST_REMINDERS' && '⏰'}
+                              {action.type === 'SUMMARIZE_PROJECT' && '📋'}
+                              {action.type === 'SUMMARIZE_CLIENT' && '👤'}
+                              {action.type === 'GENERATE_QUOTE_DRAFT' && '💰'}
+                              {action.type === 'GENERATE_EMAIL_DRAFT' && '✉️'}
                               <span className="text-xs text-blue-800 flex-1">
                                 {action.type === 'SEND_EMAIL' && 'שלח אימייל'}
                                 {action.type === 'CREATE_TASK' && 'צור משימה'}
                                 {action.type === 'UPDATE_CLIENT_STAGE' && 'עדכן שלב'}
                                 {action.type === 'PREDICT_TIMELINE' && 'חזה זמן'}
                                 {action.type === 'SUGGEST_RESOURCES' && 'הצע משאבים'}
+                                {action.type === 'ANALYZE_SENTIMENT' && 'נתח סנטימנט'}
+                                {action.type === 'SUGGEST_REMINDERS' && 'הצע תזכורות'}
+                                {action.type === 'SUMMARIZE_PROJECT' && 'סכם פרויקט'}
+                                {action.type === 'SUMMARIZE_CLIENT' && 'סכם לקוח'}
+                                {action.type === 'GENERATE_QUOTE_DRAFT' && 'צור הצעה'}
+                                {action.type === 'GENERATE_EMAIL_DRAFT' && 'צור מייל'}
                               </span>
                               <Button
                                 size="sm"

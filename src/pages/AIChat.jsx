@@ -180,6 +180,45 @@ export default function AIChat() {
         
       } else if (action.type === 'SUGGEST_RESOURCES') {
         toast.info(`👥 הצעת משאבים לפרויקט "${params.project_name}" בוצעה - ראה המלצות בצ'אט`);
+        
+      } else if (action.type === 'ANALYZE_SENTIMENT') {
+        console.log('😊 Analyzing sentiment...');
+        toast.info(`🎭 ניתוח סנטימנט בוצע - ראה תוצאות בצ'אט`);
+        
+      } else if (action.type === 'SUGGEST_REMINDERS') {
+        console.log('⏰ Suggesting reminders...');
+        const tasks = params.tasks?.split(';') || [];
+        for (const taskTitle of tasks) {
+          try {
+            const allTasks = await base44.entities.Task.list();
+            const task = allTasks.find(t => t.title?.includes(taskTitle.trim()));
+            if (task && !task.reminder_enabled) {
+              await base44.entities.Task.update(task.id, {
+                reminder_enabled: true,
+                reminder_at: params.reminder_time || task.due_date
+              });
+            }
+          } catch (e) {
+            console.warn('Failed to update task reminder:', e);
+          }
+        }
+        toast.success(`⏰ ${tasks.length} תזכורות הוצעו והופעלו!`);
+        
+      } else if (action.type === 'SUMMARIZE_PROJECT') {
+        console.log('📋 Summarizing project...');
+        toast.info(`📋 סיכום פרויקט "${params.project_name}" בוצע - ראה בצ'אט`);
+        
+      } else if (action.type === 'SUMMARIZE_CLIENT') {
+        console.log('👤 Summarizing client...');
+        toast.info(`👤 סיכום לקוח "${params.client_name}" בוצע - ראה בצ'אט`);
+        
+      } else if (action.type === 'GENERATE_QUOTE_DRAFT') {
+        console.log('💰 Generating quote draft...');
+        toast.success(`💰 טיוטת הצעת מחיר נוצרה - ראה בצ'אט`);
+        
+      } else if (action.type === 'GENERATE_EMAIL_DRAFT') {
+        console.log('✉️ Generating email draft...');
+        toast.success(`✉️ טיוטת מייל נוצרה - ראה בצ'אט`);
       }
     } catch (error) {
       console.error('❌ Action execution error:', error);
@@ -288,17 +327,22 @@ ${urgentTasks.slice(0, 10).map(t => `- ${t.title} (${t.project_name || 'כללי
 פגישות קרובות:
 ${upcomingMeetings.slice(0, 5).map(m => `- ${m.title} עם ${m.participants?.join(', ') || 'משתתפים'} ב-${m.meeting_date}`).join('\n')}
 
-תקשורת אחרונה:
-${communications.slice(0, 5).map(c => `- ${c.subject || c.body?.substring(0, 50)} (${c.type})`).join('\n')}
+תקשורת אחרונה (לניתוח סנטימנט ודפוסים):
+${communications.slice(0, 10).map(c => `- ${c.type === 'email' ? '📧' : c.type === 'whatsapp' ? '💬' : '📝'} ${c.client_name || 'כללי'}: ${c.subject || c.body?.substring(0, 80) || 'ללא נושא'} (${c.direction || 'פנימי'}, ${new Date(c.created_date).toLocaleDateString('he-IL')})`).join('\n')}
+
+משימות עם תזכורות:
+${tasks.filter(t => t.reminder_enabled).length} מתוך ${tasks.length} משימות עם תזכורת מופעלת
+משימות ללא תזכורת שקרובות למועד: ${tasks.filter(t => !t.reminder_enabled && t.due_date && new Date(t.due_date) <= new Date(Date.now() + 7*24*60*60*1000)).length}
 
 שלבי לקוח זמינים: ברור_תכן, תיק_מידע, היתרים, ביצוע, סיום
 
-יכולות ניתוח וחיזוי:
-אתה יכול לנתח את הנתונים ההיסטוריים ולבצע חיזויים מבוססי-נתונים:
-1. לחזות משך פרויקט חדש על בסיס פרויקטים דומים שהושלמו (סוג, גודל, מורכבות)
-2. להמליץ על הרכב צוות אופטימלי על בסיס ניסיון קודם
-3. לחשב סבירות להשלמה במועד על בסיס נתונים היסטוריים
-4. להציע אומדן שעות עבודה ריאליסטי
+יכולות ניתוח וחיזוי מתקדמות:
+1. חיזוי פרויקטים: משך, עלות, משאבים על בסיס היסטוריה
+2. ניתוח סנטימנט: זיהוי דפוסים רגשיים בתקשורת עם לקוחות (חיובי/שלילי/ניטרלי)
+3. זיהוי סיכונים: משימות/פגישות בסיכון, לקוחות עם אזהרות
+4. הצעת תזכורות חכמות: מזהה אוטומטית משימות ופגישות שדורשות תזכורת
+5. סיכומים אינטליגנטיים: יצירת סיכומים מקצועיים של פרויקטים ולקוחות
+6. יצירת תוכן: טיוטות להצעות מחיר ומיילים מותאמים אישית
 
 הוראות קריטיות לפעולות:
 1. ענה בצורה מפורטת, מועילה ומקצועית בהתבסס על כל הנתונים
@@ -331,6 +375,39 @@ ${communications.slice(0, 5).map(c => `- ${c.subject || c.body?.substring(0, 50)
 
 👥 SUGGEST_RESOURCES - דוגמה:
 [ACTION: SUGGEST_RESOURCES | project_name: שם הפרויקט, duration_days: 180]
+
+🎭 ANALYZE_SENTIMENT - ניתוח סנטימנט של תקשורות עם לקוח:
+[ACTION: ANALYZE_SENTIMENT | client_name: שם הלקוח, time_period: 30]
+* ניתוח רגשות והתנהגות בתקשורת עם הלקוח
+* מזהה דפוסי תקשורת חיוביים/שליליים
+* time_period: מספר ימים אחורה (ברירת מחדל: 30)
+
+⏰ SUGGEST_REMINDERS - הצעה והפעלה של תזכורות:
+[ACTION: SUGGEST_REMINDERS | tasks: משימה 1;משימה 2, reminder_time: 2025-11-25T10:00:00]
+* מזהה משימות ופגישות שקרובות ללא תזכורת
+* מפעיל תזכורות אוטומטית
+
+📋 SUMMARIZE_PROJECT - סיכום מפורט של פרויקט:
+[ACTION: SUMMARIZE_PROJECT | project_name: שם הפרויקט]
+* סיכום התקדמות, משימות, החלטות, תקציב
+* טיימליין של אירועים מרכזיים
+* המלצות לצעדים הבאים
+
+👤 SUMMARIZE_CLIENT - סיכום מפורט של לקוח:
+[ACTION: SUMMARIZE_CLIENT | client_name: שם הלקוח]
+* היסטוריית פרויקטים, תקשורת, הצעות מחיר
+* ניתוח מגמות וסטטוס נוכחי
+* המלצות לפעולות מעקב
+
+💰 GENERATE_QUOTE_DRAFT - טיוטה להצעת מחיר:
+[ACTION: GENERATE_QUOTE_DRAFT | client_name: שם הלקוח, project_type: סוג פרויקט, scope: תיאור היקף, estimated_budget: תקציב משוער]
+* יוצר טיוטה מבוססת על פרויקטים דומים
+* כולל פריטי עלות ושירותים מקובלים
+
+✉️ GENERATE_EMAIL_DRAFT - טיוטת מייל ללקוח:
+[ACTION: GENERATE_EMAIL_DRAFT | client_name: שם הלקוח, purpose: מטרה (מעקב/עדכון/בקשה), tone: טון (רשמי/ידידותי/דחוף), key_points: נקודות עיקריות]
+* יוצר מייל מותאם אישית בטון המתאים
+* מבוסס על היסטוריית תקשורת עם הלקוח
 
 חשוב מאוד:
 - תאריכים חייבים להיות בפורמט ISO: YYYY-MM-DD
@@ -462,6 +539,12 @@ ${communications.slice(0, 5).map(c => `- ${c.subject || c.body?.substring(0, 50)
                                 {action.type === 'UPDATE_CLIENT_STAGE' && <Users className="w-5 h-5 text-orange-600" />}
                                 {action.type === 'PREDICT_TIMELINE' && <TrendingUp className="w-5 h-5 text-indigo-600" />}
                                 {action.type === 'SUGGEST_RESOURCES' && <Target className="w-5 h-5 text-pink-600" />}
+                                {action.type === 'ANALYZE_SENTIMENT' && '🎭'}
+                                {action.type === 'SUGGEST_REMINDERS' && '⏰'}
+                                {action.type === 'SUMMARIZE_PROJECT' && '📋'}
+                                {action.type === 'SUMMARIZE_CLIENT' && '👤'}
+                                {action.type === 'GENERATE_QUOTE_DRAFT' && '💰'}
+                                {action.type === 'GENERATE_EMAIL_DRAFT' && '✉️'}
                                 <span className="text-sm text-slate-700 flex-1 font-medium">
                                   {action.type === 'SEND_EMAIL' && '📧 שלח אימייל'}
                                   {action.type === 'CREATE_TASK' && '✅ צור משימה'}
@@ -469,6 +552,12 @@ ${communications.slice(0, 5).map(c => `- ${c.subject || c.body?.substring(0, 50)
                                   {action.type === 'UPDATE_CLIENT_STAGE' && '🎯 עדכן שלב לקוח'}
                                   {action.type === 'PREDICT_TIMELINE' && '📊 חזה ציר זמן'}
                                   {action.type === 'SUGGEST_RESOURCES' && '👥 הצע משאבים'}
+                                  {action.type === 'ANALYZE_SENTIMENT' && '🎭 נתח סנטימנט'}
+                                  {action.type === 'SUGGEST_REMINDERS' && '⏰ הצע תזכורות'}
+                                  {action.type === 'SUMMARIZE_PROJECT' && '📋 סכם פרויקט'}
+                                  {action.type === 'SUMMARIZE_CLIENT' && '👤 סכם לקוח'}
+                                  {action.type === 'GENERATE_QUOTE_DRAFT' && '💰 צור טיוטת הצעה'}
+                                  {action.type === 'GENERATE_EMAIL_DRAFT' && '✉️ צור טיוטת מייל'}
                                 </span>
                                 <Button
                                   size="sm"
