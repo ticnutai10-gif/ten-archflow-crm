@@ -13,7 +13,7 @@ export default function SwipeableCard({
   const x = useMotionValue(0);
   const opacity = useTransform(x, [-150, 0, 150], [0.5, 1, 0.5]);
 
-  const handleDragEnd = (event: any, info: PanInfo) => {
+  const handleDragEnd = (event, info) => {
     setIsDragging(false);
     const threshold = 100;
 

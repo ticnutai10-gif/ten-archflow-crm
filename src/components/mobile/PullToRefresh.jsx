@@ -9,7 +9,7 @@ export default function PullToRefresh({ onRefresh, children }) {
   const opacity = useTransform(y, [0, 50, 100], [0, 0.5, 1]);
   const scale = useTransform(y, [0, 100], [0.5, 1]);
 
-  const handleDragEnd = async (event: any, info: any) => {
+  const handleDragEnd = async (event, info) => {
     if (info.offset.y > 100 && !isRefreshing) {
       setIsRefreshing(true);
       try {
