@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { motion, useMotionValue, useTransform, PanInfo } from 'framer-motion';
+import { motion, useMotionValue, useTransform } from 'framer-motion';
 import { Trash2, Edit2, Eye } from 'lucide-react';
 
 export default function SwipeableCard({ 
