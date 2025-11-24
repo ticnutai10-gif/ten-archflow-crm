@@ -4,11 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
-import { Settings, Bug, Bell, Palette, Terminal, AlertCircle, CheckCircle, XCircle, Shield, Play } from "lucide-react";
+import { Settings, Bug, Bell, Palette, Terminal, AlertCircle, CheckCircle, XCircle, Shield, Play, LayoutDashboard, MessageCircle, Languages } from "lucide-react";
 import AppSettings from "@/components/settings/AppSettings";
 import RingtoneManager from "@/components/settings/RingtoneManager";
 import ThemeManager from "@/components/settings/ThemeManager";
 import NotificationSettingsTab from "@/components/settings/NotificationSettingsTab";
+import DashboardCustomizer from "@/components/settings/DashboardCustomizer";
+import WhatsAppConnector from "@/components/settings/WhatsAppConnector";
+import LanguageSelector from "@/components/settings/LanguageSelector";
 import { toast } from "sonner";
 import { base44 } from "@/api/base44Client";
 
@@ -315,13 +318,21 @@ export default function SettingsPage() {
         <div className="bg-white rounded-xl shadow-lg border border-slate-200">
           <Tabs value={activeTab} onValueChange={setActiveTab} dir="rtl">
             <div className="border-b border-slate-200 px-6">
-              <TabsList className="w-full justify-start gap-2 bg-transparent h-auto p-0">
+              <TabsList className="w-full justify-start gap-2 bg-transparent h-auto p-0 flex-wrap">
                 <TabsTrigger 
-                  value="general" 
+                  value="dashboard" 
                   className="data-[state=active]:bg-[#2C3A50] data-[state=active]:text-white px-6 py-3"
                 >
-                  <Settings className="w-4 h-4 ml-2" />
-                  כללי
+                  <LayoutDashboard className="w-4 h-4 ml-2" />
+                  דשבורד
+                </TabsTrigger>
+
+                <TabsTrigger 
+                  value="notifications" 
+                  className="data-[state=active]:bg-[#2C3A50] data-[state=active]:text-white px-6 py-3"
+                >
+                  <Bell className="w-4 h-4 ml-2" />
+                  התראות
                 </TabsTrigger>
                 
                 <TabsTrigger 
@@ -331,6 +342,30 @@ export default function SettingsPage() {
                   <Palette className="w-4 h-4 ml-2" />
                   ערכות נושא
                 </TabsTrigger>
+
+                <TabsTrigger 
+                  value="whatsapp" 
+                  className="data-[state=active]:bg-[#2C3A50] data-[state=active]:text-white px-6 py-3"
+                >
+                  <MessageCircle className="w-4 h-4 ml-2" />
+                  וואטסאפ
+                </TabsTrigger>
+
+                <TabsTrigger 
+                  value="language" 
+                  className="data-[state=active]:bg-[#2C3A50] data-[state=active]:text-white px-6 py-3"
+                >
+                  <Languages className="w-4 h-4 ml-2" />
+                  שפה
+                </TabsTrigger>
+                
+                <TabsTrigger 
+                  value="general" 
+                  className="data-[state=active]:bg-[#2C3A50] data-[state=active]:text-white px-6 py-3"
+                >
+                  <Settings className="w-4 h-4 ml-2" />
+                  כללי
+                </TabsTrigger>
                 
                 <TabsTrigger 
                   value="ringtone" 
@@ -338,14 +373,6 @@ export default function SettingsPage() {
                 >
                   <Bell className="w-4 h-4 ml-2" />
                   רינגטונים
-                </TabsTrigger>
-
-                <TabsTrigger 
-                  value="notifications" 
-                  className="data-[state=active]:bg-[#2C3A50] data-[state=active]:text-white px-6 py-3"
-                >
-                  <Bell className="w-4 h-4 ml-2" />
-                  התראות
                 </TabsTrigger>
 
                 <TabsTrigger 
@@ -359,20 +386,32 @@ export default function SettingsPage() {
             </div>
 
             <div className="p-6">
-              <TabsContent value="general" className="mt-0">
-                <AppSettings />
+              <TabsContent value="dashboard" className="mt-0">
+                <DashboardCustomizer />
+              </TabsContent>
+
+              <TabsContent value="notifications" className="mt-0">
+                <NotificationSettingsTab />
               </TabsContent>
 
               <TabsContent value="theme" className="mt-0">
                 <ThemeManager />
               </TabsContent>
 
-              <TabsContent value="ringtone" className="mt-0">
-                <RingtoneManager />
+              <TabsContent value="whatsapp" className="mt-0">
+                <WhatsAppConnector />
               </TabsContent>
 
-              <TabsContent value="notifications" className="mt-0">
-                <NotificationSettingsTab />
+              <TabsContent value="language" className="mt-0">
+                <LanguageSelector />
+              </TabsContent>
+
+              <TabsContent value="general" className="mt-0">
+                <AppSettings />
+              </TabsContent>
+
+              <TabsContent value="ringtone" className="mt-0">
+                <RingtoneManager />
               </TabsContent>
 
               <TabsContent value="debug" className="space-y-6 mt-0">
