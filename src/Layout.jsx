@@ -219,7 +219,7 @@ export default function Layout({ children, currentPageName }) {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full" dir="rtl" data-app-root style={{ backgroundColor: 'var(--bg-cream)', overflowY: 'auto', overflowX: 'hidden', paddingTop: isMobile ? '56px' : '0', paddingBottom: isMobile ? '64px' : '0', WebkitOverflowScrolling: 'touch' }}>
+      <div className="min-h-screen flex w-full" dir="rtl" data-app-root style={{ backgroundColor: 'var(--bg-cream)', paddingTop: isMobile ? '56px' : '0', paddingBottom: isMobile ? '64px' : '0' }}>
         <style>{`
           :root {
             --accent-color: ${ACCENT_COLOR};
@@ -237,19 +237,23 @@ export default function Layout({ children, currentPageName }) {
 
           html, body {
             overflow-x: hidden !important;
-            overflow-y: auto !important;
+            overflow-y: scroll !important;
+            height: 100%;
             transition: background-color 0.3s ease;
-            touch-action: pan-y pan-x;
+            touch-action: manipulation;
             -webkit-overflow-scrolling: touch;
-            overscroll-behavior: contain;
+            overscroll-behavior-y: contain;
           }
 
-          #root, [data-app-root] {
-            overflow-y: auto !important;
-            overflow-x: hidden !important;
+          #root {
+            min-height: 100%;
+            overflow: visible !important;
+          }
+          
+          [data-app-root] {
+            overflow: visible !important;
             width: 100%;
-            min-height: 100vh;
-            -webkit-overflow-scrolling: touch;
+            min-height: 100%;
           }
           
           * {
