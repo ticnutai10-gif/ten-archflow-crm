@@ -1,14 +1,21 @@
 import { useState, useEffect } from 'react';
 
+// Helper to get initial value (works on client-side)
+function getInitialValue(query) {
+  if (typeof window !== 'undefined') {
+    return window.matchMedia(query).matches;
+  }
+  return false;
+}
+
 export function useMediaQuery(query) {
-  const [matches, setMatches] = useState(false);
+  const [matches, setMatches] = useState(() => getInitialValue(query));
 
   useEffect(() => {
     const media = window.matchMedia(query);
     
-    if (media.matches !== matches) {
-      setMatches(media.matches);
-    }
+    // Set initial value
+    setMatches(media.matches);
 
     const listener = (e) => setMatches(e.matches);
     
@@ -21,7 +28,7 @@ export function useMediaQuery(query) {
       media.addListener(listener);
       return () => media.removeListener(listener);
     }
-  }, [matches, query]);
+  }, [query]);
 
   return matches;
 }
