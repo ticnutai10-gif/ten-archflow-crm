@@ -30,7 +30,8 @@ import {
   Users,
   Briefcase,
   DollarSign,
-  CheckSquare
+  CheckSquare,
+  Smartphone
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -431,6 +432,28 @@ export default function Dashboard() {
                         {compactHeaders ? 'הרחב כותרות' : 'מזעור כותרות'}
                       </span>
                       {compactHeaders && (
+                        <Eye className="w-4 h-4 text-blue-600" />
+                      )}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => {
+                        const current = localStorage.getItem('force-mobile-view');
+                        if (current === 'true') {
+                          localStorage.removeItem('force-mobile-view');
+                        } else {
+                          localStorage.setItem('force-mobile-view', 'true');
+                        }
+                        window.dispatchEvent(new Event('force-mobile-changed'));
+                        window.location.reload();
+                      }}
+                      className="flex items-center gap-3 cursor-pointer"
+                    >
+                      <Smartphone className="w-4 h-4 text-slate-600" />
+                      <span className="flex-1 text-right">
+                        {localStorage.getItem('force-mobile-view') === 'true' ? 'בטל תצוגת מובייל' : 'הפעל תצוגת מובייל'}
+                      </span>
+                      {localStorage.getItem('force-mobile-view') === 'true' && (
                         <Eye className="w-4 h-4 text-blue-600" />
                       )}
                     </DropdownMenuItem>
