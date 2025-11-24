@@ -26,7 +26,11 @@ import {
   BarChart3,
   Calendar,
   TrendingUp,
-  Activity
+  Activity,
+  Users,
+  Briefcase,
+  DollarSign,
+  CheckSquare
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -462,81 +466,133 @@ export default function Dashboard() {
         </div>
 
         {dashboardSettings.showStats && (
-          <div className={`grid ${isMobile ? 'grid-cols-2 gap-3 mb-4' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8'}`} dir="rtl">
-            <Card className="bg-white shadow-md hover:shadow-lg transition-shadow">
-              <CardHeader className={isMobile ? "pb-1 pt-3" : compactHeaders ? "pb-1" : "pb-2"}>
-                <CardTitle className={`text-slate-600 font-normal text-center ${isMobile ? 'text-xs' : compactHeaders ? 'text-xs' : 'text-sm'}`}>
-                  לקוחות פעילים
-                </CardTitle>
-              </CardHeader>
-              <CardContent className={isMobile ? "pt-1 pb-3" : compactHeaders ? "pt-2" : ""}>
-                <div className={`font-bold text-center ${isMobile ? 'mb-0 text-2xl' : compactHeaders ? 'text-3xl mb-2' : 'text-4xl mb-2'}`}>
-                  {stats.clients}
-                </div>
-                {!isMobile && (
-                <Link to={createPageUrl("Clients")} className="block">
-                  <Button variant="link" className="w-full text-xs" style={{ color: '#2C3E50' }}>
-                    → כל הלקוחות
-                  </Button>
-                </Link>
-                )}
-              </CardContent>
-            </Card>
+          isMobile ? (
+            /* Mobile Stats - Large Touch-Friendly Grid */
+            <div className="grid grid-cols-2 gap-3 mb-4" dir="rtl">
+              <Link to={createPageUrl("Clients")} className="block">
+                <Card className="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-lg hover:shadow-xl transition-all active:scale-95">
+                  <CardContent className="p-4 text-center">
+                    <div className="w-14 h-14 mx-auto mb-2 rounded-2xl bg-white/20 flex items-center justify-center">
+                      <Users className="w-7 h-7" />
+                    </div>
+                    <div className="text-3xl font-bold mb-1">{stats.clients}</div>
+                    <div className="text-xs text-white/80">לקוחות פעילים</div>
+                  </CardContent>
+                </Card>
+              </Link>
 
-            <Card className="bg-white shadow-md hover:shadow-lg transition-shadow">
-              <CardHeader className={compactHeaders ? "pb-1" : "pb-2"}>
-                <CardTitle className={`text-sm text-slate-600 font-normal text-center ${compactHeaders ? 'text-xs' : ''}`}>
-                  פרויקטים פעילים
-                </CardTitle>
-              </CardHeader>
-              <CardContent className={compactHeaders ? "pt-2" : ""}>
-                <div className={`font-bold text-center mb-2 ${compactHeaders ? 'text-3xl' : 'text-4xl'}`}>
-                  {stats.projects}
-                </div>
-                <Link to={createPageUrl("Projects")} className="block">
-                  <Button variant="link" className="w-full text-xs" style={{ color: '#2C3E50' }}>
-                    → כל הפרויקטים
-                  </Button>
-                </Link>
-              </CardContent>
-            </Card>
+              <Link to={createPageUrl("Projects")} className="block">
+                <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white shadow-lg hover:shadow-xl transition-all active:scale-95">
+                  <CardContent className="p-4 text-center">
+                    <div className="w-14 h-14 mx-auto mb-2 rounded-2xl bg-white/20 flex items-center justify-center">
+                      <Briefcase className="w-7 h-7" />
+                    </div>
+                    <div className="text-3xl font-bold mb-1">{stats.projects}</div>
+                    <div className="text-xs text-white/80">פרויקטים פעילים</div>
+                  </CardContent>
+                </Card>
+              </Link>
 
-            <Card className="bg-white shadow-md hover:shadow-lg transition-shadow">
-              <CardHeader className={compactHeaders ? "pb-1" : "pb-2"}>
-                <CardTitle className={`text-sm text-slate-600 font-normal text-center ${compactHeaders ? 'text-xs' : ''}`}>
-                  הצעות בהמתנה
-                </CardTitle>
-              </CardHeader>
-              <CardContent className={compactHeaders ? "pt-2" : ""}>
-                <div className={`font-bold text-center mb-2 ${compactHeaders ? 'text-3xl' : 'text-4xl'}`}>
-                  {stats.quotes}
-                </div>
-                <Link to={createPageUrl("Quotes")} className="block">
-                  <Button variant="link" className="w-full text-xs" style={{ color: '#2C3E50' }}>
-                    → כל ההצעות
-                  </Button>
-                </Link>
-              </CardContent>
-            </Card>
+              <Link to={createPageUrl("Quotes")} className="block">
+                <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white shadow-lg hover:shadow-xl transition-all active:scale-95">
+                  <CardContent className="p-4 text-center">
+                    <div className="w-14 h-14 mx-auto mb-2 rounded-2xl bg-white/20 flex items-center justify-center">
+                      <DollarSign className="w-7 h-7" />
+                    </div>
+                    <div className="text-3xl font-bold mb-1">{stats.quotes}</div>
+                    <div className="text-xs text-white/80">הצעות בהמתנה</div>
+                  </CardContent>
+                </Card>
+              </Link>
 
-            <Card className="bg-white shadow-md hover:shadow-lg transition-shadow">
-              <CardHeader className={compactHeaders ? "pb-1" : "pb-2"}>
-                <CardTitle className={`text-sm text-slate-600 font-normal text-center ${compactHeaders ? 'text-xs' : ''}`}>
-                  משימות פתוחות
-                </CardTitle>
-              </CardHeader>
-              <CardContent className={compactHeaders ? "pt-2" : ""}>
-                <div className={`font-bold text-center mb-2 ${compactHeaders ? 'text-3xl' : 'text-4xl'}`}>
-                  {stats.tasks}
-                </div>
-                <Link to={createPageUrl("Tasks")} className="block">
-                  <Button variant="link" className="w-full text-xs" style={{ color: '#2C3E50' }}>
-                    → כל המשימות
-                  </Button>
-                </Link>
-              </CardContent>
-            </Card>
-          </div>
+              <Link to={createPageUrl("Tasks")} className="block">
+                <Card className="bg-gradient-to-br from-yellow-500 to-yellow-600 text-white shadow-lg hover:shadow-xl transition-all active:scale-95">
+                  <CardContent className="p-4 text-center">
+                    <div className="w-14 h-14 mx-auto mb-2 rounded-2xl bg-white/20 flex items-center justify-center">
+                      <CheckSquare className="w-7 h-7" />
+                    </div>
+                    <div className="text-3xl font-bold mb-1">{stats.tasks}</div>
+                    <div className="text-xs text-white/80">משימות פתוחות</div>
+                  </CardContent>
+                </Card>
+              </Link>
+            </div>
+          ) : (
+            /* Desktop Stats */
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8" dir="rtl">
+              <Card className="bg-white shadow-md hover:shadow-lg transition-shadow">
+                <CardHeader className={compactHeaders ? "pb-1" : "pb-2"}>
+                  <CardTitle className={`text-sm text-slate-600 font-normal text-center ${compactHeaders ? 'text-xs' : ''}`}>
+                    לקוחות פעילים
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className={compactHeaders ? "pt-2" : ""}>
+                  <div className={`font-bold text-center mb-2 ${compactHeaders ? 'text-3xl' : 'text-4xl'}`}>
+                    {stats.clients}
+                  </div>
+                  <Link to={createPageUrl("Clients")} className="block">
+                    <Button variant="link" className="w-full text-xs" style={{ color: '#2C3E50' }}>
+                      → כל הלקוחות
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-white shadow-md hover:shadow-lg transition-shadow">
+                <CardHeader className={compactHeaders ? "pb-1" : "pb-2"}>
+                  <CardTitle className={`text-sm text-slate-600 font-normal text-center ${compactHeaders ? 'text-xs' : ''}`}>
+                    פרויקטים פעילים
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className={compactHeaders ? "pt-2" : ""}>
+                  <div className={`font-bold text-center mb-2 ${compactHeaders ? 'text-3xl' : 'text-4xl'}`}>
+                    {stats.projects}
+                  </div>
+                  <Link to={createPageUrl("Projects")} className="block">
+                    <Button variant="link" className="w-full text-xs" style={{ color: '#2C3E50' }}>
+                      → כל הפרויקטים
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-white shadow-md hover:shadow-lg transition-shadow">
+                <CardHeader className={compactHeaders ? "pb-1" : "pb-2"}>
+                  <CardTitle className={`text-sm text-slate-600 font-normal text-center ${compactHeaders ? 'text-xs' : ''}`}>
+                    הצעות בהמתנה
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className={compactHeaders ? "pt-2" : ""}>
+                  <div className={`font-bold text-center mb-2 ${compactHeaders ? 'text-3xl' : 'text-4xl'}`}>
+                    {stats.quotes}
+                  </div>
+                  <Link to={createPageUrl("Quotes")} className="block">
+                    <Button variant="link" className="w-full text-xs" style={{ color: '#2C3E50' }}>
+                      → כל ההצעות
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-white shadow-md hover:shadow-lg transition-shadow">
+                <CardHeader className={compactHeaders ? "pb-1" : "pb-2"}>
+                  <CardTitle className={`text-sm text-slate-600 font-normal text-center ${compactHeaders ? 'text-xs' : ''}`}>
+                    משימות פתוחות
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className={compactHeaders ? "pt-2" : ""}>
+                  <div className={`font-bold text-center mb-2 ${compactHeaders ? 'text-3xl' : 'text-4xl'}`}>
+                    {stats.tasks}
+                  </div>
+                  <Link to={createPageUrl("Tasks")} className="block">
+                    <Button variant="link" className="w-full text-xs" style={{ color: '#2C3E50' }}>
+                      → כל המשימות
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            </div>
+          )
         )}
 
         <div dir="rtl">
