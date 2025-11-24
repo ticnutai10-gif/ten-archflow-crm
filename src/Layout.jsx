@@ -219,7 +219,7 @@ export default function Layout({ children, currentPageName }) {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full" dir="rtl" data-app-root style={{ backgroundColor: 'var(--bg-cream)', overflow: 'visible', paddingTop: isMobile ? '56px' : '0', paddingBottom: isMobile ? '64px' : '0' }}>
+      <div className="min-h-screen flex w-full" dir="rtl" data-app-root style={{ backgroundColor: 'var(--bg-cream)', overflowY: 'auto', overflowX: 'hidden', paddingTop: isMobile ? '56px' : '0', paddingBottom: isMobile ? '64px' : '0', WebkitOverflowScrolling: 'touch' }}>
         <style>{`
           :root {
             --accent-color: ${ACCENT_COLOR};
@@ -235,15 +235,21 @@ export default function Layout({ children, currentPageName }) {
             font-family: 'Heebo', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
           }
 
-          body {
-            overflow-x: auto !important;
+          html, body {
+            overflow-x: hidden !important;
             overflow-y: auto !important;
             transition: background-color 0.3s ease;
+            touch-action: pan-y pan-x;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
           }
 
           #root, [data-app-root] {
-            overflow: visible !important;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
             width: 100%;
+            min-height: 100vh;
+            -webkit-overflow-scrolling: touch;
           }
           
           * {
@@ -450,16 +456,16 @@ export default function Layout({ children, currentPageName }) {
               min-width: 44px;
             }
 
-            /* Prevent text selection on touch */
+            /* Better touch handling */
             * {
               -webkit-tap-highlight-color: transparent;
-              -webkit-touch-callout: none;
             }
 
-            /* Smooth scrolling */
-            html {
+            /* Smooth scrolling for mobile */
+            html, body {
               scroll-behavior: smooth;
               -webkit-overflow-scrolling: touch;
+              touch-action: pan-y pan-x;
             }
           }
 
