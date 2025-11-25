@@ -8,7 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Calendar, Users, Briefcase, MoreVertical, Edit, Trash2, Copy, CheckSquare, Square, AlertCircle } from "lucide-react";
+import { Calendar, Users, Briefcase, MoreVertical, Edit, Trash2, Copy, CheckSquare, Square, AlertCircle, ShoppingCart } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
 
@@ -60,7 +60,7 @@ export default function TaskCard({
   return (
     <Card className={`bg-white/80 backdrop-blur-sm hover:shadow-lg transition-all ${selected ? 'ring-2 ring-blue-500' : ''} ${isOverdue ? 'border-l-4 border-l-red-500' : ''}`}>
       <CardHeader className="pb-3">
-        <div className="flex justify-between items-start gap-2">
+        <div className="flex items-start gap-3">
           {selectionMode && (
             <button
               onClick={(e) => {
@@ -76,6 +76,41 @@ export default function TaskCard({
               )}
             </button>
           )}
+
+          {/* אייקון לפי קטגוריה */}
+          <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
+            taskPriority === 'דחופה' || taskPriority === 'גבוהה' 
+              ? 'bg-red-100' 
+              : taskPriority === 'בינונית'
+              ? 'bg-yellow-100'
+              : 'bg-green-100'
+          }`}>
+            {task.category === 'פגישה' ? (
+              <Calendar className={`w-6 h-6 ${
+                taskPriority === 'דחופה' || taskPriority === 'גבוהה' 
+                  ? 'text-red-600' 
+                  : taskPriority === 'בינונית'
+                  ? 'text-yellow-600'
+                  : 'text-green-600'
+              }`} />
+            ) : task.category === 'קניות' || task.category === 'קנייה' ? (
+              <ShoppingCart className={`w-6 h-6 ${
+                taskPriority === 'דחופה' || taskPriority === 'גבוהה' 
+                  ? 'text-red-600' 
+                  : taskPriority === 'בינונית'
+                  ? 'text-yellow-600'
+                  : 'text-green-600'
+              }`} />
+            ) : (
+              <CheckSquare className={`w-6 h-6 ${
+                taskPriority === 'דחופה' || taskPriority === 'גבוהה' 
+                  ? 'text-red-600' 
+                  : taskPriority === 'בינונית'
+                  ? 'text-yellow-600'
+                  : 'text-green-600'
+              }`} />
+            )}
+          </div>
 
           <div className="flex-1 min-w-0">
             <CardTitle className="text-lg font-bold text-slate-900 mb-2 truncate flex items-center gap-2">
