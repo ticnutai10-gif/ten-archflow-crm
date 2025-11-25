@@ -29,7 +29,11 @@ import {
   Download,
   Upload,
   Link as LinkIcon,
-  Sparkles
+  Sparkles,
+  LayoutGrid,
+  Rows,
+  GitBranch,
+  Eye
 } from "lucide-react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek, parseISO, addDays } from "date-fns";
 import { he } from "date-fns/locale";
@@ -40,12 +44,17 @@ import CalendarSyncManager from "../components/calendar/CalendarSyncManager";
 import ExportToCalendarButton from "../components/calendar/ExportToCalendarButton";
 import AIWorkflowAutomation from "../components/ai/AIWorkflowAutomation";
 import MobileCalendarView from "../components/mobile/MobileCalendarView";
+import MeetingGridView from "../components/meetings/MeetingGridView";
+import MeetingCompactView from "../components/meetings/MeetingCompactView";
+import MeetingTimelineView from "../components/meetings/MeetingTimelineView";
 import { useIsMobile } from "../components/utils/useMediaQuery";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel
 } from "@/components/ui/dropdown-menu";
 
 const statusColors = {
@@ -468,10 +477,55 @@ export default function MeetingsPage() {
         </Card>
       </div>
 
+      {/* בוחר תצוגה */}
+      <div className="flex items-center gap-2 mb-4">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="gap-2">
+              <Eye className="w-4 h-4" />
+              <span className="hidden md:inline">תצוגה</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56" dir="rtl">
+            <DropdownMenuLabel>בחר תצוגה</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => setViewMode('month')} className={viewMode === 'month' ? 'bg-slate-100 font-semibold' : ''}>
+              <Grid3x3 className="w-4 h-4 ml-2" />
+              לוח חודשי
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setViewMode('week')} className={viewMode === 'week' ? 'bg-slate-100 font-semibold' : ''}>
+              <CalendarIcon className="w-4 h-4 ml-2" />
+              לוח שבועי
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setViewMode('list')} className={viewMode === 'list' ? 'bg-slate-100 font-semibold' : ''}>
+              <List className="w-4 h-4 ml-2" />
+              רשימה מפורטת
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setViewMode('grid')} className={viewMode === 'grid' ? 'bg-slate-100 font-semibold' : ''}>
+              <LayoutGrid className="w-4 h-4 ml-2" />
+              כרטיסים בגריד
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setViewMode('compact')} className={viewMode === 'compact' ? 'bg-slate-100 font-semibold' : ''}>
+              <Rows className="w-4 h-4 ml-2" />
+              תצוגה קומפקטית
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setViewMode('timeline')} className={viewMode === 'timeline' ? 'bg-slate-100 font-semibold' : ''}>
+              <GitBranch className="w-4 h-4 ml-2" />
+              ציר זמן
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => setViewMode('ai-summary')} className={viewMode === 'ai-summary' ? 'bg-blue-50 font-semibold text-blue-700' : ''}>
+              <Sparkles className="w-4 h-4 ml-2 text-purple-600" />
+              סיכום AI
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
       {/* View Mode Tabs */}
       <Tabs value={viewMode} onValueChange={setViewMode} className="w-full">
         <div className="flex justify-between items-center mb-4">
-          <TabsList>
+          <TabsList className="hidden">
             <TabsTrigger value="month" className="gap-2">
               <Grid3x3 className="w-4 h-4" />
               חודשי
@@ -707,6 +761,32 @@ export default function MeetingsPage() {
               ))
             )}
           </div>
+        </TabsContent>
+
+        {/* Grid View */}
+        <TabsContent value="grid" className="mt-0">
+          <MeetingGridView
+            meetings={meetings}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onToggleReminder={handleToggleReminder}
+          />
+        </TabsContent>
+
+        {/* Compact View */}
+        <TabsContent value="compact" className="mt-0">
+          <MeetingCompactView
+            meetings={meetings}
+            onEdit={handleEdit}
+          />
+        </TabsContent>
+
+        {/* Timeline View */}
+        <TabsContent value="timeline" className="mt-0">
+          <MeetingTimelineView
+            meetings={meetings}
+            onEdit={handleEdit}
+          />
         </TabsContent>
 
         {/* AI Summary Tab */}
