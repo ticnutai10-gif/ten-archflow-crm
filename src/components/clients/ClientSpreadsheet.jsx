@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Edit, Eye, X, Trash2, Maximize2, Minimize2, Settings, Bug, Save, Phone as PhoneIcon, Palette, Split, Merge, Edit2, Copy, Table, Info, Sparkles, Clock, FileText, Eraser, Circle } from "lucide-react";
+import { Plus, Edit, Eye, X, Trash2, Maximize2, Minimize2, Settings, Bug, Save, Phone as PhoneIcon, Palette, Split, Merge, Edit2, Copy, Table, Info, Sparkles, Clock, FileText, Eraser, Circle, User } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -24,6 +24,7 @@ import { base44 } from "@/api/base44Client";
 import { createPageUrl } from "@/utils";
 import { StageDisplay } from "@/components/spreadsheets/GenericSpreadsheet";
 import StageOptionsManager from "@/components/spreadsheets/StageOptionsManager";
+import UserPreferencesDialog from "@/components/spreadsheets/UserPreferencesDialog";
 
 const ICON_COLOR = "#2C3A50";
 
@@ -75,46 +76,69 @@ const isValidPhone = (phone) => {
   return true;
 };
 
-const STORAGE_KEY = 'clientSpreadsheetSettings';
-
-const loadSettings = () => {
+// Load settings from database (per user)
+const loadUserSettings = async (tableName = 'clients') => {
   try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      return {
-        ...parsed,
-        showSubHeaders: parsed.showSubHeaders !== undefined ? parsed.showSubHeaders : false,
-        subHeaders: parsed.subHeaders || {}
-      };
+    const user = await base44.auth.me();
+    const userPrefs = await base44.entities.UserPreferences.filter({ user_email: user.email });
+    
+    if (userPrefs.length > 0 && userPrefs[0].spreadsheet_columns?.[tableName]) {
+      return userPrefs[0].spreadsheet_columns[tableName];
     }
   } catch (e) {
-    console.error('Error loading settings:', e);
+    console.error('Error loading user settings:', e);
   }
   return null;
 };
 
-const saveSettings = (columns, cellStyles, showSubHeaders, subHeaders, stageOptions) => {
+// Save settings to database (per user)
+const saveUserSettings = async (tableName, columns, cellStyles, showSubHeaders, subHeaders, stageOptions) => {
   try {
-    const settings = {
-      columns: columns.map((col) => ({
-        key: col.key,
-        title: col.title,
-        width: col.width,
-        type: col.type,
-        visible: col.visible,
-        required: col.required
+    const user = await base44.auth.me();
+    const existingPrefs = await base44.entities.UserPreferences.filter({ user_email: user.email });
+    
+    const columnSettings = {
+      order: columns.map(c => c.key),
+      visibility: columns.reduce((acc, col) => {
+        acc[col.key] = col.visible !== false;
+        return acc;
+      }, {}),
+      widths: columns.reduce((acc, col) => {
+        acc[col.key] = col.width;
+        return acc;
+      }, {}),
+      custom_columns: columns.filter(c => c.key.startsWith('cf:')).map(c => ({
+        key: c.key,
+        title: c.title,
+        type: c.type,
+        width: c.width
       })),
       cellStyles: cellStyles || {},
       showSubHeaders: showSubHeaders,
       subHeaders: subHeaders || {},
-      stageOptions: stageOptions || STAGE_OPTIONS,
-      timestamp: new Date().toISOString()
+      stageOptions: stageOptions || STAGE_OPTIONS
     };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-    console.log('Settings saved');
+    
+    if (existingPrefs.length > 0) {
+      const currentSpreadsheetColumns = existingPrefs[0].spreadsheet_columns || {};
+      await base44.entities.UserPreferences.update(existingPrefs[0].id, {
+        spreadsheet_columns: {
+          ...currentSpreadsheetColumns,
+          [tableName]: columnSettings
+        }
+      });
+    } else {
+      await base44.entities.UserPreferences.create({
+        user_email: user.email,
+        spreadsheet_columns: {
+          [tableName]: columnSettings
+        }
+      });
+    }
+    
+    console.log('User settings saved to database');
   } catch (e) {
-    console.error('Error saving settings:', e);
+    console.error('Error saving user settings:', e);
   }
 };
 
@@ -220,15 +244,10 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
     hasOnView: typeof onView === 'function'
   });
 
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
+  const [showUserPreferences, setShowUserPreferences] = useState(false);
+  
   const [columns, setColumns] = useState(() => {
-    const saved = loadSettings();
-    if (saved && saved.columns) {
-      const loadedColumns = saved.columns.map((col) => ({ ...col, visible: col.visible !== false }));
-      if (!loadedColumns.some((col) => col.key === 'actions')) {
-        loadedColumns.push({ key: 'actions', title: 'פעולות', width: '120px', type: 'actions', required: true, visible: true });
-      }
-      return loadedColumns;
-    }
     const initialColumns = [...fixedDefaultColumns];
     if (!initialColumns.some((col) => col.key === 'actions')) {
       initialColumns.push({ key: 'actions', title: 'פעולות', width: '120px', type: 'actions', required: true, visible: true });
@@ -281,6 +300,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
   const [autoSave, setAutoSave] = useState(true);
   const [autoCloseEdit, setAutoCloseEdit] = useState(true);
   const [smoothScroll, setSmoothScroll] = useState(true);
+  const [userPreferences, setUserPreferences] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
   const [showStageManager, setShowStageManager] = useState(false);
   const [stageOptions, setStageOptions] = useState(() => {
@@ -298,6 +318,99 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
   const editInputRef = useRef(null);
   const columnEditRef = useRef(null);
   const tableContainerRef = useRef(null);
+
+  // Load user settings from database on mount
+  useEffect(() => {
+    const loadUserPrefs = async () => {
+      try {
+        const userSettings = await loadUserSettings('clients');
+        if (userSettings) {
+          // Restore column order
+          if (userSettings.order) {
+            const orderedColumns = userSettings.order.map(key => {
+              const existing = columns.find(c => c.key === key);
+              if (existing) return existing;
+              
+              // Restore custom column
+              const customCol = userSettings.custom_columns?.find(c => c.key === key);
+              return customCol;
+            }).filter(Boolean);
+            
+            // Add any new columns that weren't in saved order
+            columns.forEach(col => {
+              if (!orderedColumns.find(c => c.key === col.key)) {
+                orderedColumns.push(col);
+              }
+            });
+            
+            setColumns(orderedColumns);
+          }
+          
+          // Restore visibility
+          if (userSettings.visibility) {
+            setColumns(prev => prev.map(col => ({
+              ...col,
+              visible: userSettings.visibility[col.key] !== false
+            })));
+          }
+          
+          // Restore widths
+          if (userSettings.widths) {
+            setColumns(prev => prev.map(col => ({
+              ...col,
+              width: userSettings.widths[col.key] || col.width
+            })));
+          }
+          
+          // Restore cell styles
+          if (userSettings.cellStyles) {
+            setCellStyles(userSettings.cellStyles);
+          }
+          
+          // Restore sub headers
+          if (userSettings.showSubHeaders !== undefined) {
+            setShowSubHeaders(userSettings.showSubHeaders);
+          }
+          if (userSettings.subHeaders) {
+            setSubHeaders(userSettings.subHeaders);
+          }
+          
+          // Restore stage options
+          if (userSettings.stageOptions) {
+            setStageOptions(userSettings.stageOptions);
+          }
+        }
+        
+        // Load general preferences
+        const user = await base44.auth.me();
+        const userPrefsData = await base44.entities.UserPreferences.filter({ user_email: user.email });
+        if (userPrefsData.length > 0 && userPrefsData[0].general_preferences) {
+          const prefs = userPrefsData[0].general_preferences;
+          setUserPreferences(prefs);
+          setAutoSave(prefs.auto_save !== false);
+          setAutoCloseEdit(prefs.auto_close_edit !== false);
+        }
+      } catch (e) {
+        console.error('Error loading user preferences:', e);
+      }
+      setSettingsLoaded(true);
+    };
+    
+    loadUserPrefs();
+  }, []);
+
+  // Listen for preference updates
+  useEffect(() => {
+    const handlePrefsUpdate = (event) => {
+      const { preferences } = event.detail;
+      setUserPreferences(preferences);
+      setAutoSave(preferences.auto_save !== false);
+      setAutoCloseEdit(preferences.auto_close_edit !== false);
+    };
+    
+    window.addEventListener('user:preferences:updated', handlePrefsUpdate);
+    return () => window.removeEventListener('user:preferences:updated', handlePrefsUpdate);
+  }, []);
 
   useEffect(() => {
     console.log('📊 [SPREADSHEET] 🔄 clients prop changed:', {
@@ -335,23 +448,23 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
     return () => window.removeEventListener('client:updated', handleClientUpdate);
   }, []);
 
-  // Debounced save to reduce localStorage writes
+  // Debounced save to database (per user)
   const saveTimeoutRef = useRef(null);
   
   useEffect(() => {
-    if (columns.length > 0) {
+    if (columns.length > 0 && settingsLoaded) {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
       
       saveTimeoutRef.current = setTimeout(() => {
-        console.log('💾 Saving settings (debounced)');
-        saveSettings(columns, cellStyles, showSubHeaders, subHeaders, stageOptions);
-      }, 500);
+        console.log('💾 Saving user settings to database (debounced)');
+        saveUserSettings('clients', columns, cellStyles, showSubHeaders, subHeaders, stageOptions);
+      }, 1000);
     }
     
     return () => {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     };
-  }, [columns, cellStyles, showSubHeaders, subHeaders]);
+  }, [columns, cellStyles, showSubHeaders, subHeaders, settingsLoaded]);
 
   useEffect(() => {
     if (editingColumnKey && columnEditRef.current) {
@@ -1400,6 +1513,16 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
             </div>
 
             <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowUserPreferences(true)}
+                className="gap-2">
+
+                <User className="w-4 h-4" />
+                העדפות אישיות
+              </Button>
+
               <Button
                 variant="outline"
                 size="sm"
@@ -3149,9 +3272,15 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
         stageOptions={stageOptions}
         onSave={(newStageOptions) => {
           setStageOptions(newStageOptions);
-          saveSettings(columns, cellStyles, showSubHeaders, subHeaders, newStageOptions);
+          saveUserSettings('clients', columns, cellStyles, showSubHeaders, subHeaders, newStageOptions);
           toast.success('הגדרות השלבים עודכנו');
         }}
+      />
+
+      <UserPreferencesDialog
+        open={showUserPreferences}
+        onClose={() => setShowUserPreferences(false)}
+        tableName="clients"
       />
 
     </div>);
