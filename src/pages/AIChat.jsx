@@ -675,7 +675,12 @@ ${tasks.filter(t => t.reminder_enabled).length} מתוך ${tasks.length} משי�
 6. בחיזויים - ציין את רמת הביטחון והנחות היסוד
 `;
 
-      const prompt = `${context}\n\nשאלת המשתמש: ${input}`;
+      // Build conversation history for context
+      const conversationHistory = messages
+        .map(m => `${m.role === 'user' ? 'משתמש' : 'עוזר'}: ${m.content}`)
+        .join('\n\n');
+
+      const prompt = `${context}\n\nהיסטוריית השיחה עד כה:\n${conversationHistory}\n\n${conversationHistory.length > 0 ? 'המשך השיחה - ' : ''}שאלה/בקשה נוכחית: ${input}\n\nענה בהתאם להקשר המלא של השיחה. אם המשתמש מתייחס למידע שהוזכר קודם (שם לקוח, פרויקט, וכו') - השתמש בו.`;
 
       const result = await base44.integrations.Core.InvokeLLM({
         prompt,
