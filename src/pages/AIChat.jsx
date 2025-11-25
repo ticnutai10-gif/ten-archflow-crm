@@ -449,8 +449,13 @@ ${historicalMetrics.slice(0, 10).map(m =>
 צוות זמין:
 ${teamMembers.map(tm => `- ${tm.full_name} (${tm.role}): ${tm.capacity_hours_per_week || 40} שעות/שבוע`).join('\n')}
 
-פרטי לקוחות:
-${clients.slice(0, 15).map(c => `- ${c.name}: סטטוס ${c.status || 'לא הוגדר'}, שלב: ${c.stage || 'לא הוגדר'}`).join('\n')}
+רשימת כל הלקוחות במערכת (${clients.length} לקוחות):
+${clients.map((c, idx) => `${idx + 1}. "${c.name}" - סטטוס: ${c.status || 'לא הוגדר'}, שלב: ${c.stage || 'לא הוגדר'}${c.email ? `, אימייל: ${c.email}` : ''}${c.phone || c.whatsapp ? `, טלפון: ${c.whatsapp || c.phone}` : ''}`).join('\n')}
+
+⚠️ חשוב מאוד - שמות לקוחות מדויקים:
+כשאתה מתייחס ללקוח או מציע פעולה הכוללת לקוח, חייב להשתמש בשם המדויק של הלקוח כפי שמופיע ברשימה למעלה.
+לדוגמה: אם הלקוח נקרא "משה כהן בע״מ" - השתמש בדיוק בשם הזה, לא "משה כהן" או "משה".
+אם המשתמש מזכיר לקוח בצורה לא מדויקת, השתמש בשם המלא והמדויק מהרשימה.
 
 פרטי פרויקטים פעילים:
 ${activeProjects.slice(0, 10).map(p => `- ${p.name} (לקוח: ${p.client_name}): סטטוס ${p.status}, התקדמות ${p.progress || 0}%`).join('\n')}
@@ -498,22 +503,26 @@ ${tasks.filter(t => t.reminder_enabled).length} מתוך ${tasks.length} משי�
 
 📧 SEND_EMAIL - דוגמה:
 [ACTION: SEND_EMAIL | to: user@example.com, subject: נושא הדואר, body: תוכן המייל]
+* to - אפשר להשתמש באימייל של לקוח מהרשימה למעלה
 
 ✅ CREATE_TASK - דוגמה:
-[ACTION: CREATE_TASK | title: שם המשימה, priority: גבוהה, due_date: 2025-11-25, description: תיאור המשימה, client_name: שם הלקוח]
+[ACTION: CREATE_TASK | title: שם המשימה, priority: גבוהה, due_date: 2025-11-25, description: תיאור המשימה, client_name: שם הלקוח המדויק]
 * due_date יכול להיות: YYYY-MM-DD, "מחר", "היום"
 * priority: נמוכה/בינונית/גבוהה/דחופה
+* client_name - השתמש בשם המדויק מרשימת הלקוחות!
 
 📅 SCHEDULE_MEETING - דוגמה:
-[ACTION: SCHEDULE_MEETING | title: שם הפגישה, date_time: 2025-11-23T14:00:00, client_name: שם הלקוח, location: מיקום, description: תיאור]
+[ACTION: SCHEDULE_MEETING | title: שם הפגישה, date_time: 2025-11-23T14:00:00, client_name: שם הלקוח המדויק מהרשימה, location: מיקום, description: תיאור]
 * date_time חייב להיות בפורמט: YYYY-MM-DDTHH:MM:SS (לדוגמה: 2025-11-23T14:00:00)
 * או שימוש ב: date: 2025-11-23, time: 14:00 (נפרד)
 * title הוא שדה חובה!
+* client_name - חובה להשתמש בשם המדויק מרשימת הלקוחות למעלה!
 * אם לא מצוין תאריך - משתמש במחר בשעה 10:00
 
 🎯 UPDATE_CLIENT_STAGE - דוגמה:
-[ACTION: UPDATE_CLIENT_STAGE | clients: שם לקוח 1;שם לקוח 2, stage: ביצוע]
+[ACTION: UPDATE_CLIENT_STAGE | clients: שם לקוח מדויק 1;שם לקוח מדויק 2, stage: ביצוע]
 * שלבים אפשריים: ברור_תכן, תיק_מידע, היתרים, ביצוע, סיום
+* חובה: השתמש בשמות המדויקים מרשימת הלקוחות!
 
 📊 PREDICT_TIMELINE - דוגמה:
 [ACTION: PREDICT_TIMELINE | project_name: שם הפרויקט, project_type: בית פרטי, complexity: בינונית]
