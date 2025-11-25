@@ -219,7 +219,7 @@ export default function Layout({ children, currentPageName }) {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full" dir="rtl" data-app-root style={{ backgroundColor: 'var(--bg-cream)', paddingTop: isMobile ? '56px' : '0', paddingBottom: isMobile ? '64px' : '0' }}>
+      <div className="min-h-screen flex w-full" dir="rtl" data-app-root style={{ backgroundColor: 'var(--bg-cream)', paddingTop: isMobile ? '64px' : '0', paddingBottom: isMobile ? '64px' : '0', touchAction: 'pan-y' }}>
         <style>{`
           :root {
             --accent-color: ${ACCENT_COLOR};
@@ -236,23 +236,25 @@ export default function Layout({ children, currentPageName }) {
           }
 
           html, body {
-            overflow-x: hidden !important;
-            overflow-y: auto !important;
-            height: auto !important;
-            min-height: 100% !important;
+            overflow-x: hidden;
+            overflow-y: auto;
+            height: 100%;
+            min-height: 100vh;
             transition: background-color 0.3s ease;
             -webkit-overflow-scrolling: touch;
+            touch-action: pan-y;
           }
 
           #root {
-            min-height: 100%;
+            min-height: 100vh;
             height: auto;
           }
           
           [data-app-root] {
             width: 100%;
-            min-height: 100%;
+            min-height: 100vh;
             height: auto;
+            touch-action: pan-y;
           }
           
           * {
@@ -301,31 +303,38 @@ export default function Layout({ children, currentPageName }) {
             background: transparent;
           }
 
-          /* Smooth page transitions */
-          [data-app-root] > div {
-            animation: fadeInUp 0.4s ease-out;
-          }
-
-          @keyframes fadeInUp {
-            from {
-              opacity: 0;
-              transform: translateY(20px);
+          /* Smooth page transitions - DISABLED FOR MOBILE PERFORMANCE */
+          @media (min-width: 769px) {
+            [data-app-root] > div {
+              animation: fadeInUp 0.4s ease-out;
             }
-            to {
-              opacity: 1;
-              transform: translateY(0);
+
+            @keyframes fadeInUp {
+              from {
+                opacity: 0;
+                transform: translateY(20px);
+              }
+              to {
+                opacity: 1;
+                transform: translateY(0);
+              }
             }
           }
 
           /* Enhanced card styles */
           .card, [class*="card"] {
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             border-radius: 16px;
           }
+          
+          @media (min-width: 769px) {
+            .card, [class*="card"] {
+              transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            }
 
-          .card:hover {
-            transform: translateY(-4px);
-            box-shadow: var(--card-shadow-hover);
+            .card:hover {
+              transform: translateY(-4px);
+              box-shadow: var(--card-shadow-hover);
+            }
           }
 
           /* Smooth button transitions */
@@ -460,10 +469,21 @@ export default function Layout({ children, currentPageName }) {
 
             /* CRITICAL: Enable smooth touch scrolling */
             html, body, #root, [data-app-root] {
-              -webkit-overflow-scrolling: touch !important;
-              overflow-y: auto !important;
-              height: auto !important;
-              min-height: 100% !important;
+              -webkit-overflow-scrolling: touch;
+              overflow-y: auto;
+              height: 100vh;
+              min-height: 100vh;
+              touch-action: pan-y;
+            }
+            
+            /* Prevent any element from blocking touch scrolling */
+            * {
+              touch-action: pan-y;
+            }
+            
+            /* Allow buttons and links to be tappable */
+            button, a, input, select, textarea {
+              touch-action: manipulation;
             }
           }
 
@@ -653,7 +673,7 @@ export default function Layout({ children, currentPageName }) {
 
 
 
-        <div className="order-2 flex-1 transition-all duration-200" style={{ backgroundColor: 'var(--bg-cream)', overflow: 'visible', width: '100%' }} dir="rtl">
+        <div className="order-2 flex-1" style={{ backgroundColor: 'var(--bg-cream)', overflow: 'visible', width: '100%', touchAction: 'pan-y' }} dir="rtl">
           {user && !isMobile && (
             <div className="px-6 py-3" dir="rtl" style={{ backgroundColor: 'var(--bg-cream)' }}>
               <div className="max-w-7xl mx-auto">

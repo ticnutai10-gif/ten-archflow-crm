@@ -184,23 +184,18 @@ export default function ClientsPage() {
   }, [accessLoading]);
 
   useEffect(() => {
+    let timeoutId;
     const handleClientUpdate = (event) => {
-      console.log('📄 [CLIENTS PAGE] 📬 Received client:updated event:', {
-        hasDetail: !!event.detail,
-        clientId: event.detail?.id,
-        clientName: event.detail?.name,
-        clientStage: event.detail?.stage,
-        fullData: event.detail
-      });
-      
-      console.log('🔄 [CLIENTS PAGE] Calling loadClients()...');
-      loadClients();
+      // Debounce reload to prevent multiple rapid reloads
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        loadClients();
+      }, 100);
     };
     
     window.addEventListener('client:updated', handleClientUpdate);
-    console.log('👂 [CLIENTS PAGE] Event listener registered');
     return () => {
-      console.log('🔇 [CLIENTS PAGE] Event listener removed');
+      if (timeoutId) clearTimeout(timeoutId);
       window.removeEventListener('client:updated', handleClientUpdate);
     };
   }, []);

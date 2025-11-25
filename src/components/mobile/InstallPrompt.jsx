@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { Download, X, Smartphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -51,13 +50,11 @@ export default function InstallPrompt() {
   };
 
   return (
-    <AnimatePresence>
+    <>
       {showPrompt && (
-        <motion.div
-          initial={{ y: 100, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: 100, opacity: 0 }}
+        <div
           className="fixed bottom-20 left-4 right-4 z-50 md:left-auto md:right-4 md:w-96"
+          style={{ touchAction: 'manipulation' }}
         >
           <Card className="bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-2xl border-0">
             <div className="p-4">
@@ -103,8 +100,8 @@ export default function InstallPrompt() {
               </div>
             </div>
           </Card>
-        </motion.div>
+        </div>
       )}
-    </AnimatePresence>
+    </>
   );
 }

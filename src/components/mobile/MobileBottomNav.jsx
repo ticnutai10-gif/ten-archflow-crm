@@ -2,7 +2,6 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Home, Users, Briefcase, CheckSquare, Calendar, MoreHorizontal } from 'lucide-react';
-import { motion } from 'framer-motion';
 
 const NAV_ITEMS = [
   { name: 'Dashboard', icon: Home, path: 'Dashboard', label: 'בית' },
@@ -27,10 +26,9 @@ export default function MobileBottomNav() {
             <Link
               key={item.path}
               to={createPageUrl(item.path)}
-              className="flex-1 flex flex-col items-center justify-center gap-1 py-2 relative"
+              className="flex-1 flex flex-col items-center justify-center gap-1 py-2 relative active:scale-95 transition-transform"
             >
-              <motion.div
-                whileTap={{ scale: 0.9 }}
+              <div
                 className={`p-2 rounded-xl transition-all ${
                   isActive 
                     ? 'bg-[#2C3A50] text-white' 
@@ -38,17 +36,15 @@ export default function MobileBottomNav() {
                 }`}
               >
                 <Icon className="w-5 h-5" />
-              </motion.div>
+              </div>
               <span className={`text-xs font-medium ${
                 isActive ? 'text-[#2C3A50]' : 'text-slate-500'
               }`}>
                 {item.label}
               </span>
               {isActive && (
-                <motion.div
-                  layoutId="activeTab"
+                <div
                   className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-12 h-1 bg-[#2C3A50] rounded-t-full"
-                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
                 />
               )}
             </Link>

@@ -114,14 +114,18 @@ export function useIsMobile() {
     // Initial detection
     setIsMobile(detectMobile());
 
-    // Listen to resize for screen width changes
+    // Debounce resize events to prevent performance issues
+    let resizeTimeout;
     const handleResize = () => {
-      const newForced = getForcedMobileMode();
-      if (newForced !== null) {
-        setIsMobile(newForced);
-      } else {
-        setIsMobile(detectMobile());
-      }
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(() => {
+        const newForced = getForcedMobileMode();
+        if (newForced !== null) {
+          setIsMobile(newForced);
+        } else {
+          setIsMobile(detectMobile());
+        }
+      }, 100);
     };
 
     // Listen to orientation change (mobile devices)
@@ -133,7 +137,7 @@ export function useIsMobile() {
         } else {
           setIsMobile(detectMobile());
         }
-      }, 100); // Small delay for orientation to settle
+      }, 150);
     };
 
     // Listen for manual toggle
@@ -151,6 +155,7 @@ export function useIsMobile() {
     window.addEventListener('force-mobile-changed', handleForceChange);
     
     return () => {
+      clearTimeout(resizeTimeout);
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('orientationchange', handleOrientationChange);
       window.removeEventListener('force-mobile-changed', handleForceChange);
