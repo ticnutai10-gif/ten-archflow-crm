@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
-import { Loader2, Send, Sparkles, Trash2, Plus, Mail, CheckCircle, ListTodo, Calendar, Users, TrendingUp, Target } from 'lucide-react';
+import { Loader2, Send, Sparkles, Trash2, Plus, Mail, CheckCircle, ListTodo, Calendar, Users, TrendingUp, Target, MessageCircle, FileText } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { toast } from 'sonner';
 
@@ -219,6 +219,24 @@ export default function AIChat() {
       } else if (action.type === 'GENERATE_EMAIL_DRAFT') {
         console.log('✉️ Generating email draft...');
         toast.success(`✉️ טיוטת מייל נוצרה - ראה בצ'אט`);
+        
+      } else if (action.type === 'SEND_WHATSAPP') {
+        console.log('💬 Sending WhatsApp...');
+        const phone = params.phone?.replace(/\D/g, '');
+        const message = params.message || params.body;
+        
+        if (!phone || !message) {
+          toast.error('חסר מספר טלפון או הודעה');
+          return;
+        }
+        
+        const whatsappUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+        window.open(whatsappUrl, '_blank');
+        toast.success('💬 WhatsApp נפתח - שלח את ההודעה המוכנה!');
+        
+      } else if (action.type === 'SUMMARIZE_COMMUNICATIONS') {
+        console.log('📨 Summarizing communications...');
+        toast.success('📨 סיכום תקשורת נוצר - ראה בצ'אט');
       }
     } catch (error) {
       console.error('❌ Action execution error:', error);
@@ -246,7 +264,7 @@ export default function AIChat() {
       const currentUser = await base44.auth.me();
       
       // Load comprehensive data
-      const [projects, clients, tasks, communications, decisions, meetings, quotes, timeLogs, subtasks, teamMembers] = await Promise.all([
+      const [projects, clients, tasks, communications, decisions, meetings, quotes, timeLogs, subtasks, teamMembers, allCommunications] = await Promise.all([
         base44.entities.Project.list('-created_date').catch(() => []),
         base44.entities.Client.list('-created_date').catch(() => []),
         base44.entities.Task.filter({ status: { $ne: 'הושלמה' } }, '-created_date', 50).catch(() => []),
@@ -256,7 +274,8 @@ export default function AIChat() {
         base44.entities.Quote.filter({ status: 'בהמתנה' }).catch(() => []),
         base44.entities.TimeLog.filter({ created_by: currentUser.email }, '-log_date', 30).catch(() => []),
         base44.entities.SubTask.list().catch(() => []),
-        base44.entities.TeamMember.filter({ active: true }).catch(() => [])
+        base44.entities.TeamMember.filter({ active: true }).catch(() => []),
+        base44.entities.CommunicationMessage.list('-created_date', 100).catch(() => [])
       ]);
 
       const activeProjects = projects.filter(p => p.status !== 'הושלם');
@@ -329,6 +348,17 @@ ${upcomingMeetings.slice(0, 5).map(m => `- ${m.title} עם ${m.participants?.joi
 
 תקשורת אחרונה (לניתוח סנטימנט ודפוסים):
 ${communications.slice(0, 10).map(c => `- ${c.type === 'email' ? '📧' : c.type === 'whatsapp' ? '💬' : '📝'} ${c.client_name || 'כללי'}: ${c.subject || c.body?.substring(0, 80) || 'ללא נושא'} (${c.direction || 'פנימי'}, ${new Date(c.created_date).toLocaleDateString('he-IL')})`).join('\n')}
+
+סיכום תקשורת מפורט (100 הודעות אחרונות זמינות):
+${allCommunications.length > 0 ? `סה"כ ${allCommunications.length} הודעות` : 'אין תקשורת'}
+- מיילים: ${allCommunications.filter(c => c.type === 'email').length}
+- WhatsApp: ${allCommunications.filter(c => c.type === 'whatsapp').length}
+- הודעות פנימיות: ${allCommunications.filter(c => c.type === 'internal').length}
+- נכנסות: ${allCommunications.filter(c => c.direction === 'in').length}
+- יוצאות: ${allCommunications.filter(c => c.direction === 'out').length}
+
+טלפונים ללקוחות (עבור WhatsApp):
+${clients.filter(c => c.phone || c.whatsapp).slice(0, 15).map(c => `- ${c.name}: ${c.whatsapp || c.phone}`).join('\n')}
 
 משימות עם תזכורות:
 ${tasks.filter(t => t.reminder_enabled).length} מתוך ${tasks.length} משימות עם תזכורת מופעלת
@@ -408,6 +438,18 @@ ${tasks.filter(t => t.reminder_enabled).length} מתוך ${tasks.length} משי�
 [ACTION: GENERATE_EMAIL_DRAFT | client_name: שם הלקוח, purpose: מטרה (מעקב/עדכון/בקשה), tone: טון (רשמי/ידידותי/דחוף), key_points: נקודות עיקריות]
 * יוצר מייל מותאם אישית בטון המתאים
 * מבוסס על היסטוריית תקשורת עם הלקוח
+
+💬 SEND_WHATSAPP - שליחת הודעת WhatsApp:
+[ACTION: SEND_WHATSAPP | phone: מספר טלפון (עם קידומת בינלאומית), message: תוכן ההודעה]
+* פותח WhatsApp Web עם ההודעה מוכנה לשליחה
+* phone חייב להיות במספר מלא עם קידומת (לדוגמה: 972501234567)
+* דוגמה: phone: 972501234567, message: שלום! רציתי לעדכן...
+
+📨 SUMMARIZE_COMMUNICATIONS - סיכום תקשורת עם לקוח:
+[ACTION: SUMMARIZE_COMMUNICATIONS | client_name: שם הלקוח, days_back: 30]
+* מסכם את כל התכתובות (מיילים והודעות) עם הלקוח
+* זיהוי נושאים חוזרים, בקשות פתוחות, ומגמות
+* days_back: כמה ימים אחורה לנתח (ברירת מחדל: 30)
 
 חשוב מאוד:
 - תאריכים חייבים להיות בפורמט ISO: YYYY-MM-DD
@@ -545,19 +587,23 @@ ${tasks.filter(t => t.reminder_enabled).length} מתוך ${tasks.length} משי�
                                 {action.type === 'SUMMARIZE_CLIENT' && '👤'}
                                 {action.type === 'GENERATE_QUOTE_DRAFT' && '💰'}
                                 {action.type === 'GENERATE_EMAIL_DRAFT' && '✉️'}
+                                {action.type === 'SEND_WHATSAPP' && '💬'}
+                                {action.type === 'SUMMARIZE_COMMUNICATIONS' && '📨'}
                                 <span className="text-sm text-slate-700 flex-1 font-medium">
-                                  {action.type === 'SEND_EMAIL' && '📧 שלח אימייל'}
-                                  {action.type === 'CREATE_TASK' && '✅ צור משימה'}
-                                  {action.type === 'SCHEDULE_MEETING' && '📅 קבע פגישה'}
-                                  {action.type === 'UPDATE_CLIENT_STAGE' && '🎯 עדכן שלב לקוח'}
-                                  {action.type === 'PREDICT_TIMELINE' && '📊 חזה ציר זמן'}
-                                  {action.type === 'SUGGEST_RESOURCES' && '👥 הצע משאבים'}
-                                  {action.type === 'ANALYZE_SENTIMENT' && '🎭 נתח סנטימנט'}
-                                  {action.type === 'SUGGEST_REMINDERS' && '⏰ הצע תזכורות'}
-                                  {action.type === 'SUMMARIZE_PROJECT' && '📋 סכם פרויקט'}
-                                  {action.type === 'SUMMARIZE_CLIENT' && '👤 סכם לקוח'}
-                                  {action.type === 'GENERATE_QUOTE_DRAFT' && '💰 צור טיוטת הצעה'}
-                                  {action.type === 'GENERATE_EMAIL_DRAFT' && '✉️ צור טיוטת מייל'}
+                                 {action.type === 'SEND_EMAIL' && '📧 שלח אימייל'}
+                                 {action.type === 'CREATE_TASK' && '✅ צור משימה'}
+                                 {action.type === 'SCHEDULE_MEETING' && '📅 קבע פגישה'}
+                                 {action.type === 'UPDATE_CLIENT_STAGE' && '🎯 עדכן שלב לקוח'}
+                                 {action.type === 'PREDICT_TIMELINE' && '📊 חזה ציר זמן'}
+                                 {action.type === 'SUGGEST_RESOURCES' && '👥 הצע משאבים'}
+                                 {action.type === 'ANALYZE_SENTIMENT' && '🎭 נתח סנטימנט'}
+                                 {action.type === 'SUGGEST_REMINDERS' && '⏰ הצע תזכורות'}
+                                 {action.type === 'SUMMARIZE_PROJECT' && '📋 סכם פרויקט'}
+                                 {action.type === 'SUMMARIZE_CLIENT' && '👤 סכם לקוח'}
+                                 {action.type === 'GENERATE_QUOTE_DRAFT' && '💰 צור טיוטת הצעה'}
+                                 {action.type === 'GENERATE_EMAIL_DRAFT' && '✉️ צור טיוטת מייל'}
+                                 {action.type === 'SEND_WHATSAPP' && '💬 שלח WhatsApp'}
+                                 {action.type === 'SUMMARIZE_COMMUNICATIONS' && '📨 סכם תקשורת'}
                                 </span>
                                 <Button
                                   size="sm"
