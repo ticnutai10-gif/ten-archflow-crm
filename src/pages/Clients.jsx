@@ -656,9 +656,8 @@ export default function ClientsPage() {
 
   // עדכון כפתור "לקוח חדש" - הצגה רק למי שיכול ליצור
   return (
-    <PullToRefresh onRefresh={loadClients}>
     <div
-      className={`${isMobile ? 'p-3' : 'p-6 lg:p-8'} min-h-screen ${isMobile ? 'pb-4' : 'pl-24 lg:pl-12'}`}
+      className={`${isMobile ? 'p-3 pb-24' : 'p-6 lg:p-8 pl-24 lg:pl-12'} min-h-screen`}
       dir="rtl"
       style={{
         backgroundColor: 'var(--bg-cream, #FCF6E3)',
@@ -1793,6 +1792,5 @@ export default function ClientsPage() {
         </div>
       }
     </div>
-    </PullToRefresh>
   );
 }

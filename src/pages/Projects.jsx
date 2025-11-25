@@ -208,7 +208,6 @@ export default function ProjectsPage() {
     });
 
   return (
-    <PullToRefresh onRefresh={loadProjects}>
     <div className={`${isMobile ? 'p-3 pb-24' : 'p-6 lg:p-8 pl-24 lg:pl-12'} min-h-screen`} dir="rtl" style={{ backgroundColor: 'var(--bg-cream, #FCF6E3)' }}>
       <div className="max-w-7xl mx-auto">
         {/* Header - Desktop Only */}
@@ -535,6 +534,5 @@ export default function ProjectsPage() {
         )}
       </div>
     </div>
-    </PullToRefresh>
   );
 }

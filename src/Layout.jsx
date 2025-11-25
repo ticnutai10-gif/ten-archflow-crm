@@ -237,23 +237,22 @@ export default function Layout({ children, currentPageName }) {
 
           html, body {
             overflow-x: hidden !important;
-            overflow-y: scroll !important;
-            height: 100%;
+            overflow-y: auto !important;
+            height: auto !important;
+            min-height: 100% !important;
             transition: background-color 0.3s ease;
-            touch-action: manipulation;
             -webkit-overflow-scrolling: touch;
-            overscroll-behavior-y: contain;
           }
 
           #root {
             min-height: 100%;
-            overflow: visible !important;
+            height: auto;
           }
           
           [data-app-root] {
-            overflow: visible !important;
             width: 100%;
             min-height: 100%;
+            height: auto;
           }
           
           * {
@@ -454,22 +453,17 @@ export default function Layout({ children, currentPageName }) {
               display: none !important;
             }
 
-            /* Touch-friendly sizing */
-            button, a, [role="button"] {
-              min-height: 44px;
-              min-width: 44px;
-            }
-
             /* Better touch handling */
             * {
               -webkit-tap-highlight-color: transparent;
             }
 
-            /* Smooth scrolling for mobile */
-            html, body {
-              scroll-behavior: smooth;
-              -webkit-overflow-scrolling: touch;
-              touch-action: pan-y pan-x;
+            /* CRITICAL: Enable smooth touch scrolling */
+            html, body, #root, [data-app-root] {
+              -webkit-overflow-scrolling: touch !important;
+              overflow-y: auto !important;
+              height: auto !important;
+              min-height: 100% !important;
             }
           }
 

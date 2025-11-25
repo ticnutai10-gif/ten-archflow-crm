@@ -360,8 +360,7 @@ export default function Dashboard() {
   const CurrentViewIcon = currentViewOption.icon;
 
   return (
-    <PullToRefresh onRefresh={loadDashboardData}>
-    <div className={`${isMobile ? 'p-3 pb-6' : 'p-6'} min-h-screen`} dir="rtl" style={{ backgroundColor: '#FCF6E3' }}>
+    <div className={`${isMobile ? 'p-3 pb-24' : 'p-6'} min-h-screen`} dir="rtl" style={{ backgroundColor: '#FCF6E3' }}>
       <DashboardSettings
         visible={showDashboardSettings}
         settings={dashboardSettings}
@@ -878,6 +877,5 @@ export default function Dashboard() {
         />
       )}
     </div>
-    </PullToRefresh>
   );
 }
