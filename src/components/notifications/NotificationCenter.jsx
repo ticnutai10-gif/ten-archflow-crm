@@ -18,6 +18,18 @@ const priorityConfig = {
 export default function NotificationCenter({ notifications, onClose, onUpdate }) {
   const [filter, setFilter] = useState('all'); // all, unread, read
 
+  // Close on Escape key
+  React.useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [onClose]);
+
   const markAsRead = async (id) => {
     try {
       await base44.entities.Notification.update(id, { read: true });
@@ -64,8 +76,8 @@ export default function NotificationCenter({ notifications, onClose, onUpdate })
   });
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center pt-16" dir="rtl">
-      <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl mx-4 max-h-[80vh] flex flex-col">
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center pt-16 md:pt-20" dir="rtl" onClick={onClose}>
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl mx-4 max-h-[85vh] md:max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b">
           <div className="flex items-center gap-3">

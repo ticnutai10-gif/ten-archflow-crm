@@ -53,12 +53,12 @@ export default function NotificationBell() {
           variant="ghost"
           size="icon"
           onClick={() => setShowCenter(true)}
-          className="relative"
+          className="relative text-white hover:bg-white/20 w-12 h-12 rounded-xl md:w-10 md:h-10 md:text-slate-600 md:hover:bg-slate-100"
         >
-          <Bell className="w-5 h-5" />
+          <Bell className="w-6 h-6 md:w-5 md:h-5" />
           {unreadCount > 0 && (
             <Badge 
-              className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-red-500 text-white text-xs"
+              className="absolute -top-0.5 -right-0.5 h-5 w-5 flex items-center justify-center p-0 bg-red-500 text-white text-[10px] font-bold border-2 border-white"
             >
               {unreadCount > 9 ? '9+' : unreadCount}
             </Badge>
