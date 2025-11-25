@@ -683,9 +683,10 @@ export default function ClientsPage() {
       )}
 
       {/* כפתורי הפעולה (Toolbar) */}
-      <div className={`flex ${isMobile ? 'flex-col' : 'flex-col lg:flex-row'} justify-between items-start lg:items-center mb-4 gap-3`}>
+      {!isMobile && (
+      <div className={`flex flex-col lg:flex-row justify-between items-start lg:items-center mb-4 gap-3`}>
         {/* Left group of buttons */}
-        <div className={`flex flex-wrap gap-2 ${isMobile ? 'w-full' : ''}`}>
+        <div className="flex flex-wrap gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="bg-background text-slate-800 px-4 py-2 text-sm font-medium rounded-md inline-flex items-center justify-center whitespace-nowrap ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border hover:text-accent-foreground h-10 gap-2 border-slate-200 hover:bg-slate-50">
@@ -922,13 +923,14 @@ export default function ClientsPage() {
           {canCreateClient && (
             <Button
               onClick={() => setShowForm(true)}
-              className={`bg-[#2C3A50] text-white ${isMobile ? 'w-full px-4 py-3' : 'px-6 py-2'} text-sm font-medium rounded-xl inline-flex items-center justify-center gap-2 whitespace-nowrap h-10 hover:bg-[#1f2937] shadow-lg hover:shadow-xl transition-all duration-200`}>
+              className="bg-[#2C3A50] text-white px-6 py-2 text-sm font-medium rounded-xl inline-flex items-center justify-center gap-2 whitespace-nowrap h-10 hover:bg-[#1f2937] shadow-lg hover:shadow-xl transition-all duration-200">
               <Plus className="w-5 h-5 ml-2" />
               לקוח חדש
             </Button>
           )}
         </div>
       </div>
+      )}
 
 
       {/* Compact Search and Filters */}
@@ -942,16 +944,16 @@ export default function ClientsPage() {
                 placeholder="חיפוש לקוח..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className={`pr-9 bg-white ${isMobile ? 'h-11 text-base' : 'h-9 text-sm'}`}
+                className={`pr-9 bg-white ${isMobile ? 'h-12 text-base rounded-xl' : 'h-9 text-sm'}`}
               />
             </div>
 
             {/* Mobile Filters Row */}
             {isMobile && (
-              <div className="flex items-center gap-2 w-full overflow-x-auto pb-1">
+              <div className="flex items-center gap-2 w-full">
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="min-w-[120px] h-10 bg-white border-slate-300">
-                    <SelectValue placeholder="סטטוס" />
+                  <SelectTrigger className="flex-1 h-10 bg-white border-slate-200 rounded-lg text-sm">
+                    <SelectValue placeholder="כל הסטטוסים" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">כל הסטטוסים</SelectItem>
@@ -962,8 +964,8 @@ export default function ClientsPage() {
                 </Select>
 
                 <Select value={stageFilter} onValueChange={setStageFilter}>
-                  <SelectTrigger className="min-w-[120px] h-10 bg-white border-slate-300">
-                    <SelectValue placeholder="שלב" />
+                  <SelectTrigger className="flex-1 h-10 bg-white border-slate-200 rounded-lg text-sm">
+                    <SelectValue placeholder="כל השלבים" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">כל השלבים</SelectItem>
@@ -976,8 +978,8 @@ export default function ClientsPage() {
                 </Select>
 
                 <Select value={sortBy} onValueChange={setSortBy}>
-                  <SelectTrigger className="min-w-[100px] h-10 bg-white border-slate-300">
-                    <SelectValue placeholder="מיון" />
+                  <SelectTrigger className="w-20 h-10 bg-white border-slate-200 rounded-lg text-sm">
+                    <ArrowUpDown className="w-4 h-4" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="name">שם</SelectItem>
@@ -1139,17 +1141,23 @@ export default function ClientsPage() {
 
       {/* Main content - SINGLE RENDER */}
       <div ref={scrollContainerRef} style={{ width: '100%' }}>
-        {isMobile && viewMode !== "list" && viewMode !== "compact" ? (
-          // Mobile optimized list view
-          <div className="space-y-3">
+        {isMobile ? (
+          // Mobile optimized list view - always show this on mobile
+          <div className="space-y-3 pb-20">
             {isLoading ? (
               Array(5).fill(0).map((_, i) => (
-                <div key={i} className="h-32 bg-slate-200 rounded-lg animate-pulse" />
+                <div key={i} className="h-28 bg-slate-200 rounded-xl animate-pulse" />
               ))
             ) : filteredAndSortedClients.length === 0 ? (
               <div className="text-center py-12">
                 <Users className="w-16 h-16 mx-auto mb-4 text-slate-300" />
                 <h3 className="text-lg font-semibold text-slate-600 mb-2">אין לקוחות</h3>
+                {canCreateClient && (
+                  <Button onClick={() => setShowForm(true)} className="mt-4 bg-[#2C3A50] hover:bg-[#1f2937]">
+                    <Plus className="w-4 h-4 ml-2" />
+                    הוסף לקוח ראשון
+                  </Button>
+                )}
               </div>
             ) : (
               filteredAndSortedClients.map((client) => (
@@ -1161,46 +1169,61 @@ export default function ClientsPage() {
                 >
                   <div
                     onClick={() => handleViewDetails(client)}
-                    className="p-4 bg-white rounded-lg border border-slate-200 active:bg-slate-50"
+                    className="p-4 bg-white rounded-xl border border-slate-200 shadow-sm active:bg-slate-50 transition-colors"
                   >
-                    <div className="flex items-start justify-between mb-2">
-                      <h3 className="font-bold text-slate-900 text-base">{client.name}</h3>
-                      {client.stage && (() => {
-                        const currentStage = STAGE_OPTIONS.find(s => s.value === client.stage);
-                        return currentStage ? (
-                          <Circle 
-                            className="w-3 h-3 fill-current flex-shrink-0"
-                            style={{ color: currentStage.color }}
-                          />
-                        ) : null;
-                      })()}
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-bold text-slate-900 text-base truncate">{client.name}</h3>
+                        {client.company && (
+                          <p className="text-sm text-slate-500 truncate">{client.company}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {client.stage && (() => {
+                          const currentStage = STAGE_OPTIONS.find(s => s.value === client.stage);
+                          return currentStage ? (
+                            <Badge 
+                              className="text-white text-xs px-2 py-0.5"
+                              style={{ backgroundColor: currentStage.color }}
+                            >
+                              {currentStage.label}
+                            </Badge>
+                          ) : null;
+                        })()}
+                      </div>
                     </div>
-                    <div className="flex flex-wrap gap-2 mb-2">
+                    
+                    <div className="flex flex-wrap gap-2 mb-3">
                       <Badge className={statusColors[client.status]} variant="outline">
                         {client.status}
                       </Badge>
                       {client.budget_range && (
-                        <Badge variant="outline" className="text-xs">
+                        <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
                           {client.budget_range}
                         </Badge>
                       )}
                     </div>
-                    <div className="space-y-1 text-sm text-slate-600">
+                    
+                    <div className="flex items-center gap-4 text-sm text-slate-600">
                       {client.phone && (
-                        <div className="flex items-center gap-2">
+                        <a 
+                          href={`tel:${client.phone}`} 
+                          onClick={(e) => e.stopPropagation()}
+                          className="flex items-center gap-1.5 text-blue-600 active:text-blue-800"
+                        >
                           <Phone className="w-4 h-4" />
-                          <a href={`tel:${client.phone}`} className="hover:text-blue-600">
-                            {client.phone}
-                          </a>
-                        </div>
+                          <span>{client.phone}</span>
+                        </a>
                       )}
                       {client.email && (
-                        <div className="flex items-center gap-2">
-                          <Mail className="w-4 h-4" />
-                          <a href={`mailto:${client.email}`} className="hover:text-blue-600 truncate">
-                            {client.email}
-                          </a>
-                        </div>
+                        <a 
+                          href={`mailto:${client.email}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="flex items-center gap-1.5 text-blue-600 active:text-blue-800 truncate"
+                        >
+                          <Mail className="w-4 h-4 flex-shrink-0" />
+                          <span className="truncate">{client.email}</span>
+                        </a>
                       )}
                     </div>
                   </div>
