@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,8 +7,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Plus, X } from "lucide-react";
+import { Plus, X, Bell, Mail, Smartphone, Sparkles } from "lucide-react";
 import SmartAgendaGenerator from "../ai/SmartAgendaGenerator";
+import { toast } from "sonner";
 
 export default function MeetingForm({ meeting, clients, projects, initialDate, onSubmit, onCancel }) {
   const getDefaultDate = () => {
@@ -35,8 +36,9 @@ export default function MeetingForm({ meeting, clients, projects, initialDate, o
     meeting_type: 'פגישת תכנון',
     status: 'מתוכננת',
     participants: [],
-    reminder_enabled: true,
-    reminder_before_minutes: 60,
+    reminders: [
+      { minutes_before: 60, method: 'in-app', sent: false }
+    ],
     notes: '',
     agenda: [],
     color: 'blue'
@@ -44,6 +46,14 @@ export default function MeetingForm({ meeting, clients, projects, initialDate, o
 
   const [newParticipant, setNewParticipant] = useState('');
   const [newAgendaItem, setNewAgendaItem] = useState('');
+  const [showSmartSuggestion, setShowSmartSuggestion] = useState(false);
+
+  // Smart reminder suggestion for new meetings
+  useEffect(() => {
+    if (!meeting && !showSmartSuggestion) {
+      setTimeout(() => setShowSmartSuggestion(true), 500);
+    }
+  }, [meeting, showSmartSuggestion]);
 
   const updateField = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -69,6 +79,32 @@ export default function MeetingForm({ meeting, clients, projects, initialDate, o
 
   const removeAgendaItem = (index) => {
     updateField('agenda', formData.agenda.filter((_, i) => i !== index));
+  };
+
+  const addReminder = () => {
+    const newReminder = { minutes_before: 60, method: 'in-app', sent: false };
+    updateField('reminders', [...(formData.reminders || []), newReminder]);
+  };
+
+  const removeReminder = (index) => {
+    updateField('reminders', formData.reminders.filter((_, i) => i !== index));
+  };
+
+  const updateReminder = (index, field, value) => {
+    const updated = [...formData.reminders];
+    updated[index] = { ...updated[index], [field]: value };
+    updateField('reminders', updated);
+  };
+
+  const applySmartReminders = () => {
+    const smartReminders = [
+      { minutes_before: 1440, method: 'email', sent: false }, // יום לפני
+      { minutes_before: 60, method: 'both', sent: false }, // שעה לפני
+      { minutes_before: 15, method: 'in-app', sent: false } // 15 דקות לפני
+    ];
+    updateField('reminders', smartReminders);
+    setShowSmartSuggestion(false);
+    toast.success('הוגדרו תזכורות חכמות!');
   };
 
   const filteredProjects = projects?.filter(p => p.client_name === formData.client_name) || [];
@@ -265,30 +301,130 @@ export default function MeetingForm({ meeting, clients, projects, initialDate, o
             </div>
           </div>
 
-          {/* Reminder */}
+          {/* Smart Reminder Suggestion */}
+          {showSmartSuggestion && !meeting && (
+            <div className="p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border border-purple-200">
+              <div className="flex items-start gap-3">
+                <Sparkles className="w-5 h-5 text-purple-600 mt-1 flex-shrink-0" />
+                <div className="flex-1">
+                  <h4 className="font-semibold text-purple-900 mb-1">💡 הצעה חכמה</h4>
+                  <p className="text-sm text-purple-700 mb-3">
+                    נוסיף לך תזכורות בזמנים אופטימליים? יום לפני במייל, שעה לפני בשתי דרכים, ו-15 דקות לפני באפליקציה.
+                  </p>
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={applySmartReminders} className="bg-purple-600 hover:bg-purple-700">
+                      כן, תודה!
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setShowSmartSuggestion(false)}>
+                      לא, תודה
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Reminders */}
           <div className="p-4 bg-slate-50 rounded-lg space-y-3">
             <div className="flex items-center justify-between">
-              <Label>תזכורת</Label>
-              <Switch 
-                checked={formData.reminder_enabled} 
-                onCheckedChange={(v) => updateField('reminder_enabled', v)}
-              />
+              <Label className="text-base font-semibold">תזכורות מותאמות</Label>
+              <Button type="button" size="sm" onClick={addReminder} variant="outline">
+                <Plus className="w-4 h-4 ml-1" />
+                הוסף תזכורת
+              </Button>
             </div>
-            {formData.reminder_enabled && (
-              <div className="space-y-2">
-                <Label>הזכר לפני (בדקות)</Label>
-                <Select value={String(formData.reminder_before_minutes)} onValueChange={(v) => updateField('reminder_before_minutes', parseInt(v))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="15">15 דקות</SelectItem>
-                    <SelectItem value="30">30 דקות</SelectItem>
-                    <SelectItem value="60">שעה</SelectItem>
-                    <SelectItem value="120">שעתיים</SelectItem>
-                    <SelectItem value="1440">יום</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            
+            {(!formData.reminders || formData.reminders.length === 0) && (
+              <p className="text-sm text-slate-500">לא הוגדרו תזכורות. לחץ "הוסף תזכורת" כדי להוסיף.</p>
             )}
+
+            <div className="space-y-3">
+              {formData.reminders?.map((reminder, idx) => (
+                <div key={idx} className="p-3 bg-white rounded border border-slate-200">
+                  <div className="grid grid-cols-2 gap-3 mb-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs">זמן תזכורת</Label>
+                      <Select 
+                        value={String(reminder.minutes_before)} 
+                        onValueChange={(v) => updateReminder(idx, 'minutes_before', parseInt(v))}
+                      >
+                        <SelectTrigger className="h-9">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="5">5 דקות לפני</SelectItem>
+                          <SelectItem value="10">10 דקות לפני</SelectItem>
+                          <SelectItem value="15">15 דקות לפני</SelectItem>
+                          <SelectItem value="30">30 דקות לפני</SelectItem>
+                          <SelectItem value="60">שעה לפני</SelectItem>
+                          <SelectItem value="120">שעתיים לפני</SelectItem>
+                          <SelectItem value="1440">יום לפני</SelectItem>
+                          <SelectItem value="2880">יומיים לפני</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label className="text-xs">שיטת התראה</Label>
+                      <Select 
+                        value={reminder.method} 
+                        onValueChange={(v) => updateReminder(idx, 'method', v)}
+                      >
+                        <SelectTrigger className="h-9">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="in-app">
+                            <div className="flex items-center gap-2">
+                              <Bell className="w-4 h-4" />
+                              באפליקציה בלבד
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="email">
+                            <div className="flex items-center gap-2">
+                              <Mail className="w-4 h-4" />
+                              מייל בלבד
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="both">
+                            <div className="flex items-center gap-2">
+                              <Smartphone className="w-4 h-4" />
+                              שניהם
+                            </div>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-xs text-slate-600">
+                      {reminder.method === 'in-app' && <Bell className="w-3 h-3" />}
+                      {reminder.method === 'email' && <Mail className="w-3 h-3" />}
+                      {reminder.method === 'both' && (
+                        <>
+                          <Bell className="w-3 h-3" />
+                          <Mail className="w-3 h-3" />
+                        </>
+                      )}
+                      {reminder.sent && (
+                        <Badge variant="secondary" className="text-xs">נשלחה</Badge>
+                      )}
+                    </div>
+                    
+                    <Button 
+                      type="button"
+                      size="sm" 
+                      variant="ghost" 
+                      onClick={() => removeReminder(idx)}
+                      className="h-7 text-red-600 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
