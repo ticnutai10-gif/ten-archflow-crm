@@ -7,6 +7,7 @@ import { he } from "date-fns/locale";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { base44 } from "@/api/base44Client";
+import { toast } from "sonner";
 
 const PRIORITY_COLORS = {
   "גבוהה": "bg-red-100 text-red-800 border-red-200",
@@ -59,9 +60,25 @@ export default function UpcomingTasks({ tasks = [], isLoading, onUpdate }) {
       await Promise.all(selectedIds.map(id => base44.entities.Task.delete(id)));
       setSelectedIds([]);
       setSelectionMode(false);
+      toast.success('המשימות נמחקו בהצלחה');
       onUpdate?.();
     } catch (error) {
       console.error('❌ [UpcomingTasks] Error deleting tasks:', error);
+      toast.error('שגיאה במחיקת המשימות');
+    }
+  };
+
+  const handleDelete = async (taskId, e) => {
+    e.stopPropagation();
+    if (!confirm('האם אתה בטוח שברצונך למחוק את המשימה?')) return;
+    
+    try {
+      await base44.entities.Task.delete(taskId);
+      toast.success('המשימה נמחקה בהצלחה');
+      onUpdate?.();
+    } catch (error) {
+      console.error('❌ [UpcomingTasks] Error deleting task:', error);
+      toast.error('שגיאה במחיקת המשימה');
     }
   };
 
@@ -187,9 +204,22 @@ export default function UpcomingTasks({ tasks = [], isLoading, onUpdate }) {
                         <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
                       )}
                     </h4>
-                    <Badge variant="outline" className={`${priorityColor} text-xs flex-shrink-0 ml-2`}>
-                      {taskPriority}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className={`${priorityColor} text-xs flex-shrink-0`}>
+                        {taskPriority}
+                      </Badge>
+                      {!selectionMode && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => handleDelete(task.id, e)}
+                          className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 flex-shrink-0"
+                          title="מחק משימה"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
                   
                   <div className="flex items-center gap-4 text-sm text-slate-600">
