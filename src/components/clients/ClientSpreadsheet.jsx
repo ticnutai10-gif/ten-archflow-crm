@@ -266,10 +266,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
   const [presetToAdd, setPresetToAdd] = useState("");
   const [pendingChanges, setPendingChanges] = useState(new Map());
   const [isSaving, setIsSaving] = useState(false);
-  const [cellStyles, setCellStyles] = useState(() => {
-    const saved = loadSettings();
-    return saved?.cellStyles || {};
-  });
+  const [cellStyles, setCellStyles] = useState({});
   const [popoverOpen, setPopoverOpen] = useState(null);
   const [editingColumnKey, setEditingColumnKey] = useState(null);
   const [editingColumnTitle, setEditingColumnTitle] = useState("");
@@ -283,15 +280,9 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
 
   const [draggedColumn, setDraggedColumn] = useState(null);
 
-  const [showSubHeaders, setShowSubHeaders] = useState(() => {
-    const saved = loadSettings();
-    return saved?.showSubHeaders || false;
-  });
+  const [showSubHeaders, setShowSubHeaders] = useState(false);
 
-  const [subHeaders, setSubHeaders] = useState(() => {
-    const saved = loadSettings();
-    return saved?.subHeaders || {};
-  });
+  const [subHeaders, setSubHeaders] = useState({});
 
   const [editingSubHeader, setEditingSubHeader] = useState(null);
   const [tempSubHeaderValue, setTempSubHeaderValue] = useState('');
@@ -303,10 +294,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
   const [userPreferences, setUserPreferences] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
   const [showStageManager, setShowStageManager] = useState(false);
-  const [stageOptions, setStageOptions] = useState(() => {
-    const saved = loadSettings();
-    return saved?.stageOptions || STAGE_OPTIONS;
-  });
+  const [stageOptions, setStageOptions] = useState(STAGE_OPTIONS);
 
 
   const [newColumnName, setNewColumnName] = useState("");
