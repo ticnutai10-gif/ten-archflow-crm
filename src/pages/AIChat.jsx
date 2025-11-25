@@ -495,7 +495,15 @@ export default function AIChat() {
       }).filter(m => m.durationDays !== null);
       
       const context = `
-אתה עוזר AI חכם למערכת CRM של ${currentUser.full_name || currentUser.email}.
+אתה עוזר AI מתקדם וחכם במיוחד למערכת CRM של ${currentUser.full_name || currentUser.email}.
+
+⚡ חשוב ביותר - זיכרון והבנת הקשר:
+- אתה זוכר את כל השיחה מההתחלה, כולל כל לקוח/פרויקט/משימה שהוזכרו
+- כשמשתמש מתייחס ל"הוא", "זה", "שם" וכו' - השתמש במידע מההקשר של השיחה
+- אם משתמש אומר "קבע פגישה איתו" - אתה יודע מי "הוא" מההודעות הקודמות
+- אם משתמש שואל "מה המצב שלו?" - אתה יודע על מי מדובר
+- לעולם אל תבקש מידע שכבר ניתן בשיחה
+- היה יזום ומדויק - השתמש בפרטים מהשיחה באופן אוטומטי
 
 סיכום נתונים מפורט:
 - ${activeProjects.length} פרויקטים פעילים מתוך ${projects.length} סה"כ
@@ -577,10 +585,15 @@ ${tasks.filter(t => t.reminder_enabled).length} מתוך ${tasks.length} משי�
 5. סיכומים אינטליגנטיים: יצירת סיכומים מקצועיים של פרויקטים ולקוחות
 6. יצירת תוכן: טיוטות להצעות מחיר ומיילים מותאמים אישית
 
-הוראות קריטיות לפעולות:
-1. ענה בצורה מפורטת, מועילה ומקצועית בהתבסס על כל הנתונים
-2. כאשר מבקשים חיזוי או המלצות - נתח את הנתונים ההיסטוריים והסבר את ההיגיון
-3. הצע פעולות מעקב ספציפיות בפורמט מדויק: [ACTION: סוג_פעולה | פרמטרים]
+הוראות קריטיות לעבודה חכמה:
+1. זכור והשתמש בכל המידע מהשיחה - לעולם אל תבקש מידע שכבר ניתן
+2. הבן התייחסויות: "הוא", "זה", "שם", "איתו" - אתה יודע על מי/מה מדובר
+3. כשמשתמש מזכיר לקוח/פרויקט פעם אחת - השתמש בו לכל הפעולות הבאות
+4. היה יזום ומדויק - אל תשאל שאלות מיותרות
+5. אם יש לך את כל המידע הדרוש - בצע את הפעולה מיד
+6. ענה בצורה קצרה ומדויקת - לא צריך להסביר כל פעם מחדש
+7. אם משתמש אומר "תעשה X" ואתה יודע על מי/מה מדובר מההקשר - עשה זאת מיד
+8. הצע פעולות מעקב ספציפיות בפורמט: [ACTION: סוג_פעולה | פרמטרים]
 
 סוגי פעולות זמינים (פורמט מדויק!):
 
@@ -680,7 +693,35 @@ ${tasks.filter(t => t.reminder_enabled).length} מתוך ${tasks.length} משי�
         .map(m => `${m.role === 'user' ? 'משתמש' : 'עוזר'}: ${m.content}`)
         .join('\n\n');
 
-      const prompt = `${context}\n\nהיסטוריית השיחה עד כה:\n${conversationHistory}\n\n${conversationHistory.length > 0 ? 'המשך השיחה - ' : ''}שאלה/בקשה נוכחית: ${input}\n\nענה בהתאם להקשר המלא של השיחה. אם המשתמש מתייחס למידע שהוזכר קודם (שם לקוח, פרויקט, וכו') - השתמש בו.`;
+      // Extract mentioned entities from conversation for better context tracking
+      const mentionedClients = new Set();
+      const mentionedProjects = new Set();
+      messages.forEach(m => {
+        if (m.role === 'user' || m.role === 'assistant') {
+          clients.forEach(c => {
+            const words = c.name.split(' ');
+            if (words.some(word => word.length > 2 && m.content.includes(word))) {
+              mentionedClients.add(c.name);
+            }
+          });
+          projects.forEach(p => {
+            if (m.content.includes(p.name)) {
+              mentionedProjects.add(p.name);
+            }
+          });
+        }
+      });
+
+      const contextSummary = `
+📌 הקשר נוכחי של השיחה:
+${mentionedClients.size > 0 ? `- לקוחות שהוזכרו בשיחה: ${Array.from(mentionedClients).join(', ')}` : ''}
+${mentionedProjects.size > 0 ? `- פרויקטים שהוזכרו בשיחה: ${Array.from(mentionedProjects).join(', ')}` : ''}
+
+⚠️ חשוב: כאשר משתמש מתייחס ל"הוא", "שם", "זה", "איתו" וכו' - הוא מתכוון ללקוח/פרויקט האחרון שהוזכר בשיחה.
+אם משתמש אומר "קבע פגישה" או "שלח מייל" מבלי לציין שם - השתמש בלקוח האחרון שדובר עליו.
+`;
+
+      const prompt = `${context}\n\n${contextSummary}\n\nהיסטוריית השיחה המלאה:\n${conversationHistory}\n\n${conversationHistory.length > 0 ? 'המשך השיחה - ' : ''}הודעה נוכחית מהמשתמש: ${input}\n\n⚡ התייחס להקשר המלא! זכור את כל המידע שכבר ניתן בשיחה. אם משתמש מתייחס למשהו שהוזכר קודם - השתמש בזה מיד בלי לבקש הבהרות מיותרות.`;
 
       const result = await base44.integrations.Core.InvokeLLM({
         prompt,
