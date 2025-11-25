@@ -338,21 +338,74 @@ export default function MeetingsPage() {
         <>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold text-slate-900">פגישות</h2>
-            <Button
-              onClick={() => { setEditingMeeting(null); setSelectedDateForNew(null); setShowForm(true); }}
-              size="sm"
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              <Plus className="w-4 h-4 ml-2" />
-              חדשה
-            </Button>
+            <div className="flex gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Eye className="w-4 h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48" dir="rtl">
+                  <DropdownMenuLabel>תצוגה</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setViewMode('month')} className={viewMode === 'month' ? 'bg-slate-100' : ''}>
+                    <Grid3x3 className="w-4 h-4 ml-2" />
+                    לוח
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setViewMode('list')} className={viewMode === 'list' ? 'bg-slate-100' : ''}>
+                    <List className="w-4 h-4 ml-2" />
+                    רשימה
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setViewMode('compact')} className={viewMode === 'compact' ? 'bg-slate-100' : ''}>
+                    <Rows className="w-4 h-4 ml-2" />
+                    קומפקטי
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setViewMode('timeline')} className={viewMode === 'timeline' ? 'bg-slate-100' : ''}>
+                    <GitBranch className="w-4 h-4 ml-2" />
+                    ציר זמן
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button
+                onClick={() => { setEditingMeeting(null); setSelectedDateForNew(null); setShowForm(true); }}
+                size="sm"
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                <Plus className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
           
-          <MobileCalendarView
-            meetings={meetings}
-            onEdit={handleEdit}
-            onDateClick={handleDateClick}
-          />
+          {viewMode === 'month' ? (
+            <MobileCalendarView
+              meetings={meetings}
+              onEdit={handleEdit}
+              onDateClick={handleDateClick}
+            />
+          ) : viewMode === 'list' ? (
+            <div className="space-y-3">
+              {meetings.map(meeting => (
+                <MeetingCard
+                  key={meeting.id}
+                  meeting={meeting}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                  onStatusChange={handleStatusChange}
+                  onToggleReminder={handleToggleReminder}
+                />
+              ))}
+            </div>
+          ) : viewMode === 'compact' ? (
+            <MeetingCompactView
+              meetings={meetings}
+              onEdit={handleEdit}
+            />
+          ) : viewMode === 'timeline' ? (
+            <MeetingTimelineView
+              meetings={meetings}
+              onEdit={handleEdit}
+            />
+          ) : null}
         </>
       ) : (
         <>
