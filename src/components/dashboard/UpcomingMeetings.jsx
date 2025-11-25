@@ -3,10 +3,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { Calendar, Clock, MapPin, Users, Video, Phone, ExternalLink, Edit, Trash2, Bell, AlertCircle, X } from "lucide-react";
-import { format, isToday, isTomorrow, parseISO } from "date-fns";
+import { Calendar, Clock, MapPin, Users, Video, Phone, ExternalLink, Edit, Trash2, Bell, Mail, X } from "lucide-react";
+import { format, isToday, isTomorrow } from "date-fns";
 import { he } from "date-fns/locale";
-import { Meeting } from "@/entities/all";
+import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -57,14 +57,11 @@ export default function UpcomingMeetings({ meetings, isLoading, onUpdate }) {
   const [formData, setFormData] = useState({});
   const [saving, setSaving] = useState(false);
 
-  console.log('📅 [UPCOMING MEETINGS COMPONENT] Received meetings:', meetings);
-  console.log('📅 [UPCOMING MEETINGS COMPONENT] Meetings count:', meetings?.length || 0);
-
   const handleDelete = async (meetingId, e) => {
     e.stopPropagation();
     if (confirm('האם אתה בטוח שברצונך למחוק את הפגישה?')) {
       try {
-        await Meeting.delete(meetingId);
+        await base44.entities.Meeting.delete(meetingId);
         toast.success('הפגישה נמחקה');
         if (onUpdate) onUpdate();
       } catch (error) {
@@ -75,9 +72,6 @@ export default function UpcomingMeetings({ meetings, isLoading, onUpdate }) {
 
   const handleEdit = (meeting, e) => {
     e.stopPropagation();
-    console.log('✏️ Opening edit dialog for meeting:', meeting);
-    
-    // המרת התאריך לפורמט datetime-local
     const meetingDate = new Date(meeting.meeting_date);
     const dateTimeLocal = format(meetingDate, "yyyy-MM-dd'T'HH:mm");
     
@@ -93,13 +87,12 @@ export default function UpcomingMeetings({ meetings, isLoading, onUpdate }) {
     
     setSaving(true);
     try {
-      // המרת התאריך חזרה ל-ISO
       const updatedData = {
         ...formData,
         meeting_date: new Date(formData.meeting_date).toISOString()
       };
 
-      await Meeting.update(editingMeeting.id, updatedData);
+      await base44.entities.Meeting.update(editingMeeting.id, updatedData);
       toast.success('הפגישה עודכנה בהצלחה');
       setEditingMeeting(null);
       setFormData({});
@@ -109,20 +102,6 @@ export default function UpcomingMeetings({ meetings, isLoading, onUpdate }) {
       toast.error('שגיאה בשמירת הפגישה');
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleToggleReminder = async (meeting, e) => {
-    e.stopPropagation();
-    try {
-      await Meeting.update(meeting.id, { 
-        reminder_enabled: !meeting.reminder_enabled,
-        reminder_sent: false 
-      });
-      toast.success(meeting.reminder_enabled ? 'התזכורת כובתה' : 'התזכורת הופעלה');
-      if (onUpdate) onUpdate();
-    } catch (error) {
-      toast.error('שגיאה בעדכון התזכורת');
     }
   };
 
@@ -161,7 +140,6 @@ export default function UpcomingMeetings({ meetings, isLoading, onUpdate }) {
   return (
     <>
       <div className="h-[400px] flex flex-col">
-        {/* Header עם מספר פגישות */}
         <div className="flex-shrink-0 px-6 pt-4 pb-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -178,7 +156,6 @@ export default function UpcomingMeetings({ meetings, isLoading, onUpdate }) {
           </div>
         </div>
 
-        {/* Scrollable content */}
         <div className="flex-1 overflow-y-auto px-6 py-4">
           <div className="space-y-3">
             {meetings.map((meeting) => {
@@ -196,7 +173,6 @@ export default function UpcomingMeetings({ meetings, isLoading, onUpdate }) {
                     ${isUrgent ? 'border-indigo-200 bg-gradient-to-br from-indigo-50/50 to-white' : 'border-slate-200'}
                   `}
                 >
-                  {/* כותרת ופעולות */}
                   <div className="flex justify-between items-start mb-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-2">
@@ -213,7 +189,6 @@ export default function UpcomingMeetings({ meetings, isLoading, onUpdate }) {
                         </Badge>
                       </div>
                       
-                      {/* מידע נוסף */}
                       <div className="flex items-center gap-4 text-xs text-slate-600 flex-wrap">
                         {meeting.client_name && (
                           <div className="flex items-center gap-1.5">
@@ -235,30 +210,27 @@ export default function UpcomingMeetings({ meetings, isLoading, onUpdate }) {
                             <span className="truncate max-w-[100px]">{meeting.location}</span>
                           </div>
                         )}
+                        {meeting.reminders?.length > 0 && (
+                          <div className="flex gap-1 items-center">
+                            {meeting.reminders.map((reminder, idx) => (
+                              <span key={idx} title={`תזכורת: ${reminder.minutes_before} דקות לפני, ${reminder.method === 'in-app' ? 'באפליקציה' : reminder.method === 'email' ? 'במייל' : 'שניהם'}`}>
+                                {reminder.method === 'in-app' || reminder.method === 'both' ? <Bell className="w-3.5 h-3.5 text-blue-500" /> : null}
+                                {reminder.method === 'email' || reminder.method === 'both' ? <Mail className="w-3.5 h-3.5 text-purple-500" /> : null}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
                   
-                  {/* תיאור */}
                   {meeting.description && (
                     <p className="text-xs text-slate-600 line-clamp-2 mb-3 pr-1">
                       {meeting.description}
                     </p>
                   )}
 
-                  {/* כפתורי פעולה */}
                   <div className="flex items-center gap-2 pt-3 border-t border-slate-100">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => handleToggleReminder(meeting, e)}
-                      className={`h-8 px-3 text-xs ${meeting.reminder_enabled ? 'text-amber-600 bg-amber-50 hover:bg-amber-100' : 'text-slate-500 hover:text-amber-600 hover:bg-amber-50'}`}
-                      title={meeting.reminder_enabled ? 'כבה תזכורת' : 'הפעל תזכורת'}
-                    >
-                      <Bell className={`w-3.5 h-3.5 ml-1.5 ${meeting.reminder_enabled ? 'fill-current' : ''}`} />
-                      תזכורת
-                    </Button>
-                    
                     <Button
                       variant="ghost"
                       size="sm"
@@ -281,7 +253,6 @@ export default function UpcomingMeetings({ meetings, isLoading, onUpdate }) {
                       מחק
                     </Button>
 
-                    {/* משתתפים */}
                     {meeting.participants && meeting.participants.length > 0 && (
                       <div className="flex items-center gap-1 mr-auto">
                         <div className="flex -space-x-2">
@@ -309,7 +280,6 @@ export default function UpcomingMeetings({ meetings, isLoading, onUpdate }) {
           </div>
         </div>
         
-        {/* Fixed footer */}
         <div className="flex-shrink-0 px-6 pb-4 pt-2 border-t border-slate-100">
           <Link to={createPageUrl("Meetings")}>
             <Button variant="outline" size="sm" className="w-full text-sm hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300">
@@ -320,7 +290,6 @@ export default function UpcomingMeetings({ meetings, isLoading, onUpdate }) {
         </div>
       </div>
 
-      {/* דיאלוג עריכה */}
       {editingMeeting && (
         <Dialog open={!!editingMeeting} onOpenChange={() => setEditingMeeting(null)}>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" dir="rtl">
@@ -332,7 +301,6 @@ export default function UpcomingMeetings({ meetings, isLoading, onUpdate }) {
             </DialogHeader>
 
             <div className="space-y-4 py-4">
-              {/* כותרת */}
               <div className="space-y-2">
                 <Label>כותרת הפגישה *</Label>
                 <Input
@@ -342,7 +310,6 @@ export default function UpcomingMeetings({ meetings, isLoading, onUpdate }) {
                 />
               </div>
 
-              {/* תאריך ושעה */}
               <div className="space-y-2">
                 <Label>תאריך ושעה *</Label>
                 <Input
@@ -352,7 +319,6 @@ export default function UpcomingMeetings({ meetings, isLoading, onUpdate }) {
                 />
               </div>
 
-              {/* סוג פגישה */}
               <div className="space-y-2">
                 <Label>סוג פגישה</Label>
                 <Select
@@ -375,7 +341,6 @@ export default function UpcomingMeetings({ meetings, isLoading, onUpdate }) {
                 </Select>
               </div>
 
-              {/* סטטוס */}
               <div className="space-y-2">
                 <Label>סטטוס</Label>
                 <Select
@@ -395,7 +360,6 @@ export default function UpcomingMeetings({ meetings, isLoading, onUpdate }) {
                 </Select>
               </div>
 
-              {/* מיקום */}
               <div className="space-y-2">
                 <Label>מיקום</Label>
                 <Input
@@ -405,7 +369,6 @@ export default function UpcomingMeetings({ meetings, isLoading, onUpdate }) {
                 />
               </div>
 
-              {/* תיאור */}
               <div className="space-y-2">
                 <Label>תיאור</Label>
                 <Textarea

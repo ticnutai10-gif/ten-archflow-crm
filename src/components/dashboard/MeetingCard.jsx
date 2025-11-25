@@ -22,35 +22,11 @@ import {
   Clock,
   MapPin,
   Phone,
-  Video
+  Video,
+  Bell,
+  Mail
 } from "lucide-react";
 import { format } from "date-fns";
-
-// Define new status icons for the dropdown
-const statusIcons = {
-  'todo': <Circle className="w-4 h-4 text-gray-400" />,
-  'in_progress': <ArrowUpCircle className="w-4 h-4 text-blue-500" />,
-  'done': <CheckCircle2 className="w-4 h-4 text-green-500" />,
-};
-
-// Define color mappings for priority badges
-const priorityColors = {
-  'Low': 'bg-green-100 text-green-800 border-green-200',
-  'Medium': 'bg-yellow-100 text-yellow-800 border-yellow-200',
-  'High': 'bg-red-100 text-red-800 border-red-200',
-  // Default fallback if priority isn't matched
-  '': 'bg-gray-100 text-gray-800 border-gray-200',
-};
-
-// Define color mappings for category badges
-const categoryColors = {
-  'Work': 'bg-purple-100 text-purple-800 border-purple-200',
-  'Personal': 'bg-blue-100 text-blue-800 border-blue-200',
-  'Study': 'bg-orange-100 text-orange-800 border-orange-200',
-  // Default fallback if category isn't matched
-  '': 'bg-gray-100 text-gray-800 border-gray-200',
-};
-
 
 const statusColors = {
   'מתוכננת': 'bg-blue-100 text-blue-800 border-blue-200',
@@ -69,7 +45,7 @@ const typeIcons = {
   'פגישת מעקב': Clock
 };
 
-export default function MeetingCard({ meeting, onEdit, onDelete, onStatusChange, onToggleReminder }) {
+export default function MeetingCard({ meeting, onEdit, onDelete, onStatusChange }) {
   const TypeIcon = typeIcons[meeting.meeting_type] || Calendar;
   const meetingDate = new Date(meeting.meeting_date);
 
@@ -123,6 +99,16 @@ export default function MeetingCard({ meeting, onEdit, onDelete, onStatusChange,
                     <Users className="w-3 h-3" />
                     {meeting.client_name}
                   </Badge>
+                )}
+                {meeting.reminders?.length > 0 && (
+                  <div className="flex gap-1 items-center">
+                    {meeting.reminders.map((reminder, idx) => (
+                      <span key={idx} title={`תזכורת: ${reminder.minutes_before} דקות לפני, ${reminder.method === 'in-app' ? 'באפליקציה' : reminder.method === 'email' ? 'במייל' : 'שניהם'}`}>
+                        {reminder.method === 'in-app' || reminder.method === 'both' ? <Bell className="w-3 h-3 text-blue-500" /> : null}
+                        {reminder.method === 'email' || reminder.method === 'both' ? <Mail className="w-3 h-3 text-purple-500" /> : null}
+                      </span>
+                    ))}
+                  </div>
                 )}
               </div>
             </div>

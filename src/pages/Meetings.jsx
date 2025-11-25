@@ -20,6 +20,7 @@ import {
   ChevronRight,
   FileText,
   Bell,
+  Mail,
   Edit,
   Trash2,
   RefreshCw,
@@ -85,18 +86,6 @@ const colorClasses = {
   orange: 'bg-orange-500'
 };
 
-// Helper function to create page URLs. This is a placeholder that assumes
-// a certain URL structure for Base44 apps. In a real Base44 environment,
-// this might be provided globally or via a framework utility.
-const createPageUrl = (pageName) => {
-  // This URL path should match the base of the current application instance.
-  // For example, if the current page is /apps/{app_id}/editor/preview/MeetingsPage
-  // and we want to go to /apps/{app_id}/editor/preview/Settings, we need this base.
-  // The original code used '/apps/68a6f600fc1ba67c0b6a6b00/editor/preview/Settings'.
-  const appBaseUrl = window.location.pathname.split('/').slice(0, 6).join('/');
-  return `${appBaseUrl}/${pageName}`;
-};
-
 export default function MeetingsPage() {
   const isMobile = useIsMobile();
   const [meetings, setMeetings] = useState([]);
@@ -109,7 +98,7 @@ export default function MeetingsPage() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [viewMode, setViewMode] = useState('month');
   const [isSyncing, setIsSyncing] = useState(false);
-  const [isGoogleConnected, setIsGoogleConnected] = useState(true); // Always true with OAuth connector
+  const [isGoogleConnected, setIsGoogleConnected] = useState(true);
   const [selectedDateForNew, setSelectedDateForNew] = useState(null);
   const [showSyncManager, setShowSyncManager] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
@@ -131,12 +120,6 @@ export default function MeetingsPage() {
       const validMeetings = Array.isArray(meetingsData) ? meetingsData : [];
       const validClients = Array.isArray(clientsData) ? clientsData : [];
       const validProjects = Array.isArray(projectsData) ? projectsData : [];
-      
-      console.log('✅ [Meetings] Loaded data:', {
-        meetings: validMeetings.length,
-        clients: validClients.length,
-        projects: validProjects.length
-      });
       
       setMeetings(validMeetings);
       setClients(validClients);
@@ -197,19 +180,6 @@ export default function MeetingsPage() {
     }
   };
 
-  const handleToggleReminder = async (meeting) => {
-    try {
-      await base44.entities.Meeting.update(meeting.id, {
-        reminder_enabled: !meeting.reminder_enabled,
-        reminder_sent: false
-      });
-      toast.success(meeting.reminder_enabled ? 'התזכורת כובתה' : 'התזכורת הופעלה');
-      loadData();
-    } catch (error) {
-      toast.error('שגיאה בעדכון התזכורת');
-    }
-  };
-
   const handleSyncAll = async () => {
     setIsSyncing(true);
     try {
@@ -259,10 +229,8 @@ export default function MeetingsPage() {
   const weekStart = startOfWeek(selectedDate, { weekStartsOn: 0 });
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
-  // ✅ הגנה על getMeetingsForDate
   const getMeetingsForDate = (date) => {
     if (!Array.isArray(meetings)) {
-      console.error('❌ [Meetings] meetings is not an array!', meetings);
       return [];
     }
     
@@ -272,7 +240,6 @@ export default function MeetingsPage() {
         const meetingDate = parseISO(meeting.meeting_date);
         return isSameDay(meetingDate, date);
       } catch (e) {
-        console.error('❌ [Meetings] Error parsing meeting date:', e, meeting);
         return false;
       }
     });
@@ -285,10 +252,8 @@ export default function MeetingsPage() {
     setSelectedDate(new Date());
   };
 
-  // ✅ הגנה על upcomingMeetings
   const upcomingMeetings = useMemo(() => {
     if (!Array.isArray(meetings)) {
-      console.error('❌ [Meetings] meetings is not an array for upcomingMeetings!', meetings);
       return [];
     }
     
@@ -301,17 +266,14 @@ export default function MeetingsPage() {
                  m.status !== 'בוצעה' && 
                  m.status !== 'בוטלה';
         } catch (e) {
-          console.error('Error filtering upcoming meeting date:', e, m);
           return false;
         }
       })
       .slice(0, 5);
   }, [meetings]);
 
-  // ✅ הגנה על todayMeetings
   const todayMeetings = useMemo(() => {
     if (!Array.isArray(meetings)) {
-      console.error('❌ [Meetings] meetings is not an array for todayMeetings!', meetings);
       return [];
     }
     
@@ -321,7 +283,6 @@ export default function MeetingsPage() {
         const meetingDate = parseISO(m.meeting_date);
         return isToday(meetingDate) && m.status !== 'בוטלה';
       } catch (e) {
-        console.error('Error filtering today meeting date:', e, m);
         return false;
       }
     });
@@ -481,7 +442,6 @@ export default function MeetingsPage() {
                     onEdit={handleEdit}
                     onDelete={handleDelete}
                     onStatusChange={handleStatusChange}
-                    onToggleReminder={handleToggleReminder}
                   />
                 </div>
               ))}
@@ -500,7 +460,6 @@ export default function MeetingsPage() {
         </>
       ) : (
         <>
-      {/* Header */}
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-slate-900">פגישות</h2>
@@ -549,7 +508,6 @@ export default function MeetingsPage() {
         </div>
       </div>
 
-      {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4">
@@ -620,7 +578,6 @@ export default function MeetingsPage() {
         </Card>
       </div>
 
-      {/* בוחר תצוגה */}
       <div className="flex items-center gap-2 mb-4">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -665,7 +622,6 @@ export default function MeetingsPage() {
         </DropdownMenu>
       </div>
 
-      {/* View Mode Tabs */}
       <Tabs value={viewMode} onValueChange={setViewMode} className="w-full">
         <div className="flex justify-between items-center mb-4">
           <TabsList className="hidden">
@@ -703,19 +659,16 @@ export default function MeetingsPage() {
           </div>
         </div>
 
-        {/* Month View */}
         <TabsContent value="month" className="mt-0">
           <Card>
             <CardContent className="p-6">
               <div className="grid grid-cols-7 gap-1">
-                {/* Days of week */}
                 {['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'].map((day, i) => (
                   <div key={i} className="text-center text-sm font-semibold text-slate-600 p-2">
                     {day}
                   </div>
                 ))}
 
-                {/* Calendar days */}
                 {dateRange.map((date, i) => {
                   const dayMeetings = getMeetingsForDate(date);
                   const isCurrentMonth = isSameMonth(date, currentMonth);
@@ -738,7 +691,6 @@ export default function MeetingsPage() {
                         {format(date, 'd')}
                       </div>
 
-                      {/* הצגת פגישות */}
                       <div className="space-y-1">
                         {dayMeetings.slice(0, 2).map((meeting, idx) => (
                           <div
@@ -754,6 +706,12 @@ export default function MeetingsPage() {
                               <LinkIcon className="w-2.5 h-2.5 flex-shrink-0" title="מסונכרן עם Google Calendar" />
                             )}
                             <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                              {meeting.reminders?.map((reminder, idx) => (
+                                <span key={idx} title={`תזכורת: ${reminder.minutes_before} דקות לפני, ${reminder.method === 'in-app' ? 'באפליקציה' : reminder.method === 'email' ? 'במייל' : 'שניהם'}`}>
+                                  {reminder.method === 'in-app' || reminder.method === 'both' ? <Bell className="w-2.5 h-2.5 text-blue-300" /> : null}
+                                  {reminder.method === 'email' || reminder.method === 'both' ? <Mail className="w-2.5 h-2.5 text-purple-300" /> : null}
+                                </span>
+                              ))}
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -784,7 +742,6 @@ export default function MeetingsPage() {
                         )}
                       </div>
 
-                      {/* אייקון להוספת פגישה */}
                       <div className="absolute bottom-1 left-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <Plus className="w-4 h-4 text-blue-500" />
                       </div>
@@ -796,7 +753,6 @@ export default function MeetingsPage() {
           </Card>
         </TabsContent>
 
-        {/* Week View */}
         <TabsContent value="week" className="mt-0">
           <Card>
             <CardContent className="p-6">
@@ -830,16 +786,12 @@ export default function MeetingsPage() {
                             <div className="font-semibold mb-1">{format(parseISO(meeting.meeting_date), 'HH:mm')}</div>
                             <div className="truncate">{meeting.title}</div>
                             <div className="flex gap-1 mt-2">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleToggleReminder(meeting);
-                                }}
-                                className="hover:bg-white/20 rounded p-1"
-                                title="תזכורת"
-                              >
-                                <Bell className={`w-3 h-3 ${meeting.reminder_enabled ? 'fill-current' : ''}`} />
-                              </button>
+                              {meeting.reminders?.map((reminder, idx) => (
+                                <span key={idx} title={`תזכורת: ${reminder.minutes_before} דקות לפני, ${reminder.method === 'in-app' ? 'באפליקציה' : reminder.method === 'email' ? 'במייל' : 'שניהם'}`}>
+                                  {reminder.method === 'in-app' || reminder.method === 'both' ? <Bell className="w-3 h-3 text-blue-200" /> : null}
+                                  {reminder.method === 'email' || reminder.method === 'both' ? <Mail className="w-3 h-3 text-purple-200" /> : null}
+                                </span>
+                              ))}
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -879,7 +831,6 @@ export default function MeetingsPage() {
           </Card>
         </TabsContent>
 
-        {/* List View */}
         <TabsContent value="list" className="mt-0">
           <div className="grid gap-4">
             {isLoading ? (
@@ -899,24 +850,20 @@ export default function MeetingsPage() {
                   onEdit={handleEdit}
                   onDelete={handleDelete}
                   onStatusChange={handleStatusChange}
-                  onToggleReminder={handleToggleReminder}
                 />
               ))
             )}
           </div>
         </TabsContent>
 
-        {/* Grid View */}
         <TabsContent value="grid" className="mt-0">
           <MeetingGridView
             meetings={meetings}
             onEdit={handleEdit}
             onDelete={handleDelete}
-            onToggleReminder={handleToggleReminder}
           />
         </TabsContent>
 
-        {/* Compact View */}
         <TabsContent value="compact" className="mt-0">
           <MeetingCompactView
             meetings={meetings}
@@ -924,7 +871,6 @@ export default function MeetingsPage() {
           />
         </TabsContent>
 
-        {/* Timeline View */}
         <TabsContent value="timeline" className="mt-0">
           <MeetingTimelineView
             meetings={meetings}
@@ -932,7 +878,6 @@ export default function MeetingsPage() {
           />
         </TabsContent>
 
-        {/* AI Summary Tab */}
         <TabsContent value="ai-summary" className="mt-0">
           <AIWorkflowAutomation
             type="meeting_summary"
@@ -942,14 +887,12 @@ export default function MeetingsPage() {
         </TabsContent>
       </Tabs>
 
-      {/* Calendar Sync Manager */}
       {showSyncManager && (
         <CalendarSyncManager onClose={() => setShowSyncManager(false)} />
       )}
         </>
       )}
 
-      {/* Meeting Form - מחוץ לתנאי כדי שיעבוד גם במובייל */}
       {showForm && (
         <MeetingForm
           meeting={editingMeeting}
