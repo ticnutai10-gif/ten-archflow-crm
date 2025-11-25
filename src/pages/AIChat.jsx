@@ -586,7 +586,9 @@ ${tasks.filter(t => t.reminder_enabled).length} מתוך ${tasks.length} משי�
                                 {action.type === 'SUMMARIZE_PROJECT' && '📋'}
                                 {action.type === 'SUMMARIZE_CLIENT' && '👤'}
                                 {action.type === 'GENERATE_QUOTE_DRAFT' && '💰'}
-                                {action.type === 'GENERATE_EMAIL_DRAFT' && '✉️'}
+                                {action.type === 'GENERATE_EMAIL_DRAFT' && <Mail className="w-5 h-5 text-cyan-600" />}
+                                {action.type === 'SEND_WHATSAPP' && <MessageCircle className="w-5 h-5 text-green-600" />}
+                                {action.type === 'SUMMARIZE_COMMUNICATIONS' && <FileText className="w-5 h-5 text-amber-600" />}
                                 {action.type === 'SEND_WHATSAPP' && '💬'}
                                 {action.type === 'SUMMARIZE_COMMUNICATIONS' && '📨'}
                                 <span className="text-sm text-slate-700 flex-1 font-medium">
