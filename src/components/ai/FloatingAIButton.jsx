@@ -347,7 +347,7 @@ ${upcomingMeetings.slice(0, 3).map(m => `- ${m.title} עם ${m.participants?.joi
       {/* Chat Window */}
       {isOpen && (
         <div
-          className={`fixed ${isMobile ? 'inset-0' : 'bottom-24 right-6 w-96 h-[600px]'} z-50 bg-white ${isMobile ? '' : 'rounded-2xl'} shadow-2xl flex flex-col overflow-hidden border border-purple-200 animate-in fade-in zoom-in-95 duration-200`}
+          className={`fixed ${isMobile ? 'top-16 bottom-20 left-4 right-4' : 'bottom-24 right-6 w-96 h-[600px]'} z-50 bg-white ${isMobile ? 'rounded-2xl' : 'rounded-2xl'} shadow-2xl flex flex-col overflow-hidden border border-purple-200 animate-in fade-in zoom-in-95 duration-200`}
           dir="rtl"
         >
           {/* Header */}
