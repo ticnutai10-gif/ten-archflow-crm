@@ -31,7 +31,19 @@ const THEMES = {
   light: { bg: '#f8f9fa', text: '#1e293b' },
   ocean: { bg: '#e0f2f7', text: '#1e293b' },
   sunset: { bg: '#fff5f0', text: '#1e293b' },
-  forest: { bg: '#e8f5e9', text: '#1e293b' }
+  forest: { bg: '#e8f5e9', text: '#1e293b' },
+  midnight: { bg: '#0f0b1f', text: '#e0e7ff' },
+  gold: { bg: '#fff8e7', text: '#7c5d20' },
+  rosegold: { bg: '#fff5f7', text: '#5c3642' },
+  emerald: { bg: '#ecfdf5', text: '#064e3b' },
+  sapphire: { bg: '#eff6ff', text: '#1e3a8a' },
+  platinum: { bg: '#f5f5f7', text: '#1d1d1f' },
+  burgundy: { bg: '#fef2f2', text: '#7c2d12' },
+  navy: { bg: '#f0f4f8', text: '#172554' },
+  lavender: { bg: '#faf5ff', text: '#581c87' },
+  pearl: { bg: '#fefefe', text: '#334155' },
+  bronze: { bg: '#fef7ee', text: '#78350f' },
+  arctic: { bg: '#f0f9ff', text: '#0c4a6e' }
 };
 
 const MENU_ITEMS = [

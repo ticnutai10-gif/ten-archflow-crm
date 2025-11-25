@@ -56,6 +56,102 @@ const DEFAULT_THEMES = [
     text: '#1e293b',
     preview: '🌲',
     isDefault: true
+  },
+  { 
+    id: 'midnight', 
+    name: 'מידנייט רויאל', 
+    bg: '#0f0b1f',
+    text: '#e0e7ff',
+    preview: '👑',
+    isDefault: true
+  },
+  { 
+    id: 'gold', 
+    name: 'זהב יוקרתי', 
+    bg: '#fff8e7',
+    text: '#7c5d20',
+    preview: '✨',
+    isDefault: true
+  },
+  { 
+    id: 'rosegold', 
+    name: 'רוז גולד', 
+    bg: '#fff5f7',
+    text: '#5c3642',
+    preview: '💎',
+    isDefault: true
+  },
+  { 
+    id: 'emerald', 
+    name: 'אמרלד פרימיום', 
+    bg: '#ecfdf5',
+    text: '#064e3b',
+    preview: '💚',
+    isDefault: true
+  },
+  { 
+    id: 'sapphire', 
+    name: 'ספיר אלגנטי', 
+    bg: '#eff6ff',
+    text: '#1e3a8a',
+    preview: '💙',
+    isDefault: true
+  },
+  { 
+    id: 'platinum', 
+    name: 'פלטינה', 
+    bg: '#f5f5f7',
+    text: '#1d1d1f',
+    preview: '⚪',
+    isDefault: true
+  },
+  { 
+    id: 'burgundy', 
+    name: 'בורדו מלכותי', 
+    bg: '#fef2f2',
+    text: '#7c2d12',
+    preview: '🍷',
+    isDefault: true
+  },
+  { 
+    id: 'navy', 
+    name: 'נייבי פרימיום', 
+    bg: '#f0f4f8',
+    text: '#172554',
+    preview: '⚓',
+    isDefault: true
+  },
+  { 
+    id: 'lavender', 
+    name: 'לבנדר יוקרתי', 
+    bg: '#faf5ff',
+    text: '#581c87',
+    preview: '🪻',
+    isDefault: true
+  },
+  { 
+    id: 'pearl', 
+    name: 'פנינה', 
+    bg: '#fefefe',
+    text: '#334155',
+    preview: '🤍',
+    isDefault: true
+  },
+  { 
+    id: 'bronze', 
+    name: 'ברונזה אנטיקה', 
+    bg: '#fef7ee',
+    text: '#78350f',
+    preview: '🥉',
+    isDefault: true
+  },
+  { 
+    id: 'arctic', 
+    name: 'ארקטי קר', 
+    bg: '#f0f9ff',
+    text: '#0c4a6e',
+    preview: '❄️',
+    isDefault: true
   }
 ];
 
