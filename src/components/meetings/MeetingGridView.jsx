@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, MapPin, Users, Edit, Trash2, Bell, Link as LinkIcon } from 'lucide-react';
+import { Calendar, Clock, MapPin, Users, Edit, Trash2, Bell, Mail, Link as LinkIcon } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { he } from 'date-fns/locale';
 
@@ -24,7 +24,7 @@ const colorClasses = {
   orange: 'border-r-orange-500'
 };
 
-export default function MeetingGridView({ meetings, onEdit, onDelete, onToggleReminder }) {
+export default function MeetingGridView({ meetings, onEdit, onDelete }) {
   if (!meetings || meetings.length === 0) {
     return (
       <div className="text-center py-12">
@@ -81,17 +81,20 @@ export default function MeetingGridView({ meetings, onEdit, onDelete, onToggleRe
                     <span className="truncate">{meeting.client_name}</span>
                   </div>
                 )}
+
+                {meeting.reminders?.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    {meeting.reminders.map((reminder, idx) => (
+                      <span key={idx} title={`תזכורת: ${reminder.minutes_before} דקות לפני, ${reminder.method === 'in-app' ? 'באפליקציה' : reminder.method === 'email' ? 'במייל' : 'שניהם'}`}>
+                        {reminder.method === 'in-app' || reminder.method === 'both' ? <Bell className="w-4 h-4 text-blue-500" /> : null}
+                        {reminder.method === 'email' || reminder.method === 'both' ? <Mail className="w-4 h-4 text-purple-500" /> : null}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onToggleReminder?.(meeting)}
-                  className="flex-1"
-                >
-                  <Bell className={`w-4 h-4 ${meeting.reminder_enabled ? 'fill-current' : ''}`} />
-                </Button>
                 <Button
                   variant="outline"
                   size="sm"
