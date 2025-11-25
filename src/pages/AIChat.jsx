@@ -203,45 +203,51 @@ export default function AIChat() {
         
       } else if (action.type === 'SCHEDULE_MEETING') {
         console.log('📅 Scheduling meeting...');
-        
-        // Build title from available info if not provided
-        const title = params.title || 
-                     (params.client_name ? `פגישה עם ${params.client_name}` : 'פגישה חדשה');
-        
-        // Handle different date formats
+
+        // Parse date_time more intelligently
         let meetingDate = null;
-        
-        // Option 1: date_time as ISO string (e.g., "2025-11-23T13:00:00")
+
         if (params.date_time) {
           meetingDate = params.date_time;
-        }
-        // Option 2: Separate date and time
-        else if (params.date && params.time) {
-          meetingDate = `${params.date}T${params.time}:00`;
-        }
-        // Option 3: Just date
-        else if (params.date) {
+        } else if (params.date && params.time) {
           let dateStr = params.date;
-          
+          let timeStr = params.time;
+
           // Handle relative dates
-          if (dateStr === 'מחר') {
+          if (dateStr === 'מחר' || dateStr.includes('מחר')) {
             const tomorrow = new Date();
             tomorrow.setDate(tomorrow.getDate() + 1);
             dateStr = tomorrow.toISOString().split('T')[0];
           } else if (dateStr === 'היום') {
             dateStr = new Date().toISOString().split('T')[0];
           }
-          
-          // Add default time if not provided
-          const time = params.time || '09:00';
-          meetingDate = `${dateStr}T${time}:00`;
-        }
-        // Option 4: No date provided - use tomorrow at 10:00
-        else {
+
+          // Ensure time has seconds
+          if (!timeStr.includes(':00:00') && timeStr.split(':').length === 2) {
+            timeStr = timeStr + ':00';
+          }
+
+          meetingDate = `${dateStr}T${timeStr}`;
+        } else if (params.date) {
+          let dateStr = params.date;
+          if (dateStr === 'מחר' || dateStr.includes('מחר')) {
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            dateStr = tomorrow.toISOString().split('T')[0];
+          } else if (dateStr === 'היום') {
+            dateStr = new Date().toISOString().split('T')[0];
+          }
+          meetingDate = `${dateStr}T10:00:00`;
+        } else {
+          // No date provided - use tomorrow at 10:00
           const tomorrow = new Date();
           tomorrow.setDate(tomorrow.getDate() + 1);
           meetingDate = `${tomorrow.toISOString().split('T')[0]}T10:00:00`;
         }
+
+        // Build title from available info if not provided
+        const title = params.title || 
+                     (params.client_name ? `פגישה עם ${params.client_name}` : 'פגישה חדשה');
         
         // Smart client matching
         let clientId = params.client_id;
@@ -505,6 +511,13 @@ export default function AIChat() {
 - לעולם אל תבקש מידע שכבר ניתן בשיחה
 - היה יזום ומדויק - השתמש בפרטים מהשיחה באופן אוטומטי
 
+🚀 חשוב מאוד - ביצוע פעולות מיידי:
+- אם משתמש מבקש פעולה (קבע פגישה, צור משימה, שלח מייל) - תצע פעולה מיד!
+- אל תשאל שאלות אם יש מספיק מידע מההקשר
+- אם חסרים פרטים קריטיים בלבד - השלם אותם בעצמך באופן סביר
+- תאריך חסר? השתמש במחר. שעה חסרת? 10:00. נושא חסר? צור נושא על בסיס ההקשר
+- הצג את הפעולה בפורמט [ACTION] והסבר בקצרה מה עשית
+
 סיכום נתונים מפורט:
 - ${activeProjects.length} פרויקטים פעילים מתוך ${projects.length} סה"כ
 - ${clients.length} לקוחות במערכת
@@ -590,10 +603,10 @@ ${tasks.filter(t => t.reminder_enabled).length} מתוך ${tasks.length} משי�
 2. הבן התייחסויות: "הוא", "זה", "שם", "איתו" - אתה יודע על מי/מה מדובר
 3. כשמשתמש מזכיר לקוח/פרויקט פעם אחת - השתמש בו לכל הפעולות הבאות
 4. היה יזום ומדויק - אל תשאל שאלות מיותרות
-5. אם יש לך את כל המידע הדרוש - בצע את הפעולה מיד
-6. ענה בצורה קצרה ומדויקת - לא צריך להסביר כל פעם מחדש
-7. אם משתמש אומר "תעשה X" ואתה יודע על מי/מה מדובר מההקשר - עשה זאת מיד
-8. הצע פעולות מעקב ספציפיות בפורמט: [ACTION: סוג_פעולה | פרמטרים]
+5. אם משתמש מבקש פעולה - בצע אותה מיד עם המידע שיש! אל תשאל הבהרות
+6. פרטים חסרים? השלם בעצמך: תאריך=מחר, שעה=10:00, נושא=לפי הקשר
+7. ענה בצורה קצרה - הצג [ACTION] והסבר בקצרה
+8. פורמט מדויק: [ACTION: סוג_פעולה | פרמטר1: ערך, פרמטר2: ערך]
 
 סוגי פעולות זמינים (פורמט מדויק!):
 
@@ -608,12 +621,11 @@ ${tasks.filter(t => t.reminder_enabled).length} מתוך ${tasks.length} משי�
 * client_name - השתמש בשם המדויק מרשימת הלקוחות!
 
 📅 SCHEDULE_MEETING - דוגמה:
-[ACTION: SCHEDULE_MEETING | title: שם הפגישה, date_time: 2025-11-23T14:00:00, client_name: שם הלקוח המדויק מהרשימה, location: מיקום, description: תיאור]
-* date_time חייב להיות בפורמט: YYYY-MM-DDTHH:MM:SS (לדוגמה: 2025-11-23T14:00:00)
-* או שימוש ב: date: 2025-11-23, time: 14:00 (נפרד)
-* title הוא שדה חובה!
-* client_name - חובה להשתמש בשם המדויק מרשימת הלקוחות למעלה!
-* אם לא מצוין תאריך - משתמש במחר בשעה 10:00
+[ACTION: SCHEDULE_MEETING | title: פגישה עם שם הלקוח, date_time: 2025-11-26T10:00:00, client_name: שם הלקוח המדויק, location: משרד, description: פגישת תיאום]
+* date_time: YYYY-MM-DDTHH:MM:SS - אם לא מצוין תאריך, השתמש במחר בשעה שמצוינה או 10:00
+* title: חובה! אם לא מצוין, צור כותרת מתאימה (למשל "פגישה עם [שם לקוח]")
+* client_name: השתמש בשם מהשיחה או מרשימת הלקוחות
+* אם משתמש אומר "קבע פגישה איתו מחר בשעה 4" - צור פגישה למחר ב-16:00 עם הלקוח מההקשר!
 
 🎯 UPDATE_CLIENT_STAGE - דוגמה:
 [ACTION: UPDATE_CLIENT_STAGE | clients: שם לקוח מדויק 1;שם לקוח מדויק 2, stage: ביצוע]
@@ -866,11 +878,16 @@ ${mentionedProjects.size > 0 ? `- פרויקטים שהוזכרו בשיחה: ${
                                 </span>
                                 <Button
                                   size="sm"
-                                  onClick={(e) => {
+                                  onClick={async (e) => {
                                     e.preventDefault();
                                     e.stopPropagation();
                                     console.log('🖱️ Button clicked!', action);
-                                    executeAction(action);
+                                    try {
+                                      await executeAction(action);
+                                    } catch (error) {
+                                      console.error('❌ Error executing action:', error);
+                                      toast.error('שגיאה בביצוע: ' + error.message);
+                                    }
                                   }}
                                   className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
                                 >
