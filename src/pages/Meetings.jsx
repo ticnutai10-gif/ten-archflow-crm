@@ -334,7 +334,6 @@ export default function MeetingsPage() {
 
   return (
     <div className={`space-y-6 ${isMobile ? 'p-3' : 'p-6 lg:p-8'}`} dir="rtl">
-      {/* תצוגת מובייל */}
       {isMobile ? (
         <>
           <div className="flex items-center justify-between mb-4">
@@ -799,7 +798,14 @@ export default function MeetingsPage() {
         </TabsContent>
       </Tabs>
 
-      {/* Meeting Form */}
+      {/* Calendar Sync Manager */}
+      {showSyncManager && (
+        <CalendarSyncManager onClose={() => setShowSyncManager(false)} />
+      )}
+        </>
+      )}
+
+      {/* Meeting Form - מחוץ לתנאי כדי שיעבוד גם במובייל */}
       {showForm && (
         <MeetingForm
           meeting={editingMeeting}
@@ -813,13 +819,6 @@ export default function MeetingsPage() {
             setSelectedDateForNew(null);
           }}
         />
-      )}
-
-      {/* Calendar Sync Manager */}
-      {showSyncManager && (
-        <CalendarSyncManager onClose={() => setShowSyncManager(false)} />
-      )}
-        </>
       )}
     </div>
   );
