@@ -112,6 +112,8 @@ export default function MeetingsPage() {
   const [isGoogleConnected, setIsGoogleConnected] = useState(true); // Always true with OAuth connector
   const [selectedDateForNew, setSelectedDateForNew] = useState(null);
   const [showSyncManager, setShowSyncManager] = useState(false);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedMeetings, setSelectedMeetings] = useState([]);
 
   useEffect(() => {
     loadData();
@@ -332,6 +334,47 @@ export default function MeetingsPage() {
     setShowForm(true);
   };
 
+  const toggleSelection = (meetingId) => {
+    setSelectedMeetings(prev =>
+      prev.includes(meetingId)
+        ? prev.filter(id => id !== meetingId)
+        : [...prev, meetingId]
+    );
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedMeetings.length === 0) return;
+    if (!confirm(`האם למחוק ${selectedMeetings.length} פגישות?`)) return;
+
+    try {
+      await Promise.all(selectedMeetings.map(id => base44.entities.Meeting.delete(id)));
+      toast.success('הפגישות נמחקו בהצלחה');
+      setSelectedMeetings([]);
+      setSelectionMode(false);
+      loadData();
+    } catch (error) {
+      toast.error('שגיאה במחיקת הפגישות');
+    }
+  };
+
+  const handleBulkCopy = async () => {
+    if (selectedMeetings.length === 0) return;
+
+    try {
+      const meetingsToCopy = meetings.filter(m => selectedMeetings.includes(m.id));
+      await Promise.all(meetingsToCopy.map(m => {
+        const { id, created_date, updated_date, created_by, google_calendar_event_id, ...rest } = m;
+        return base44.entities.Meeting.create(rest);
+      }));
+      toast.success('הפגישות שוכפלו בהצלחה');
+      setSelectedMeetings([]);
+      setSelectionMode(false);
+      loadData();
+    } catch (error) {
+      toast.error('שגיאה בשכפול הפגישות');
+    }
+  };
+
   return (
     <div className={`space-y-6 ${isMobile ? 'p-3' : 'p-6 lg:p-8'}`} dir="rtl">
       {isMobile ? (
@@ -367,6 +410,16 @@ export default function MeetingsPage() {
                 </DropdownMenuContent>
               </DropdownMenu>
               <Button
+                variant={selectionMode ? "default" : "outline"}
+                size="sm"
+                onClick={() => {
+                  setSelectionMode(!selectionMode);
+                  setSelectedMeetings([]);
+                }}
+              >
+                <CheckCircle className="w-4 h-4" />
+              </Button>
+              <Button
                 onClick={() => { setEditingMeeting(null); setSelectedDateForNew(null); setShowForm(true); }}
                 size="sm"
                 className="bg-blue-600 hover:bg-blue-700"
@@ -375,6 +428,33 @@ export default function MeetingsPage() {
               </Button>
             </div>
           </div>
+
+          {selectionMode && selectedMeetings.length > 0 && (
+            <div className="mb-4 p-3 bg-blue-50 rounded-lg flex items-center justify-between">
+              <span className="text-sm font-medium text-blue-900">
+                נבחרו {selectedMeetings.length} פגישות
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleBulkCopy}
+                  className="bg-white"
+                >
+                  <RefreshCw className="w-4 h-4 ml-1" />
+                  העתק
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={handleBulkDelete}
+                >
+                  <Trash2 className="w-4 h-4 ml-1" />
+                  מחק
+                </Button>
+              </div>
+            </div>
+          )}
           
           {viewMode === 'month' ? (
             <MobileCalendarView
@@ -385,14 +465,25 @@ export default function MeetingsPage() {
           ) : viewMode === 'list' ? (
             <div className="space-y-3">
               {meetings.map(meeting => (
-                <MeetingCard
-                  key={meeting.id}
-                  meeting={meeting}
-                  onEdit={handleEdit}
-                  onDelete={handleDelete}
-                  onStatusChange={handleStatusChange}
-                  onToggleReminder={handleToggleReminder}
-                />
+                <div key={meeting.id} className="relative">
+                  {selectionMode && (
+                    <div className="absolute top-2 left-2 z-10">
+                      <input
+                        type="checkbox"
+                        checked={selectedMeetings.includes(meeting.id)}
+                        onChange={() => toggleSelection(meeting.id)}
+                        className="w-5 h-5 rounded border-slate-300"
+                      />
+                    </div>
+                  )}
+                  <MeetingCard
+                    meeting={meeting}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                    onStatusChange={handleStatusChange}
+                    onToggleReminder={handleToggleReminder}
+                  />
+                </div>
               ))}
             </div>
           ) : viewMode === 'compact' ? (
