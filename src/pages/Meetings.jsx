@@ -28,7 +28,8 @@ import {
   Loader2,
   Download,
   Upload,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Sparkles
 } from "lucide-react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek, parseISO, addDays } from "date-fns";
 import { he } from "date-fns/locale";
@@ -37,6 +38,7 @@ import MeetingForm from "../components/dashboard/MeetingForm";
 import MeetingCard from "../components/dashboard/MeetingCard";
 import CalendarSyncManager from "../components/calendar/CalendarSyncManager";
 import ExportToCalendarButton from "../components/calendar/ExportToCalendarButton";
+import AIWorkflowAutomation from "../components/ai/AIWorkflowAutomation";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -456,6 +458,10 @@ export default function MeetingsPage() {
               <List className="w-4 h-4" />
               רשימה
             </TabsTrigger>
+            <TabsTrigger value="ai-summary" className="gap-2">
+              <Sparkles className="w-4 h-4" />
+              סיכום AI
+            </TabsTrigger>
           </TabsList>
 
           <div className="flex items-center gap-2">
@@ -675,6 +681,15 @@ export default function MeetingsPage() {
               ))
             )}
           </div>
+        </TabsContent>
+
+        {/* AI Summary Tab */}
+        <TabsContent value="ai-summary" className="mt-0">
+          <AIWorkflowAutomation
+            type="meeting_summary"
+            context={{}}
+            onActionTaken={loadData}
+          />
         </TabsContent>
       </Tabs>
 

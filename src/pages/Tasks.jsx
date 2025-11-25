@@ -320,6 +320,19 @@ export default function TasksPage() {
                     </div>
                   </DropdownMenuItem>
                 ))}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => setViewMode('ai-assistant')}
+                  className={viewMode === 'ai-assistant' ? "bg-blue-50 font-semibold text-blue-700" : ""}
+                >
+                  <div className="flex items-start gap-3 w-full">
+                    <Sparkles className="w-4 h-4 mt-0.5 flex-shrink-0 text-purple-600" />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium">עוזר AI</div>
+                      <div className="text-xs text-slate-500 mt-0.5">סיווג והמלצות חכמות</div>
+                    </div>
+                  </div>
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
 
@@ -618,6 +631,21 @@ export default function TasksPage() {
                         clients={clients}
                         projects={projects}
                       />
+                    )}
+
+                    {viewMode === 'ai-assistant' && (
+                      <div className="space-y-6">
+                        <AIWorkflowAutomation
+                          type="task_classification"
+                          context={{}}
+                          onActionTaken={loadTasks}
+                        />
+                        <AIWorkflowAutomation
+                          type="action_suggestions"
+                          context={{}}
+                          onActionTaken={loadTasks}
+                        />
+                      </div>
                     )}
                   </>
                 )}
