@@ -1,19 +1,38 @@
-import React, { useState } from 'react';
-import { Menu, Search, Building2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Menu, Search, Building2, LogIn, LogOut, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import NotificationBell from '../notifications/NotificationBell';
+import { base44 } from '@/api/base44Client';
 
 export default function MobileHeader({ onMenuClick, title = 'CRM', onSearch }) {
   const [showSearch, setShowSearch] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [user, setUser] = useState(null);
+
+  // Load user
+  useEffect(() => {
+    base44.auth.me()
+      .then(setUser)
+      .catch(() => setUser(null));
+  }, []);
 
   const handleSearch = () => {
     if (onSearch) {
       onSearch(searchTerm);
       setShowSearch(false);
     }
+  };
+
+  const handleLogout = async () => {
+    if (confirm('האם אתה בטוח שברצונך להתנתק?')) {
+      await base44.auth.logout();
+    }
+  };
+
+  const handleLogin = async () => {
+    await base44.auth.redirectToLogin();
   };
 
   // Close search on Escape
@@ -58,11 +77,32 @@ export default function MobileHeader({ onMenuClick, title = 'CRM', onSearch }) {
               variant="ghost"
               size="icon"
               onClick={() => setShowSearch(true)}
-              className="text-white hover:bg-white/20 w-12 h-12 rounded-xl active:scale-95 transition-transform"
+              className="text-white hover:bg-white/20 w-10 h-10 rounded-xl active:scale-95 transition-transform"
             >
-              <Search className="w-6 h-6" />
+              <Search className="w-5 h-5" />
             </Button>
             <NotificationBell />
+            {user ? (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleLogout}
+                className="text-white hover:bg-white/20 w-10 h-10 rounded-xl active:scale-95 transition-transform"
+                title="התנתק"
+              >
+                <LogOut className="w-5 h-5" />
+              </Button>
+            ) : (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleLogin}
+                className="text-white hover:bg-white/20 w-10 h-10 rounded-xl active:scale-95 transition-transform"
+                title="התחבר"
+              >
+                <LogIn className="w-5 h-5" />
+              </Button>
+            )}
           </div>
         </div>
       </div>
