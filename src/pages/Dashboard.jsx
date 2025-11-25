@@ -51,6 +51,7 @@ import TimelineView from "../components/dashboard/TimelineView";
 import AnalyticsView from "../components/dashboard/AnalyticsView";
 import HeatmapView from "../components/dashboard/HeatmapView";
 import TrendsView from "../components/dashboard/TrendsView";
+import AIInsightsPanel from "../components/ai/AIInsightsPanel";
 import { useIsMobile } from "../components/utils/useMediaQuery";
 
 const VIEW_MODE_OPTIONS = [
@@ -113,6 +114,7 @@ export default function Dashboard() {
       const saved = localStorage.getItem('dashboard-cards-order');
       return saved ? JSON.parse(saved) : [
         { id: 'stats', name: 'סטטיסטיקות', visible: true, size: 'full' },
+        { id: 'aiInsights', name: 'תובנות AI', visible: true, size: 'large' },
         { id: 'projectsOverview', name: 'סקירת פרויקטים', visible: true, size: 'large' },
         { id: 'recentProjects', name: 'פרויקטים אחרונים', visible: true, size: 'medium' },
         { id: 'recentClients', name: 'לקוחות אחרונים', visible: true, size: 'medium' },
@@ -124,6 +126,7 @@ export default function Dashboard() {
     } catch {
       return [
         { id: 'stats', name: 'סטטיסטיקות', visible: true, size: 'full' },
+        { id: 'aiInsights', name: 'תובנות AI', visible: true, size: 'large' },
         { id: 'projectsOverview', name: 'סקירת פרויקטים', visible: true, size: 'large' },
         { id: 'recentProjects', name: 'פרויקטים אחרונים', visible: true, size: 'medium' },
         { id: 'recentClients', name: 'לקוחות אחרונים', visible: true, size: 'medium' },
@@ -667,6 +670,14 @@ export default function Dashboard() {
               if (!card.visible) return null;
               
               const sizeClass = getSizeClass(card.size);
+
+              if (card.id === 'aiInsights') {
+                return (
+                  <div key={card.id} className={sizeClass}>
+                    <AIInsightsPanel />
+                  </div>
+                );
+              }
 
               if (card.id === 'projectsOverview') {
                 return (
