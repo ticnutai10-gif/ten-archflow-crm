@@ -13,6 +13,80 @@ export default function AIChat() {
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef(null);
 
+  // Smart fuzzy matching for client/user names
+  const findBestMatch = (searchName, entityList, nameField = 'name') => {
+    if (!searchName || !entityList || entityList.length === 0) return null;
+    
+    const cleanName = (str) => str.toLowerCase().trim().replace(/\s+/g, ' ');
+    const searchClean = cleanName(searchName);
+    
+    // Calculate similarity score (Levenshtein-like)
+    const similarity = (str1, str2) => {
+      const longer = str1.length > str2.length ? str1 : str2;
+      const shorter = str1.length > str2.length ? str2 : str1;
+      
+      if (longer.length === 0) return 1.0;
+      
+      const editDistance = (s1, s2) => {
+        s1 = s1.toLowerCase();
+        s2 = s2.toLowerCase();
+        const costs = [];
+        for (let i = 0; i <= s1.length; i++) {
+          let lastValue = i;
+          for (let j = 0; j <= s2.length; j++) {
+            if (i === 0) {
+              costs[j] = j;
+            } else if (j > 0) {
+              let newValue = costs[j - 1];
+              if (s1.charAt(i - 1) !== s2.charAt(j - 1)) {
+                newValue = Math.min(Math.min(newValue, lastValue), costs[j]) + 1;
+              }
+              costs[j - 1] = lastValue;
+              lastValue = newValue;
+            }
+          }
+          if (i > 0) costs[s2.length] = lastValue;
+        }
+        return costs[s2.length];
+      };
+      
+      return (longer.length - editDistance(longer, shorter)) / longer.length;
+    };
+    
+    // Find matches
+    const matches = entityList.map(entity => {
+      const entityName = cleanName(entity[nameField] || '');
+      const score = similarity(searchClean, entityName);
+      
+      // Bonus for exact substring match
+      if (entityName.includes(searchClean) || searchClean.includes(entityName)) {
+        return { entity, score: score + 0.2, exact: false };
+      }
+      
+      // Check for exact match
+      if (entityName === searchClean) {
+        return { entity, score: 1.0, exact: true };
+      }
+      
+      return { entity, score, exact: false };
+    }).filter(m => m.score > 0.5); // Only consider matches above 50% similarity
+    
+    if (matches.length === 0) return null;
+    
+    // Sort by score
+    matches.sort((a, b) => b.score - a.score);
+    
+    return {
+      match: matches[0].entity,
+      confidence: matches[0].score,
+      isExact: matches[0].exact,
+      alternatives: matches.slice(1, 3).map(m => ({ 
+        name: m.entity[nameField], 
+        score: m.score 
+      }))
+    };
+  };
+
   const executeAction = async (action) => {
     console.log('🚀 Executing action:', action);
     
@@ -111,20 +185,24 @@ export default function AIChat() {
           meetingDate = `${tomorrow.toISOString().split('T')[0]}T10:00:00`;
         }
         
-        // Find client by name if provided
+        // Smart client matching
         let clientId = params.client_id;
         let clientName = params.client_name;
         
         if (clientName && !clientId) {
           try {
             const clients = await base44.entities.Client.list();
-            const client = clients.find(c => 
-              c.name?.includes(clientName.trim()) || 
-              c.name?.toLowerCase() === clientName.toLowerCase()
-            );
-            if (client) {
-              clientId = client.id;
-              clientName = client.name;
+            const result = findBestMatch(clientName, clients, 'name');
+            
+            if (result) {
+              clientId = result.match.id;
+              clientName = result.match.name;
+              
+              if (!result.isExact && result.confidence < 0.9) {
+                toast.info(`🔍 השתמשתי ב"${result.match.name}" (${Math.round(result.confidence * 100)}% התאמה)`);
+              }
+            } else {
+              toast.warning(`⚠️ לא מצאתי לקוח בשם "${clientName}"`);
             }
           } catch (e) {
             console.warn('Could not fetch clients:', e);
@@ -159,21 +237,31 @@ export default function AIChat() {
         
         const allClients = await base44.entities.Client.list();
         let updated = 0;
+        const warnings = [];
         
         for (const clientIdentifier of clientsToUpdate) {
-          const client = allClients.find(c => 
-            c.name?.includes(clientIdentifier.trim()) || 
-            c.id === clientIdentifier.trim()
-          );
+          const result = findBestMatch(clientIdentifier.trim(), allClients, 'name');
           
-          if (client) {
-            await base44.entities.Client.update(client.id, { stage: newStage });
+          if (result) {
+            await base44.entities.Client.update(result.match.id, { stage: newStage });
             updated++;
+            
+            if (!result.isExact && result.confidence < 0.9) {
+              warnings.push(`השתמשתי ב"${result.match.name}" במקום "${clientIdentifier}" (${Math.round(result.confidence * 100)}%)`);
+            }
+          } else {
+            warnings.push(`לא מצאתי: "${clientIdentifier}"`);
           }
         }
         
         console.log(`✅ Updated ${updated} clients`);
         toast.success(`🎯 ${updated} לקוחות עודכנו לשלב ${newStage}!`);
+        
+        if (warnings.length > 0) {
+          setTimeout(() => {
+            warnings.forEach(w => toast.info(`ℹ️ ${w}`));
+          }, 500);
+        }
         
       } else if (action.type === 'PREDICT_TIMELINE') {
         toast.info(`📊 חיזוי ציר זמן לפרויקט "${params.project_name}" בוצע - ראה תוצאות בצ'אט`);
@@ -222,8 +310,35 @@ export default function AIChat() {
         
       } else if (action.type === 'SEND_WHATSAPP') {
         console.log('💬 Sending WhatsApp...');
-        const phone = params.phone?.replace(/\D/g, '');
+        let phone = params.phone?.replace(/\D/g, '');
         const message = params.message || params.body;
+        const clientNameForPhone = params.client_name;
+        
+        // If client name provided but no phone, try to find it
+        if (!phone && clientNameForPhone) {
+          try {
+            const clients = await base44.entities.Client.list();
+            const result = findBestMatch(clientNameForPhone, clients, 'name');
+            
+            if (result) {
+              phone = (result.match.whatsapp || result.match.phone)?.replace(/\D/g, '');
+              
+              if (phone) {
+                if (!result.isExact && result.confidence < 0.9) {
+                  toast.info(`🔍 מצאתי את ${result.match.name} (${Math.round(result.confidence * 100)}% התאמה)`);
+                }
+              } else {
+                toast.error(`⚠️ לקוח "${result.match.name}" לא מוגדר עם מספר WhatsApp`);
+                return;
+              }
+            } else {
+              toast.error(`⚠️ לא מצאתי לקוח בשם "${clientNameForPhone}"`);
+              return;
+            }
+          } catch (e) {
+            console.warn('Could not fetch clients:', e);
+          }
+        }
         
         if (!phone || !message) {
           toast.error('חסר מספר טלפון או הודעה');
@@ -441,9 +556,13 @@ ${tasks.filter(t => t.reminder_enabled).length} מתוך ${tasks.length} משי�
 
 💬 SEND_WHATSAPP - שליחת הודעת WhatsApp:
 [ACTION: SEND_WHATSAPP | phone: מספר טלפון (עם קידומת בינלאומית), message: תוכן ההודעה]
+או
+[ACTION: SEND_WHATSAPP | client_name: שם הלקוח, message: תוכן ההודעה]
 * פותח WhatsApp Web עם ההודעה מוכנה לשליחה
 * phone חייב להיות במספר מלא עם קידומת (לדוגמה: 972501234567)
+* אפשר גם לציין client_name והמערכת תמצא את הטלפון אוטומטית
 * דוגמה: phone: 972501234567, message: שלום! רציתי לעדכן...
+* או: client_name: משה כהן, message: שלום! רציתי לעדכן...
 
 📨 SUMMARIZE_COMMUNICATIONS - סיכום תקשורת עם לקוח:
 [ACTION: SUMMARIZE_COMMUNICATIONS | client_name: שם הלקוח, days_back: 30]
@@ -457,6 +576,8 @@ ${tasks.filter(t => t.reminder_enabled).length} מתוך ${tasks.length} משי�
 - כל הפרמטרים מופרדים בפסיק ורווח: ", "
 - משתמש ב-"date_time" ולא ב-"date" ו-"time" נפרדים (אלא אם כן ממש צריך)
 - כותרת (title) היא חובה בפגישות!
+- שמות לקוחות: המערכת תמצא התאמה אוטומטית גם אם יש שגיאות כתיב קלות (fuzzy matching)
+- אם יש התאמה לא מדויקת (מתחת ל-90%), המשתמש יקבל התראה על ההתאמה שנמצאה
 4. כשמשתמש מבקש עזרה, הצע פעולות קונקרטיות שיעזרו לו
 5. השתמש במידע ההיסטורי כדי לתת המלצות חכמות, מבוססות-נתונים ומותאמות אישית
 6. בחיזויים - ציין את רמת הביטחון והנחות היסוד
