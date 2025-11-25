@@ -17,8 +17,9 @@ export default function AIChat() {
   const findBestMatch = (searchName, entityList, nameField = 'name') => {
     if (!searchName || !entityList || entityList.length === 0) return null;
     
-    const cleanName = (str) => str.toLowerCase().trim().replace(/\s+/g, ' ');
+    const cleanName = (str) => str.toLowerCase().trim().replace(/\s+/g, ' ').replace(/[״"]/g, '');
     const searchClean = cleanName(searchName);
+    const searchWords = searchClean.split(' ').filter(w => w.length > 0);
     
     // Calculate similarity score (Levenshtein-like)
     const similarity = (str1, str2) => {
@@ -53,28 +54,85 @@ export default function AIChat() {
       return (longer.length - editDistance(longer, shorter)) / longer.length;
     };
     
+    // Check if all search words appear in entity name (in any order)
+    const containsAllWords = (entityName, searchWords) => {
+      return searchWords.every(word => entityName.includes(word));
+    };
+    
     // Find matches
     const matches = entityList.map(entity => {
       const entityName = cleanName(entity[nameField] || '');
-      const score = similarity(searchClean, entityName);
+      const entityWords = entityName.split(' ').filter(w => w.length > 0);
       
-      // Bonus for exact substring match
-      if (entityName.includes(searchClean) || searchClean.includes(entityName)) {
-        return { entity, score: score + 0.2, exact: false };
-      }
-      
-      // Check for exact match
+      // 1. Check for exact match
       if (entityName === searchClean) {
-        return { entity, score: 1.0, exact: true };
+        return { entity, score: 1.0, exact: true, reason: 'exact' };
       }
       
-      return { entity, score, exact: false };
-    }).filter(m => m.score > 0.5); // Only consider matches above 50% similarity
+      // 2. Check if all search words exist in entity name (any order)
+      if (containsAllWords(entityName, searchWords)) {
+        return { entity, score: 0.95, exact: false, reason: 'all_words' };
+      }
+      
+      // 3. Check if all entity words exist in search (reverse)
+      if (containsAllWords(searchClean, entityWords)) {
+        return { entity, score: 0.90, exact: false, reason: 'all_entity_words' };
+      }
+      
+      // 4. Check word-by-word similarity (best permutation)
+      let bestWordScore = 0;
+      if (searchWords.length > 0 && entityWords.length > 0) {
+        // For each word in search, find best matching word in entity
+        const wordScores = searchWords.map(sw => {
+          const scores = entityWords.map(ew => similarity(sw, ew));
+          return Math.max(...scores);
+        });
+        bestWordScore = wordScores.reduce((a, b) => a + b, 0) / wordScores.length;
+      }
+      
+      // 5. Regular string similarity
+      const stringScore = similarity(searchClean, entityName);
+      
+      // 6. Substring bonus
+      let substringBonus = 0;
+      if (entityName.includes(searchClean)) {
+        substringBonus = 0.15;
+      } else if (searchClean.includes(entityName)) {
+        substringBonus = 0.10;
+      }
+      
+      // 7. Check if any individual word matches exactly
+      let exactWordBonus = 0;
+      for (const sw of searchWords) {
+        if (entityWords.includes(sw) && sw.length >= 3) {
+          exactWordBonus += 0.2 / searchWords.length;
+        }
+      }
+      
+      // Combine scores
+      const finalScore = Math.max(
+        bestWordScore + substringBonus + exactWordBonus,
+        stringScore + substringBonus
+      );
+      
+      return { 
+        entity, 
+        score: Math.min(finalScore, 0.99), 
+        exact: false,
+        reason: `word:${bestWordScore.toFixed(2)}, str:${stringScore.toFixed(2)}, bonus:${(substringBonus + exactWordBonus).toFixed(2)}`
+      };
+    }).filter(m => m.score > 0.4); // Lower threshold for better recall
     
     if (matches.length === 0) return null;
     
     // Sort by score
     matches.sort((a, b) => b.score - a.score);
+    
+    console.log('🔍 Best matches:', matches.slice(0, 3).map(m => ({
+      name: m.entity[nameField],
+      score: m.score,
+      reason: m.reason
+    })));
     
     return {
       match: matches[0].entity,
@@ -196,10 +254,21 @@ export default function AIChat() {
             
             if (result) {
               clientId = result.match.id;
+              const originalName = clientName;
               clientName = result.match.name;
               
-              if (!result.isExact && result.confidence < 0.9) {
-                toast.info(`🔍 השתמשתי ב"${result.match.name}" (${Math.round(result.confidence * 100)}% התאמה)`);
+              if (!result.isExact) {
+                if (result.confidence >= 0.85) {
+                  toast.success(`✅ מצאתי: "${result.match.name}" (${Math.round(result.confidence * 100)}% התאמה)`);
+                } else if (result.confidence >= 0.7) {
+                  toast.info(`🔍 השתמשתי ב"${result.match.name}" במקום "${originalName}" (${Math.round(result.confidence * 100)}% התאמה)`);
+                } else {
+                  toast.warning(`⚠️ התאמה חלשה: "${result.match.name}" (${Math.round(result.confidence * 100)}%) - אשר שזה נכון`);
+                }
+                
+                if (result.alternatives && result.alternatives.length > 0) {
+                  console.log('📋 חלופות אפשריות:', result.alternatives);
+                }
               }
             } else {
               toast.warning(`⚠️ לא מצאתי לקוח בשם "${clientName}"`);
@@ -246,11 +315,15 @@ export default function AIChat() {
             await base44.entities.Client.update(result.match.id, { stage: newStage });
             updated++;
             
-            if (!result.isExact && result.confidence < 0.9) {
-              warnings.push(`השתמשתי ב"${result.match.name}" במקום "${clientIdentifier}" (${Math.round(result.confidence * 100)}%)`);
+            if (!result.isExact) {
+              if (result.confidence >= 0.7) {
+                warnings.push(`✅ עדכנתי את "${result.match.name}" (${Math.round(result.confidence * 100)}% התאמה)`);
+              } else {
+                warnings.push(`⚠️ עדכנתי את "${result.match.name}" - אבל ההתאמה חלשה (${Math.round(result.confidence * 100)}%)`);
+              }
             }
           } else {
-            warnings.push(`לא מצאתי: "${clientIdentifier}"`);
+            warnings.push(`❌ לא מצאתי לקוח: "${clientIdentifier}"`);
           }
         }
         
@@ -452,10 +525,20 @@ ${teamMembers.map(tm => `- ${tm.full_name} (${tm.role}): ${tm.capacity_hours_per
 רשימת כל הלקוחות במערכת (${clients.length} לקוחות):
 ${clients.map((c, idx) => `${idx + 1}. "${c.name}" - סטטוס: ${c.status || 'לא הוגדר'}, שלב: ${c.stage || 'לא הוגדר'}${c.email ? `, אימייל: ${c.email}` : ''}${c.phone || c.whatsapp ? `, טלפון: ${c.whatsapp || c.phone}` : ''}`).join('\n')}
 
-⚠️ חשוב מאוד - שמות לקוחות מדויקים:
-כשאתה מתייחס ללקוח או מציע פעולה הכוללת לקוח, חייב להשתמש בשם המדויק של הלקוח כפי שמופיע ברשימה למעלה.
-לדוגמה: אם הלקוח נקרא "משה כהן בע״מ" - השתמש בדיוק בשם הזה, לא "משה כהן" או "משה".
-אם המשתמש מזכיר לקוח בצורה לא מדויקת, השתמש בשם המלא והמדויק מהרשימה.
+⚠️ חשוב מאוד - זיהוי חכם של לקוחות:
+כשמשתמש מזכיר לקוח, המערכת תזהה אותו אוטומטית גם אם:
+- השם בסדר הפוך (למשל: "אשכנזי מענדי" במקום "מענדי אשכנזי")
+- יש שגיאות כתיב קלות
+- מוזכר רק חלק מהשם (שם פרטי או משפחה)
+- יש תווים מיוחדים שונים (גרש, גרשיים וכו')
+
+כשאתה מציע פעולה, אתה יכול להשתמש בשם שהמשתמש הזכיר - המערכת תמצא את ההתאמה הנכונה.
+לדוגמה:
+- משתמש אומר: "קבע פגישה עם אשכנזי" → תציע: client_name: אשכנזי
+- משתמש אומר: "שלח מייל למשה" → תציע: client_name: משה
+- המערכת תמצא את הלקוח המתאים אוטומטית (מענדי אשכנזי, משה כהן וכו')
+
+אם יש ספק או כמה אפשרויות - שאל את המשתמש להבהיר.
 
 פרטי פרויקטים פעילים:
 ${activeProjects.slice(0, 10).map(p => `- ${p.name} (לקוח: ${p.client_name}): סטטוס ${p.status}, התקדמות ${p.progress || 0}%`).join('\n')}
