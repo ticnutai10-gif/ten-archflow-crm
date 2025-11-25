@@ -77,12 +77,12 @@ export default function NotificationCenter({ notifications, onClose, onUpdate })
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center pt-16 md:pt-20" dir="rtl" onClick={onClose}>
-      <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl mx-4 max-h-[85vh] md:max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white text-slate-900 rounded-lg shadow-2xl w-full max-w-2xl mx-4 max-h-[85vh] md:max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()} style={{ color: '#1e293b' }}>
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b">
+        <div className="flex items-center justify-between p-4 border-b bg-white">
           <div className="flex items-center gap-3">
-            <h2 className="text-xl font-bold">התראות</h2>
-            <Badge variant="secondary">
+            <h2 className="text-xl font-bold text-slate-900">התראות</h2>
+            <Badge variant="secondary" className="bg-blue-100 text-blue-800">
               {notifications.filter(n => !n.read).length} חדשות
             </Badge>
           </div>
@@ -92,6 +92,7 @@ export default function NotificationCenter({ notifications, onClose, onUpdate })
               size="sm"
               onClick={() => window.location.href = createPageUrl('Settings') + '?tab=notifications'}
               title="הגדרות התראות"
+              className="text-slate-600 hover:text-slate-900"
             >
               <Settings className="w-4 h-4" />
             </Button>
@@ -99,6 +100,7 @@ export default function NotificationCenter({ notifications, onClose, onUpdate })
               variant="ghost"
               size="icon"
               onClick={onClose}
+              className="text-slate-600 hover:text-slate-900"
             >
               <X className="w-5 h-5" />
             </Button>
@@ -111,6 +113,7 @@ export default function NotificationCenter({ notifications, onClose, onUpdate })
             variant={filter === 'all' ? 'default' : 'outline'}
             size="sm"
             onClick={() => setFilter('all')}
+            className={filter === 'all' ? 'bg-[#2C3A50] text-white hover:bg-[#1f2937]' : 'text-slate-700'}
           >
             הכל ({notifications.length})
           </Button>
@@ -118,6 +121,7 @@ export default function NotificationCenter({ notifications, onClose, onUpdate })
             variant={filter === 'unread' ? 'default' : 'outline'}
             size="sm"
             onClick={() => setFilter('unread')}
+            className={filter === 'unread' ? 'bg-[#2C3A50] text-white hover:bg-[#1f2937]' : 'text-slate-700'}
           >
             לא נקראו ({notifications.filter(n => !n.read).length})
           </Button>
@@ -125,6 +129,7 @@ export default function NotificationCenter({ notifications, onClose, onUpdate })
             variant={filter === 'read' ? 'default' : 'outline'}
             size="sm"
             onClick={() => setFilter('read')}
+            className={filter === 'read' ? 'bg-[#2C3A50] text-white hover:bg-[#1f2937]' : 'text-slate-700'}
           >
             נקראו ({notifications.filter(n => n.read).length})
           </Button>
@@ -134,7 +139,7 @@ export default function NotificationCenter({ notifications, onClose, onUpdate })
               variant="ghost"
               size="sm"
               onClick={markAllAsRead}
-              className="mr-auto"
+              className="mr-auto text-slate-700 hover:text-slate-900"
             >
               <Check className="w-4 h-4 ml-2" />
               סמן הכל כנקרא
@@ -143,14 +148,14 @@ export default function NotificationCenter({ notifications, onClose, onUpdate })
         </div>
 
         {/* Notifications List */}
-        <ScrollArea className="flex-1">
+        <ScrollArea className="flex-1 bg-white">
           {filteredNotifications.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-64 text-slate-500">
+            <div className="flex flex-col items-center justify-center h-64 text-slate-500 bg-white">
               <Clock className="w-12 h-12 mb-3 text-slate-300" />
-              <p>אין התראות להצגה</p>
+              <p className="text-slate-600">אין התראות להצגה</p>
             </div>
           ) : (
-            <div className="divide-y">
+            <div className="divide-y bg-white">
               {filteredNotifications.map((notification) => {
                 const PriorityIcon = priorityConfig[notification.priority]?.icon || Info;
                 const priorityColor = priorityConfig[notification.priority]?.color || 'text-slate-600';
@@ -159,9 +164,10 @@ export default function NotificationCenter({ notifications, onClose, onUpdate })
                 return (
                   <div
                     key={notification.id}
-                    className={`p-4 hover:bg-slate-50 transition-colors ${
+                    className={`p-4 hover:bg-slate-50 transition-colors bg-white ${
                       !notification.read ? 'bg-blue-50/30' : ''
                     }`}
+                    style={{ color: '#1e293b' }}
                   >
                     <div className="flex gap-3">
                       {/* Priority Icon */}
