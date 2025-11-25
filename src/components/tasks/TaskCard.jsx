@@ -195,6 +195,18 @@ export default function TaskCard({
             <div className="font-semibold text-slate-700 text-sm">{task.assigned_to}</div>
           </div>
         )}
+
+        {task.tags && task.tags.length > 0 && (
+          <div className="pt-2 border-t">
+            <div className="flex flex-wrap gap-1">
+              {task.tags.map((tag, idx) => (
+                <span key={idx} className="text-xs px-2 py-1 bg-slate-100 text-slate-700 rounded-full">
+                  #{tag}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

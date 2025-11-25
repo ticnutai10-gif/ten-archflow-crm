@@ -26,7 +26,9 @@ import {
   Settings,
   Trash2,
   ChevronRight,
-  MoreVertical
+  MoreVertical,
+  CheckSquare2,
+  Copy
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -63,6 +65,9 @@ export default function TasksPage() {
   const [editingTask, setEditingTask] = useState(null);
   const [viewMode, setViewMode] = useState("list");
   const [showTemplates, setShowTemplates] = useState(false);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [tagFilter, setTagFilter] = useState("all");
 
   const { me, isAdmin, isManagerPlus, filterClients, filterProjects, loading: accessLoading } = useAccessControl();
 
@@ -179,6 +184,10 @@ export default function TasksPage() {
       result = result.filter(task => task.client_name === clientFilter);
     }
 
+    if (tagFilter !== "all") {
+      result = result.filter(task => task.tags?.includes(tagFilter));
+    }
+
     setFilteredTasks(result);
   }, [tasks, searchTerm, statusFilter, priorityFilter, clientFilter]);
 
@@ -230,6 +239,80 @@ export default function TasksPage() {
     }
   };
 
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    if (!confirm(`האם אתה בטוח שברצונך למחוק ${selectedIds.length} משימות?`)) return;
+
+    try {
+      await Promise.all(selectedIds.map(id => base44.entities.Task.delete(id)));
+      toast.success(`${selectedIds.length} משימות נמחקו בהצלחה`);
+      setSelectedIds([]);
+      setSelectionMode(false);
+      await loadTasks();
+    } catch (error) {
+      console.error("Error bulk deleting:", error);
+      toast.error("שגיאה במחיקה המרובה");
+    }
+  };
+
+  const handleBulkCopy = async () => {
+    if (selectedIds.length === 0) return;
+
+    try {
+      const tasksToCopy = tasks.filter(t => selectedIds.includes(t.id));
+      await Promise.all(tasksToCopy.map(task => {
+        const { id, created_date, updated_date, created_by, ...taskData } = task;
+        return base44.entities.Task.create({
+          ...taskData,
+          title: `${task.title} (עותק)`
+        });
+      }));
+      toast.success(`${selectedIds.length} משימות שוכפלו בהצלחה`);
+      setSelectedIds([]);
+      setSelectionMode(false);
+      await loadTasks();
+    } catch (error) {
+      console.error("Error bulk copying:", error);
+      toast.error("שגיאה בשכפול המרובה");
+    }
+  };
+
+  const handleBulkTag = async (tag) => {
+    if (selectedIds.length === 0) return;
+
+    try {
+      await Promise.all(selectedIds.map(id => {
+        const task = tasks.find(t => t.id === id);
+        const existingTags = task.tags || [];
+        if (existingTags.includes(tag)) return Promise.resolve();
+        return base44.entities.Task.update(id, {
+          tags: [...existingTags, tag]
+        });
+      }));
+      toast.success(`תויגו ${selectedIds.length} משימות`);
+      await loadTasks();
+    } catch (error) {
+      console.error("Error bulk tagging:", error);
+      toast.error("שגיאה בתיוג");
+    }
+  };
+
+  const toggleSelection = (taskId) => {
+    setSelectedIds(prev => 
+      prev.includes(taskId) 
+        ? prev.filter(id => id !== taskId)
+        : [...prev, taskId]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.length === filteredTasks.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(filteredTasks.map(t => t.id));
+    }
+  };
+
   const handleExport = async () => {
     try {
       const csv = [
@@ -263,6 +346,8 @@ export default function TasksPage() {
 
 
   const uniqueClients = [...new Set(tasks.map(t => t.client_name).filter(Boolean))];
+  const allTags = [...new Set(tasks.flatMap(t => t.tags || []))];
+  const commonTags = ['דחוף', 'חשוב', 'פגישה', 'מסמכים', 'תשלום', 'מעקב', 'אישור'];
 
   const viewModeConfig = [
     { id: 'list', name: 'רשימה', icon: List, description: 'תצוגת רשימה מסורתית' },
@@ -336,15 +421,59 @@ export default function TasksPage() {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <Button onClick={() => setShowTemplates(true)} variant="outline" className="gap-2">
-              <Plus className="w-4 h-4" />
-              <span className="hidden md:inline">תבניות</span>
-            </Button>
+            {selectionMode && (
+              <div className="flex items-center gap-2 bg-blue-50 px-3 py-2 rounded-lg border border-blue-200">
+                <span className="text-sm font-medium text-blue-900">
+                  {selectedIds.length} נבחרו
+                </span>
+                <Button variant="outline" size="sm" onClick={handleBulkCopy} className="gap-2">
+                  <Copy className="w-4 h-4" />
+                  שכפל
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2">
+                      תייג
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" dir="rtl">
+                    <DropdownMenuLabel>תגיות מוצעות</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {commonTags.map(tag => (
+                      <DropdownMenuItem key={tag} onClick={() => handleBulkTag(tag)}>
+                        {tag}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <Button variant="destructive" size="sm" onClick={handleBulkDelete} className="gap-2">
+                  <Trash2 className="w-4 h-4" />
+                  מחק
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => { setSelectionMode(false); setSelectedIds([]); }}>
+                  ביטול
+                </Button>
+              </div>
+            )}
 
-            <Button onClick={() => { setShowForm(true); setEditingTask(null); }} className="bg-[#2C3A50] hover:bg-[#1f2937] gap-2">
-              <Plus className="w-4 h-4" />
-              משימה חדשה
-            </Button>
+            {!selectionMode && (
+              <>
+                <Button onClick={() => setSelectionMode(true)} variant="outline" className="gap-2">
+                  <CheckSquare2 className="w-4 h-4" />
+                  <span className="hidden md:inline">בחירה מרובה</span>
+                </Button>
+
+                <Button onClick={() => setShowTemplates(true)} variant="outline" className="gap-2">
+                  <Plus className="w-4 h-4" />
+                  <span className="hidden md:inline">תבניות</span>
+                </Button>
+
+                <Button onClick={() => { setShowForm(true); setEditingTask(null); }} className="bg-[#2C3A50] hover:bg-[#1f2937] gap-2">
+                  <Plus className="w-4 h-4" />
+                  משימה חדשה
+                </Button>
+              </>
+            )}
           </div>
         </div>
 
@@ -409,6 +538,18 @@ export default function TasksPage() {
                     </SelectContent>
                   </Select>
 
+                  <Select value={tagFilter} onValueChange={setTagFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="כל התגיות" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">כל התגיות</SelectItem>
+                      {allTags.map(tag => (
+                        <SelectItem key={tag} value={tag}>{tag}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
                   <Button variant="outline" onClick={handleExport} className="gap-2">
                     <Download className="w-4 h-4" />
                     יצוא
@@ -448,32 +589,50 @@ export default function TasksPage() {
                     )}
 
                     {filteredTasks.length > 0 && viewMode === 'list' && (
-                      <div className="space-y-4">
-                        {filteredTasks.map(task => (
-                          isMobile ? (
-                            <SwipeableCard
-                              key={task.id}
-                              onEdit={() => handleEdit(task)}
-                              onDelete={() => handleDelete(task.id)}
-                            >
+                      <>
+                        {selectionMode && (
+                          <div className="mb-4 flex items-center gap-2">
+                            <Button variant="outline" size="sm" onClick={toggleSelectAll}>
+                              {selectedIds.length === filteredTasks.length ? 'בטל הכל' : 'בחר הכל'}
+                            </Button>
+                            <span className="text-sm text-slate-600">
+                              {selectedIds.length} מתוך {filteredTasks.length} נבחרו
+                            </span>
+                          </div>
+                        )}
+                        <div className="space-y-4">
+                          {filteredTasks.map(task => (
+                            isMobile ? (
+                              <SwipeableCard
+                                key={task.id}
+                                onEdit={() => handleEdit(task)}
+                                onDelete={() => handleDelete(task.id)}
+                              >
+                                <TaskCard
+                                  task={task}
+                                  onEdit={handleEdit}
+                                  onDelete={handleDelete}
+                                  onUpdate={handleTaskUpdate}
+                                  selectionMode={selectionMode}
+                                  selected={selectedIds.includes(task.id)}
+                                  onToggleSelect={() => toggleSelection(task.id)}
+                                />
+                              </SwipeableCard>
+                            ) : (
                               <TaskCard
+                                key={task.id}
                                 task={task}
                                 onEdit={handleEdit}
                                 onDelete={handleDelete}
                                 onUpdate={handleTaskUpdate}
+                                selectionMode={selectionMode}
+                                selected={selectedIds.includes(task.id)}
+                                onToggleSelect={() => toggleSelection(task.id)}
                               />
-                            </SwipeableCard>
-                          ) : (
-                            <TaskCard
-                              key={task.id}
-                              task={task}
-                              onEdit={handleEdit}
-                              onDelete={handleDelete}
-                              onUpdate={handleTaskUpdate}
-                            />
-                          )
-                        ))}
-                      </div>
+                            )
+                          ))}
+                        </div>
+                      </>
                     )}
 
                     {filteredTasks.length > 0 && viewMode === 'grid' && (
