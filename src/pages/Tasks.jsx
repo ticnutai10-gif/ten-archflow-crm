@@ -28,7 +28,8 @@ import {
   ChevronRight,
   MoreVertical,
   CheckSquare2,
-  Copy
+  Copy,
+  Sparkles
 } from "lucide-react";
 import {
   DropdownMenu,
