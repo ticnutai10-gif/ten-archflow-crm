@@ -512,7 +512,7 @@ export default function Layout({ children, currentPageName }) {
         {isMobile && (
           <MobileHeader 
             onMenuClick={() => setMobileMenuOpen(true)}
-            title={MENU_ITEMS.find(item => item.path === currentPageName)?.name || 'טננבאום CRM'}
+            title={MENU_ITEMS.find(item => item.path === currentPageName)?.name || 'CRM'}
           />
         )}
 
