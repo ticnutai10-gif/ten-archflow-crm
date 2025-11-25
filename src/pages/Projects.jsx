@@ -35,7 +35,6 @@ import ProjectCard from "../components/projects/ProjectCard";
 import ProjectStats from "../components/projects/ProjectStats";
 import { useAccessControl } from "../components/access/AccessValidator";
 import { useIsMobile } from "../components/utils/useMediaQuery";
-import PullToRefresh from "../components/mobile/PullToRefresh";
 
 export default function ProjectsPage() {
   const { isAdmin, filterProjects, filterClients, loading: accessLoading } = useAccessControl();

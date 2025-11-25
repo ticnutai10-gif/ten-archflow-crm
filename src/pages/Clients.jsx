@@ -77,7 +77,6 @@ import { toast } from "sonner";
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { useIsMobile } from "../components/utils/useMediaQuery";
 import SwipeableCard from "../components/mobile/SwipeableCard";
-import PullToRefresh from "../components/mobile/PullToRefresh";
 
 // Stage options
 const STAGE_OPTIONS = [

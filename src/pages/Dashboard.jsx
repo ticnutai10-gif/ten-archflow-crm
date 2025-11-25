@@ -52,7 +52,6 @@ import AnalyticsView from "../components/dashboard/AnalyticsView";
 import HeatmapView from "../components/dashboard/HeatmapView";
 import TrendsView from "../components/dashboard/TrendsView";
 import { useIsMobile } from "../components/utils/useMediaQuery";
-import PullToRefresh from "../components/mobile/PullToRefresh";
 
 const VIEW_MODE_OPTIONS = [
   { value: 'list', label: 'שורות', icon: LayoutList },
