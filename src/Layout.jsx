@@ -717,7 +717,7 @@ export default function Layout({ children, currentPageName }) {
         {!isMobile && <FloatingTimer />}
         <ReminderPopup />
         {!isMobile && <FloatingDebugPanel />}
-        {!isMobile && <FloatingAIButton />}
+        <FloatingAIButton />
 
         {/* Mobile Bottom Navigation */}
         {isMobile && <MobileBottomNav />}

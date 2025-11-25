@@ -7,8 +7,10 @@ import ReactMarkdown from 'react-markdown';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { toast } from 'sonner';
+import { useIsMobile } from '@/components/utils/useMediaQuery';
 
 export default function FloatingAIButton() {
+  const isMobile = useIsMobile();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -322,7 +324,7 @@ ${upcomingMeetings.slice(0, 3).map(m => `- ${m.title} עם ${m.participants?.joi
       {/* Floating Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 right-6 z-50 w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110 group"
+        className={`fixed ${isMobile ? 'bottom-20 right-4' : 'bottom-6 right-6'} z-50 ${isMobile ? 'w-14 h-14' : 'w-12 h-12'} rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95 group shadow-lg`}
         style={{
           background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
           boxShadow: '0 6px 20px rgba(102, 126, 234, 0.25)',
@@ -331,13 +333,13 @@ ${upcomingMeetings.slice(0, 3).map(m => `- ${m.title} עם ${m.participants?.joi
         title="צ'אט AI"
       >
         <div 
-          className="w-8 h-8 bg-white rounded-full flex items-center justify-center transition-transform group-hover:rotate-12"
+          className={`${isMobile ? 'w-9 h-9' : 'w-8 h-8'} bg-white rounded-full flex items-center justify-center transition-transform group-hover:rotate-12`}
           style={{ border: '0.5px solid rgba(102, 126, 234, 0.1)' }}
         >
           {isOpen ? (
-            <X className="w-4 h-4 text-purple-600" />
+            <X className={`${isMobile ? 'w-5 h-5' : 'w-4 h-4'} text-purple-600`} />
           ) : (
-            <MessageSquare className="w-4 h-4 text-purple-600" />
+            <MessageSquare className={`${isMobile ? 'w-5 h-5' : 'w-4 h-4'} text-purple-600`} />
           )}
         </div>
       </button>
@@ -345,7 +347,7 @@ ${upcomingMeetings.slice(0, 3).map(m => `- ${m.title} עם ${m.participants?.joi
       {/* Chat Window */}
       {isOpen && (
         <div
-          className="fixed bottom-24 right-6 z-50 w-96 h-[600px] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-purple-200 animate-in fade-in zoom-in-95 duration-200"
+          className={`fixed ${isMobile ? 'inset-0' : 'bottom-24 right-6 w-96 h-[600px]'} z-50 bg-white ${isMobile ? '' : 'rounded-2xl'} shadow-2xl flex flex-col overflow-hidden border border-purple-200 animate-in fade-in zoom-in-95 duration-200`}
           dir="rtl"
         >
           {/* Header */}
