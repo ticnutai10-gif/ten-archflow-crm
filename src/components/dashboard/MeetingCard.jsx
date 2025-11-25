@@ -20,7 +20,9 @@ import {
   Calendar,
   Users,
   Clock,
-  MapPin
+  MapPin,
+  Phone,
+  Video
 } from "lucide-react";
 import { format } from "date-fns";
 
