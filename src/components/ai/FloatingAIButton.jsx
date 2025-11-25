@@ -278,15 +278,16 @@ ${upcomingMeetings.slice(0, 3).map(m => `- ${m.title} עם ${m.participants?.joi
    - "מחר" = התאריך של מחר בפורמט YYYY-MM-DD
    - "היום" = התאריך של היום בפורמט YYYY-MM-DD
    - "שעה 2" / "2 בצהריים" = 14:00
+   - "שעה 4" / "4 אחר הצהריים" = 16:00
    - "שעה 1" / "1 בצהריים" = 13:00
    - "9 בבוקר" = 09:00
    - "10:30" = 10:30
-   התאריך הנוכחי: 2025-11-25
+   התאריך הנוכחי: ${new Date().toISOString().split('T')[0]}
 4. סוגי פעולות: CREATE_TASK, SEND_EMAIL, SCHEDULE_MEETING, UPDATE_CLIENT_STAGE
 5. **דוגמאות לקביעת פגישות:**
-   - "פגישה עם דני מחר בשעה 2" → [ACTION: SCHEDULE_MEETING | title: פגישה עם דני, client_name: דני, date: 2025-11-26, time: 14:00]
-   - "תקבע פגישה עם נתן מחר ב1" → [ACTION: SCHEDULE_MEETING | title: פגישה עם נתן, client_name: נתן, date: 2025-11-26, time: 13:00]
-   - "פגישת תכנון היום 10:30" → [ACTION: SCHEDULE_MEETING | title: פגישת תכנון, date: 2025-11-25, time: 10:30]
+   - "פגישה עם דני מחר בשעה 2" → [ACTION: SCHEDULE_MEETING | title: פגישה עם דני, client_name: דני, date: ${new Date(Date.now() + 86400000).toISOString().split('T')[0]}, time: 14:00]
+   - "פגישה קוזלובסקי מחר שעה 4" → [ACTION: SCHEDULE_MEETING | title: פגישה עם קוזלובסקי, client_name: קוזלובסקי, date: ${new Date(Date.now() + 86400000).toISOString().split('T')[0]}, time: 16:00]
+   - "פגישת תכנון היום 10:30" → [ACTION: SCHEDULE_MEETING | title: פגישת תכנון, date: ${new Date().toISOString().split('T')[0]}, time: 10:30]
 6. **חשוב:** תמיד צור ACTION מיד כשמבקשים פגישה, אל תשאל שאלות מיותרות!
 `;
 
