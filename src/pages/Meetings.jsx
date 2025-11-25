@@ -39,6 +39,8 @@ import MeetingCard from "../components/dashboard/MeetingCard";
 import CalendarSyncManager from "../components/calendar/CalendarSyncManager";
 import ExportToCalendarButton from "../components/calendar/ExportToCalendarButton";
 import AIWorkflowAutomation from "../components/ai/AIWorkflowAutomation";
+import MobileCalendarView from "../components/mobile/MobileCalendarView";
+import { useIsMobile } from "../components/utils/useMediaQuery";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -87,6 +89,7 @@ const createPageUrl = (pageName) => {
 };
 
 export default function MeetingsPage() {
+  const isMobile = useIsMobile();
   const [meetings, setMeetings] = useState([]);
   const [clients, setClients] = useState([]);
   const [projects, setProjects] = useState([]);
@@ -321,7 +324,30 @@ export default function MeetingsPage() {
   };
 
   return (
-    <div className="space-y-6 p-6 lg:p-8" dir="rtl">
+    <div className={`space-y-6 ${isMobile ? 'p-3' : 'p-6 lg:p-8'}`} dir="rtl">
+      {/* תצוגת מובייל */}
+      {isMobile ? (
+        <>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold text-slate-900">פגישות</h2>
+            <Button
+              onClick={() => { setEditingMeeting(null); setSelectedDateForNew(null); setShowForm(true); }}
+              size="sm"
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              <Plus className="w-4 h-4 ml-2" />
+              חדשה
+            </Button>
+          </div>
+          
+          <MobileCalendarView
+            meetings={meetings}
+            onEdit={handleEdit}
+            onDateClick={handleDateClick}
+          />
+        </>
+      ) : (
+        <>
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
@@ -712,6 +738,8 @@ export default function MeetingsPage() {
       {/* Calendar Sync Manager */}
       {showSyncManager && (
         <CalendarSyncManager onClose={() => setShowSyncManager(false)} />
+      )}
+        </>
       )}
     </div>
   );
