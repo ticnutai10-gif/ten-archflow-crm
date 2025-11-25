@@ -1643,11 +1643,83 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
 
 
 
-            {selectedRows.size > 0 &&
-              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                נבחרו {selectedRows.size} שורות
-              </Badge>
-            }
+            {selectionMode && selectedRows.size > 0 && (
+              <>
+                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 font-semibold">
+                  נבחרו {selectedRows.size} לקוחות
+                </Badge>
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-2 h-8 bg-blue-50 hover:bg-blue-100 border-blue-200"
+                  onClick={async () => {
+                    if (selectedRows.size === 0) return;
+                    const selectedClients = localClients.filter(c => selectedRows.has(c.id));
+                    
+                    try {
+                      await Promise.all(
+                        selectedClients.map(client => 
+                          base44.entities.Client.create({
+                            ...client,
+                            name: `${client.name} (עותק)`,
+                            id: undefined,
+                            created_date: undefined,
+                            updated_date: undefined,
+                            created_by: undefined
+                          })
+                        )
+                      );
+                      toast.success(`${selectedRows.size} לקוחות הועתקו בהצלחה`);
+                      window.location.reload();
+                    } catch (error) {
+                      toast.error('שגיאה בהעתקת לקוחות');
+                    }
+                  }}
+                >
+                  <Copy className="w-3 h-3" />
+                  העתק לקוחות
+                </Button>
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-2 h-8 text-red-600 hover:bg-red-50 border-red-200"
+                  onClick={async () => {
+                    if (selectedRows.size === 0) return;
+                    if (!confirm(`האם אתה בטוח שברצונך למחוק ${selectedRows.size} לקוחות? פעולה זו אינה הפיכה.`)) return;
+                    
+                    try {
+                      await Promise.all(
+                        Array.from(selectedRows).map(clientId => 
+                          base44.entities.Client.delete(clientId)
+                        )
+                      );
+                      toast.success(`${selectedRows.size} לקוחות נמחקו`);
+                      window.location.reload();
+                    } catch (error) {
+                      toast.error('שגיאה במחיקת לקוחות');
+                    }
+                  }}
+                >
+                  <Trash2 className="w-3 h-3" />
+                  מחק לקוחות
+                </Button>
+
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="gap-2 h-8"
+                  onClick={() => {
+                    setSelectedRows(new Set());
+                    setSelectionMode(false);
+                  }}
+                >
+                  <X className="w-3 h-3" />
+                  בטל
+                </Button>
+              </>
+            )}
 
             {selectedHeaders.size > 0 &&
             <>
@@ -1855,6 +1927,28 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                     {...provided.droppableProps}>
 
                     <tr>
+                      {selectionMode && (
+                        <th
+                          className="border border-slate-200 p-3 text-center font-medium text-slate-700 sticky right-0 z-30 shadow-[2px_0_5px_rgba(0,0,0,0.1)] bg-purple-100"
+                          style={{
+                            width: '50px',
+                            minWidth: '50px',
+                            maxWidth: '50px'
+                          }}
+                        >
+                          <Checkbox
+                            checked={selectedRows.size === localClients.length && localClients.length > 0}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setSelectedRows(new Set(localClients.map(c => c.id)));
+                              } else {
+                                setSelectedRows(new Set());
+                              }
+                            }}
+                            className="cursor-pointer"
+                          />
+                        </th>
+                      )}
                       {visibleColumns.map((column, colIndex) => {
                         const headerStyle = cellStyles[`header_${column.key}`] || {};
                         const isHeaderSelected = selectedHeaders.has(column.key);
@@ -1874,7 +1968,8 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                               {...provided.draggableProps}
                               {...canDrag ? provided.dragHandleProps : {}}
                               className={`border border-slate-200 p-3 text-right font-medium text-slate-700 ${
-                              colIndex === 0 ? 'sticky right-0 z-30 shadow-[2px_0_5px_rgba(0,0,0,0.1)]' : ''} ${
+                              colIndex === 0 && !selectionMode ? 'sticky right-0 z-30 shadow-[2px_0_5px_rgba(0,0,0,0.1)]' : ''} ${
+                              colIndex === 0 && selectionMode ? 'sticky z-30 shadow-[2px_0_5px_rgba(0,0,0,0.1)]' : ''} ${
                               isHeaderSelected ? 'ring-2 ring-blue-500 bg-blue-50' : ''}
                                 ${canEdit ? 'hover:bg-blue-50 hover:shadow-inner transition-all cursor-pointer' : ''}
                                 ${snapshot.isDragging ? 'opacity-50 bg-blue-100' : ''}`}
@@ -1886,6 +1981,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                                 fontWeight: headerStyle.fontWeight || 'normal',
                                 borderColor: isHeaderSelected ? '#3b82f6' : headerStyle.borderColor || '#e2e8f0',
                                 cursor: canDrag ? 'grab' : 'default',
+                                right: selectionMode && colIndex === 0 ? '50px' : colIndex === 0 ? '0' : 'auto',
                                 ...provided.draggableProps.style
                               }}
                               onClick={(e) => !snapshot.isDragging && handleColumnClick(column.key, e)}
@@ -2169,6 +2265,16 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
 
                     {showSubHeaders &&
                     <tr>
+                        {selectionMode && (
+                          <th
+                            className="border border-slate-200 p-2 sticky right-0 z-30 shadow-[2px_0_5px_rgba(0,0,0,0.1)] bg-purple-50"
+                            style={{
+                              width: '50px',
+                              minWidth: '50px',
+                              maxWidth: '50px'
+                            }}
+                          />
+                        )}
                         {visibleColumns.map((column, colIndex) => {
                         const subHeaderStyle = cellStyles[`subheader_${column.key}`] || {};
                         const isSubHeaderSelected = selectedHeaders.has(`sub_${column.key}`);
@@ -2178,7 +2284,8 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                           <th
                             key={`sub_${column.key}`}
                             className={`border border-slate-200 p-2 text-right font-normal text-slate-600 text-sm ${
-                            colIndex === 0 ? 'sticky right-0 z-30 shadow-[2px_0_5px_rgba(0,0,0,0.1)]' : ''} ${
+                            colIndex === 0 && !selectionMode ? 'sticky right-0 z-30 shadow-[2px_0_5px_rgba(0,0,0,0.1)]' : ''} ${
+                            colIndex === 0 && selectionMode ? 'sticky z-30 shadow-[2px_0_5px_rgba(0,0,0,0.1)]' : ''} ${
                             isSubHeaderSelected ? 'ring-2 ring-purple-500 bg-purple-50' : ''}
                               ${canEdit ? 'hover:bg-purple-50 hover:shadow-inner transition-all cursor-pointer' : ''}`}
                             style={{
@@ -2187,7 +2294,8 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                               backgroundColor: isSubHeaderSelected ? '#faf5ff' : subHeaderStyle.backgroundColor || (colIndex === 0 ? '#f8fafc' : '#f8fafc'),
                               opacity: subHeaderStyle.opacity ? subHeaderStyle.opacity / 100 : 1,
                               fontWeight: subHeaderStyle.fontWeight || 'normal',
-                              borderColor: isSubHeaderSelected ? '#a855f7' : subHeaderStyle.borderColor || '#e2e8f0'
+                              borderColor: isSubHeaderSelected ? '#a855f7' : subHeaderStyle.borderColor || '#e2e8f0',
+                              right: selectionMode && colIndex === 0 ? '50px' : colIndex === 0 ? '0' : 'auto'
                             }}
                             onClick={(e) => {
                               if (canEdit && editingSubHeader !== column.key) {
@@ -2371,35 +2479,26 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
               <tbody>
                 {localClients.map((client, rowIndex) =>
                   <tr key={client.id} className={rowIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                    {selectionMode && (
+                      <td
+                        className="border border-slate-200 p-2 sticky right-0 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)] bg-purple-50"
+                        style={{
+                          width: '50px',
+                          minWidth: '50px',
+                          maxWidth: '50px',
+                          backgroundColor: rowIndex % 2 === 0 ? '#faf5ff' : '#f3e8ff'
+                        }}
+                      >
+                        <div className="flex items-center justify-center">
+                          <Checkbox
+                            checked={selectedRows.has(client.id)}
+                            onCheckedChange={() => toggleRowSelection(client.id)}
+                            className="cursor-pointer"
+                          />
+                        </div>
+                      </td>
+                    )}
                     {visibleColumns.map((column, colIndex) => {
-                      // Add checkbox in first column when in selection mode
-                      if (colIndex === 0 && selectionMode) {
-                        return (
-                          <React.Fragment key={column.key}>
-                            <td
-                              className={`border border-slate-200 p-2 ${
-                                colIndex === 0 ? 'sticky right-0 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]' : ''
-                              }`}
-                              style={{
-                                width: '40px',
-                                minWidth: '40px',
-                                maxWidth: '40px',
-                                backgroundColor: colIndex === 0 ? rowIndex % 2 === 0 ? '#ffffff' : '#f8fafc' : 'inherit'
-                              }}
-                            >
-                              <div className="flex items-center justify-center">
-                                <Checkbox
-                                  checked={selectedRows.has(client.id)}
-                                  onCheckedChange={() => toggleRowSelection(client.id)}
-                                  className="cursor-pointer"
-                                />
-                              </div>
-                            </td>
-                            {renderRegularCell(client, column, colIndex, rowIndex)}
-                          </React.Fragment>
-                        );
-                      }
-                      
                       return renderRegularCell(client, column, colIndex, rowIndex);
                       
                       function renderRegularCell(client, column, colIndex, rowIndex) {
@@ -2407,19 +2506,21 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                       const isEditing = editingCell === cellKey;
                       const cellStyle = cellStyles[cellKey] || {};
                       const isSelected = selectedCells.has(cellKey);
+                      const actualColIndex = selectionMode ? colIndex + 1 : colIndex;
 
                       if (column.type === 'actions') {
                         return (
                           <td
                             key={column.key}
                             className={`border border-slate-200 p-2 ${
-                            colIndex === 0 ? 'sticky right-0 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]' : ''}`
+                            actualColIndex === 0 ? 'sticky right-0 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]' : ''}`
                             }
                             style={{
                               width: column.width,
                               minWidth: column.width,
                               maxWidth: column.width,
-                              backgroundColor: colIndex === 0 ? rowIndex % 2 === 0 ? '#ffffff' : '#f8fafc' : 'inherit'
+                              backgroundColor: actualColIndex === 0 ? rowIndex % 2 === 0 ? '#ffffff' : '#f8fafc' : 'inherit',
+                              right: selectionMode ? '50px' : '0'
                             }}>
 
                             <div className="flex items-center gap-1 justify-center">
@@ -2492,28 +2593,30 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                         <td
                           key={column.key}
                           className={`border border-slate-200 p-2 ${
-                          colIndex === 0 ? 'sticky right-0 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]' : ''} ${
+                        actualColIndex === 0 && !selectionMode ? 'sticky right-0 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]' : ''} ${
+                        actualColIndex === 0 && selectionMode ? 'sticky z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]' : ''} ${
 
-                          column.key !== 'created_date' ? 'cursor-pointer hover:bg-blue-50' : ''} ${
+                        column.key !== 'created_date' ? 'cursor-pointer hover:bg-blue-50' : ''} ${
 
-                          isSelected ? 'ring-2 ring-purple-500 bg-purple-50' : ''}`
+                        isSelected ? 'ring-2 ring-purple-500 bg-purple-50' : ''}`
+                        }
+                        onClick={(e) => handleCellClick(client.id, column.key, e)}
+                        onMouseEnter={(e) => handleCellMouseEnter(client.id, column.key, e)}
+                        onMouseDown={(e) => {
+                          if (e.altKey) {
+                            e.preventDefault();
                           }
-                          onClick={(e) => handleCellClick(client.id, column.key, e)}
-                          onMouseEnter={(e) => handleCellMouseEnter(client.id, column.key, e)}
-                          onMouseDown={(e) => {
-                            if (e.altKey) {
-                              e.preventDefault();
-                            }
-                          }}
-                          style={{
-                            width: column.width,
-                            minWidth: column.width,
-                            maxWidth: column.width,
-                            backgroundColor: isSelected ? '#faf5ff' : colIndex === 0 ? rowIndex % 2 === 0 ? '#ffffff' : '#f8fafc' : cellStyle.backgroundColor || 'inherit',
-                            opacity: cellStyle.opacity ? cellStyle.opacity / 100 : 1,
-                            fontWeight: cellStyle.fontWeight || 'normal',
-                            borderColor: isSelected ? '#a855f7' : cellStyle.borderColor || '#e2e8f0'
-                          }}>
+                        }}
+                        style={{
+                          width: column.width,
+                          minWidth: column.width,
+                          maxWidth: column.width,
+                          backgroundColor: isSelected ? '#faf5ff' : actualColIndex === 0 ? rowIndex % 2 === 0 ? '#ffffff' : '#f8fafc' : cellStyle.backgroundColor || 'inherit',
+                          opacity: cellStyle.opacity ? cellStyle.opacity / 100 : 1,
+                          fontWeight: cellStyle.fontWeight || 'normal',
+                          borderColor: isSelected ? '#a855f7' : cellStyle.borderColor || '#e2e8f0',
+                          right: selectionMode && actualColIndex === 0 ? '50px' : actualColIndex === 0 ? '0' : 'auto'
+                        }}>
 
                           {column.type === 'stage' ? (
                             <div className="flex items-center justify-center">
