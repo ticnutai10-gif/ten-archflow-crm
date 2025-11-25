@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.7.1';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.4';
 
 Deno.serve(async (req) => {
   try {
@@ -6,250 +6,281 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     
     if (!user) {
-      return Response.json({ 
-        success: false, 
-        error: 'Unauthorized',
-        needsAuth: true 
-      }, { status: 401 });
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Parse request body
-    const payload = await req.json().catch(() => ({ method: 'export' }));
-    const method = payload.method || 'export';
+    const accessToken = await base44.asServiceRole.connectors.getAccessToken("googlecalendar");
+    const body = await req.json();
+    const { action, data } = body;
 
-    // Check if Google is connected
-    if (!user.google_refresh_token) {
-      return Response.json({
-        success: false,
-        error: 'Google Calendar לא מחובר',
-        needsAuth: true
-      }, { status: 400 });
-    }
+    const CALENDAR_API = 'https://www.googleapis.com/calendar/v3';
 
-    // Get valid access token
-    let accessToken = user.google_access_token;
-    
-    // Check if token needs refresh
-    const expiryDate = user.google_token_expiry ? new Date(user.google_token_expiry) : null;
-    const now = new Date();
-    const needsRefresh = !expiryDate || (expiryDate.getTime() - now.getTime()) < 5 * 60 * 1000;
-
-    if (needsRefresh) {
-      const CLIENT_ID = Deno.env.get("GOOGLE_CLIENT_ID");
-      const CLIENT_SECRET = Deno.env.get("GOOGLE_CLIENT_SECRET");
-
-      if (!CLIENT_ID || !CLIENT_SECRET) {
-        return Response.json({
-          success: false,
-          error: 'הגדרות Google לא קיימות במערכת'
-        }, { status: 500 });
-      }
-
-      const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          client_id: CLIENT_ID,
-          client_secret: CLIENT_SECRET,
-          refresh_token: user.google_refresh_token,
-          grant_type: 'refresh_token'
-        })
-      });
-
-      if (!tokenResponse.ok) {
-        return Response.json({
-          success: false,
-          error: 'פג תוקף ההתחברות, יש להתחבר מחדש',
-          needsAuth: true
-        }, { status: 401 });
-      }
-
-      const tokenData = await tokenResponse.json();
-      const newExpiry = new Date(Date.now() + (tokenData.expires_in * 1000));
-      
-      await base44.auth.updateMe({
-        google_access_token: tokenData.access_token,
-        google_token_expiry: newExpiry.toISOString()
-      });
-
-      accessToken = tokenData.access_token;
-    }
-
-    // Export to Google Calendar
-    if (method === 'export') {
-      const meetings = await base44.entities.Meeting.filter({
-        status: { $in: ['מתוכננת', 'אושרה'] }
-      });
-
-      let created = 0;
-      let updated = 0;
-      let errors = 0;
-
-      for (const meeting of meetings) {
-        try {
-          const event = {
-            summary: meeting.title || 'פגישה',
-            description: meeting.description || '',
-            location: meeting.location || '',
-            start: {
-              dateTime: meeting.meeting_date,
-              timeZone: 'Asia/Jerusalem'
-            },
-            end: {
-              dateTime: new Date(new Date(meeting.meeting_date).getTime() + (meeting.duration_minutes || 60) * 60000).toISOString(),
-              timeZone: 'Asia/Jerusalem'
-            },
-            reminders: {
-              useDefault: false,
-              overrides: [{ method: 'popup', minutes: meeting.reminder_before_minutes || 60 }]
-            }
-          };
-
-          if (meeting.google_calendar_event_id) {
-            // Update existing
-            const response = await fetch(
-              `https://www.googleapis.com/calendar/v3/calendars/primary/events/${meeting.google_calendar_event_id}`,
-              {
-                method: 'PUT',
-                headers: {
-                  'Authorization': `Bearer ${accessToken}`,
-                  'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(event)
-              }
-            );
-
-            if (response.ok) {
-              updated++;
-            } else {
-              errors++;
-            }
-          } else {
-            // Create new
-            const response = await fetch(
-              'https://www.googleapis.com/calendar/v3/calendars/primary/events',
-              {
-                method: 'POST',
-                headers: {
-                  'Authorization': `Bearer ${accessToken}`,
-                  'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(event)
-              }
-            );
-
-            if (response.ok) {
-              const eventData = await response.json();
-              await base44.entities.Meeting.update(meeting.id, {
-                google_calendar_event_id: eventData.id
-              });
-              created++;
-            } else {
-              errors++;
-            }
-          }
-        } catch (error) {
-          console.error('Error syncing meeting:', error);
-          errors++;
+    // Helper function to make Google Calendar API calls
+    async function gcalFetch(endpoint, options = {}) {
+      const response = await fetch(`${CALENDAR_API}${endpoint}`, {
+        ...options,
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          ...options.headers
         }
-      }
-
-      return Response.json({
-        success: true,
-        message: `סונכרנו ${created + updated} פגישות (${created} חדשות, ${updated} עודכנו)`,
-        details: { created, updated, errors }
       });
+      
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(`Google Calendar API error: ${error}`);
+      }
+      
+      return response.json();
     }
 
-    // Import from Google Calendar
-    if (method === 'import') {
-      const now = new Date();
-      const futureDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    switch (action) {
+      case 'listCalendars': {
+        const calendars = await gcalFetch('/users/me/calendarList');
+        return Response.json({ calendars: calendars.items || [] });
+      }
 
-      const response = await fetch(
-        `https://www.googleapis.com/calendar/v3/calendars/primary/events?` + new URLSearchParams({
-          timeMin: now.toISOString(),
-          timeMax: futureDate.toISOString(),
+      case 'listEvents': {
+        const { calendarId = 'primary', timeMin, timeMax, maxResults = 100 } = data || {};
+        const params = new URLSearchParams({
+          maxResults: maxResults.toString(),
           singleEvents: 'true',
           orderBy: 'startTime'
-        }),
-        {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-
-      if (!response.ok) {
-        return Response.json({
-          success: false,
-          error: 'שגיאה בקריאת אירועים מ-Google Calendar'
-        }, { status: 500 });
+        });
+        
+        if (timeMin) params.append('timeMin', new Date(timeMin).toISOString());
+        if (timeMax) params.append('timeMax', new Date(timeMax).toISOString());
+        
+        const events = await gcalFetch(`/calendars/${encodeURIComponent(calendarId)}/events?${params}`);
+        return Response.json({ events: events.items || [] });
       }
 
-      const data = await response.json();
-      const events = data.items || [];
-
-      let imported = 0;
-      let skipped = 0;
-      let errors = 0;
-
-      for (const event of events) {
-        try {
-          if (!event.start?.dateTime) {
-            skipped++;
-            continue;
-          }
-
-          // Check if already exists
-          const existing = await base44.entities.Meeting.filter({
-            google_calendar_event_id: event.id
-          });
-
-          if (existing.length > 0) {
-            skipped++;
-            continue;
-          }
-
-          // Create new meeting
-          await base44.entities.Meeting.create({
-            title: event.summary || 'אירוע מ-Google Calendar',
-            description: event.description || '',
-            meeting_date: event.start.dateTime,
-            duration_minutes: Math.round((new Date(event.end.dateTime) - new Date(event.start.dateTime)) / 60000),
-            location: event.location || '',
-            google_calendar_event_id: event.id,
-            status: 'אושרה',
-            meeting_type: 'אחר',
-            color: 'blue'
-          });
-
-          imported++;
-        } catch (error) {
-          console.error('Error importing event:', error);
-          errors++;
-        }
+      case 'createEvent': {
+        const { calendarId = 'primary', event } = data;
+        const createdEvent = await gcalFetch(`/calendars/${encodeURIComponent(calendarId)}/events`, {
+          method: 'POST',
+          body: JSON.stringify(event)
+        });
+        return Response.json({ event: createdEvent });
       }
 
-      return Response.json({
-        success: true,
-        message: `יובאו ${imported} אירועים חדשים (${skipped} כבר קיימים)`,
-        details: { imported, skipped, errors }
-      });
+      case 'updateEvent': {
+        const { calendarId = 'primary', eventId, event } = data;
+        const updatedEvent = await gcalFetch(`/calendars/${encodeURIComponent(calendarId)}/events/${eventId}`, {
+          method: 'PUT',
+          body: JSON.stringify(event)
+        });
+        return Response.json({ event: updatedEvent });
+      }
+
+      case 'deleteEvent': {
+        const { calendarId = 'primary', eventId } = data;
+        await fetch(`${CALENDAR_API}/calendars/${encodeURIComponent(calendarId)}/events/${eventId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${accessToken}` }
+        });
+        return Response.json({ success: true });
+      }
+
+      case 'exportMeeting': {
+        const { meeting, calendarId = 'primary' } = data;
+        
+        const startDate = new Date(meeting.meeting_date);
+        const endDate = new Date(startDate.getTime() + (meeting.duration_minutes || 60) * 60000);
+        
+        const event = {
+          summary: meeting.title,
+          description: [
+            meeting.description || '',
+            meeting.client_name ? `לקוח: ${meeting.client_name}` : '',
+            meeting.project_name ? `פרויקט: ${meeting.project_name}` : '',
+            meeting.notes || ''
+          ].filter(Boolean).join('\n'),
+          location: meeting.location || '',
+          start: {
+            dateTime: startDate.toISOString(),
+            timeZone: 'Asia/Jerusalem'
+          },
+          end: {
+            dateTime: endDate.toISOString(),
+            timeZone: 'Asia/Jerusalem'
+          },
+          reminders: {
+            useDefault: false,
+            overrides: meeting.reminder_enabled ? [
+              { method: 'popup', minutes: meeting.reminder_before_minutes || 60 }
+            ] : []
+          }
+        };
+
+        let createdEvent;
+        if (meeting.google_calendar_event_id) {
+          // Update existing event
+          createdEvent = await gcalFetch(`/calendars/${encodeURIComponent(calendarId)}/events/${meeting.google_calendar_event_id}`, {
+            method: 'PUT',
+            body: JSON.stringify(event)
+          });
+        } else {
+          // Create new event
+          createdEvent = await gcalFetch(`/calendars/${encodeURIComponent(calendarId)}/events`, {
+            method: 'POST',
+            body: JSON.stringify(event)
+          });
+        }
+
+        // Update meeting with Google Calendar event ID
+        if (meeting.id && createdEvent.id) {
+          await base44.entities.Meeting.update(meeting.id, {
+            google_calendar_event_id: createdEvent.id
+          });
+        }
+
+        return Response.json({ event: createdEvent, meeting_id: meeting.id });
+      }
+
+      case 'exportTask': {
+        const { task, calendarId = 'primary' } = data;
+        
+        if (!task.due_date) {
+          return Response.json({ error: 'Task has no due date' }, { status: 400 });
+        }
+
+        const dueDate = new Date(task.due_date);
+        const event = {
+          summary: `[משימה] ${task.title}`,
+          description: [
+            task.description || '',
+            task.client_name ? `לקוח: ${task.client_name}` : '',
+            task.project_name ? `פרויקט: ${task.project_name}` : '',
+            `עדיפות: ${task.priority || 'בינונית'}`,
+            `סטטוס: ${task.status || 'חדשה'}`
+          ].filter(Boolean).join('\n'),
+          start: {
+            date: dueDate.toISOString().split('T')[0]
+          },
+          end: {
+            date: dueDate.toISOString().split('T')[0]
+          },
+          colorId: task.priority === 'גבוהה' ? '11' : task.priority === 'נמוכה' ? '7' : '5'
+        };
+
+        const createdEvent = await gcalFetch(`/calendars/${encodeURIComponent(calendarId)}/events`, {
+          method: 'POST',
+          body: JSON.stringify(event)
+        });
+
+        return Response.json({ event: createdEvent });
+      }
+
+      case 'importEvents': {
+        const { calendarId = 'primary', timeMin, timeMax, createMeetings = true } = data || {};
+        
+        const params = new URLSearchParams({
+          maxResults: '250',
+          singleEvents: 'true',
+          orderBy: 'startTime'
+        });
+        
+        const now = new Date();
+        params.append('timeMin', timeMin ? new Date(timeMin).toISOString() : now.toISOString());
+        if (timeMax) params.append('timeMax', new Date(timeMax).toISOString());
+        
+        const events = await gcalFetch(`/calendars/${encodeURIComponent(calendarId)}/events?${params}`);
+        
+        const imported = [];
+        const existingMeetings = await base44.entities.Meeting.list();
+        const existingEventIds = new Set(existingMeetings.map(m => m.google_calendar_event_id).filter(Boolean));
+
+        for (const event of (events.items || [])) {
+          if (existingEventIds.has(event.id)) {
+            continue; // Skip already imported events
+          }
+
+          if (createMeetings && event.start) {
+            const meetingDate = event.start.dateTime || event.start.date;
+            
+            let durationMinutes = 60;
+            if (event.start.dateTime && event.end?.dateTime) {
+              durationMinutes = Math.round((new Date(event.end.dateTime) - new Date(event.start.dateTime)) / 60000);
+            }
+
+            const newMeeting = await base44.entities.Meeting.create({
+              title: event.summary || 'אירוע מיובא',
+              description: event.description || '',
+              meeting_date: meetingDate,
+              duration_minutes: durationMinutes,
+              location: event.location || '',
+              status: 'מתוכננת',
+              meeting_type: 'אחר',
+              google_calendar_event_id: event.id
+            });
+
+            imported.push(newMeeting);
+          }
+        }
+
+        return Response.json({ 
+          imported: imported.length,
+          total_events: events.items?.length || 0,
+          meetings: imported
+        });
+      }
+
+      case 'syncAll': {
+        const { calendarId = 'primary' } = data || {};
+        
+        // Export all meetings that don't have Google Calendar ID
+        const meetings = await base44.entities.Meeting.list();
+        const exported = [];
+        
+        for (const meeting of meetings) {
+          if (!meeting.google_calendar_event_id && meeting.meeting_date) {
+            try {
+              const startDate = new Date(meeting.meeting_date);
+              const endDate = new Date(startDate.getTime() + (meeting.duration_minutes || 60) * 60000);
+              
+              const event = {
+                summary: meeting.title,
+                description: meeting.description || '',
+                location: meeting.location || '',
+                start: {
+                  dateTime: startDate.toISOString(),
+                  timeZone: 'Asia/Jerusalem'
+                },
+                end: {
+                  dateTime: endDate.toISOString(),
+                  timeZone: 'Asia/Jerusalem'
+                }
+              };
+
+              const createdEvent = await gcalFetch(`/calendars/${encodeURIComponent(calendarId)}/events`, {
+                method: 'POST',
+                body: JSON.stringify(event)
+              });
+
+              await base44.entities.Meeting.update(meeting.id, {
+                google_calendar_event_id: createdEvent.id
+              });
+
+              exported.push(meeting.id);
+            } catch (e) {
+              console.error(`Failed to export meeting ${meeting.id}:`, e);
+            }
+          }
+        }
+
+        return Response.json({ 
+          exported: exported.length,
+          message: `סונכרנו ${exported.length} פגישות ל-Google Calendar`
+        });
+      }
+
+      default:
+        return Response.json({ error: 'Unknown action' }, { status: 400 });
     }
 
-    return Response.json({
-      success: false,
-      error: 'Invalid method'
-    }, { status: 400 });
-
   } catch (error) {
-    console.error('Google Calendar Sync Error:', error);
-    return Response.json({
-      success: false,
-      error: error.message || 'שגיאה לא צפויה',
-      stack: error.stack
-    }, { status: 500 });
+    console.error('Google Calendar sync error:', error);
+    return Response.json({ error: error.message }, { status: 500 });
   }
 });
