@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MessageSquare, X, Send, Loader2, Sparkles, Mail, CheckCircle, ListTodo, Users, TrendingUp, Target } from 'lucide-react';
+import { MessageSquare, X, Send, Loader2, Sparkles, Mail, CheckCircle, ListTodo, Users, TrendingUp, Target, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { base44 } from '@/api/base44Client';
@@ -22,7 +22,6 @@ export default function FloatingAIButton() {
     try {
       const params = {};
       
-      // Parse params string more carefully
       if (action.params && typeof action.params === 'string') {
         const parts = action.params.split(/,(?=\s*\w+:)/);
         parts.forEach(p => {
@@ -38,7 +37,6 @@ export default function FloatingAIButton() {
       console.log('📋 Parsed params:', params);
 
       if (action.type === 'SEND_EMAIL') {
-        console.log('📧 Sending email...');
         await base44.integrations.Core.SendEmail({
           to: params.to,
           subject: params.subject,
@@ -47,8 +45,6 @@ export default function FloatingAIButton() {
         toast.success('✉️ אימייל נשלח בהצלחה!');
         
       } else if (action.type === 'CREATE_TASK') {
-        console.log('✅ Creating task...');
-        
         let dueDate = params.due_date;
         if (dueDate === 'מחר') {
           const tomorrow = new Date();
@@ -58,7 +54,7 @@ export default function FloatingAIButton() {
           dueDate = new Date().toISOString().split('T')[0];
         }
         
-        const newTask = await base44.entities.Task.create({
+        await base44.entities.Task.create({
           title: params.title,
           priority: params.priority || 'בינונית',
           due_date: dueDate,
@@ -67,14 +63,10 @@ export default function FloatingAIButton() {
           client_name: params.client_name || '',
           project_name: params.project_name || ''
         });
-        console.log('✅ Task created:', newTask);
         toast.success('✅ משימה נוצרה בהצלחה!');
         
       } else if (action.type === 'SCHEDULE_MEETING') {
-        console.log('📅 Scheduling meeting...');
-        
-        const title = params.title || 
-                     (params.client_name ? `פגישה עם ${params.client_name}` : 'פגישה חדשה');
+        const title = params.title || 'פגישה חדשה';
         
         let meetingDate = null;
         
@@ -126,7 +118,10 @@ export default function FloatingAIButton() {
           description: params.description || (clientName ? `פגישה עם ${clientName}` : ''),
           participants: params.participants?.split(';').map(p => p.trim()).filter(Boolean) || [],
           meeting_type: params.meeting_type || 'פגישת תכנון',
-          duration_minutes: params.duration_minutes ? parseInt(params.duration_minutes) : 60
+          duration_minutes: params.duration_minutes ? parseInt(params.duration_minutes) : 60,
+          reminders: [
+            { minutes_before: 60, method: 'in-app', sent: false }
+          ]
         };
         
         if (clientId) meetingData.client_id = clientId;
@@ -134,14 +129,10 @@ export default function FloatingAIButton() {
         if (params.project_id) meetingData.project_id = params.project_id;
         if (params.project_name) meetingData.project_name = params.project_name;
         
-        console.log('📅 Creating meeting with data:', meetingData);
-        
         const newMeeting = await base44.entities.Meeting.create(meetingData);
-        console.log('✅ Meeting created:', newMeeting);
         toast.success(`📅 פגישה "${title}" נקבעה ל-${meetingDate.split('T')[0]} בשעה ${meetingDate.split('T')[1]}`);
         
       } else if (action.type === 'UPDATE_CLIENT_STAGE') {
-        console.log('🎯 Updating client stage...');
         const clientsToUpdate = params.clients?.split(';') || [];
         const newStage = params.stage;
         
@@ -160,40 +151,7 @@ export default function FloatingAIButton() {
           }
         }
         
-        console.log(`✅ Updated ${updated} clients`);
         toast.success(`🎯 ${updated} לקוחות עודכנו לשלב!`);
-        
-      } else if (action.type === 'PREDICT_TIMELINE') {
-        toast.info(`📊 חיזוי ציר זמן בוצע`);
-      } else if (action.type === 'SUGGEST_RESOURCES') {
-        toast.info(`👥 הצעת משאבים בוצעה`);
-      } else if (action.type === 'ANALYZE_SENTIMENT') {
-        toast.info(`🎭 ניתוח סנטימנט בוצע`);
-      } else if (action.type === 'SUGGEST_REMINDERS') {
-        const tasks = params.tasks?.split(';') || [];
-        for (const taskTitle of tasks) {
-          try {
-            const allTasks = await base44.entities.Task.list();
-            const task = allTasks.find(t => t.title?.includes(taskTitle.trim()));
-            if (task && !task.reminder_enabled) {
-              await base44.entities.Task.update(task.id, {
-                reminder_enabled: true,
-                reminder_at: params.reminder_time || task.due_date
-              });
-            }
-          } catch (e) {
-            console.warn('Failed to update task reminder:', e);
-          }
-        }
-        toast.success(`⏰ תזכורות הופעלו!`);
-      } else if (action.type === 'SUMMARIZE_PROJECT') {
-        toast.info(`📋 סיכום פרויקט בוצע`);
-      } else if (action.type === 'SUMMARIZE_CLIENT') {
-        toast.info(`👤 סיכום לקוח בוצע`);
-      } else if (action.type === 'GENERATE_QUOTE_DRAFT') {
-        toast.success(`💰 טיוטת הצעת מחיר נוצרה`);
-      } else if (action.type === 'GENERATE_EMAIL_DRAFT') {
-        toast.success(`✉️ טיוטת מייל נוצרה`);
       }
     } catch (error) {
       console.error('❌ Action execution error:', error);
@@ -206,104 +164,78 @@ export default function FloatingAIButton() {
 
     const userMessage = { role: 'user', content: input };
     setMessages(prev => [...prev, userMessage]);
+    const userInput = input;
     setInput('');
     setLoading(true);
 
     try {
       const currentUser = await base44.auth.me();
       
-      // Load comprehensive data
-      const [projects, clients, tasks, communications, decisions, meetings, quotes, timeLogs, subtasks, teamMembers] = await Promise.all([
-        base44.entities.Project.list('-created_date').catch(() => []),
-        base44.entities.Client.list('-created_date').catch(() => []),
-        base44.entities.Task.filter({ status: { $ne: 'הושלמה' } }, '-created_date', 50).catch(() => []),
-        base44.entities.CommunicationMessage.list('-created_date', 30).catch(() => []),
-        base44.entities.Decision.list('-created_date', 20).catch(() => []),
-        base44.entities.Meeting.list('-meeting_date', 20).catch(() => []),
-        base44.entities.Quote.filter({ status: 'בהמתנה' }).catch(() => []),
-        base44.entities.TimeLog.filter({ created_by: currentUser.email }, '-log_date', 30).catch(() => []),
-        base44.entities.SubTask.list().catch(() => []),
-        base44.entities.TeamMember.filter({ active: true }).catch(() => [])
+      const [projects, clients, tasks, meetings] = await Promise.all([
+        base44.entities.Project.list('-created_date', 10).catch(() => []),
+        base44.entities.Client.list('-created_date', 20).catch(() => []),
+        base44.entities.Task.filter({ status: { $ne: 'הושלמה' } }, '-created_date', 20).catch(() => []),
+        base44.entities.Meeting.list('-meeting_date', 10).catch(() => [])
       ]);
 
       const activeProjects = projects.filter(p => p.status !== 'הושלם');
-      const completedProjects = projects.filter(p => p.status === 'הושלם');
       const urgentTasks = tasks.filter(t => t.priority === 'דחופה' || t.priority === 'גבוהה');
       const upcomingMeetings = meetings.filter(m => new Date(m.meeting_date) >= new Date());
       
-      const historicalMetrics = completedProjects.map(p => {
-        const projectSubtasks = subtasks.filter(st => st.project_id === p.id);
-        const startDate = p.start_date ? new Date(p.start_date) : null;
-        const endDate = p.end_date ? new Date(p.end_date) : null;
-        const durationDays = startDate && endDate ? Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) : null;
-        return { name: p.name, type: p.type, durationDays, teamSize: new Set(projectSubtasks.flatMap(st => st.assigned_to || [])).size };
-      }).filter(m => m.durationDays);
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomorrowStr = tomorrow.toISOString().split('T')[0];
+      const todayStr = new Date().toISOString().split('T')[0];
       
-      const context = `
-אתה עוזר AI חכם למערכת CRM של ${currentUser.full_name || currentUser.email}.
+      const context = `אתה עוזר AI חכם למערכת CRM.
 
-סיכום נתונים:
-- ${activeProjects.length} פרויקטים פעילים מתוך ${projects.length}
+נתונים נוכחיים:
+- ${activeProjects.length} פרויקטים פעילים
 - ${clients.length} לקוחות במערכת
-- ${tasks.length} משימות פתוחות (מתוכן ${urgentTasks.length} דחופות)
-- ${communications.length} הודעות תקשורת אחרונות
-- ${decisions.length} החלטות תיעוד אחרונות
+- ${tasks.length} משימות פתוחות (${urgentTasks.length} דחופות)
 - ${upcomingMeetings.length} פגישות קרובות
-- ${quotes.length} הצעות מחיר בהמתנה
-- ${timeLogs.length} רישומי זמן אחרונים
-- ${completedProjects.length} פרויקטים היסטוריים
-- ${teamMembers.length} צוות זמין
 
-נתונים היסטוריים לחיזוי:
-${historicalMetrics.slice(0, 5).map(m => `- ${m.name} (${m.type}): ${m.durationDays} ימים, ${m.teamSize} אנשים`).join('\n')}
+התאריך של היום: ${todayStr}
+התאריך של מחר: ${tomorrowStr}
 
-פרטי לקוחות:
-${clients.slice(0, 10).map(c => `- ${c.name}: סטטוס ${c.status || 'לא הוגדר'}, שלב: ${c.stage || 'לא הוגדר'}`).join('\n')}
-
-פרטי פרויקטים פעילים:
-${activeProjects.slice(0, 5).map(p => `- ${p.name} (${p.client_name}): סטטוס ${p.status}, ${p.progress || 0}% התקדמות`).join('\n')}
-
-משימות דחופות:
-${urgentTasks.slice(0, 5).map(t => `- ${t.title} (${t.project_name || 'כללי'}): ${t.status}, יעד: ${t.due_date || 'לא הוגדר'}`).join('\n')}
-
-פגישות קרובות:
-${upcomingMeetings.slice(0, 3).map(m => `- ${m.title} עם ${m.participants?.join(', ') || 'לא צוין'} בתאריך ${m.meeting_date}`).join('\n')}
-
-שלבי לקוח זמינים: ברור_תכן, תיק_מידע, היתרים, ביצוע, סיום
+לקוחות אחרונים:
+${clients.slice(0, 5).map(c => `- ${c.name}`).join('\n')}
 
 הוראות:
-1. ענה בצורה מפורטת ומועילה בהתבסס על הנתונים
-2. זהה בקשות לפעולות (קביעת פגישה, יצירת משימה וכו') והצע אותן מיד בפורמט [ACTION]
-3. **זיהוי תאריכים ושעות בעברית:**
-   - "מחר" = התאריך של מחר בפורמט YYYY-MM-DD
-   - "היום" = התאריך של היום בפורמט YYYY-MM-DD
+1. **זיהוי מהיר של בקשות פגישה:**
+   - כל בקשה שמכילה "פגישה" או "meeting" = צור מיד ACTION
+   - אם אין שעה מוגדרת, השתמש ב-09:00
+   - אם אין תאריך, השתמש במחר
+   - אם יש שם לקוח, חפש אותו ברשימה ושייך
+
+2. **פורמט ACTION:**
+   [ACTION: SCHEDULE_MEETING | title: <כותרת>, date: YYYY-MM-DD, time: HH:MM, client_name: <שם לקוח אם יש>]
+
+3. **דוגמאות:**
+   - "פגישה מחר" → [ACTION: SCHEDULE_MEETING | title: פגישה חדשה, date: ${tomorrowStr}, time: 09:00]
+   - "פגישה עם דני מחר בשעה 2" → [ACTION: SCHEDULE_MEETING | title: פגישה עם דני, client_name: דני, date: ${tomorrowStr}, time: 14:00]
+   - "פגישה היום 10:30" → [ACTION: SCHEDULE_MEETING | title: פגישה חדשה, date: ${todayStr}, time: 10:30]
+
+4. **המרת שעות:**
    - "שעה 2" / "2 בצהריים" = 14:00
-   - "שעה 4" / "4 אחר הצהריים" = 16:00
-   - "שעה 1" / "1 בצהריים" = 13:00
+   - "שעה 4" = 16:00
    - "9 בבוקר" = 09:00
    - "10:30" = 10:30
-   התאריך הנוכחי: ${new Date().toISOString().split('T')[0]}
-4. סוגי פעולות: CREATE_TASK, SEND_EMAIL, SCHEDULE_MEETING, UPDATE_CLIENT_STAGE
-5. **דוגמאות לקביעת פגישות:**
-   - "פגישה עם דני מחר בשעה 2" → [ACTION: SCHEDULE_MEETING | title: פגישה עם דני, client_name: דני, date: ${new Date(Date.now() + 86400000).toISOString().split('T')[0]}, time: 14:00]
-   - "פגישה קוזלובסקי מחר שעה 4" → [ACTION: SCHEDULE_MEETING | title: פגישה עם קוזלובסקי, client_name: קוזלובסקי, date: ${new Date(Date.now() + 86400000).toISOString().split('T')[0]}, time: 16:00]
-   - "פגישת תכנון היום 10:30" → [ACTION: SCHEDULE_MEETING | title: פגישת תכנון, date: ${new Date().toISOString().split('T')[0]}, time: 10:30]
-6. **חשוב:** תמיד צור ACTION מיד כשמבקשים פגישה, אל תשאל שאלות מיותרות!
-`;
 
-      const prompt = `${context}\n\nשאלת המשתמש: ${input}`;
+5. **חשוב:** אל תשאל שאלות מיותרות - אם מבקשים פגישה, צור ACTION מיד!`;
+
+      const prompt = `${context}\n\nבקשת המשתמש: ${userInput}\n\nענה בקצרה וצור ACTION מיד אם נדרש.`;
 
       const result = await base44.integrations.Core.InvokeLLM({
         prompt,
         add_context_from_internet: false
       });
 
-      // Parse actions from response
       const actions = [];
       const actionMatches = result.match(/\[ACTION:.*?\]/g);
       if (actionMatches) {
         actionMatches.forEach(match => {
-          const actionStr = match.slice(8, -1); // Remove [ACTION: and ]
+          const actionStr = match.slice(8, -1);
           const [type, ...params] = actionStr.split('|').map(s => s.trim());
           actions.push({ type, params: params.join('|') });
         });
@@ -315,10 +247,10 @@ ${upcomingMeetings.slice(0, 3).map(m => `- ${m.title} עם ${m.participants?.joi
         actions 
       }]);
     } catch (error) {
-      console.error('Error:', error);
+      console.error('❌ AI Error:', error);
       setMessages(prev => [...prev, { 
         role: 'assistant', 
-        content: 'מצטער, אירעה שגיאה בעיבוד הבקשה.' 
+        content: 'מצטער, אירעה שגיאה. אנא נסה שוב.' 
       }]);
     }
     setLoading(false);
@@ -333,7 +265,6 @@ ${upcomingMeetings.slice(0, 3).map(m => `- ${m.title} עם ${m.participants?.joi
 
   return (
     <>
-      {/* Floating Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={`fixed ${isMobile ? 'bottom-20 right-4' : 'bottom-6 right-6'} z-50 ${isMobile ? 'w-14 h-14' : 'w-12 h-12'} rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95 group shadow-lg`}
@@ -356,13 +287,11 @@ ${upcomingMeetings.slice(0, 3).map(m => `- ${m.title} עם ${m.participants?.joi
         </div>
       </button>
 
-      {/* Chat Window */}
       {isOpen && (
         <div
           className={`fixed ${isMobile ? 'top-16 bottom-20 left-4 right-4' : 'bottom-24 right-6 w-96 h-[600px]'} z-[45] bg-white ${isMobile ? 'rounded-2xl' : 'rounded-2xl'} shadow-2xl flex flex-col overflow-hidden border border-purple-200 animate-in fade-in zoom-in-95 duration-200`}
           dir="rtl"
         >
-          {/* Header */}
           <div className="p-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
@@ -392,7 +321,6 @@ ${upcomingMeetings.slice(0, 3).map(m => `- ${m.title} עם ${m.participants?.joi
             </div>
           </div>
 
-          {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gradient-to-br from-purple-50/50 to-blue-50/50">
             {messages.length === 0 ? (
               <div className="h-full flex items-center justify-center">
@@ -401,7 +329,11 @@ ${upcomingMeetings.slice(0, 3).map(m => `- ${m.title} עם ${m.participants?.joi
                     <Sparkles className="w-8 h-8 text-white" />
                   </div>
                   <h4 className="font-semibold text-slate-800 mb-2">שלום! 👋</h4>
-                  <p className="text-sm text-slate-600">איך אני יכול לעזור?</p>
+                  <p className="text-sm text-slate-600 mb-3">איך אני יכול לעזור?</p>
+                  <div className="space-y-2 text-xs text-slate-500">
+                    <p>נסה: "פגישה מחר בשעה 2"</p>
+                    <p>או: "צור משימה לבדוק מסמכים"</p>
+                  </div>
                 </div>
               </div>
             ) : (
@@ -432,34 +364,19 @@ ${upcomingMeetings.slice(0, 3).map(m => `- ${m.title} עם ${m.participants?.joi
                             <div key={idx} className="bg-blue-50 border border-blue-200 rounded-lg p-2 flex items-center gap-2">
                               {action.type === 'SEND_EMAIL' && <Mail className="w-4 h-4 text-blue-600" />}
                               {action.type === 'CREATE_TASK' && <ListTodo className="w-4 h-4 text-blue-600" />}
+                              {action.type === 'SCHEDULE_MEETING' && <Calendar className="w-4 h-4 text-green-600" />}
                               {action.type === 'UPDATE_CLIENT_STAGE' && <Users className="w-4 h-4 text-orange-600" />}
-                              {action.type === 'PREDICT_TIMELINE' && <TrendingUp className="w-4 h-4 text-indigo-600" />}
-                              {action.type === 'SUGGEST_RESOURCES' && <Target className="w-4 h-4 text-pink-600" />}
-                              {action.type === 'ANALYZE_SENTIMENT' && '🎭'}
-                              {action.type === 'SUGGEST_REMINDERS' && '⏰'}
-                              {action.type === 'SUMMARIZE_PROJECT' && '📋'}
-                              {action.type === 'SUMMARIZE_CLIENT' && '👤'}
-                              {action.type === 'GENERATE_QUOTE_DRAFT' && '💰'}
-                              {action.type === 'GENERATE_EMAIL_DRAFT' && '✉️'}
                               <span className="text-xs text-blue-800 flex-1">
                                 {action.type === 'SEND_EMAIL' && 'שלח אימייל'}
                                 {action.type === 'CREATE_TASK' && 'צור משימה'}
+                                {action.type === 'SCHEDULE_MEETING' && 'קבע פגישה'}
                                 {action.type === 'UPDATE_CLIENT_STAGE' && 'עדכן שלב'}
-                                {action.type === 'PREDICT_TIMELINE' && 'חזה זמן'}
-                                {action.type === 'SUGGEST_RESOURCES' && 'הצע משאבים'}
-                                {action.type === 'ANALYZE_SENTIMENT' && 'נתח סנטימנט'}
-                                {action.type === 'SUGGEST_REMINDERS' && 'הצע תזכורות'}
-                                {action.type === 'SUMMARIZE_PROJECT' && 'סכם פרויקט'}
-                                {action.type === 'SUMMARIZE_CLIENT' && 'סכם לקוח'}
-                                {action.type === 'GENERATE_QUOTE_DRAFT' && 'צור הצעה'}
-                                {action.type === 'GENERATE_EMAIL_DRAFT' && 'צור מייל'}
                               </span>
                               <Button
                                 size="sm"
                                 onClick={(e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
-                                  console.log('🖱️ Button clicked!', action);
                                   executeAction(action);
                                 }}
                                 className="h-6 px-2 bg-blue-600 hover:bg-blue-700 text-xs"
@@ -486,7 +403,6 @@ ${upcomingMeetings.slice(0, 3).map(m => `- ${m.title} עם ${m.participants?.joi
             )}
           </div>
 
-          {/* Input */}
           <div className="p-3 border-t bg-white">
             <div className="flex gap-2 items-end">
               <Textarea
