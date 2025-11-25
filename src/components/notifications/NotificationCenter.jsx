@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
-import { X, Check, Trash2, Settings, ExternalLink, Clock, AlertCircle, Info, AlertTriangle } from 'lucide-react';
+import { X, Check, Trash2, Settings, ExternalLink, Clock, AlertCircle, Info, AlertTriangle, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { base44 } from '@/api/base44Client';
 import { formatDistanceToNow } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { createPageUrl } from '@/utils';
+import { toast } from 'sonner';
 
 const priorityConfig = {
   urgent: { icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50' },
@@ -17,18 +21,29 @@ const priorityConfig = {
 
 export default function NotificationCenter({ notifications, onClose, onUpdate }) {
   const [filter, setFilter] = useState('all'); // all, unread, read
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newNotification, setNewNotification] = useState({
+    title: '',
+    message: '',
+    priority: 'medium',
+    link: ''
+  });
 
   // Close on Escape key
   React.useEffect(() => {
     const handleEscape = (e) => {
       if (e.key === 'Escape') {
-        onClose();
+        if (showAddForm) {
+          setShowAddForm(false);
+        } else {
+          onClose();
+        }
       }
     };
     
     document.addEventListener('keydown', handleEscape);
     return () => document.removeEventListener('keydown', handleEscape);
-  }, [onClose]);
+  }, [onClose, showAddForm]);
 
   const markAsRead = async (id) => {
     try {
@@ -55,6 +70,30 @@ export default function NotificationCenter({ notifications, onClose, onUpdate })
       onUpdate();
     } catch (error) {
       console.error('Error deleting notification:', error);
+    }
+  };
+
+  const createNotification = async () => {
+    if (!newNotification.title || !newNotification.message) {
+      toast.error('נא למלא כותרת והודעה');
+      return;
+    }
+
+    try {
+      const user = await base44.auth.me();
+      await base44.entities.Notification.create({
+        ...newNotification,
+        user_email: user.email,
+        read: false
+      });
+      
+      toast.success('התראה נוצרה בהצלחה!');
+      setShowAddForm(false);
+      setNewNotification({ title: '', message: '', priority: 'medium', link: '' });
+      onUpdate();
+    } catch (error) {
+      console.error('Error creating notification:', error);
+      toast.error('שגיאה ביצירת התראה');
     }
   };
 
@@ -90,6 +129,16 @@ export default function NotificationCenter({ notifications, onClose, onUpdate })
             <Button
               variant="ghost"
               size="sm"
+              onClick={() => setShowAddForm(!showAddForm)}
+              title="הוסף תזכורת"
+              className="text-slate-600 hover:text-slate-900 bg-blue-50 hover:bg-blue-100"
+            >
+              <Plus className="w-4 h-4 ml-1" />
+              הוסף תזכורת
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => window.location.href = createPageUrl('Settings') + '?tab=notifications'}
               title="הגדרות התראות"
               className="text-slate-600 hover:text-slate-900"
@@ -106,6 +155,70 @@ export default function NotificationCenter({ notifications, onClose, onUpdate })
             </Button>
           </div>
         </div>
+
+        {/* Add Notification Form */}
+        {showAddForm && (
+          <div className="p-4 border-b bg-blue-50">
+            <h3 className="font-semibold text-slate-900 mb-3">תזכורת חדשה</h3>
+            <div className="space-y-3">
+              <Input
+                placeholder="כותרת התזכורת"
+                value={newNotification.title}
+                onChange={(e) => setNewNotification({ ...newNotification, title: e.target.value })}
+                className="bg-white text-slate-900"
+              />
+              <Textarea
+                placeholder="תוכן ההודעה"
+                value={newNotification.message}
+                onChange={(e) => setNewNotification({ ...newNotification, message: e.target.value })}
+                className="bg-white text-slate-900 min-h-[80px]"
+              />
+              <div className="flex gap-3">
+                <Select
+                  value={newNotification.priority}
+                  onValueChange={(value) => setNewNotification({ ...newNotification, priority: value })}
+                >
+                  <SelectTrigger className="bg-white text-slate-900">
+                    <SelectValue placeholder="עדיפות" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">נמוכה</SelectItem>
+                    <SelectItem value="medium">בינונית</SelectItem>
+                    <SelectItem value="high">גבוהה</SelectItem>
+                    <SelectItem value="urgent">דחוף</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Input
+                  placeholder="קישור (אופציונלי)"
+                  value={newNotification.link}
+                  onChange={(e) => setNewNotification({ ...newNotification, link: e.target.value })}
+                  className="bg-white text-slate-900 flex-1"
+                />
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setShowAddForm(false);
+                    setNewNotification({ title: '', message: '', priority: 'medium', link: '' });
+                  }}
+                  className="text-slate-700"
+                >
+                  ביטול
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={createNotification}
+                  className="bg-[#2C3A50] hover:bg-[#1f2937] text-white"
+                >
+                  <Plus className="w-4 h-4 ml-1" />
+                  צור תזכורת
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Filters */}
         <div className="flex items-center gap-2 p-4 border-b bg-slate-50">
