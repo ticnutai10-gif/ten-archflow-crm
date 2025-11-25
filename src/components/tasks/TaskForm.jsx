@@ -305,6 +305,42 @@ export default function TaskForm({ task, clients, projects, onSubmit, onCancel, 
               טיפ: אפשר גם להדליק/לכבות תזכורת ישירות מכפתור התפריט בכל משימה (איקון פעמון).
             </p>
           </div>
+
+          {/* תגיות */}
+          <div className="space-y-2">
+            <Label>תגיות (הפרד בפסיקים)</Label>
+            <Input
+              value={formData.tags?.join(', ') || ''}
+              onChange={(e) => setFormData({ 
+                ...formData, 
+                tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean)
+              })}
+              placeholder="דחוף, חשוב, פגישה..."
+            />
+            <div className="flex flex-wrap gap-1 mt-2">
+              {['דחוף', 'חשוב', 'פגישה', 'מסמכים', 'תשלום', 'מעקב', 'אישור'].map(tag => (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={() => {
+                    const currentTags = formData.tags || [];
+                    if (currentTags.includes(tag)) {
+                      setFormData({ ...formData, tags: currentTags.filter(t => t !== tag) });
+                    } else {
+                      setFormData({ ...formData, tags: [...currentTags, tag] });
+                    }
+                  }}
+                  className={`text-xs px-2 py-1 rounded-full transition-colors ${
+                    formData.tags?.includes(tag)
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  #{tag}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onCancel}>ביטול</Button>
