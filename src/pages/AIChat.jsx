@@ -236,7 +236,7 @@ export default function AIChat() {
         
       } else if (action.type === 'SUMMARIZE_COMMUNICATIONS') {
         console.log('📨 Summarizing communications...');
-        toast.success('📨 סיכום תקשורת נוצר - ראה בצ'אט');
+        toast.success('📨 סיכום תקשורת נוצר - ראה בצאט');
       }
     } catch (error) {
       console.error('❌ Action execution error:', error);
