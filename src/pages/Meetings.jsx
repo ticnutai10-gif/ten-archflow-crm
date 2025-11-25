@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  Calendar,
   Calendar as CalendarIcon,
   Plus,
   Clock,
@@ -35,6 +35,8 @@ import { he } from "date-fns/locale";
 import { toast } from "sonner";
 import MeetingForm from "../components/dashboard/MeetingForm";
 import MeetingCard from "../components/dashboard/MeetingCard";
+import CalendarSyncManager from "../components/calendar/CalendarSyncManager";
+import ExportToCalendarButton from "../components/calendar/ExportToCalendarButton";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -93,12 +95,12 @@ export default function MeetingsPage() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [viewMode, setViewMode] = useState('month');
   const [isSyncing, setIsSyncing] = useState(false);
-  const [isGoogleConnected, setIsGoogleConnected] = useState(false);
+  const [isGoogleConnected, setIsGoogleConnected] = useState(true); // Always true with OAuth connector
   const [selectedDateForNew, setSelectedDateForNew] = useState(null);
+  const [showSyncManager, setShowSyncManager] = useState(false);
 
   useEffect(() => {
     loadData();
-    checkGoogleConnection();
   }, []);
 
   const loadData = async () => {
@@ -131,15 +133,6 @@ export default function MeetingsPage() {
       setProjects([]);
     }
     setIsLoading(false);
-  };
-
-  const checkGoogleConnection = async () => {
-    try {
-      const user = await base44.auth.me();
-      setIsGoogleConnected(!!user.google_refresh_token);
-    } catch (error) {
-      setIsGoogleConnected(false);
-    }
   };
 
   const handleSubmit = async (meetingData) => {
@@ -201,72 +194,44 @@ export default function MeetingsPage() {
     }
   };
 
-  const handleConnectGoogle = () => {
-    window.location.href = createPageUrl('Settings') + '?tab=google';
-  };
-
-  const handleExportToGoogle = async () => {
-    if (!isGoogleConnected) {
-      toast.error('יש להתחבר ל-Google Calendar תחילה');
-      handleConnectGoogle();
-      return;
-    }
-
+  const handleSyncAll = async () => {
     setIsSyncing(true);
     try {
-      const response = await base44.functions.invoke('googleCalendarSync', {
-        method: 'export'
+      const { data } = await base44.functions.invoke('googleCalendarSync', {
+        action: 'syncAll',
+        data: { calendarId: 'primary' }
       });
-
-      if (response.data?.success) {
-        toast.success(response.data.message || 'הפגישות סונכרנו בהצלחה');
-        loadData();
-      } else {
-        if (response.data?.needsAuth) {
-          toast.error('יש להתחבר מחדש ל-Google Calendar');
-          handleConnectGoogle();
-        } else {
-          toast.error(response.data?.error || 'שגיאה בסנכרון');
-        }
-      }
+      toast.success(data.message || 'הפגישות סונכרנו בהצלחה');
+      loadData();
     } catch (error) {
-      console.error('Export error:', error);
-      toast.error('שגיאה בייצוא ל-Google Calendar');
-    } finally {
-      setIsSyncing(false);
+      console.error('Sync error:', error);
+      toast.error('שגיאה בסנכרון');
     }
+    setIsSyncing(false);
   };
 
   const handleImportFromGoogle = async () => {
-    if (!isGoogleConnected) {
-      toast.error('יש להתחבר ל-Google Calendar תחילה');
-      handleConnectGoogle();
-      return;
-    }
-
     setIsSyncing(true);
     try {
-      const response = await base44.functions.invoke('googleCalendarSync', {
-        method: 'import'
-      });
-
-      if (response.data?.success) {
-        toast.success(response.data.message || 'אירועים יובאו בהצלחה');
-        loadData();
-      } else {
-        if (response.data?.needsAuth) {
-          toast.error('יש להתחבר מחדש ל-Google Calendar');
-          handleConnectGoogle();
-        } else {
-          toast.error(response.data?.error || 'שגיאה בייבוא');
+      const now = new Date();
+      const nextMonth = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+      
+      const { data } = await base44.functions.invoke('googleCalendarSync', {
+        action: 'importEvents',
+        data: {
+          calendarId: 'primary',
+          timeMin: now.toISOString(),
+          timeMax: nextMonth.toISOString(),
+          createMeetings: true
         }
-      }
+      });
+      toast.success(`יובאו ${data.imported} אירועים חדשים`);
+      loadData();
     } catch (error) {
       console.error('Import error:', error);
-      toast.error('שגיאה בייבוא מ-Google Calendar');
-    } finally {
-      setIsSyncing(false);
+      toast.error('שגיאה בייבוא');
     }
+    setIsSyncing(false);
   };
 
   const monthStart = startOfMonth(currentMonth);
@@ -362,48 +327,41 @@ export default function MeetingsPage() {
           <p className="text-slate-600">ניהול וארגון פגישות</p>
         </div>
         <div className="flex gap-2">
-          {isGoogleConnected ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  disabled={isSyncing}
-                  variant="outline"
-                  className="gap-2"
-                >
-                  {isSyncing ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      מסנכרן...
-                    </>
-                  ) : (
-                    <>
-                      <RefreshCw className="w-4 h-4" />
-                      סנכרון Google Calendar
-                    </>
-                  )}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" dir="rtl">
-                <DropdownMenuItem onClick={handleExportToGoogle} className="gap-2">
-                  <Upload className="w-4 h-4" />
-                  ייצוא לGoogle Calendar
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleImportFromGoogle} className="gap-2">
-                  <Download className="w-4 h-4" />
-                  ייבוא מGoogle Calendar
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <Button
-              onClick={handleConnectGoogle}
-              variant="outline"
-              className="gap-2"
-            >
-              <LinkIcon className="w-4 h-4" />
-              חבר ל-Google Calendar
-            </Button>
-          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                disabled={isSyncing}
+                variant="outline"
+                className="gap-2"
+              >
+                {isSyncing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    מסנכרן...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="w-4 h-4" />
+                    סנכרון Google Calendar
+                  </>
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" dir="rtl">
+              <DropdownMenuItem onClick={handleSyncAll} className="gap-2">
+                <Upload className="w-4 h-4" />
+                ייצא כל הפגישות ל-Google
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleImportFromGoogle} className="gap-2">
+                <Download className="w-4 h-4" />
+                ייבא מ-Google Calendar
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setShowSyncManager(true)} className="gap-2">
+                <Calendar className="w-4 h-4" />
+                מנהל סנכרון מתקדם
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button onClick={() => { setEditingMeeting(null); setSelectedDateForNew(null); setShowForm(true); }} className="bg-blue-600 hover:bg-blue-700">
             <Plus className="w-4 h-4 mr-2" />
             פגישה חדשה
@@ -734,6 +692,11 @@ export default function MeetingsPage() {
             setSelectedDateForNew(null);
           }}
         />
+      )}
+
+      {/* Calendar Sync Manager */}
+      {showSyncManager && (
+        <CalendarSyncManager onClose={() => setShowSyncManager(false)} />
       )}
     </div>
   );

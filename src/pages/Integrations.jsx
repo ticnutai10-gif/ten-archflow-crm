@@ -14,10 +14,12 @@ import {
   ExternalLink,
   Zap,
   Link as LinkIcon,
-  Loader2
+  Loader2,
+  RefreshCw
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
+import CalendarSyncManager from "../components/calendar/CalendarSyncManager";
 
 const INTEGRATIONS = [
   {
@@ -61,6 +63,7 @@ const INTEGRATIONS = [
 export default function IntegrationsPage() {
   const [connectedIntegrations, setConnectedIntegrations] = useState({});
   const [loading, setLoading] = useState(true);
+  const [showCalendarSync, setShowCalendarSync] = useState(false);
 
   useEffect(() => {
     loadIntegrationStatus();
@@ -71,13 +74,10 @@ export default function IntegrationsPage() {
       setLoading(true);
       const user = await base44.auth.me();
       
-      // Check Google connections
-      const hasGoogleDrive = !!user?.google_access_token;
-      const hasGoogleCalendar = !!user?.google_calendar_connected;
-      
+      // Google Calendar is now connected via OAuth connector (always available)
       setConnectedIntegrations({
-        google_drive: hasGoogleDrive,
-        google_calendar: hasGoogleCalendar,
+        google_drive: !!user?.google_access_token,
+        google_calendar: true, // Connected via OAuth app connector
         slack: false,
         teams: false
       });
@@ -96,10 +96,8 @@ export default function IntegrationsPage() {
         });
         window.location.href = data.auth_url;
       } else if (integrationId === 'google_calendar') {
-        const { data } = await base44.functions.invoke('googleGetAuthUrl', {
-          scopes: ['calendar']
-        });
-        window.location.href = data.auth_url;
+        // Open the calendar sync manager
+        setShowCalendarSync(true);
       } else {
         toast.info('אינטגרציה זו תהיה זמינה בקרוב');
       }
@@ -192,18 +190,28 @@ export default function IntegrationsPage() {
                                     variant="outline"
                                     size="sm"
                                     className="flex-1 gap-2"
-                                    disabled
+                                    onClick={() => integration.id === 'google_calendar' ? setShowCalendarSync(true) : null}
                                   >
                                     <CheckCircle2 className="w-4 h-4 text-green-600" />
                                     מחובר
                                   </Button>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleDisconnect(integration.id)}
-                                  >
-                                    נתק
-                                  </Button>
+                                  {integration.id === 'google_calendar' ? (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => setShowCalendarSync(true)}
+                                    >
+                                      <RefreshCw className="w-4 h-4" />
+                                    </Button>
+                                  ) : (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => handleDisconnect(integration.id)}
+                                    >
+                                      נתק
+                                    </Button>
+                                  )}
                                 </>
                               ) : (
                                 <Button
@@ -246,6 +254,11 @@ export default function IntegrationsPage() {
             </p>
           </CardContent>
         </Card>
+
+        {/* Calendar Sync Manager */}
+        {showCalendarSync && (
+          <CalendarSyncManager onClose={() => setShowCalendarSync(false)} />
+        )}
       </div>
     </div>
   );
