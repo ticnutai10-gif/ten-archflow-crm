@@ -14,6 +14,20 @@ export default function ReminderTimePicker({ value, onChange, baseDate }) {
   const [hour, setHour] = React.useState("09");
   const [minute, setMinute] = React.useState("00");
 
+  // Close on Escape key
+  React.useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape' && open) {
+        setOpen(false);
+      }
+    };
+    
+    if (open) {
+      document.addEventListener('keydown', handleEscape);
+      return () => document.removeEventListener('keydown', handleEscape);
+    }
+  }, [open]);
+
   React.useEffect(() => {
     if (!open) return;
     let dt = value ? new Date(value) : null;
@@ -54,13 +68,13 @@ export default function ReminderTimePicker({ value, onChange, baseDate }) {
   const minutes = ["00","05","10","15","20","25","30","35","40","45","50","55"];
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={setOpen} modal={true}>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="icon" type="button" title="בחר שעה ודקות">
           <Clock className="w-4 h-4" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-72" align="end" dir="rtl">
+      <PopoverContent className="w-72 z-[100]" align="end" dir="rtl" side="bottom" sideOffset={5}>
         <div className="space-y-3">
           <div className="text-sm font-medium text-slate-700">בחירת שעה</div>
           <div className="grid grid-cols-2 gap-2">

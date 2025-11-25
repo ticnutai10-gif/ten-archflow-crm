@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -33,6 +32,18 @@ export default function TaskForm({ task, clients, projects, onSubmit, onCancel, 
     reminder_popup: true,
     ...initialData
   });
+
+  // Close dialog on Escape key
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        onCancel();
+      }
+    };
+    
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [onCancel]);
 
   const [user, setUser] = useState(null);
   const [customRingtones, setCustomRingtones] = useState([]);
@@ -128,8 +139,8 @@ export default function TaskForm({ task, clients, projects, onSubmit, onCancel, 
   ];
 
   return (
-    <Dialog open={true} onOpenChange={onCancel}>
-      <DialogContent className="sm:max-w-lg text-right" dir="rtl">
+    <Dialog open={true} onOpenChange={(open) => !open && onCancel()}>
+      <DialogContent className="sm:max-w-lg text-right max-h-[90vh] overflow-y-auto" dir="rtl">
         <DialogHeader>
           <DialogTitle>{task ? 'עריכת' : 'יצירת'} משימה</DialogTitle>
         </DialogHeader>

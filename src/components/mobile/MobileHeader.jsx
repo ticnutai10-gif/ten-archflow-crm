@@ -27,13 +27,6 @@ export default function MobileHeader({ onMenuClick, title = 'CRM' }) {
 
         {/* Actions */}
         <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-white hover:bg-white/20 w-12 h-12 rounded-xl"
-          >
-            <Search className="w-6 h-6" />
-          </Button>
           <NotificationBell />
         </div>
       </div>
