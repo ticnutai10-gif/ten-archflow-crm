@@ -81,7 +81,7 @@ export default function FloatingAIButton() {
         if (params.date_time) {
           meetingDate = params.date_time;
         } else if (params.date && params.time) {
-          meetingDate = `${params.date}T${params.time}:00`;
+          meetingDate = `${params.date}T${params.time}`;
         } else if (params.date) {
           let dateStr = params.date;
           if (dateStr === 'מחר') {
@@ -92,11 +92,11 @@ export default function FloatingAIButton() {
             dateStr = new Date().toISOString().split('T')[0];
           }
           const time = params.time || '09:00';
-          meetingDate = `${dateStr}T${time}:00`;
+          meetingDate = `${dateStr}T${time}`;
         } else {
           const tomorrow = new Date();
           tomorrow.setDate(tomorrow.getDate() + 1);
-          meetingDate = `${tomorrow.toISOString().split('T')[0]}T10:00:00`;
+          meetingDate = `${tomorrow.toISOString().split('T')[0]}T10:00`;
         }
         
         let clientId = params.client_id;
@@ -106,7 +106,7 @@ export default function FloatingAIButton() {
           try {
             const clients = await base44.entities.Client.list();
             const client = clients.find(c => 
-              c.name?.includes(clientName.trim()) || 
+              c.name?.toLowerCase().includes(clientName.toLowerCase().trim()) || 
               c.name?.toLowerCase() === clientName.toLowerCase()
             );
             if (client) {
@@ -124,8 +124,9 @@ export default function FloatingAIButton() {
           status: 'מתוכננת',
           location: params.location || '',
           description: params.description || (clientName ? `פגישה עם ${clientName}` : ''),
-          participants: params.participants?.split(';').filter(p => p.trim()) || [],
-          meeting_type: params.meeting_type || 'פגישת תכנון'
+          participants: params.participants?.split(';').map(p => p.trim()).filter(Boolean) || [],
+          meeting_type: params.meeting_type || 'פגישת תכנון',
+          duration_minutes: params.duration_minutes ? parseInt(params.duration_minutes) : 60
         };
         
         if (clientId) meetingData.client_id = clientId;
@@ -137,7 +138,7 @@ export default function FloatingAIButton() {
         
         const newMeeting = await base44.entities.Meeting.create(meetingData);
         console.log('✅ Meeting created:', newMeeting);
-        toast.success(`📅 פגישה "${title}" נקבעה בהצלחה!`);
+        toast.success(`📅 פגישה "${title}" נקבעה ל-${meetingDate.split('T')[0]} בשעה ${meetingDate.split('T')[1]}`);
         
       } else if (action.type === 'UPDATE_CLIENT_STAGE') {
         console.log('🎯 Updating client stage...');
@@ -275,8 +276,9 @@ ${upcomingMeetings.slice(0, 3).map(m => `- ${m.title} עם ${m.participants?.joi
 2. נתח נתונים היסטוריים לחיזויים מבוססי-נתונים
 3. אם רלוונטי, הצע פעולות מעקב ספציפיות בפורמט: [ACTION: סוג_פעולה | נתונים]
    סוגי פעולות: CREATE_TASK, SEND_EMAIL, SCHEDULE_MEETING, UPDATE_CLIENT_STAGE, ANALYZE_SENTIMENT, SUGGEST_REMINDERS, SUMMARIZE_PROJECT, SUMMARIZE_CLIENT, GENERATE_QUOTE_DRAFT, GENERATE_EMAIL_DRAFT
-4. דוגמה חיזוי: [ACTION: PREDICT_TIMELINE | project_name: פרויקט חדש, project_type: בית פרטי, complexity: בינונית]
-5. דוגמה משאבים: [ACTION: SUGGEST_RESOURCES | project_name: פרויקט חדש, duration_days: 180]
+4. דוגמה משימה: [ACTION: CREATE_TASK | title: בדיקה, priority: גבוהה, due_date: מחר, client_name: שם לקוח]
+5. דוגמה פגישה: [ACTION: SCHEDULE_MEETING | title: פגישת תכנון, client_name: שם לקוח, date: 2025-01-15, time: 10:00, location: המשרד]
+6. פורמט תאריך לפגישות: YYYY-MM-DD (למשל 2025-01-15), פורמט שעה: HH:MM (למשל 14:30)
 `;
 
       const prompt = `${context}\n\nשאלת המשתמש: ${input}`;
@@ -347,7 +349,7 @@ ${upcomingMeetings.slice(0, 3).map(m => `- ${m.title} עם ${m.participants?.joi
       {/* Chat Window */}
       {isOpen && (
         <div
-          className={`fixed ${isMobile ? 'top-16 bottom-20 left-4 right-4' : 'bottom-24 right-6 w-96 h-[600px]'} z-50 bg-white ${isMobile ? 'rounded-2xl' : 'rounded-2xl'} shadow-2xl flex flex-col overflow-hidden border border-purple-200 animate-in fade-in zoom-in-95 duration-200`}
+          className={`fixed ${isMobile ? 'top-16 bottom-20 left-4 right-4' : 'bottom-24 right-6 w-96 h-[600px]'} z-[45] bg-white ${isMobile ? 'rounded-2xl' : 'rounded-2xl'} shadow-2xl flex flex-col overflow-hidden border border-purple-200 animate-in fade-in zoom-in-95 duration-200`}
           dir="rtl"
         >
           {/* Header */}
@@ -361,11 +363,23 @@ ${upcomingMeetings.slice(0, 3).map(m => `- ${m.title} עם ${m.participants?.joi
                 <p className="text-xs opacity-90">עוזר חכם שלך</p>
               </div>
             </div>
-            <Link to={createPageUrl('AIChat')}>
-              <Button variant="ghost" size="sm" className="text-white hover:bg-white/20">
-                פתח מסך מלא
+            <div className="flex gap-2">
+              {!isMobile && (
+                <Link to={createPageUrl('AIChat')}>
+                  <Button variant="ghost" size="sm" className="text-white hover:bg-white/20">
+                    פתח מסך מלא
+                  </Button>
+                </Link>
+              )}
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => setIsOpen(false)}
+                className="text-white hover:bg-white/20"
+              >
+                <X className="w-5 h-5" />
               </Button>
-            </Link>
+            </div>
           </div>
 
           {/* Messages */}
