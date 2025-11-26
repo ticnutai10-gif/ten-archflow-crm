@@ -25,6 +25,7 @@ const COLUMN_TYPES = [
   { value: 'client', label: '👤 לקוח (מקושר)' },
   { value: 'stage', label: '🔵 שלבים (מואר)' },
   { value: 'checkmark', label: '✓/✗ סימון' },
+  { value: 'mixed_check', label: '✓/✗ + טקסט/מספר' },
   { value: 'boolean', label: 'כן/לא' },
   { value: 'select', label: 'בחירה' }
 ];
