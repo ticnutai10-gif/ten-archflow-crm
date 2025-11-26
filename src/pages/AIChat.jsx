@@ -827,7 +827,10 @@ ${mentionedProjects.size > 0 ? `- פרויקטים שהוזכרו בשיחה: ${
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={clearChat}
+                    onClick={() => {
+                      setMessages([]);
+                      setInput('');
+                    }}
                     className="flex-shrink-0"
                     title="נקה שיחה"
                   >
