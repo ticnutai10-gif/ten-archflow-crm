@@ -15,6 +15,13 @@ export default function AIChat() {
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef(null);
 
+  // פונקציה לניקוי הצ'אט
+  const handleNewChat = () => {
+    setMessages([]);
+    setInput('');
+    toast.success('שיחה חדשה נפתחה');
+  };
+
   // Smart fuzzy matching for client/user names
   const findBestMatch = (searchName, entityList, nameField = 'name') => {
     if (!searchName || !entityList || entityList.length === 0) return null;
@@ -670,11 +677,7 @@ ${mentionedProjects.size > 0 ? `- פרויקטים שהוזכרו בשיחה: ${
             </div>
             <div className="flex gap-2">
               <Button 
-                onClick={() => {
-                  setMessages([]);
-                  setInput('');
-                  toast.success('שיחה חדשה נפתחה');
-                }} 
+                onClick={handleNewChat}
                 variant="outline" 
                 className="gap-2"
               >
@@ -827,10 +830,7 @@ ${mentionedProjects.size > 0 ? `- פרויקטים שהוזכרו בשיחה: ${
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => {
-                      setMessages([]);
-                      setInput('');
-                    }}
+                    onClick={handleNewChat}
                     className="flex-shrink-0"
                     title="נקה שיחה"
                   >

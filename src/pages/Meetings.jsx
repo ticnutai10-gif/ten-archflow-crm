@@ -97,7 +97,15 @@ export default function MeetingsPage() {
   const [editingMeeting, setEditingMeeting] = useState(null);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [viewMode, setViewMode] = useState('month');
+  const [viewMode, setViewMode] = useState(() => {
+    try {
+      return localStorage.getItem('meetings-view-mode') || 'month';
+    } catch {
+      return 'month';
+    }
+  });
+  const [selectedDayMeetings, setSelectedDayMeetings] = useState(null);
+  const [selectedDayDate, setSelectedDayDate] = useState(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isGoogleConnected, setIsGoogleConnected] = useState(true);
   const [selectedDateForNew, setSelectedDateForNew] = useState(null);
@@ -108,6 +116,15 @@ export default function MeetingsPage() {
   useEffect(() => {
     loadData();
   }, []);
+
+  // שמירת תצוגה נבחרת
+  useEffect(() => {
+    try {
+      localStorage.setItem('meetings-view-mode', viewMode);
+    } catch (e) {
+      console.warn('Failed to save view mode:', e);
+    }
+  }, [viewMode]);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -292,10 +309,22 @@ export default function MeetingsPage() {
   }, [meetings]);
 
   const handleDateClick = (date) => {
+    const dayMeetings = getMeetingsForDate(date);
     setSelectedDate(date);
-    setSelectedDateForNew(date);
+    setSelectedDayDate(date);
+    setSelectedDayMeetings(dayMeetings);
+  };
+
+  const handleAddMeetingForDay = () => {
+    setSelectedDateForNew(selectedDayDate);
     setEditingMeeting(null);
+    setSelectedDayMeetings(null);
     setShowForm(true);
+  };
+
+  const closeDayView = () => {
+    setSelectedDayMeetings(null);
+    setSelectedDayDate(null);
   };
 
   const toggleSelection = (meetingId) => {
