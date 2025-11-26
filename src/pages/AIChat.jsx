@@ -653,6 +653,7 @@ ${mentionedProjects.size > 0 ? `- פרויקטים שהוזכרו בשיחה: ${
 
   const clearChat = () => {
     setMessages([]);
+    setInput('');
   };
 
   const handleKeyPress = (e) => {
