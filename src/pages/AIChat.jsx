@@ -243,10 +243,11 @@ export default function AIChat() {
         if (clientName && !clientId) {
           try {
             const clients = await base44.entities.Client.list();
-            const client = findBestMatch(clientName, clients, c => c.name);
-            if (client) {
-              clientId = client.id;
-              clientName = client.name;
+            const result = findBestMatch(clientName, clients, 'name');
+            if (result && result.match) {
+              clientId = result.match.id;
+              clientName = result.match.name;
+              console.log('✅ Client matched:', clientName, 'confidence:', result.confidence);
             }
           } catch (e) {
             console.warn('Could not fetch clients:', e);
@@ -284,8 +285,8 @@ export default function AIChat() {
         let updated = 0;
         
         for (const clientIdentifier of clientsToUpdate) {
-          const client = findBestMatch(clientIdentifier.trim(), allClients, c => c.name) || 
-                        allClients.find(c => c.id === clientIdentifier.trim());
+          const result = findBestMatch(clientIdentifier.trim(), allClients, 'name');
+          const client = result?.match || allClients.find(c => c.id === clientIdentifier.trim());
           
           if (client) {
             await base44.entities.Client.update(client.id, { stage: newStage });
@@ -298,13 +299,15 @@ export default function AIChat() {
       } else if (action.type === 'ADD_CLIENT_DATA') {
         const clientName = params.client_name;
         const allClients = await base44.entities.Client.list();
-        const client = findBestMatch(clientName, allClients, c => c.name);
+        const result = findBestMatch(clientName, allClients, 'name');
         
-        if (!client) {
+        if (!result || !result.match) {
+          toast.dismiss('action-loading');
           toast.error(`לא נמצא לקוח: ${clientName}`);
           return;
         }
 
+        const client = result.match;
         const updateData = {};
         if (params.email) updateData.email = params.email;
         if (params.phone) updateData.phone = params.phone;
@@ -315,7 +318,7 @@ export default function AIChat() {
         
         await base44.entities.Client.update(client.id, updateData);
         toast.dismiss('action-loading');
-        toast.success('✅ בוצע - המידע עודכן');
+        toast.success(`✅ בוצע - המידע של ${client.name} עודכן`);
       }
     } catch (error) {
       console.error('❌ Action execution error:', error);
