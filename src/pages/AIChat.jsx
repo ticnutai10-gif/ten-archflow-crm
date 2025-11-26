@@ -657,11 +657,6 @@ ${mentionedProjects.size > 0 ? `- פרויקטים שהוזכרו בשיחה: ${
     setLoading(false);
   };
 
-  const clearChat = () => {
-    setMessages([]);
-    setInput('');
-  };
-
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
