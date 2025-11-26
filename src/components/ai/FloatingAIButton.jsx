@@ -16,6 +16,9 @@ export default function FloatingAIButton() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [currentConversationId, setCurrentConversationId] = useState(null);
+  const [conversations, setConversations] = useState([]);
+  const [showConversations, setShowConversations] = useState(false);
 
   // Fuzzy matching helper - finds best match even with typos
   const fuzzyMatch = (search, target) => {
@@ -404,11 +407,54 @@ ${sentimentResult}
     }
   };
 
+  const loadConversations = async () => {
+    try {
+      const convos = await base44.entities.ChatConversation.list('-last_message_at', 10);
+      setConversations(convos);
+    } catch (error) {
+      console.error('Error loading conversations:', error);
+    }
+  };
+
+  const saveConversation = async (msgs) => {
+    try {
+      const conversationData = {
+        name: msgs[0]?.content.substring(0, 50) + '...' || 'שיחה חדשה',
+        messages: msgs,
+        folder: 'כללי',
+        last_message_at: new Date().toISOString()
+      };
+
+      if (currentConversationId) {
+        await base44.entities.ChatConversation.update(currentConversationId, conversationData);
+      } else {
+        const newConvo = await base44.entities.ChatConversation.create(conversationData);
+        setCurrentConversationId(newConvo.id);
+      }
+      loadConversations();
+    } catch (error) {
+      console.error('Error saving conversation:', error);
+    }
+  };
+
+  const loadConversation = async (convo) => {
+    setMessages(convo.messages || []);
+    setCurrentConversationId(convo.id);
+    setShowConversations(false);
+  };
+
+  const startNewConversation = () => {
+    setMessages([]);
+    setCurrentConversationId(null);
+    setShowConversations(false);
+  };
+
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
 
-    const userMessage = { role: 'user', content: input };
-    setMessages(prev => [...prev, userMessage]);
+    const userMessage = { role: 'user', content: input, timestamp: new Date().toISOString() };
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);
     const userInput = input;
     setInput('');
     setLoading(true);
@@ -535,16 +581,24 @@ ${projectsList || 'אין פרויקטים פעילים'}
         });
       }
 
-      setMessages(prev => [...prev, { 
+      const assistantMessage = { 
         role: 'assistant', 
         content: result,
-        actions 
-      }]);
+        actions,
+        timestamp: new Date().toISOString()
+      };
+      
+      const finalMessages = [...updatedMessages, assistantMessage];
+      setMessages(finalMessages);
+      
+      // Auto-save conversation
+      await saveConversation(finalMessages);
     } catch (error) {
       console.error('❌ AI Error:', error);
       setMessages(prev => [...prev, { 
         role: 'assistant', 
-        content: 'מצטער, אירעה שגיאה. אנא נסה שוב.' 
+        content: 'מצטער, אירעה שגיאה. אנא נסה שוב.',
+        timestamp: new Date().toISOString()
       }]);
     }
     setLoading(false);
@@ -597,10 +651,22 @@ ${projectsList || 'אין פרויקטים פעילים'}
               </div>
             </div>
             <div className="flex gap-2">
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={() => {
+                  setShowConversations(!showConversations);
+                  if (!showConversations) loadConversations();
+                }}
+                className="text-white hover:bg-white/20"
+                title="היסטוריה"
+              >
+                <MessageSquare className="w-5 h-5" />
+              </Button>
               {!isMobile && (
-                <Link to={createPageUrl('AIChat')}>
+                <Link to={createPageUrl('ChatHistory')}>
                   <Button variant="ghost" size="sm" className="text-white hover:bg-white/20">
-                    פתח מסך מלא
+                    נהל שיחות
                   </Button>
                 </Link>
               )}
@@ -616,7 +682,35 @@ ${projectsList || 'אין פרויקטים פעילים'}
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gradient-to-br from-purple-50/50 to-blue-50/50">
-            {messages.length === 0 ? (
+            {showConversations ? (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-semibold text-slate-800">שיחות אחרונות</h4>
+                  <Button size="sm" onClick={startNewConversation} className="bg-purple-600">
+                    <Plus className="w-3 h-3 ml-1" />
+                    חדש
+                  </Button>
+                </div>
+                {conversations.length === 0 ? (
+                  <p className="text-center text-slate-500 text-sm py-8">אין שיחות שמורות</p>
+                ) : (
+                  conversations.map(convo => (
+                    <Card 
+                      key={convo.id} 
+                      className="cursor-pointer hover:bg-slate-50 transition-colors"
+                      onClick={() => loadConversation(convo)}
+                    >
+                      <CardContent className="p-3">
+                        <p className="font-medium text-sm text-slate-900 truncate">{convo.name}</p>
+                        <p className="text-xs text-slate-500 mt-1">
+                          {convo.messages?.length || 0} הודעות • {new Date(convo.last_message_at).toLocaleDateString('he-IL')}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </div>
+            ) : messages.length === 0 ? (
               <div className="h-full flex items-center justify-center">
                 <div className="text-center p-4">
                   <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-3 animate-pulse">
