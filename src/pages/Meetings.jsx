@@ -184,9 +184,10 @@ export default function MeetingsPage() {
   const handleSyncAll = async () => {
     setIsSyncing(true);
     try {
+      const selectedCalendar = localStorage.getItem('selected-calendar') || 'primary';
       const { data } = await base44.functions.invoke('googleCalendarSync', {
         action: 'syncAll',
-        data: { calendarId: 'primary' }
+        data: { calendarId: selectedCalendar }
       });
       toast.success(data.message || 'הפגישות סונכרנו בהצלחה');
       loadData();
@@ -200,19 +201,20 @@ export default function MeetingsPage() {
   const handleImportFromGoogle = async () => {
     setIsSyncing(true);
     try {
+      const selectedCalendar = localStorage.getItem('selected-calendar') || 'primary';
       const now = new Date();
       const nextMonth = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
       
       const { data } = await base44.functions.invoke('googleCalendarSync', {
         action: 'importEvents',
         data: {
-          calendarId: 'primary',
+          calendarId: selectedCalendar,
           timeMin: now.toISOString(),
           timeMax: nextMonth.toISOString(),
           createMeetings: true
         }
       });
-      toast.success(`יובאו ${data.imported} אירועים חדשים`);
+      toast.success(`יובאו ${data.imported} אירועים חדשים מתוך ${data.total_events}`);
       loadData();
     } catch (error) {
       console.error('Import error:', error);

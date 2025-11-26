@@ -36,7 +36,13 @@ export default function CalendarSyncManager({ onClose }) {
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [calendars, setCalendars] = useState([]);
-  const [selectedCalendar, setSelectedCalendar] = useState('primary');
+  const [selectedCalendar, setSelectedCalendar] = useState(() => {
+    try {
+      return localStorage.getItem('selected-calendar') || 'primary';
+    } catch {
+      return 'primary';
+    }
+  });
   const [events, setEvents] = useState([]);
   const [syncStatus, setSyncStatus] = useState(null);
   const [autoSync, setAutoSync] = useState(() => {
@@ -56,6 +62,12 @@ export default function CalendarSyncManager({ onClose }) {
       localStorage.setItem('calendar-auto-sync', autoSync.toString());
     } catch (e) {}
   }, [autoSync]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('selected-calendar', selectedCalendar);
+    } catch (e) {}
+  }, [selectedCalendar]);
 
   const loadCalendars = async () => {
     setLoading(true);
@@ -152,22 +164,27 @@ export default function CalendarSyncManager({ onClose }) {
 
         <div className="space-y-6 py-4">
           {/* Calendar Selection */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">בחר לוח שנה</label>
-            <Select value={selectedCalendar} onValueChange={setSelectedCalendar}>
-              <SelectTrigger>
-                <SelectValue placeholder="בחר לוח שנה" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="primary">לוח ראשי</SelectItem>
-                {calendars.map(cal => (
-                  <SelectItem key={cal.id} value={cal.id}>
-                    {cal.summary}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <Card>
+            <CardContent className="p-4 space-y-3">
+              <label className="text-sm font-medium">לוח שנה לסנכרון</label>
+              <Select value={selectedCalendar} onValueChange={setSelectedCalendar}>
+                <SelectTrigger>
+                  <SelectValue placeholder="בחר לוח שנה" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="primary">לוח ראשי</SelectItem>
+                  {calendars.map(cal => (
+                    <SelectItem key={cal.id} value={cal.id}>
+                      {cal.summary}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-slate-500">
+                הלוח הנבחר ישמר ויהיה ברירת המחדל לסנכרון
+              </p>
+            </CardContent>
+          </Card>
 
           {/* Sync Status */}
           {syncStatus && (
