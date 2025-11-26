@@ -675,7 +675,15 @@ ${mentionedProjects.size > 0 ? `- פרויקטים שהוזכרו בשיחה: ${
               <h1 className="text-2xl font-bold">צ'אט AI חכם</h1>
             </div>
             <div className="flex gap-2">
-              <Button onClick={clearChat} variant="outline" className="gap-2">
+              <Button 
+                onClick={() => {
+                  console.log('🧹 New chat button clicked');
+                  setMessages([]);
+                  setInput('');
+                }} 
+                variant="outline" 
+                className="gap-2"
+              >
                 <Plus className="w-4 h-4" />
                 שיחה חדשה
               </Button>
