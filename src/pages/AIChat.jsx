@@ -15,12 +15,6 @@ export default function AIChat() {
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef(null);
 
-  const clearChat = () => {
-    console.log('🧹 Clearing chat...');
-    setMessages([]);
-    setInput('');
-  };
-
   // Smart fuzzy matching for client/user names
   const findBestMatch = (searchName, entityList, nameField = 'name') => {
     if (!searchName || !entityList || entityList.length === 0) return null;
