@@ -673,12 +673,10 @@ ${mentionedProjects.size > 0 ? `- פרויקטים שהוזכרו בשיחה: ${
               <h1 className="text-2xl font-bold">צ'אט AI חכם</h1>
             </div>
             <div className="flex gap-2">
-              {messages.length > 0 && (
-                <Button onClick={clearChat} variant="outline" className="gap-2">
-                  <Plus className="w-4 h-4" />
-                  שיחה חדשה
-                </Button>
-              )}
+              <Button onClick={clearChat} variant="outline" className="gap-2">
+                <Plus className="w-4 h-4" />
+                שיחה חדשה
+              </Button>
               <Link to={createPageUrl('ChatHistory')}>
                 <Button variant="outline" className="gap-2">
                   <MessageSquare className="w-4 h-4" />
