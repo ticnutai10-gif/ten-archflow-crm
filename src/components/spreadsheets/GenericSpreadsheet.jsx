@@ -1556,7 +1556,15 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     
     console.log('💾 [SAVE] Saving cell:', { cellKey: editingCell, rowId, columnKey, editValue });
     
-    const validationError = validateCell(columnKey, editValue);
+    // Auto-convert V/X for mixed_check columns
+    const column = columns.find(c => c.key === columnKey);
+    let finalValue = editValue;
+    if (column?.type === 'mixed_check') {
+      if (editValue === 'V' || editValue === 'v') finalValue = '✓';
+      else if (editValue === 'X' || editValue === 'x') finalValue = '✗';
+    }
+    
+    const validationError = validateCell(columnKey, finalValue);
     if (validationError) {
       setValidationErrors(prev => ({ ...prev, [editingCell]: validationError }));
       toast.error(validationError);
@@ -1565,7 +1573,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     setValidationErrors(prev => { const { [editingCell]: removed, ...rest } = prev; return rest; });
     
     const updatedRows = rowsData.map(row => 
-      row.id === rowId ? { ...row, [columnKey]: editValue } : row
+      row.id === rowId ? { ...row, [columnKey]: finalValue } : row
     );
     
     console.log('💾 [SAVE] Updated rows:', updatedRows);
