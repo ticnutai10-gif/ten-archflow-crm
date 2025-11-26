@@ -3,7 +3,9 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
-import { Loader2, Send, Sparkles, Trash2, Plus, Mail, CheckCircle, ListTodo, Calendar, Users, TrendingUp, Target, MessageCircle, FileText } from 'lucide-react';
+import { Loader2, Send, Sparkles, Trash2, Plus, Mail, CheckCircle, ListTodo, Calendar, Users, TrendingUp, Target, MessageCircle, FileText, MessageSquare } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
 import ReactMarkdown from 'react-markdown';
 import { toast } from 'sonner';
 
@@ -778,12 +780,20 @@ ${mentionedProjects.size > 0 ? `- פרויקטים שהוזכרו בשיחה: ${
     <div className="min-h-screen p-6 bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50" dir="rtl">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="mb-6 text-center">
-          <div className="inline-flex items-center gap-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 py-3 rounded-2xl shadow-lg">
-            <Sparkles className="w-6 h-6" />
-            <h1 className="text-2xl font-bold">צ'אט AI חכם</h1>
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <div className="inline-flex items-center gap-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 py-3 rounded-2xl shadow-lg">
+              <Sparkles className="w-6 h-6" />
+              <h1 className="text-2xl font-bold">צ'אט AI חכם</h1>
+            </div>
+            <Link to={createPageUrl('ChatHistory')}>
+              <Button variant="outline" className="gap-2">
+                <MessageSquare className="w-4 h-4" />
+                היסטוריית שיחות
+              </Button>
+            </Link>
           </div>
-          <p className="text-slate-600 mt-3">שאל אותי כל שאלה על הפרויקטים, הלקוחות והמשימות שלך</p>
+          <p className="text-slate-600 text-center">שאל אותי כל שאלה על הפרויקטים, הלקוחות והמשימות שלך</p>
         </div>
 
         {/* Chat Container */}
