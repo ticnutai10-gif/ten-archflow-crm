@@ -190,6 +190,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const [showBulkColumnsDialog, setShowBulkColumnsDialog] = useState(false);
   const [showStageManager, setShowStageManager] = useState(false);
   const [customStageOptions, setCustomStageOptions] = useState(DEFAULT_STAGE_OPTIONS);
+  const [viewMode, setViewMode] = useState('table');
   const [cellContextMenu, setCellContextMenu] = useState(null);
   const [noteDialogCell, setNoteDialogCell] = useState(null);
   const [noteText, setNoteText] = useState("");
@@ -2055,6 +2056,46 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                 <Circle className="w-4 h-4 text-purple-600" />
                 ניהול שלבים
               </Button>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button size="sm" variant="outline" className="gap-2">
+                    <Eye className="w-4 h-4" />
+                    תצוגה: {viewMode === 'table' ? 'טבלה' : viewMode === 'cards' ? 'כרטיסים' : viewMode === 'compact' ? 'קומפקטי' : 'גלריה'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-56" align="end" dir="rtl">
+                  <div className="space-y-1">
+                    <div className="text-xs font-semibold text-slate-500 mb-2 px-2">בחר תצוגה</div>
+                    <Button 
+                      variant={viewMode === 'table' ? 'default' : 'ghost'} 
+                      size="sm" 
+                      className="w-full justify-start gap-2"
+                      onClick={() => setViewMode('table')}
+                    >
+                      <Table className="w-4 h-4" />
+                      טבלה רגילה
+                    </Button>
+                    <Button 
+                      variant={viewMode === 'cards' ? 'default' : 'ghost'} 
+                      size="sm" 
+                      className="w-full justify-start gap-2"
+                      onClick={() => setViewMode('cards')}
+                    >
+                      <Grid className="w-4 h-4" />
+                      כרטיסים
+                    </Button>
+                    <Button 
+                      variant={viewMode === 'compact' ? 'default' : 'ghost'} 
+                      size="sm" 
+                      className="w-full justify-start gap-2"
+                      onClick={() => setViewMode('compact')}
+                    >
+                      <Layers className="w-4 h-4" />
+                      תצוגה קומפקטית
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
               {selectedCells.size > 0 && (
                 <>
                   <Badge variant="outline" className="bg-purple-50 px-3">נבחרו: {selectedCells.size} תאים</Badge>
@@ -2092,7 +2133,93 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         </CardHeader>
         
         <CardContent className="p-0">
-          {showColumnStats && Object.keys(columnStats).length > 0 && (
+          {viewMode === 'cards' && (
+            <div className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredAndSortedData.map((row, idx) => (
+                  <Card key={row.id} className="hover:shadow-lg transition-shadow">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <CardTitle className="text-base">
+                            {row[visibleColumns[0]?.key] || `שורה ${idx + 1}`}
+                          </CardTitle>
+                        </div>
+                        <div className="flex gap-1">
+                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => duplicateRow(row)}>
+                            <Copy className="w-3 h-3" />
+                          </Button>
+                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => deleteRow(row.id)}>
+                            <Trash2 className="w-3 h-3 text-red-600" />
+                          </Button>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      {visibleColumns.slice(1).map(col => {
+                        const value = row[col.key];
+                        if (!value) return null;
+                        return (
+                          <div key={col.key} className="flex items-center justify-between text-sm border-b border-slate-100 pb-2">
+                            <span className="text-slate-600 font-medium">{col.title}</span>
+                            <span className="text-slate-900 font-semibold">
+                              {col.type === 'checkmark' || col.type === 'mixed_check' ? (
+                                value === '✓' ? <span className="text-green-600 text-lg">✓</span> : 
+                                value === '✗' ? <span className="text-red-600 text-lg">✗</span> : value
+                              ) : col.type === 'stage' ? (
+                                customStageOptions.find(s => s.value === value)?.label || value
+                              ) : String(value)}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          {viewMode === 'compact' && (
+            <div className="p-4">
+              <div className="space-y-1">
+                {filteredAndSortedData.map((row, idx) => (
+                  <div key={row.id} className="flex items-center gap-3 p-2 hover:bg-slate-50 rounded-lg border-b border-slate-100 group">
+                    <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-600">
+                      {idx + 1}
+                    </div>
+                    <div className="flex-1 flex items-center gap-4">
+                      {visibleColumns.slice(0, 4).map(col => {
+                        const value = row[col.key];
+                        return (
+                          <div key={col.key} className="flex items-center gap-1 text-sm">
+                            <span className="text-slate-500 text-xs">{col.title}:</span>
+                            <span className="font-medium text-slate-900">
+                              {col.type === 'checkmark' || col.type === 'mixed_check' ? (
+                                value === '✓' ? '✓' : value === '✗' ? '✗' : '-'
+                              ) : col.type === 'stage' ? (
+                                customStageOptions.find(s => s.value === value)?.label || value || '-'
+                              ) : value || '-'}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="opacity-0 group-hover:opacity-100 flex gap-1">
+                      <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => duplicateRow(row)}>
+                        <Copy className="w-3 h-3" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => deleteRow(row.id)}>
+                        <Trash2 className="w-3 h-3 text-red-600" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          {viewMode === 'table' && showColumnStats && Object.keys(columnStats).length > 0 && (
             <div className="bg-gradient-to-r from-purple-50 to-blue-50 border-b-2 border-purple-200 p-4">
               <div className="flex items-center gap-2 mb-3">
                 <Calculator className="w-5 h-5 text-purple-600" />
@@ -2125,6 +2252,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
             </div>
           )}
 
+          {viewMode === 'table' && (
           <div className="overflow-auto" style={{ maxHeight: fullScreenMode ? '85vh' : '60vh' }}>
             <DragDropContext onDragEnd={handleDragEnd}>
               <table ref={tableRef} className="w-full" dir="rtl" style={{
@@ -2564,6 +2692,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
               </table>
             </DragDropContext>
           </div>
+          )}
         </CardContent>
         <div className="px-6 py-3 border-t bg-gradient-to-r from-slate-50 to-slate-100 text-xs text-slate-600 flex items-center justify-between">
           <div className="flex items-center gap-4">
