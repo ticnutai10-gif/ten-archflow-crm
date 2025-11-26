@@ -669,12 +669,20 @@ ${mentionedProjects.size > 0 ? `- פרויקטים שהוזכרו בשיחה: ${
               <Sparkles className="w-6 h-6" />
               <h1 className="text-2xl font-bold">צ'אט AI חכם</h1>
             </div>
-            <Link to={createPageUrl('ChatHistory')}>
-              <Button variant="outline" className="gap-2">
-                <MessageSquare className="w-4 h-4" />
-                היסטוריית שיחות
-              </Button>
-            </Link>
+            <div className="flex gap-2">
+              {messages.length > 0 && (
+                <Button onClick={clearChat} variant="outline" className="gap-2">
+                  <Plus className="w-4 h-4" />
+                  שיחה חדשה
+                </Button>
+              )}
+              <Link to={createPageUrl('ChatHistory')}>
+                <Button variant="outline" className="gap-2">
+                  <MessageSquare className="w-4 h-4" />
+                  היסטוריה
+                </Button>
+              </Link>
+            </div>
           </div>
           <p className="text-slate-600 text-center">שאל אותי כל שאלה על הפרויקטים, הלקוחות והמשימות שלך</p>
         </div>
