@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MessageSquare, X, Send, Loader2, Sparkles, Mail, CheckCircle, ListTodo, Users, TrendingUp, Target, Calendar, FileText, Navigation, Table, Database, BarChart, AlertCircle, Plus } from 'lucide-react';
+import { MessageSquare, X, Send, Loader2, Sparkles, Mail, CheckCircle, ListTodo, Users, TrendingUp, Target, Calendar, FileText, Navigation, Table, Database, BarChart, AlertCircle, Plus, Edit2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -450,7 +450,7 @@ ${sentimentResult}
         const clientName = params.client_name;
         const allClients = await base44.entities.Client.list();
         const client = findBestMatch(clientName, allClients, c => c.name);
-        
+
         if (!client) {
           toast.error(`לא נמצא לקוח: ${clientName}`);
           return;
@@ -466,6 +466,158 @@ ${sentimentResult}
         await base44.entities.Client.update(client.id, updateData);
         toast.dismiss('action-loading');
         toast.success('✅ בוצע - המידע עודכן');
+
+      } else if (action.type === 'ANALYZE_COMMUNICATIONS') {
+        const clientName = params.client_name;
+        const allClients = await base44.entities.Client.list();
+        const client = findBestMatch(clientName, allClients, c => c.name);
+
+        if (!client) {
+          toast.error(`לא נמצא לקוח: ${clientName}`);
+          return;
+        }
+
+        const communications = await base44.entities.CommunicationMessage.filter({ client_id: client.id }).catch(() => []);
+
+        if (communications.length === 0) {
+          toast.info('אין תקשורות לניתוח');
+          return;
+        }
+
+        const recentComms = communications.slice(0, 20);
+        const textToAnalyze = recentComms.map(c => `[${c.type}] ${c.subject || ''}: ${c.body}`).join('\n\n');
+
+        const analysisPrompt = `נתח את התקשורות הבאות עם הלקוח "${client.name}" וספק:
+
+      1. **סיכום מרכזי**: מהן הנקודות המרכזיות שעלו?
+      2. **נושאים חוזרים**: מה הלקוח מדגיש שוב ושוב?
+      3. **רמת שביעות רצון**: האם הלקוח מרוצה/מתוסכל/ניטרלי?
+      4. **בקשות ממתינות**: מה הלקוח מחכה לקבל?
+      5. **המלצות לפעולה**: מה כדאי לעשות הלאה?
+
+      תקשורות:
+      ${textToAnalyze}
+
+      תשובה בעברית בצורה מסודרת ומקצועית.`;
+
+        const analysisResult = await base44.integrations.Core.InvokeLLM({
+          prompt: analysisPrompt,
+          add_context_from_internet: false
+        });
+
+        const analysisData = `# ניתוח תקשורות: ${client.name}\n\n${analysisResult}\n\n---\n📊 נותחו ${recentComms.length} תקשורות אחרונות`;
+
+        toast.dismiss('action-loading');
+        setMessages(prev => [...prev, { 
+          role: 'assistant', 
+          content: analysisData 
+        }]);
+        toast.success('✅ בוצע - ניתוח תקשורות הושלם');
+
+      } else if (action.type === 'DRAFT_RESPONSE') {
+        const clientName = params.client_name;
+        const context = params.context || '';
+        const tone = params.tone || 'מקצועי';
+        const responseType = params.response_type || 'email';
+
+        const allClients = await base44.entities.Client.list();
+        const client = findBestMatch(clientName, allClients, c => c.name);
+
+        if (!client) {
+          toast.error(`לא נמצא לקוח: ${clientName}`);
+          return;
+        }
+
+        // Get recent communications for context
+        const communications = await base44.entities.CommunicationMessage.filter({ client_id: client.id }).catch(() => []);
+        const recentComms = communications.slice(0, 5).map(c => c.body || c.message).join('\n');
+
+        const draftPrompt = `צור טיוטת ${responseType === 'whatsapp' ? 'הודעת WhatsApp' : 'אימייל'} ללקוח "${client.name}".
+
+      **הקשר הנוסף**: ${context}
+      **טון רצוי**: ${tone}
+      **תקשורות אחרונות** (להקשר):
+      ${recentComms || 'אין תקשורות קודמות'}
+
+      הטיוטה צריכה להיות:
+      - ${tone === 'חברי' ? 'חמה ואישית' : tone === 'רשמי' ? 'רשמית ומקצועית' : 'מקצועית וידידותית'}
+      - ברורה וקצרה
+      - ${responseType === 'whatsapp' ? 'מתאימה לוואטסאפ (קצרה וישירה)' : 'מתאימה למייל (עם נושא)'}
+      - כוללת קריאה לפעולה ברורה אם רלוונטי
+
+      ${responseType === 'email' ? 'כלול שורת נושא (Subject).' : ''}`;
+
+        const draftResult = await base44.integrations.Core.InvokeLLM({
+          prompt: draftPrompt,
+          add_context_from_internet: false
+        });
+
+        const draftData = `# טיוטת ${responseType === 'whatsapp' ? 'WhatsApp' : 'אימייל'}: ${client.name}\n\n${draftResult}\n\n---\n✏️ טיוטה זו נוצרה אוטומטית - ניתן לערוך לפני שליחה`;
+
+        toast.dismiss('action-loading');
+        setMessages(prev => [...prev, { 
+          role: 'assistant', 
+          content: draftData 
+        }]);
+        toast.success('✅ בוצע - טיוטה נוצרה');
+
+      } else if (action.type === 'SUGGEST_ACTIONS') {
+        const clientName = params.client_name;
+        const allClients = await base44.entities.Client.list();
+        const client = findBestMatch(clientName, allClients, c => c.name);
+
+        if (!client) {
+          toast.error(`לא נמצא לקוח: ${clientName}`);
+          return;
+        }
+
+        const [communications, tasks, meetings, projects] = await Promise.all([
+          base44.entities.CommunicationMessage.filter({ client_id: client.id }).catch(() => []),
+          base44.entities.Task.filter({ client_id: client.id }).catch(() => []),
+          base44.entities.Meeting.filter({ client_id: client.id }).catch(() => []),
+          base44.entities.Project.filter({ client_id: client.id }).catch(() => [])
+        ]);
+
+        const recentComms = communications.slice(0, 10).map(c => c.body || c.message).join('\n');
+        const openTasks = tasks.filter(t => t.status !== 'הושלמה');
+        const upcomingMeetings = meetings.filter(m => new Date(m.meeting_date) >= new Date());
+
+        const suggestPrompt = `על סמך המידע הבא על הלקוח "${client.name}", הצע פעולות אוטומטיות שכדאי לבצע:
+
+      **תקשורות אחרונות**:
+      ${recentComms || 'אין תקשורות'}
+
+      **משימות פתוחות**: ${openTasks.length}
+      **פגישות קרובות**: ${upcomingMeetings.length}
+      **פרויקטים פעילים**: ${projects.filter(p => p.status !== 'הושלם').length}
+      **שלב הלקוח**: ${client.stage || 'לא הוגדר'}
+
+      הצע 3-5 פעולות ספציפיות שכדאי לבצע, כגון:
+      - יצירת משימה ספציפית
+      - קביעת פגישה
+      - שליחת עדכון/תזכורת
+      - עדכון שלב לקוח
+
+      לכל הצעה, כתוב:
+      1. סוג הפעולה
+      2. פרטים ספציפיים (מה, מתי, למי)
+      3. סיבה (למה זה חשוב עכשיו)
+
+      תשובה בעברית, מסודרת ומעשית.`;
+
+        const suggestResult = await base44.integrations.Core.InvokeLLM({
+          prompt: suggestPrompt,
+          add_context_from_internet: false
+        });
+
+        const suggestData = `# הצעות פעולה אוטומטיות: ${client.name}\n\n${suggestResult}\n\n---\n💡 הצעות אלו מבוססות על ניתוח אוטומטי - ניתן לבצע ישירות או לעדכן`;
+
+        toast.dismiss('action-loading');
+        setMessages(prev => [...prev, { 
+          role: 'assistant', 
+          content: suggestData 
+        }]);
+        toast.success('✅ בוצע - הצעות פעולה נוצרו');
       }
     } catch (error) {
       console.error('❌ Action execution error:', error);
@@ -634,6 +786,18 @@ ${projectsList || 'אין פרויקטים פעילים'}
 ### 8. ✉️ שליחת אימיילים
   [ACTION: SEND_EMAIL | to: <מייל>, subject: <נושא>, body: <תוכן>]
 
+### 9. 💬 ניתוח תקשורות מתקדם
+- נתח ולסכם תקשורות (אימיילים, הודעות) של לקוח
+  [ACTION: ANALYZE_COMMUNICATIONS | client_name: <שם לקוח>]
+
+### 10. ✍️ יצירת טיוטות תשובה
+- צור טיוטת אימייל או WhatsApp בהתאמה אישית
+  [ACTION: DRAFT_RESPONSE | client_name: <שם לקוח>, context: <הקשר>, tone: <מקצועי/חברי/רשמי>, response_type: <email/whatsapp>]
+
+### 11. 🤖 הצעות פעולה אוטומטיות
+- הצע פעולות חכמות (משימות, פגישות) על סמך ניתוח השיחה והמצב
+  [ACTION: SUGGEST_ACTIONS | client_name: <שם לקוח>]
+
 ## כללי פעולה
 
 ### זיהוי חכם עם שגיאות כתיבה
@@ -664,6 +828,9 @@ ${projectsList || 'אין פרויקטים פעילים'}
 - "הוביל אותי ללקוחות" → נווט לדף
 - "עדכן טלפון של רמי ל-050-1234567" → עדכן מידע
 - "צור דוח על פרויקט אפרת" → צור דוח פרויקט
+- "נתח לי את התקשורות עם דני" → ניתוח תקשורות
+- "צור לי טיוטת מייל לקוזלובסקי בטון חברי" → יצירת טיוטה
+- "מה כדאי לעשות עכשיו עם משה?" → הצעות פעולה
 
 **תמיד בדוק אם יש ACTION שאתה יכול לבצע לפני שאתה עונה!**`;
 
@@ -939,6 +1106,9 @@ ${projectsList || 'אין פרויקטים פעילים'}
                               {action.type === 'ANALYZE_SENTIMENT' && <AlertCircle className="w-4 h-4 text-pink-600" />}
                               {action.type === 'NAVIGATE_TO_PAGE' && <Navigation className="w-4 h-4 text-teal-600" />}
                               {action.type === 'ADD_CLIENT_DATA' && <Database className="w-4 h-4 text-amber-600" />}
+                              {action.type === 'ANALYZE_COMMUNICATIONS' && <MessageSquare className="w-4 h-4 text-cyan-600" />}
+                              {action.type === 'DRAFT_RESPONSE' && <Edit2 className="w-4 h-4 text-lime-600" />}
+                              {action.type === 'SUGGEST_ACTIONS' && <Target className="w-4 h-4 text-fuchsia-600" />}
                               <span className="text-xs text-blue-800 flex-1">
                                 {action.type === 'SEND_EMAIL' && 'שלח אימייל'}
                                 {action.type === 'CREATE_TASK' && 'צור משימה'}
@@ -950,6 +1120,9 @@ ${projectsList || 'אין פרויקטים פעילים'}
                                 {action.type === 'ANALYZE_SENTIMENT' && 'נתח סנטימנט'}
                                 {action.type === 'NAVIGATE_TO_PAGE' && 'נווט לדף'}
                                 {action.type === 'ADD_CLIENT_DATA' && 'עדכן מידע'}
+                                {action.type === 'ANALYZE_COMMUNICATIONS' && 'נתח תקשורות'}
+                                {action.type === 'DRAFT_RESPONSE' && 'צור טיוטה'}
+                                {action.type === 'SUGGEST_ACTIONS' && 'הצע פעולות'}
                               </span>
                               <Button
                                 size="sm"
