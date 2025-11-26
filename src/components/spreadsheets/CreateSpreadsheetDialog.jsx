@@ -6,7 +6,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
 import { 
   Plus, 
   Trash2, 
@@ -286,7 +285,7 @@ export default function CreateSpreadsheetDialog({ open, onClose, onSave, spreads
               </div>
             )}
 
-            <Separator />
+            <div className="border-t border-slate-200 my-4"></div>
 
             {/* Columns Section */}
             <div>
