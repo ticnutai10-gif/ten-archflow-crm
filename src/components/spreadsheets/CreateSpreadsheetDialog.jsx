@@ -6,7 +6,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { 
   Plus, 
@@ -368,7 +367,7 @@ export default function CreateSpreadsheetDialog({ open, onClose, onSave, spreads
                   <p className="text-xs mt-1">הוסף עמודות למעלה או בחר תבנית מהירה</p>
                 </div>
               ) : (
-                <ScrollArea className="h-64">
+                <div className="max-h-64 overflow-y-auto">
                   <div className="space-y-2">
                     {formData.columns.map((column, index) => (
                       <div
@@ -426,7 +425,7 @@ export default function CreateSpreadsheetDialog({ open, onClose, onSave, spreads
                       </div>
                     ))}
                   </div>
-                </ScrollArea>
+                </div>
               )}
 
               {formData.columns.length > 0 && (
