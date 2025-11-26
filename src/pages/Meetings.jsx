@@ -34,7 +34,8 @@ import {
   LayoutGrid,
   Rows,
   GitBranch,
-  Eye
+  Eye,
+  X
 } from "lucide-react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek, parseISO, addDays } from "date-fns";
 import { he } from "date-fns/locale";
@@ -578,7 +579,57 @@ export default function MeetingsPage() {
         </Card>
       </div>
 
+      {selectionMode && selectedMeetings.length > 0 && (
+        <div className="mb-4 p-4 bg-blue-50 rounded-lg flex items-center justify-between">
+          <span className="text-sm font-medium text-blue-900">
+            נבחרו {selectedMeetings.length} פגישות
+          </span>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleBulkCopy}
+              className="bg-white"
+            >
+              <RefreshCw className="w-4 h-4 ml-1" />
+              שכפל
+            </Button>
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={handleBulkDelete}
+            >
+              <Trash2 className="w-4 h-4 ml-1" />
+              מחק
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                setSelectionMode(false);
+                setSelectedMeetings([]);
+              }}
+            >
+              <X className="w-4 h-4 ml-1" />
+              בטל
+            </Button>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center gap-2 mb-4">
+        <Button 
+          variant={selectionMode ? "default" : "outline"} 
+          className="gap-2"
+          onClick={() => {
+            setSelectionMode(!selectionMode);
+            setSelectedMeetings([]);
+          }}
+        >
+          <CheckCircle className="w-4 h-4" />
+          בחירה מרובה
+        </Button>
+
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="gap-2">
@@ -834,48 +885,103 @@ export default function MeetingsPage() {
         <TabsContent value="list" className="mt-0">
           <div className="grid gap-4">
             {isLoading ? (
-              <div className="text-center py-8">
-                <Loader2 className="w-8 h-8 animate-spin text-blue-500 mx-auto" />
-              </div>
+            <div className="text-center py-8">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-500 mx-auto" />
+            </div>
             ) : meetings.length === 0 ? (
-              <div className="text-center py-12">
-                <CalendarIcon className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-                <p className="text-slate-500">אין פגישות</p>
-              </div>
+            <div className="text-center py-12">
+              <CalendarIcon className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+              <p className="text-slate-500">אין פגישות</p>
+            </div>
             ) : (
-              meetings.map(meeting => (
+            meetings.map(meeting => (
+              <div key={meeting.id} className="relative">
+                {selectionMode && (
+                  <div className="absolute top-4 left-4 z-10">
+                    <input
+                      type="checkbox"
+                      checked={selectedMeetings.includes(meeting.id)}
+                      onChange={() => toggleSelection(meeting.id)}
+                      className="w-5 h-5 rounded border-slate-300"
+                    />
+                  </div>
+                )}
                 <MeetingCard
-                  key={meeting.id}
                   meeting={meeting}
                   onEdit={handleEdit}
                   onDelete={handleDelete}
                   onStatusChange={handleStatusChange}
                 />
-              ))
+              </div>
+            ))
             )}
           </div>
         </TabsContent>
 
         <TabsContent value="grid" className="mt-0">
-          <MeetingGridView
-            meetings={meetings}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-          />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {meetings.map(meeting => (
+              <div key={meeting.id} className="relative">
+                {selectionMode && (
+                  <div className="absolute top-3 left-3 z-10">
+                    <input
+                      type="checkbox"
+                      checked={selectedMeetings.includes(meeting.id)}
+                      onChange={() => toggleSelection(meeting.id)}
+                      className="w-5 h-5 rounded border-slate-300"
+                    />
+                  </div>
+                )}
+                <MeetingGridView
+                  meetings={[meeting]}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                />
+              </div>
+            ))}
+          </div>
         </TabsContent>
 
         <TabsContent value="compact" className="mt-0">
-          <MeetingCompactView
-            meetings={meetings}
-            onEdit={handleEdit}
-          />
+          {meetings.map(meeting => (
+            <div key={meeting.id} className="relative mb-2">
+              {selectionMode && (
+                <div className="absolute top-3 left-3 z-10">
+                  <input
+                    type="checkbox"
+                    checked={selectedMeetings.includes(meeting.id)}
+                    onChange={() => toggleSelection(meeting.id)}
+                    className="w-5 h-5 rounded border-slate-300"
+                  />
+                </div>
+              )}
+              <MeetingCompactView
+                meetings={[meeting]}
+                onEdit={handleEdit}
+              />
+            </div>
+          ))}
         </TabsContent>
 
         <TabsContent value="timeline" className="mt-0">
-          <MeetingTimelineView
-            meetings={meetings}
-            onEdit={handleEdit}
-          />
+          {meetings.map(meeting => (
+            <div key={meeting.id} className="relative mb-2">
+              {selectionMode && (
+                <div className="absolute top-3 left-3 z-10">
+                  <input
+                    type="checkbox"
+                    checked={selectedMeetings.includes(meeting.id)}
+                    onChange={() => toggleSelection(meeting.id)}
+                    className="w-5 h-5 rounded border-slate-300"
+                  />
+                </div>
+              )}
+              <MeetingTimelineView
+                meetings={[meeting]}
+                onEdit={handleEdit}
+              />
+            </div>
+          ))}
         </TabsContent>
 
         <TabsContent value="ai-summary" className="mt-0">
