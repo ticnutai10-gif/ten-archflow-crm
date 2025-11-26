@@ -671,9 +671,9 @@ ${mentionedProjects.size > 0 ? `- פרויקטים שהוזכרו בשיחה: ${
             <div className="flex gap-2">
               <Button 
                 onClick={() => {
-                  console.log('🧹 New chat button clicked');
                   setMessages([]);
                   setInput('');
+                  toast.success('שיחה חדשה נפתחה');
                 }} 
                 variant="outline" 
                 className="gap-2"
