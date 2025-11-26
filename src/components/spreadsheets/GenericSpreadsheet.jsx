@@ -2366,6 +2366,22 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                           <div className="flex items-center justify-center text-2xl font-bold select-none">
                                             {cellValue === '✓' ? <span className="text-green-600">✓</span> : cellValue === '✗' ? <span className="text-red-600">✗</span> : <span className="text-slate-300">○</span>}
                                           </div>
+                                        ) : column.type === 'mixed_check' ? (
+                                          isEditing ? (
+                                            <Input ref={editInputRef} value={editValue} onChange={(e) => setEditValue(e.target.value)} onBlur={saveEdit} onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') { setEditingCell(null); setEditValue(""); } }} className="h-8" autoFocus dir="rtl" placeholder="V, X או טקסט..." />
+                                          ) : (
+                                            <div className="flex items-center justify-center text-lg font-bold select-none">
+                                              {cellValue === '✓' || cellValue === 'V' || cellValue === 'v' ? (
+                                                <span className="text-green-600 bg-green-50 px-2 py-1 rounded">✓</span>
+                                              ) : cellValue === '✗' || cellValue === 'X' || cellValue === 'x' ? (
+                                                <span className="text-red-600 bg-red-50 px-2 py-1 rounded">✗</span>
+                                              ) : cellValue ? (
+                                                <span className="text-slate-700 text-sm">{String(cellValue)}</span>
+                                              ) : (
+                                                <span className="text-slate-300">○</span>
+                                              )}
+                                            </div>
+                                          )
                                         ) : column.type === 'stage' ? (
                                           <div className="flex items-center justify-center">
                                             <StageDisplay 
