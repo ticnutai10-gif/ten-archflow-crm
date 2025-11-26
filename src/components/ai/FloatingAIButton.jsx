@@ -81,10 +81,12 @@ export default function FloatingAIButton() {
     console.log('🚀 Executing action:', action);
     
     try {
+      // Parse params from string format
       const params = {};
       
       if (action.params && typeof action.params === 'string') {
-        const parts = action.params.split(/,(?=\s*\w+:)/);
+        // Split by | first to get each param
+        const parts = action.params.split('|').map(p => p.trim()).filter(Boolean);
         parts.forEach(p => {
           const colonIndex = p.indexOf(':');
           if (colonIndex > 0) {
@@ -96,8 +98,12 @@ export default function FloatingAIButton() {
       }
 
       console.log('📋 Parsed params:', params);
+      
+      // Show processing toast
+      toast.loading('מבצע פעולה...', { id: 'action-loading' });
 
       if (action.type === 'NAVIGATE_TO_PAGE') {
+        toast.dismiss('action-loading');
         const page = params.page;
         const pageMap = {
           'לקוחות': 'Clients',
@@ -156,6 +162,7 @@ ${meetings.filter(m => new Date(m.meeting_date) >= new Date()).slice(0, 3).map(m
 `;
 
         // Add report as new message
+        toast.dismiss('action-loading');
         setMessages(prev => [...prev, { 
           role: 'assistant', 
           content: reportData 
@@ -211,6 +218,7 @@ ${decisions.slice(0, 5).map(d => `- ${d.title} (${d.decision_date ? new Date(d.d
 - קרובות: **${meetings.filter(m => new Date(m.meeting_date) >= new Date()).length}**
 `;
 
+        toast.dismiss('action-loading');
         setMessages(prev => [...prev, { 
           role: 'assistant', 
           content: reportData 
@@ -262,6 +270,7 @@ ${sentimentResult}
 - נותחו: **${recentComms.length}** האחרונות
 `;
 
+        toast.dismiss('action-loading');
         setMessages(prev => [...prev, { 
           role: 'assistant', 
           content: analysisData 
@@ -269,6 +278,7 @@ ${sentimentResult}
         toast.success(`🎭 ניתוח סנטימנט הושלם עבור ${client.name}`);
         
       } else if (action.type === 'SEND_EMAIL') {
+        toast.dismiss('action-loading');
         await base44.integrations.Core.SendEmail({
           to: params.to,
           subject: params.subject,
@@ -295,6 +305,7 @@ ${sentimentResult}
           client_name: params.client_name || '',
           project_name: params.project_name || ''
         });
+        toast.dismiss('action-loading');
         toast.success('✅ משימה נוצרה בהצלחה!');
         
       } else if (action.type === 'SCHEDULE_MEETING') {
@@ -359,6 +370,7 @@ ${sentimentResult}
         if (params.project_name) meetingData.project_name = params.project_name;
         
         const newMeeting = await base44.entities.Meeting.create(meetingData);
+        toast.dismiss('action-loading');
         toast.success(`📅 פגישה "${title}" נקבעה ל-${meetingDate.split('T')[0]} בשעה ${meetingDate.split('T')[1]}`);
         
       } else if (action.type === 'UPDATE_CLIENT_STAGE') {
@@ -378,6 +390,7 @@ ${sentimentResult}
           }
         }
         
+        toast.dismiss('action-loading');
         toast.success(`🎯 ${updated} לקוחות עודכנו לשלב!`);
         
       } else if (action.type === 'ADD_CLIENT_DATA') {
@@ -399,10 +412,12 @@ ${sentimentResult}
         if (params.status) updateData.status = params.status;
         
         await base44.entities.Client.update(client.id, updateData);
+        toast.dismiss('action-loading');
         toast.success(`✅ המידע עודכן עבור ${client.name}`);
       }
     } catch (error) {
       console.error('❌ Action execution error:', error);
+      toast.dismiss('action-loading');
       toast.error('❌ שגיאה בביצוע הפעולה: ' + (error.message || 'נסה שוב'));
     }
   };
@@ -641,16 +656,28 @@ ${projectsList || 'אין פרויקטים פעילים'}
           dir="rtl"
         >
           <div className="p-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white flex items-center justify-between">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-1">
               <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
                 <Sparkles className="w-5 h-5 text-purple-600" />
               </div>
-              <div>
+              <div className="flex-1">
                 <h3 className="font-bold">צ'אט AI</h3>
-                <p className="text-xs opacity-90">עוזר חכם שלך</p>
+                <p className="text-xs opacity-90">
+                  {currentConversationId ? 'שיחה שמורה' : 'שיחה חדשה'} • {messages.length} הודעות
+                </p>
               </div>
             </div>
             <div className="flex gap-2">
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={startNewConversation}
+                className="text-white hover:bg-white/20"
+                title="שיחה חדשה"
+              >
+                <Plus className="w-4 h-4 ml-1" />
+                חדש
+              </Button>
               <Button 
                 variant="ghost" 
                 size="icon"
@@ -659,7 +686,7 @@ ${projectsList || 'אין פרויקטים פעילים'}
                   if (!showConversations) loadConversations();
                 }}
                 className="text-white hover:bg-white/20"
-                title="היסטוריה"
+                title="שיחות שמורות"
               >
                 <MessageSquare className="w-5 h-5" />
               </Button>
@@ -775,15 +802,16 @@ ${projectsList || 'אין פרויקטים פעילים'}
                               </span>
                               <Button
                                 size="sm"
-                                onClick={(e) => {
+                                onClick={async (e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
-                                  executeAction(action);
+                                  console.log('🖱️ בצע נלחץ!', action);
+                                  await executeAction(action);
                                 }}
                                 className="h-6 px-2 bg-blue-600 hover:bg-blue-700 text-xs"
                               >
                                 <CheckCircle className="w-3 h-3 ml-1" />
-                                בצע
+                                בצע עכשיו
                               </Button>
                             </div>
                           ))}
