@@ -479,7 +479,7 @@ ${sentimentResult}
     }
   };
 
-  const saveConversation = async (msgs) => {
+  const saveConversation = async (msgs, clientName = null, projectName = null) => {
     try {
       const conversationData = {
         name: msgs[0]?.content.substring(0, 50) + '...' || 'שיחה חדשה',
@@ -487,6 +487,10 @@ ${sentimentResult}
         folder: 'כללי',
         last_message_at: new Date().toISOString()
       };
+
+      // Add client/project if detected from last message
+      if (clientName) conversationData.client_name = clientName;
+      if (projectName) conversationData.project_name = projectName;
 
       if (currentConversationId) {
         await base44.entities.ChatConversation.update(currentConversationId, conversationData);
@@ -655,12 +659,35 @@ ${projectsList || 'אין פרויקטים פעילים'}
         actions,
         timestamp: new Date().toISOString()
       };
-      
+
       const finalMessages = [...updatedMessages, assistantMessage];
       setMessages(finalMessages);
-      
-      // Auto-save conversation
-      await saveConversation(finalMessages);
+
+      // Auto-save conversation with detected context
+      let detectedClient = null;
+      let detectedProject = null;
+
+      // Extract client/project from actions if available
+      if (actions.length > 0) {
+        actions.forEach(action => {
+          const params = {};
+          if (action.params && typeof action.params === 'string') {
+            const parts = action.params.split('|').map(p => p.trim()).filter(Boolean);
+            parts.forEach(p => {
+              const colonIndex = p.indexOf(':');
+              if (colonIndex > 0) {
+                const key = p.substring(0, colonIndex).trim();
+                const value = p.substring(colonIndex + 1).trim();
+                params[key] = value;
+              }
+            });
+          }
+          if (params.client_name) detectedClient = params.client_name;
+          if (params.project_name) detectedProject = params.project_name;
+        });
+      }
+
+      await saveConversation(finalMessages, detectedClient, detectedProject);
     } catch (error) {
       console.error('❌ AI Error:', error);
       setMessages(prev => [...prev, { 
@@ -743,13 +770,11 @@ ${projectsList || 'אין פרויקטים פעילים'}
               >
                 <MessageSquare className="w-5 h-5" />
               </Button>
-              {!isMobile && (
-                <Link to={createPageUrl('ChatHistory')}>
-                  <Button variant="ghost" size="sm" className="text-white hover:bg-white/20">
-                    נהל שיחות
-                  </Button>
-                </Link>
-              )}
+              <Link to={createPageUrl('ChatHistory')}>
+                <Button variant="ghost" size="sm" className="text-white hover:bg-white/20" title="היסטוריית שיחות">
+                  {isMobile ? <MessageSquare className="w-4 h-4" /> : 'היסטוריה'}
+                </Button>
+              </Link>
               <Button 
                 variant="ghost" 
                 size="icon" 
