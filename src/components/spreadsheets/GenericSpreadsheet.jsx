@@ -2336,7 +2336,11 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                         colSpan={mergeInfo?.colspan || 1}
                                         className={`cursor-pointer relative ${isSelected ? 'ring-2 ring-purple-500' : ''} ${isClientPicker ? 'ring-2 ring-blue-500' : ''} ${mergeInfo ? 'bg-green-50/50' : ''}`} 
                                         style={{
-                                          backgroundColor: isSelected ? palette.selected : (finalStyle.backgroundColor || (rowIndex % 2 === 0 ? palette.cellBg : palette.cellAltBg)),
+                                          backgroundColor: isSelected ? palette.selected : (
+                                            (column.type === 'checkmark' || column.type === 'mixed_check') && cellValue === '✓' ? '#dcfce7' : 
+                                            (column.type === 'checkmark' || column.type === 'mixed_check') && cellValue === '✗' ? '#fee2e2' :
+                                            finalStyle.backgroundColor || (rowIndex % 2 === 0 ? palette.cellBg : palette.cellAltBg)
+                                          ),
                                           color: finalStyle.color || palette.cellText,
                                           opacity: finalStyle.opacity ? finalStyle.opacity / 100 : 1,
                                           fontWeight: finalStyle.fontWeight || 'normal',
