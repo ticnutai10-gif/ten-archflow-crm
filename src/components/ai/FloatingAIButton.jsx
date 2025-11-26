@@ -1,20 +1,78 @@
 import React, { useState } from 'react';
-import { MessageSquare, X, Send, Loader2, Sparkles, Mail, CheckCircle, ListTodo, Users, TrendingUp, Target, Calendar } from 'lucide-react';
+import { MessageSquare, X, Send, Loader2, Sparkles, Mail, CheckCircle, ListTodo, Users, TrendingUp, Target, Calendar, FileText, Navigation, Table, Database, BarChart, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { base44 } from '@/api/base44Client';
 import ReactMarkdown from 'react-markdown';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { toast } from 'sonner';
 import { useIsMobile } from '@/components/utils/useMediaQuery';
 
 export default function FloatingAIButton() {
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Fuzzy matching helper - finds best match even with typos
+  const fuzzyMatch = (search, target) => {
+    if (!search || !target) return 0;
+    search = search.toLowerCase().trim();
+    target = target.toLowerCase().trim();
+    
+    // Exact match
+    if (target === search) return 1.0;
+    if (target.includes(search)) return 0.9;
+    
+    // Calculate Levenshtein distance for fuzzy matching
+    const matrix = [];
+    for (let i = 0; i <= target.length; i++) {
+      matrix[i] = [i];
+    }
+    for (let j = 0; j <= search.length; j++) {
+      matrix[0][j] = j;
+    }
+    for (let i = 1; i <= target.length; i++) {
+      for (let j = 1; j <= search.length; j++) {
+        if (target.charAt(i - 1) === search.charAt(j - 1)) {
+          matrix[i][j] = matrix[i - 1][j - 1];
+        } else {
+          matrix[i][j] = Math.min(
+            matrix[i - 1][j - 1] + 1,
+            matrix[i][j - 1] + 1,
+            matrix[i - 1][j] + 1
+          );
+        }
+      }
+    }
+    
+    const distance = matrix[target.length][search.length];
+    const maxLength = Math.max(search.length, target.length);
+    return 1 - (distance / maxLength);
+  };
+
+  const findBestMatch = (searchTerm, items, keyFn) => {
+    if (!searchTerm || !items || items.length === 0) return null;
+    
+    let bestMatch = null;
+    let bestScore = 0;
+    
+    items.forEach(item => {
+      const target = keyFn(item);
+      if (!target) return;
+      
+      const score = fuzzyMatch(searchTerm, target);
+      if (score > bestScore && score > 0.6) { // 60% similarity threshold
+        bestScore = score;
+        bestMatch = item;
+      }
+    });
+    
+    return bestMatch;
+  };
 
   const executeAction = async (action) => {
     console.log('🚀 Executing action:', action);
@@ -36,7 +94,178 @@ export default function FloatingAIButton() {
 
       console.log('📋 Parsed params:', params);
 
-      if (action.type === 'SEND_EMAIL') {
+      if (action.type === 'NAVIGATE_TO_PAGE') {
+        const page = params.page;
+        const pageMap = {
+          'לקוחות': 'Clients',
+          'פרויקטים': 'Projects',
+          'משימות': 'Tasks',
+          'פגישות': 'Meetings',
+          'טבלאות': 'CustomSpreadsheets',
+          'דוחות': 'Reports',
+          'הגדרות': 'Settings'
+        };
+        const targetPage = pageMap[page] || page;
+        navigate(createPageUrl(targetPage));
+        toast.success(`📍 מנווט לדף ${page}`);
+        
+      } else if (action.type === 'GENERATE_CLIENT_REPORT') {
+        const clientName = params.client_name;
+        const allClients = await base44.entities.Client.list();
+        const client = findBestMatch(clientName, allClients, c => c.name);
+        
+        if (!client) {
+          toast.error(`לא נמצא לקוח: ${clientName}`);
+          return;
+        }
+
+        const [projects, tasks, meetings, communications] = await Promise.all([
+          base44.entities.Project.filter({ client_id: client.id }).catch(() => []),
+          base44.entities.Task.filter({ client_id: client.id }).catch(() => []),
+          base44.entities.Meeting.filter({ client_id: client.id }).catch(() => []),
+          base44.entities.CommunicationMessage.filter({ client_id: client.id }).catch(() => [])
+        ]);
+
+        const reportData = `
+# דוח לקוח: ${client.name}
+
+## פרטים כלליים
+- סטטוס: ${client.status || 'לא הוגדר'}
+- שלב: ${client.stage || 'לא הוגדר'}
+- אימייל: ${client.email || 'לא זמין'}
+- טלפון: ${client.phone || 'לא זמין'}
+- תקציב: ${client.budget_range || 'לא הוגדר'}
+
+## סטטיסטיקות
+- **${projects.length}** פרויקטים
+- **${tasks.length}** משימות
+- **${meetings.length}** פגישות
+- **${communications.length}** תקשורות
+
+## פרויקטים פעילים
+${projects.filter(p => p.status !== 'הושלם').map(p => `- ${p.name} (${p.status})`).join('\n') || 'אין פרויקטים פעילים'}
+
+## משימות פתוחות
+${tasks.filter(t => t.status !== 'הושלמה').slice(0, 5).map(t => `- ${t.title} (${t.status})`).join('\n') || 'אין משימות פתוחות'}
+
+## פגישות קרובות
+${meetings.filter(m => new Date(m.meeting_date) >= new Date()).slice(0, 3).map(m => `- ${m.title} - ${new Date(m.meeting_date).toLocaleDateString('he-IL')}`).join('\n') || 'אין פגישות קרובות'}
+`;
+
+        // Add report as new message
+        setMessages(prev => [...prev, { 
+          role: 'assistant', 
+          content: reportData 
+        }]);
+        toast.success(`📊 דוח נוצר עבור ${client.name}`);
+        
+      } else if (action.type === 'GENERATE_PROJECT_REPORT') {
+        const projectName = params.project_name;
+        const allProjects = await base44.entities.Project.list();
+        const project = findBestMatch(projectName, allProjects, p => p.name);
+        
+        if (!project) {
+          toast.error(`לא נמצא פרויקט: ${projectName}`);
+          return;
+        }
+
+        const [tasks, decisions, meetings] = await Promise.all([
+          base44.entities.Task.filter({ project_id: project.id }).catch(() => []),
+          base44.entities.Decision.filter({ project_id: project.id }).catch(() => []),
+          base44.entities.Meeting.filter({ project_id: project.id }).catch(() => [])
+        ]);
+
+        const completedTasks = tasks.filter(t => t.status === 'הושלמה').length;
+        const progressPercent = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : 0;
+
+        const reportData = `
+# דוח פרויקט: ${project.name}
+
+## פרטים כלליים
+- לקוח: ${project.client_name || 'לא מוגדר'}
+- סטטוס: ${project.status || 'לא הוגדר'}
+- סוג: ${project.type || 'לא מוגדר'}
+- תקציב: ${project.budget ? `₪${project.budget.toLocaleString()}` : 'לא מוגדר'}
+- התקדמות: **${project.progress || progressPercent}%**
+
+## תאריכים
+- התחלה: ${project.start_date ? new Date(project.start_date).toLocaleDateString('he-IL') : 'לא הוגדר'}
+- סיום משוער: ${project.end_date ? new Date(project.end_date).toLocaleDateString('he-IL') : 'לא הוגדר'}
+
+## משימות
+- סה"כ: **${tasks.length}**
+- הושלמו: **${completedTasks}** (${progressPercent}%)
+- פתוחות: **${tasks.length - completedTasks}**
+
+### משימות דחופות
+${tasks.filter(t => t.priority === 'גבוהה' && t.status !== 'הושלמה').slice(0, 5).map(t => `- ${t.title} (יעד: ${t.due_date || 'לא הוגדר'})`).join('\n') || 'אין משימות דחופות'}
+
+## החלטות מרכזיות
+${decisions.slice(0, 5).map(d => `- ${d.title} (${d.decision_date ? new Date(d.decision_date).toLocaleDateString('he-IL') : 'ללא תאריך'})`).join('\n') || 'אין החלטות מתועדות'}
+
+## פגישות
+- סה"כ: **${meetings.length}**
+- קרובות: **${meetings.filter(m => new Date(m.meeting_date) >= new Date()).length}**
+`;
+
+        setMessages(prev => [...prev, { 
+          role: 'assistant', 
+          content: reportData 
+        }]);
+        toast.success(`📊 דוח נוצר עבור ${project.name}`);
+        
+      } else if (action.type === 'ANALYZE_SENTIMENT') {
+        const clientName = params.client_name;
+        const allClients = await base44.entities.Client.list();
+        const client = findBestMatch(clientName, allClients, c => c.name);
+        
+        if (!client) {
+          toast.error(`לא נמצא לקוח: ${clientName}`);
+          return;
+        }
+
+        const communications = await base44.entities.CommunicationMessage.filter({ client_id: client.id }).catch(() => []);
+        
+        if (communications.length === 0) {
+          toast.info('אין תקשורות לניתוח');
+          return;
+        }
+
+        // Analyze sentiment using AI
+        const recentComms = communications.slice(0, 10);
+        const textToAnalyze = recentComms.map(c => c.body || c.message).join('\n\n');
+        
+        const sentimentPrompt = `נתח את הסנטימנט של התקשורות הבאות עם לקוח ותן ציון כללי (חיובי/ניטרלי/שלילי) והסבר קצר:
+
+${textToAnalyze}
+
+תשובה בפורמט:
+סנטימנט: [חיובי/ניטרלי/שלילי]
+הסבר: [הסבר קצר]
+המלצות: [המלצות לפעולה]`;
+
+        const sentimentResult = await base44.integrations.Core.InvokeLLM({
+          prompt: sentimentPrompt,
+          add_context_from_internet: false
+        });
+
+        const analysisData = `
+# ניתוח סנטימנט: ${client.name}
+
+${sentimentResult}
+
+## תקשורות שנותחו
+- סה"כ: **${communications.length}**
+- נותחו: **${recentComms.length}** האחרונות
+`;
+
+        setMessages(prev => [...prev, { 
+          role: 'assistant', 
+          content: analysisData 
+        }]);
+        toast.success(`🎭 ניתוח סנטימנט הושלם עבור ${client.name}`);
+        
+      } else if (action.type === 'SEND_EMAIL') {
         await base44.integrations.Core.SendEmail({
           to: params.to,
           subject: params.subject,
@@ -97,10 +326,7 @@ export default function FloatingAIButton() {
         if (clientName && !clientId) {
           try {
             const clients = await base44.entities.Client.list();
-            const client = clients.find(c => 
-              c.name?.toLowerCase().includes(clientName.toLowerCase().trim()) || 
-              c.name?.toLowerCase() === clientName.toLowerCase()
-            );
+            const client = findBestMatch(clientName, clients, c => c.name);
             if (client) {
               clientId = client.id;
               clientName = client.name;
@@ -140,10 +366,8 @@ export default function FloatingAIButton() {
         let updated = 0;
         
         for (const clientIdentifier of clientsToUpdate) {
-          const client = allClients.find(c => 
-            c.name?.includes(clientIdentifier.trim()) || 
-            c.id === clientIdentifier.trim()
-          );
+          const client = findBestMatch(clientIdentifier.trim(), allClients, c => c.name) || 
+                        allClients.find(c => c.id === clientIdentifier.trim());
           
           if (client) {
             await base44.entities.Client.update(client.id, { stage: newStage });
@@ -152,6 +376,27 @@ export default function FloatingAIButton() {
         }
         
         toast.success(`🎯 ${updated} לקוחות עודכנו לשלב!`);
+        
+      } else if (action.type === 'ADD_CLIENT_DATA') {
+        const clientName = params.client_name;
+        const allClients = await base44.entities.Client.list();
+        const client = findBestMatch(clientName, allClients, c => c.name);
+        
+        if (!client) {
+          toast.error(`לא נמצא לקוח: ${clientName}`);
+          return;
+        }
+
+        const updateData = {};
+        if (params.email) updateData.email = params.email;
+        if (params.phone) updateData.phone = params.phone;
+        if (params.address) updateData.address = params.address;
+        if (params.notes) updateData.notes = params.notes;
+        if (params.stage) updateData.stage = params.stage;
+        if (params.status) updateData.status = params.status;
+        
+        await base44.entities.Client.update(client.id, updateData);
+        toast.success(`✅ המידע עודכן עבור ${client.name}`);
       }
     } catch (error) {
       console.error('❌ Action execution error:', error);
@@ -187,42 +432,91 @@ export default function FloatingAIButton() {
       const tomorrowStr = tomorrow.toISOString().split('T')[0];
       const todayStr = new Date().toISOString().split('T')[0];
       
-      const context = `אתה עוזר AI חכם למערכת CRM.
+      const projectsList = activeProjects.slice(0, 5).map(p => `- ${p.name} (${p.client_name || 'ללא לקוח'})`).join('\n');
+      
+      const context = `אתה עוזר AI מקצועי ומתקדם למערכת CRM אדריכלית.
 
-נתונים נוכחיים:
-- ${activeProjects.length} פרויקטים פעילים
-- ${clients.length} לקוחות במערכת
-- ${tasks.length} משימות פתוחות (${urgentTasks.length} דחופות)
-- ${upcomingMeetings.length} פגישות קרובות
+## נתונים נוכחיים
+- **${activeProjects.length}** פרויקטים פעילים מתוך ${projects.length}
+- **${clients.length}** לקוחות במערכת
+- **${tasks.length}** משימות פתוחות (${urgentTasks.length} דחופות)
+- **${upcomingMeetings.length}** פגישות קרובות
 
-התאריך של היום: ${todayStr}
-התאריך של מחר: ${tomorrowStr}
+📅 תאריך היום: ${todayStr}
+📅 תאריך מחר: ${tomorrowStr}
 
-לקוחות אחרונים:
-${clients.slice(0, 5).map(c => `- ${c.name}`).join('\n')}
+## לקוחות פעילים
+${clients.slice(0, 8).map(c => `- ${c.name} (${c.stage || 'לא הוגדר'})`).join('\n')}
 
-הוראות:
-1. **זיהוי מהיר של בקשות פגישה:**
-   - כל בקשה שמכילה "פגישה" או "meeting" = צור מיד ACTION
-   - אם אין שעה מוגדרת, השתמש ב-09:00
-   - אם אין תאריך, השתמש במחר
-   - אם יש שם לקוח, חפש אותו ברשימה ושייך
+## פרויקטים פעילים
+${projectsList || 'אין פרויקטים פעילים'}
 
-2. **פורמט ACTION:**
-   [ACTION: SCHEDULE_MEETING | title: <כותרת>, date: YYYY-MM-DD, time: HH:MM, client_name: <שם לקוח אם יש>]
+## יכולות מתקדמות שלך
 
-3. **דוגמאות:**
-   - "פגישה מחר" → [ACTION: SCHEDULE_MEETING | title: פגישה חדשה, date: ${tomorrowStr}, time: 09:00]
-   - "פגישה עם דני מחר בשעה 2" → [ACTION: SCHEDULE_MEETING | title: פגישה עם דני, client_name: דני, date: ${tomorrowStr}, time: 14:00]
-   - "פגישה היום 10:30" → [ACTION: SCHEDULE_MEETING | title: פגישה חדשה, date: ${todayStr}, time: 10:30]
+### 1. 📊 דוחות מקצועיים
+- **דוח לקוח**: צור דוח מקיף על לקוח כולל פרויקטים, משימות, פגישות וסטטיסטיקות
+  [ACTION: GENERATE_CLIENT_REPORT | client_name: <שם הלקוח>]
+  
+- **דוח פרויקט**: צור דוח מפורט על פרויקט כולל התקדמות, משימות והחלטות
+  [ACTION: GENERATE_PROJECT_REPORT | project_name: <שם הפרויקט>]
 
-4. **המרת שעות:**
-   - "שעה 2" / "2 בצהריים" = 14:00
-   - "שעה 4" = 16:00
-   - "9 בבוקר" = 09:00
-   - "10:30" = 10:30
+### 2. 🎭 ניתוח סנטימנט
+- נתח אוטומטית את הסנטימנט בתקשורות עם לקוח והמלץ על פעולות
+  [ACTION: ANALYZE_SENTIMENT | client_name: <שם הלקוח>]
 
-5. **חשוב:** אל תשאל שאלות מיותרות - אם מבקשים פגישה, צור ACTION מיד!`;
+### 3. 📍 ניווט מהיר
+- נווט לכל דף במערכת: "הוביל אותי ללקוחות" / "פתח דף פרויקטים"
+  [ACTION: NAVIGATE_TO_PAGE | page: <לקוחות/פרויקטים/משימות/פגישות/טבלאות/דוחות/הגדרות>]
+
+### 4. ✏️ עדכון מידע
+- הוסף או עדכן פרטי לקוח
+  [ACTION: ADD_CLIENT_DATA | client_name: <שם>, email: <מייל>, phone: <טלפון>, address: <כתובת>, notes: <הערות>]
+
+### 5. 📅 קביעת פגישות
+- קבע פגישה מהירה עם זיהוי אוטומטי של תאריכים ושעות
+  [ACTION: SCHEDULE_MEETING | title: <כותרת>, date: YYYY-MM-DD, time: HH:MM, client_name: <שם לקוח>]
+
+### 6. ✅ יצירת משימות
+- צור משימה עם כל הפרטים
+  [ACTION: CREATE_TASK | title: <כותרת>, priority: <נמוכה/בינונית/גבוהה>, due_date: <תאריך>, client_name: <שם לקוח>]
+
+### 7. 🎯 עדכון שלבי לקוח
+- עדכן שלב לקוח (ברור_תכן, תיק_מידע, היתרים, ביצוע, סיום)
+  [ACTION: UPDATE_CLIENT_STAGE | clients: <שם1;שם2>, stage: <שלב>]
+
+### 8. ✉️ שליחת אימיילים
+  [ACTION: SEND_EMAIL | to: <מייל>, subject: <נושא>, body: <תוכן>]
+
+## כללי פעולה
+
+### זיהוי חכם עם שגיאות כתיבה
+- **אתה מזהה אוטומטית שמות גם עם טעויות כתיבה!**
+- דני/דנ/דנ"י = כולם מזהה אותו לקוח
+- קוזלובסקי/קוזלובסק/קוזלבסקי = כולם אותו לקוח
+- אל תתקן את המשתמש, פשוט תמצא את הכי קרוב!
+
+### המרת זמנים
+- "מחר" → ${tomorrowStr}
+- "היום" → ${todayStr}
+- "שעה 2" / "2 בצהריים" → 14:00
+- "שעה 4" / "4 אחר הצהריים" → 16:00
+- "9 בבוקר" → 09:00
+
+### תגובות מקצועיות
+1. **זהה כוונה במהירות** - אל תשאל שאלות מיותרות
+2. **צור ACTION מיד** אם אפשר
+3. **השתמש במידע קיים** - אל תבקש מידע שכבר יש לך
+4. **היה מדויק ותמציתי** בתשובות
+
+### דוגמאות שימוש
+- "תן לי דוח על דני" → צור דוח לקוח
+- "מה הסנטימנט של קוזלובסקי?" → נתח סנטימנט
+- "פגישה עם משה מחר 2 אחר הצהריים" → קבע פגישה
+- "הוביל אותי ללקוחות" → נווט לדף
+- "עדכן טלפון של רמי ל-050-1234567" → עדכן מידע
+- "צור דוח על פרויקט אפרת" → צור דוח פרויקט
+
+**תמיד בדוק אם יש ACTION שאתה יכול לבצע לפני שאתה עונה!**`;
 
       const prompt = `${context}\n\nבקשת המשתמש: ${userInput}\n\nענה בקצרה וצור ACTION מיד אם נדרש.`;
 
@@ -330,9 +624,12 @@ ${clients.slice(0, 5).map(c => `- ${c.name}`).join('\n')}
                   </div>
                   <h4 className="font-semibold text-slate-800 mb-2">שלום! 👋</h4>
                   <p className="text-sm text-slate-600 mb-3">איך אני יכול לעזור?</p>
-                  <div className="space-y-2 text-xs text-slate-500">
-                    <p>נסה: "פגישה מחר בשעה 2"</p>
-                    <p>או: "צור משימה לבדוק מסמכים"</p>
+                  <div className="space-y-1 text-xs text-slate-500">
+                    <p>💬 "תן לי דוח על דני"</p>
+                    <p>📅 "פגישה מחר בשעה 2"</p>
+                    <p>🎭 "מה הסנטימנט של קוזלובסקי?"</p>
+                    <p>📍 "הוביל אותי ללקוחות"</p>
+                    <p>✏️ "עדכן טלפון של משה"</p>
                   </div>
                 </div>
               </div>
@@ -366,11 +663,21 @@ ${clients.slice(0, 5).map(c => `- ${c.name}`).join('\n')}
                               {action.type === 'CREATE_TASK' && <ListTodo className="w-4 h-4 text-blue-600" />}
                               {action.type === 'SCHEDULE_MEETING' && <Calendar className="w-4 h-4 text-green-600" />}
                               {action.type === 'UPDATE_CLIENT_STAGE' && <Users className="w-4 h-4 text-orange-600" />}
+                              {action.type === 'GENERATE_CLIENT_REPORT' && <FileText className="w-4 h-4 text-purple-600" />}
+                              {action.type === 'GENERATE_PROJECT_REPORT' && <BarChart className="w-4 h-4 text-indigo-600" />}
+                              {action.type === 'ANALYZE_SENTIMENT' && <AlertCircle className="w-4 h-4 text-pink-600" />}
+                              {action.type === 'NAVIGATE_TO_PAGE' && <Navigation className="w-4 h-4 text-teal-600" />}
+                              {action.type === 'ADD_CLIENT_DATA' && <Database className="w-4 h-4 text-amber-600" />}
                               <span className="text-xs text-blue-800 flex-1">
                                 {action.type === 'SEND_EMAIL' && 'שלח אימייל'}
                                 {action.type === 'CREATE_TASK' && 'צור משימה'}
                                 {action.type === 'SCHEDULE_MEETING' && 'קבע פגישה'}
                                 {action.type === 'UPDATE_CLIENT_STAGE' && 'עדכן שלב'}
+                                {action.type === 'GENERATE_CLIENT_REPORT' && 'דוח לקוח'}
+                                {action.type === 'GENERATE_PROJECT_REPORT' && 'דוח פרויקט'}
+                                {action.type === 'ANALYZE_SENTIMENT' && 'נתח סנטימנט'}
+                                {action.type === 'NAVIGATE_TO_PAGE' && 'נווט לדף'}
+                                {action.type === 'ADD_CLIENT_DATA' && 'עדכן מידע'}
                               </span>
                               <Button
                                 size="sm"
