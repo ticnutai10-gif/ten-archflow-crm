@@ -127,7 +127,7 @@ export default function FloatingAIButton() {
         };
         const targetPage = pageMap[page] || page;
         navigate(createPageUrl(targetPage));
-        toast.success(`📍 מנווט לדף ${page}`);
+        toast.success('✅ בוצע - מנווט לדף');
         
       } else if (action.type === 'GENERATE_CLIENT_REPORT') {
         const clientName = params.client_name;
@@ -289,13 +289,13 @@ ${sentimentResult}
         toast.success('✅ בוצע - ניתוח סנטימנט הושלם');
         
       } else if (action.type === 'SEND_EMAIL') {
-        toast.dismiss('action-loading');
         await base44.integrations.Core.SendEmail({
           to: params.to,
           subject: params.subject,
           body: params.body
         });
-        toast.success('✉️ אימייל נשלח בהצלחה!');
+        toast.dismiss('action-loading');
+        toast.success('✅ בוצע - אימייל נשלח');
         
       } else if (action.type === 'CREATE_TASK') {
         let dueDate = params.due_date;
