@@ -33,7 +33,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import ReactMarkdown from 'react-markdown';
 import { Plus } from 'lucide-react';
 
