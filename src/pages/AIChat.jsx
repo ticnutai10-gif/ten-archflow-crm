@@ -153,10 +153,9 @@ export default function AIChat() {
     try {
       const params = {};
       
-      // Parse params string more carefully
       if (action.params && typeof action.params === 'string') {
-        // Split by comma, but be careful with commas inside values
-        const parts = action.params.split(/,(?=\s*\w+:)/);
+        // Split by | first to get each param
+        const parts = action.params.split('|').map(p => p.trim()).filter(Boolean);
         parts.forEach(p => {
           const colonIndex = p.indexOf(':');
           if (colonIndex > 0) {
@@ -168,20 +167,20 @@ export default function AIChat() {
       }
 
       console.log('📋 Parsed params:', params);
+      
+      // Show processing toast
+      toast.loading('מבצע פעולה...', { id: 'action-loading' });
 
       if (action.type === 'SEND_EMAIL') {
-        console.log('📧 Sending email...');
         await base44.integrations.Core.SendEmail({
           to: params.to,
           subject: params.subject,
           body: params.body
         });
-        toast.success('✉️ אימייל נשלח בהצלחה!');
+        toast.dismiss('action-loading');
+        toast.success('✅ בוצע - אימייל נשלח');
         
       } else if (action.type === 'CREATE_TASK') {
-        console.log('✅ Creating task...');
-        
-        // Parse due_date if it's a relative term
         let dueDate = params.due_date;
         if (dueDate === 'מחר') {
           const tomorrow = new Date();
@@ -191,7 +190,7 @@ export default function AIChat() {
           dueDate = new Date().toISOString().split('T')[0];
         }
         
-        const newTask = await base44.entities.Task.create({
+        await base44.entities.Task.create({
           title: params.title,
           priority: params.priority || 'בינונית',
           due_date: dueDate,
@@ -200,86 +199,54 @@ export default function AIChat() {
           client_name: params.client_name || '',
           project_name: params.project_name || ''
         });
-        console.log('✅ Task created:', newTask);
-        toast.success('✅ משימה נוצרה בהצלחה!');
+        toast.dismiss('action-loading');
+        toast.success('✅ בוצע - משימה נוצרה');
         
       } else if (action.type === 'SCHEDULE_MEETING') {
-        console.log('📅 Scheduling meeting...');
-
-        // Parse date_time more intelligently
         let meetingDate = null;
-
+        
         if (params.date_time) {
           meetingDate = params.date_time;
         } else if (params.date && params.time) {
           let dateStr = params.date;
-          let timeStr = params.time;
-
-          // Handle relative dates
-          if (dateStr === 'מחר' || dateStr.includes('מחר')) {
+          if (dateStr === 'מחר') {
             const tomorrow = new Date();
             tomorrow.setDate(tomorrow.getDate() + 1);
             dateStr = tomorrow.toISOString().split('T')[0];
           } else if (dateStr === 'היום') {
             dateStr = new Date().toISOString().split('T')[0];
           }
-
-          // Ensure time has seconds
-          if (!timeStr.includes(':00:00') && timeStr.split(':').length === 2) {
-            timeStr = timeStr + ':00';
-          }
-
-          meetingDate = `${dateStr}T${timeStr}`;
+          const time = params.time || '09:00';
+          meetingDate = `${dateStr}T${time}`;
         } else if (params.date) {
           let dateStr = params.date;
-          if (dateStr === 'מחר' || dateStr.includes('מחר')) {
+          if (dateStr === 'מחר') {
             const tomorrow = new Date();
             tomorrow.setDate(tomorrow.getDate() + 1);
             dateStr = tomorrow.toISOString().split('T')[0];
           } else if (dateStr === 'היום') {
             dateStr = new Date().toISOString().split('T')[0];
           }
-          meetingDate = `${dateStr}T10:00:00`;
+          const time = params.time || '09:00';
+          meetingDate = `${dateStr}T${time}`;
         } else {
-          // No date provided - use tomorrow at 10:00
           const tomorrow = new Date();
           tomorrow.setDate(tomorrow.getDate() + 1);
-          meetingDate = `${tomorrow.toISOString().split('T')[0]}T10:00:00`;
+          meetingDate = `${tomorrow.toISOString().split('T')[0]}T10:00`;
         }
-
-        // Build title from available info if not provided
-        const title = params.title || 
-                     (params.client_name ? `פגישה עם ${params.client_name}` : 'פגישה חדשה');
         
-        // Smart client matching
+        const title = params.title || 'פגישה חדשה';
+        
         let clientId = params.client_id;
         let clientName = params.client_name;
         
         if (clientName && !clientId) {
           try {
             const clients = await base44.entities.Client.list();
-            const result = findBestMatch(clientName, clients, 'name');
-            
-            if (result) {
-              clientId = result.match.id;
-              const originalName = clientName;
-              clientName = result.match.name;
-              
-              if (!result.isExact) {
-                if (result.confidence >= 0.85) {
-                  toast.success(`✅ מצאתי: "${result.match.name}" (${Math.round(result.confidence * 100)}% התאמה)`);
-                } else if (result.confidence >= 0.7) {
-                  toast.info(`🔍 השתמשתי ב"${result.match.name}" במקום "${originalName}" (${Math.round(result.confidence * 100)}% התאמה)`);
-                } else {
-                  toast.warning(`⚠️ התאמה חלשה: "${result.match.name}" (${Math.round(result.confidence * 100)}%) - אשר שזה נכון`);
-                }
-                
-                if (result.alternatives && result.alternatives.length > 0) {
-                  console.log('📋 חלופות אפשריות:', result.alternatives);
-                }
-              }
-            } else {
-              toast.warning(`⚠️ לא מצאתי לקוח בשם "${clientName}"`);
+            const client = findBestMatch(clientName, clients, c => c.name);
+            if (client) {
+              clientId = client.id;
+              clientName = client.name;
             }
           } catch (e) {
             console.warn('Could not fetch clients:', e);
@@ -292,8 +259,12 @@ export default function AIChat() {
           status: 'מתוכננת',
           location: params.location || '',
           description: params.description || (clientName ? `פגישה עם ${clientName}` : ''),
-          participants: params.participants?.split(';').filter(p => p.trim()) || [],
-          meeting_type: params.meeting_type || 'פגישת תכנון'
+          participants: params.participants?.split(';').map(p => p.trim()).filter(Boolean) || [],
+          meeting_type: params.meeting_type || 'פגישת תכנון',
+          duration_minutes: params.duration_minutes ? parseInt(params.duration_minutes) : 60,
+          reminders: [
+            { minutes_before: 60, method: 'in-app', sent: false }
+          ]
         };
         
         if (clientId) meetingData.client_id = clientId;
@@ -301,138 +272,50 @@ export default function AIChat() {
         if (params.project_id) meetingData.project_id = params.project_id;
         if (params.project_name) meetingData.project_name = params.project_name;
         
-        console.log('📅 Creating meeting with data:', meetingData);
-        
-        const newMeeting = await base44.entities.Meeting.create(meetingData);
-        console.log('✅ Meeting created:', newMeeting);
-        toast.success(`📅 פגישה "${title}" נקבעה בהצלחה!`);
+        await base44.entities.Meeting.create(meetingData);
+        toast.dismiss('action-loading');
+        toast.success('✅ בוצע - הפגישה נוספה בהצלחה');
         
       } else if (action.type === 'UPDATE_CLIENT_STAGE') {
-        console.log('🎯 Updating client stage...');
         const clientsToUpdate = params.clients?.split(';') || [];
         const newStage = params.stage;
         
         const allClients = await base44.entities.Client.list();
         let updated = 0;
-        const warnings = [];
         
         for (const clientIdentifier of clientsToUpdate) {
-          const result = findBestMatch(clientIdentifier.trim(), allClients, 'name');
+          const client = findBestMatch(clientIdentifier.trim(), allClients, c => c.name) || 
+                        allClients.find(c => c.id === clientIdentifier.trim());
           
-          if (result) {
-            await base44.entities.Client.update(result.match.id, { stage: newStage });
+          if (client) {
+            await base44.entities.Client.update(client.id, { stage: newStage });
             updated++;
-            
-            if (!result.isExact) {
-              if (result.confidence >= 0.7) {
-                warnings.push(`✅ עדכנתי את "${result.match.name}" (${Math.round(result.confidence * 100)}% התאמה)`);
-              } else {
-                warnings.push(`⚠️ עדכנתי את "${result.match.name}" - אבל ההתאמה חלשה (${Math.round(result.confidence * 100)}%)`);
-              }
-            }
-          } else {
-            warnings.push(`❌ לא מצאתי לקוח: "${clientIdentifier}"`);
           }
         }
+        toast.dismiss('action-loading');
+        toast.success('✅ בוצע - לקוחות עודכנו');
         
-        console.log(`✅ Updated ${updated} clients`);
-        toast.success(`🎯 ${updated} לקוחות עודכנו לשלב ${newStage}!`);
+      } else if (action.type === 'ADD_CLIENT_DATA') {
+        const clientName = params.client_name;
+        const allClients = await base44.entities.Client.list();
+        const client = findBestMatch(clientName, allClients, c => c.name);
         
-        if (warnings.length > 0) {
-          setTimeout(() => {
-            warnings.forEach(w => toast.info(`ℹ️ ${w}`));
-          }, 500);
-        }
-        
-      } else if (action.type === 'PREDICT_TIMELINE') {
-        toast.info(`📊 חיזוי ציר זמן לפרויקט "${params.project_name}" בוצע - ראה תוצאות בצ'אט`);
-        
-      } else if (action.type === 'SUGGEST_RESOURCES') {
-        toast.info(`👥 הצעת משאבים לפרויקט "${params.project_name}" בוצעה - ראה המלצות בצ'אט`);
-        
-      } else if (action.type === 'ANALYZE_SENTIMENT') {
-        console.log('😊 Analyzing sentiment...');
-        toast.info(`🎭 ניתוח סנטימנט בוצע - ראה תוצאות בצ'אט`);
-        
-      } else if (action.type === 'SUGGEST_REMINDERS') {
-        console.log('⏰ Suggesting reminders...');
-        const tasks = params.tasks?.split(';') || [];
-        for (const taskTitle of tasks) {
-          try {
-            const allTasks = await base44.entities.Task.list();
-            const task = allTasks.find(t => t.title?.includes(taskTitle.trim()));
-            if (task && !task.reminder_enabled) {
-              await base44.entities.Task.update(task.id, {
-                reminder_enabled: true,
-                reminder_at: params.reminder_time || task.due_date
-              });
-            }
-          } catch (e) {
-            console.warn('Failed to update task reminder:', e);
-          }
-        }
-        toast.success(`⏰ ${tasks.length} תזכורות הוצעו והופעלו!`);
-        
-      } else if (action.type === 'SUMMARIZE_PROJECT') {
-        console.log('📋 Summarizing project...');
-        toast.info(`📋 סיכום פרויקט "${params.project_name}" בוצע - ראה בצ'אט`);
-        
-      } else if (action.type === 'SUMMARIZE_CLIENT') {
-        console.log('👤 Summarizing client...');
-        toast.info(`👤 סיכום לקוח "${params.client_name}" בוצע - ראה בצ'אט`);
-        
-      } else if (action.type === 'GENERATE_QUOTE_DRAFT') {
-        console.log('💰 Generating quote draft...');
-        toast.success(`💰 טיוטת הצעת מחיר נוצרה - ראה בצ'אט`);
-        
-      } else if (action.type === 'GENERATE_EMAIL_DRAFT') {
-        console.log('✉️ Generating email draft...');
-        toast.success(`✉️ טיוטת מייל נוצרה - ראה בצ'אט`);
-        
-      } else if (action.type === 'SEND_WHATSAPP') {
-        console.log('💬 Sending WhatsApp...');
-        let phone = params.phone?.replace(/\D/g, '');
-        const message = params.message || params.body;
-        const clientNameForPhone = params.client_name;
-        
-        // If client name provided but no phone, try to find it
-        if (!phone && clientNameForPhone) {
-          try {
-            const clients = await base44.entities.Client.list();
-            const result = findBestMatch(clientNameForPhone, clients, 'name');
-            
-            if (result) {
-              phone = (result.match.whatsapp || result.match.phone)?.replace(/\D/g, '');
-              
-              if (phone) {
-                if (!result.isExact && result.confidence < 0.9) {
-                  toast.info(`🔍 מצאתי את ${result.match.name} (${Math.round(result.confidence * 100)}% התאמה)`);
-                }
-              } else {
-                toast.error(`⚠️ לקוח "${result.match.name}" לא מוגדר עם מספר WhatsApp`);
-                return;
-              }
-            } else {
-              toast.error(`⚠️ לא מצאתי לקוח בשם "${clientNameForPhone}"`);
-              return;
-            }
-          } catch (e) {
-            console.warn('Could not fetch clients:', e);
-          }
-        }
-        
-        if (!phone || !message) {
-          toast.error('חסר מספר טלפון או הודעה');
+        if (!client) {
+          toast.error(`לא נמצא לקוח: ${clientName}`);
           return;
         }
+
+        const updateData = {};
+        if (params.email) updateData.email = params.email;
+        if (params.phone) updateData.phone = params.phone;
+        if (params.address) updateData.address = params.address;
+        if (params.notes) updateData.notes = params.notes;
+        if (params.stage) updateData.stage = params.stage;
+        if (params.status) updateData.status = params.status;
         
-        const whatsappUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-        window.open(whatsappUrl, '_blank');
-        toast.success('💬 WhatsApp נפתח - שלח את ההודעה המוכנה!');
-        
-      } else if (action.type === 'SUMMARIZE_COMMUNICATIONS') {
-        console.log('📨 Summarizing communications...');
-        toast.success('📨 סיכום תקשורת נוצר - ראה בצאט');
+        await base44.entities.Client.update(client.id, updateData);
+        toast.dismiss('action-loading');
+        toast.success('✅ בוצע - המידע עודכן');
       }
     } catch (error) {
       console.error('❌ Action execution error:', error);
