@@ -12,21 +12,57 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import ReactMarkdown from 'react-markdown';
 import { toast } from 'sonner';
+
+const FOLDERS = ['כללי', 'לקוחות', 'פרויקטים', 'משימות', 'דוחות', 'אחר'];
 
 export default function AIChat() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef(null);
+  const [clients, setClients] = useState([]);
+  const [selectedClient, setSelectedClient] = useState(null);
+  const [selectedFolder, setSelectedFolder] = useState('כללי');
+  const [showAssignDialog, setShowAssignDialog] = useState(false);
+
+  // טעינת לקוחות
+  useEffect(() => {
+    const loadClients = async () => {
+      try {
+        const clientsData = await base44.entities.Client.list();
+        setClients(clientsData || []);
+      } catch (e) {
+        console.warn('Failed to load clients:', e);
+      }
+    };
+    loadClients();
+  }, []);
 
   // פונקציה לניקוי הצ'אט
   const handleNewChat = () => {
     setMessages([]);
     setInput('');
+    setSelectedClient(null);
+    setSelectedFolder('כללי');
     toast.success('שיחה חדשה נפתחה');
   };
 
@@ -43,7 +79,9 @@ export default function AIChat() {
       
       await base44.entities.ChatConversation.create({
         name: chatName,
-        folder: 'כללי',
+        folder: selectedFolder,
+        client_id: selectedClient?.id || null,
+        client_name: selectedClient?.name || null,
         messages: messages.map(m => ({
           role: m.role,
           content: m.content,
@@ -713,55 +751,82 @@ ${mentionedProjects.size > 0 ? `- פרויקטים שהוזכרו בשיחה: ${
               <Sparkles className="w-6 h-6" />
               <h1 className="text-2xl font-bold">צ'אט AI חכם</h1>
             </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button 
-                  variant="outline" 
-                  className="gap-2 bg-white hover:bg-slate-50 border-slate-200 shadow-sm"
-                >
-                  <Plus className="w-4 h-4" />
-                  פעולות
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56" dir="rtl">
-                <DropdownMenuLabel className="text-slate-500">ניהול שיחה</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem 
-                  onClick={handleNewChat}
-                  className="gap-2 cursor-pointer"
-                >
-                  <RotateCcw className="w-4 h-4 text-blue-600" />
-                  <span>שיחה חדשה</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem 
-                  onClick={handleSaveChat}
-                  disabled={messages.length === 0}
-                  className="gap-2 cursor-pointer"
-                >
-                  <Save className="w-4 h-4 text-green-600" />
-                  <span>שמור שיחה</span>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link to={createPageUrl('ChatHistory')} className="gap-2 cursor-pointer flex items-center">
-                    <FolderOpen className="w-4 h-4 text-purple-600" />
-                    <span>היסטוריית שיחות</span>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem 
-                  onClick={() => {
-                    setMessages([]);
-                    setInput('');
-                  }}
-                  disabled={messages.length === 0}
-                  className="gap-2 cursor-pointer text-red-600 focus:text-red-600"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  <span>נקה שיחה</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <div className="flex gap-2 items-center">
+              {/* תגיות שיוך */}
+              {(selectedClient || selectedFolder !== 'כללי') && (
+                <div className="flex gap-1">
+                  {selectedClient && (
+                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                      <Users className="w-3 h-3 ml-1" />
+                      {selectedClient.name}
+                    </Badge>
+                  )}
+                  {selectedFolder !== 'כללי' && (
+                    <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                      <FolderOpen className="w-3 h-3 ml-1" />
+                      {selectedFolder}
+                    </Badge>
+                  )}
+                </div>
+              )}
+              
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    className="gap-2 bg-white hover:bg-slate-50 border-slate-200 shadow-sm"
+                  >
+                    <Plus className="w-4 h-4" />
+                    פעולות
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56" dir="rtl">
+                  <DropdownMenuLabel className="text-slate-500">ניהול שיחה</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem 
+                    onClick={handleNewChat}
+                    className="gap-2 cursor-pointer"
+                  >
+                    <RotateCcw className="w-4 h-4 text-blue-600" />
+                    <span>שיחה חדשה</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={() => setShowAssignDialog(true)}
+                    className="gap-2 cursor-pointer"
+                  >
+                    <Users className="w-4 h-4 text-orange-600" />
+                    <span>שייך ללקוח / תיקייה</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={handleSaveChat}
+                    disabled={messages.length === 0}
+                    className="gap-2 cursor-pointer"
+                  >
+                    <Save className="w-4 h-4 text-green-600" />
+                    <span>שמור שיחה</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link to={createPageUrl('ChatHistory')} className="gap-2 cursor-pointer flex items-center">
+                      <FolderOpen className="w-4 h-4 text-purple-600" />
+                      <span>היסטוריית שיחות</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem 
+                    onClick={() => {
+                      setMessages([]);
+                      setInput('');
+                    }}
+                    disabled={messages.length === 0}
+                    className="gap-2 cursor-pointer text-red-600 focus:text-red-600"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span>נקה שיחה</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
           <p className="text-slate-600 text-center">שאל אותי כל שאלה על הפרויקטים, הלקוחות והמשימות שלך</p>
         </div>
@@ -935,7 +1000,66 @@ ${mentionedProjects.size > 0 ? `- פרויקטים שהוזכרו בשיחה: ${
             </div>
           </div>
         </Card>
-      </div>
-    </div>
-  );
-}
+
+        {/* Assign Dialog */}
+        {showAssignDialog && (
+          <Dialog open={showAssignDialog} onOpenChange={setShowAssignDialog}>
+            <DialogContent dir="rtl" className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>שיוך שיחה</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div>
+                  <Label className="mb-2 block">לקוח</Label>
+                  <Select 
+                    value={selectedClient?.id || 'none'} 
+                    onValueChange={(v) => {
+                      if (v === 'none') {
+                        setSelectedClient(null);
+                      } else {
+                        const client = clients.find(c => c.id === v);
+                        setSelectedClient(client || null);
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="בחר לקוח (אופציונלי)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">ללא לקוח</SelectItem>
+                      {clients.map(client => (
+                        <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="mb-2 block">תיקייה</Label>
+                  <Select value={selectedFolder} onValueChange={setSelectedFolder}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {FOLDERS.map(folder => (
+                        <SelectItem key={folder} value={folder}>{folder}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setShowAssignDialog(false)}>ביטול</Button>
+                <Button onClick={() => {
+                  setShowAssignDialog(false);
+                  toast.success('השיוך עודכן');
+                }}>
+                  שמור
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
+        </div>
+        </div>
+        );
+        }

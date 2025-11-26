@@ -33,7 +33,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import ReactMarkdown from 'react-markdown';
+import { Plus } from 'lucide-react';
 
 const FOLDERS = ['כללי', 'לקוחות', 'פרויקטים', 'משימות', 'דוחות', 'אחר'];
 
@@ -55,6 +57,8 @@ export default function ChatHistory() {
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editData, setEditData] = useState({ name: '', folder: '', client_id: '', project_id: '' });
+  const [showNewDialog, setShowNewDialog] = useState(false);
+  const [newChatData, setNewChatData] = useState({ name: '', folder: 'כללי', client_id: '' });
 
   useEffect(() => {
     loadData();
@@ -139,6 +143,33 @@ export default function ChatHistory() {
     }
   };
 
+  const handleCreateNewChat = async () => {
+    if (!newChatData.name.trim()) {
+      toast.error('נא להזין שם לשיחה');
+      return;
+    }
+    
+    try {
+      const client = clients.find(c => c.id === newChatData.client_id);
+      
+      await base44.entities.ChatConversation.create({
+        name: newChatData.name,
+        folder: newChatData.folder,
+        client_id: newChatData.client_id || null,
+        client_name: client?.name || null,
+        messages: [],
+        last_message_at: new Date().toISOString()
+      });
+      
+      toast.success('שיחה חדשה נוצרה');
+      setShowNewDialog(false);
+      setNewChatData({ name: '', folder: 'כללי', client_id: '' });
+      loadData();
+    } catch (error) {
+      toast.error('שגיאה ביצירת שיחה');
+    }
+  };
+
   const filteredConversations = conversations.filter(conv => {
     const matchesSearch = conv.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          conv.client_name?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -156,6 +187,10 @@ export default function ChatHistory() {
           <h2 className="text-2xl font-bold text-slate-900">היסטוריית צ'אט</h2>
           <p className="text-slate-600">נהל את כל השיחות שלך עם ה-AI</p>
         </div>
+        <Button onClick={() => setShowNewDialog(true)} className="gap-2 bg-purple-600 hover:bg-purple-700">
+          <Plus className="w-4 h-4" />
+          שיחה חדשה
+        </Button>
       </div>
 
       {/* Filters */}
@@ -264,12 +299,12 @@ export default function ChatHistory() {
               </div>
               <div>
                 <Label>לקוח</Label>
-                <Select value={editData.client_id} onValueChange={(v) => setEditData({ ...editData, client_id: v })}>
+                <Select value={editData.client_id || 'none'} onValueChange={(v) => setEditData({ ...editData, client_id: v === 'none' ? '' : v })}>
                   <SelectTrigger>
                     <SelectValue placeholder="בחר לקוח (אופציונלי)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={null}>ללא לקוח</SelectItem>
+                    <SelectItem value="none">ללא לקוח</SelectItem>
                     {clients.map(client => (
                       <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
                     ))}
@@ -278,12 +313,12 @@ export default function ChatHistory() {
               </div>
               <div>
                 <Label>פרויקט</Label>
-                <Select value={editData.project_id} onValueChange={(v) => setEditData({ ...editData, project_id: v })}>
+                <Select value={editData.project_id || 'none'} onValueChange={(v) => setEditData({ ...editData, project_id: v === 'none' ? '' : v })}>
                   <SelectTrigger>
                     <SelectValue placeholder="בחר פרויקט (אופציונלי)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={null}>ללא פרויקט</SelectItem>
+                    <SelectItem value="none">ללא פרויקט</SelectItem>
                     {projects.map(project => (
                       <SelectItem key={project.id} value={project.id}>{project.name}</SelectItem>
                     ))}
@@ -298,9 +333,61 @@ export default function ChatHistory() {
           </DialogContent>
         </Dialog>
       )}
-    </div>
-  );
-}
+
+      {/* New Chat Dialog */}
+      {showNewDialog && (
+        <Dialog open={showNewDialog} onOpenChange={setShowNewDialog}>
+          <DialogContent dir="rtl">
+            <DialogHeader>
+              <DialogTitle>שיחה חדשה</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div>
+                <Label>שם השיחה</Label>
+                <Input
+                  value={newChatData.name}
+                  onChange={(e) => setNewChatData({ ...newChatData, name: e.target.value })}
+                  placeholder="הזן שם לשיחה..."
+                />
+              </div>
+              <div>
+                <Label>תיקייה</Label>
+                <Select value={newChatData.folder} onValueChange={(v) => setNewChatData({ ...newChatData, folder: v })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {FOLDERS.map(folder => (
+                      <SelectItem key={folder} value={folder}>{folder}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>לקוח (אופציונלי)</Label>
+                <Select value={newChatData.client_id || 'none'} onValueChange={(v) => setNewChatData({ ...newChatData, client_id: v === 'none' ? '' : v })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="בחר לקוח" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">ללא לקוח</SelectItem>
+                    {clients.map(client => (
+                      <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowNewDialog(false)}>ביטול</Button>
+              <Button onClick={handleCreateNewChat} className="bg-purple-600 hover:bg-purple-700">צור שיחה</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+      </div>
+      );
+      }
 
 function ConversationCard({ conversation, onDelete, onEdit, onTogglePin, onArchive }) {
   const [expanded, setExpanded] = useState(false);
