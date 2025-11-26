@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MessageSquare, X, Send, Loader2, Sparkles, Mail, CheckCircle, ListTodo, Users, TrendingUp, Target, Calendar, FileText, Navigation, Table, Database, BarChart, AlertCircle, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
