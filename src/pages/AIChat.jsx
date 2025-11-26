@@ -3,7 +3,15 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
-import { Loader2, Send, Sparkles, Trash2, Plus, Mail, CheckCircle, ListTodo, Calendar, Users, TrendingUp, Target, MessageCircle, FileText, MessageSquare } from 'lucide-react';
+import { Loader2, Send, Sparkles, Trash2, Plus, Mail, CheckCircle, ListTodo, Calendar, Users, TrendingUp, Target, MessageCircle, FileText, MessageSquare, RotateCcw, Save, FolderOpen } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel
+} from "@/components/ui/dropdown-menu";
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import ReactMarkdown from 'react-markdown';
@@ -20,6 +28,36 @@ export default function AIChat() {
     setMessages([]);
     setInput('');
     toast.success('שיחה חדשה נפתחה');
+  };
+
+  // שמירת שיחה
+  const handleSaveChat = async () => {
+    if (messages.length === 0) {
+      toast.error('אין הודעות לשמירה');
+      return;
+    }
+    
+    try {
+      const firstUserMessage = messages.find(m => m.role === 'user')?.content || 'שיחה ללא כותרת';
+      const chatName = firstUserMessage.substring(0, 50) + (firstUserMessage.length > 50 ? '...' : '');
+      
+      await base44.entities.ChatConversation.create({
+        name: chatName,
+        folder: 'כללי',
+        messages: messages.map(m => ({
+          role: m.role,
+          content: m.content,
+          timestamp: new Date().toISOString(),
+          actions: m.actions || []
+        })),
+        last_message_at: new Date().toISOString()
+      });
+      
+      toast.success('השיחה נשמרה בהצלחה');
+    } catch (error) {
+      console.error('Error saving chat:', error);
+      toast.error('שגיאה בשמירת השיחה');
+    }
   };
 
   // Smart fuzzy matching for client/user names
@@ -675,22 +713,55 @@ ${mentionedProjects.size > 0 ? `- פרויקטים שהוזכרו בשיחה: ${
               <Sparkles className="w-6 h-6" />
               <h1 className="text-2xl font-bold">צ'אט AI חכם</h1>
             </div>
-            <div className="flex gap-2">
-              <Button 
-                onClick={handleNewChat}
-                variant="outline" 
-                className="gap-2"
-              >
-                <Plus className="w-4 h-4" />
-                שיחה חדשה
-              </Button>
-              <Link to={createPageUrl('ChatHistory')}>
-                <Button variant="outline" className="gap-2">
-                  <MessageSquare className="w-4 h-4" />
-                  היסטוריה
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  className="gap-2 bg-white hover:bg-slate-50 border-slate-200 shadow-sm"
+                >
+                  <Plus className="w-4 h-4" />
+                  פעולות
                 </Button>
-              </Link>
-            </div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56" dir="rtl">
+                <DropdownMenuLabel className="text-slate-500">ניהול שיחה</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem 
+                  onClick={handleNewChat}
+                  className="gap-2 cursor-pointer"
+                >
+                  <RotateCcw className="w-4 h-4 text-blue-600" />
+                  <span>שיחה חדשה</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={handleSaveChat}
+                  disabled={messages.length === 0}
+                  className="gap-2 cursor-pointer"
+                >
+                  <Save className="w-4 h-4 text-green-600" />
+                  <span>שמור שיחה</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link to={createPageUrl('ChatHistory')} className="gap-2 cursor-pointer flex items-center">
+                    <FolderOpen className="w-4 h-4 text-purple-600" />
+                    <span>היסטוריית שיחות</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem 
+                  onClick={() => {
+                    setMessages([]);
+                    setInput('');
+                  }}
+                  disabled={messages.length === 0}
+                  className="gap-2 cursor-pointer text-red-600 focus:text-red-600"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>נקה שיחה</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
           <p className="text-slate-600 text-center">שאל אותי כל שאלה על הפרויקטים, הלקוחות והמשימות שלך</p>
         </div>
