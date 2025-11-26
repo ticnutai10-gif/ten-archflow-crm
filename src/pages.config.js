@@ -29,6 +29,7 @@ import Integrations from './pages/Integrations';
 import ProjectDetails from './pages/ProjectDetails';
 import CommunicationHub from './pages/CommunicationHub';
 import AIChat from './pages/AIChat';
+import WorkflowBuilder from './pages/WorkflowBuilder';
 import __Layout from './Layout.jsx';
 
 
@@ -64,6 +65,7 @@ export const PAGES = {
     "ProjectDetails": ProjectDetails,
     "CommunicationHub": CommunicationHub,
     "AIChat": AIChat,
+    "WorkflowBuilder": WorkflowBuilder,
 }
 
 export const pagesConfig = {
