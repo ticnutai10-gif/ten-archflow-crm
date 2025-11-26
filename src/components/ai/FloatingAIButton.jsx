@@ -308,6 +308,45 @@ ${sentimentResult}
         toast.dismiss('action-loading');
         toast.success('✅ משימה נוצרה בהצלחה!');
         
+      } else if (action.type === 'UPDATE_MEETING') {
+        const meetingTitle = params.meeting_title || params.title;
+        
+        // Find meeting by title (fuzzy match)
+        const allMeetings = await base44.entities.Meeting.list();
+        const meeting = findBestMatch(meetingTitle, allMeetings, m => m.title);
+        
+        if (!meeting) {
+          toast.error(`לא נמצאה פגישה: ${meetingTitle}`);
+          return;
+        }
+        
+        const updateData = {};
+        
+        if (params.new_date) {
+          let dateStr = params.new_date;
+          if (dateStr === 'מחר') {
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            dateStr = tomorrow.toISOString().split('T')[0];
+          } else if (dateStr === 'היום') {
+            dateStr = new Date().toISOString().split('T')[0];
+          }
+          const time = params.new_time || meeting.meeting_date?.split('T')[1] || '10:00';
+          updateData.meeting_date = `${dateStr}T${time}`;
+        } else if (params.new_time) {
+          const currentDate = meeting.meeting_date?.split('T')[0] || new Date().toISOString().split('T')[0];
+          updateData.meeting_date = `${currentDate}T${params.new_time}`;
+        }
+        
+        if (params.new_title) updateData.title = params.new_title;
+        if (params.new_location) updateData.location = params.new_location;
+        if (params.new_status) updateData.status = params.new_status;
+        if (params.new_description) updateData.description = params.new_description;
+        
+        await base44.entities.Meeting.update(meeting.id, updateData);
+        toast.dismiss('action-loading');
+        toast.success(`📅 הפגישה "${meeting.title}" עודכנה בהצלחה`);
+        
       } else if (action.type === 'SCHEDULE_MEETING') {
         const title = params.title || 'פגישה חדשה';
         
@@ -533,9 +572,12 @@ ${projectsList || 'אין פרויקטים פעילים'}
 - הוסף או עדכן פרטי לקוח
   [ACTION: ADD_CLIENT_DATA | client_name: <שם>, email: <מייל>, phone: <טלפון>, address: <כתובת>, notes: <הערות>]
 
-### 5. 📅 קביעת פגישות
+### 5. 📅 קביעת ועדכון פגישות
 - קבע פגישה מהירה עם זיהוי אוטומטי של תאריכים ושעות
   [ACTION: SCHEDULE_MEETING | title: <כותרת>, date: YYYY-MM-DD, time: HH:MM, client_name: <שם לקוח>]
+  
+- עדכן פגישה קיימת (תאריך/שעה/כותרת/מיקום/סטטוס)
+  [ACTION: UPDATE_MEETING | meeting_title: <שם הפגישה>, new_date: <תאריך חדש>, new_time: <שעה חדשה>, new_location: <מיקום>, new_status: <סטטוס>]
 
 ### 6. ✅ יצירת משימות
 - צור משימה עם כל הפרטים
@@ -573,6 +615,8 @@ ${projectsList || 'אין פרויקטים פעילים'}
 - "תן לי דוח על דני" → צור דוח לקוח
 - "מה הסנטימנט של קוזלובסקי?" → נתח סנטימנט
 - "פגישה עם משה מחר 2 אחר הצהריים" → קבע פגישה
+- "דחה את הפגישה עם יוסי למחר" → עדכן פגישה
+- "שנה את הפגישה לשעה 3" → עדכן פגישה
 - "הוביל אותי ללקוחות" → נווט לדף
 - "עדכן טלפון של רמי ל-050-1234567" → עדכן מידע
 - "צור דוח על פרויקט אפרת" → צור דוח פרויקט
@@ -783,6 +827,7 @@ ${projectsList || 'אין פרויקטים פעילים'}
                               {action.type === 'SEND_EMAIL' && <Mail className="w-4 h-4 text-blue-600" />}
                               {action.type === 'CREATE_TASK' && <ListTodo className="w-4 h-4 text-blue-600" />}
                               {action.type === 'SCHEDULE_MEETING' && <Calendar className="w-4 h-4 text-green-600" />}
+                              {action.type === 'UPDATE_MEETING' && <Calendar className="w-4 h-4 text-amber-600" />}
                               {action.type === 'UPDATE_CLIENT_STAGE' && <Users className="w-4 h-4 text-orange-600" />}
                               {action.type === 'GENERATE_CLIENT_REPORT' && <FileText className="w-4 h-4 text-purple-600" />}
                               {action.type === 'GENERATE_PROJECT_REPORT' && <BarChart className="w-4 h-4 text-indigo-600" />}
@@ -793,6 +838,7 @@ ${projectsList || 'אין פרויקטים פעילים'}
                                 {action.type === 'SEND_EMAIL' && 'שלח אימייל'}
                                 {action.type === 'CREATE_TASK' && 'צור משימה'}
                                 {action.type === 'SCHEDULE_MEETING' && 'קבע פגישה'}
+                                {action.type === 'UPDATE_MEETING' && 'עדכן פגישה'}
                                 {action.type === 'UPDATE_CLIENT_STAGE' && 'עדכן שלב'}
                                 {action.type === 'GENERATE_CLIENT_REPORT' && 'דוח לקוח'}
                                 {action.type === 'GENERATE_PROJECT_REPORT' && 'דוח פרויקט'}
