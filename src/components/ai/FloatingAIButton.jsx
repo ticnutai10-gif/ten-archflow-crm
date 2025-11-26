@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { MessageSquare, X, Send, Loader2, Sparkles, Mail, CheckCircle, ListTodo, Users, TrendingUp, Target, Calendar, FileText, Navigation, Table, Database, BarChart, AlertCircle, Plus } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { base44 } from '@/api/base44Client';
@@ -19,6 +20,9 @@ export default function FloatingAIButton() {
   const [currentConversationId, setCurrentConversationId] = useState(null);
   const [conversations, setConversations] = useState([]);
   const [showConversations, setShowConversations] = useState(false);
+  const [showClientPicker, setShowClientPicker] = useState(false);
+  const [clients, setClients] = useState([]);
+  const [selectedClientForChat, setSelectedClientForChat] = useState(null);
 
   // Close chat with ESC key
   useEffect(() => {
@@ -488,8 +492,18 @@ ${sentimentResult}
         last_message_at: new Date().toISOString()
       };
 
-      // Add client/project if detected from last message
-      if (clientName) conversationData.client_name = clientName;
+      // Use selected client from picker if available
+      if (selectedClientForChat) {
+        conversationData.client_id = selectedClientForChat.id;
+        conversationData.client_name = selectedClientForChat.name;
+        conversationData.folder = 'לקוחות';
+      }
+      
+      // Add client/project if detected from last message (override if not from picker)
+      if (!selectedClientForChat && clientName) {
+        conversationData.client_name = clientName;
+        conversationData.folder = 'לקוחות';
+      }
       if (projectName) conversationData.project_name = projectName;
 
       if (currentConversationId) {
@@ -510,10 +524,27 @@ ${sentimentResult}
     setShowConversations(false);
   };
 
-  const startNewConversation = () => {
+  const startNewConversation = async () => {
+    // Load clients for picker
+    try {
+      const clientsList = await base44.entities.Client.list();
+      setClients(clientsList);
+      setShowClientPicker(true);
+    } catch (error) {
+      console.error('Error loading clients:', error);
+      // Start conversation without client
+      setMessages([]);
+      setCurrentConversationId(null);
+      setSelectedClientForChat(null);
+      setShowConversations(false);
+    }
+  };
+
+  const confirmNewConversation = () => {
     setMessages([]);
     setCurrentConversationId(null);
     setShowConversations(false);
+    setShowClientPicker(false);
   };
 
   const sendMessage = async () => {
@@ -732,8 +763,9 @@ ${projectsList || 'אין פרויקטים פעילים'}
 
       {isOpen && (
         <div
-          className={`fixed ${isMobile ? 'top-16 bottom-20 left-4 right-4' : 'bottom-24 right-6 w-96 h-[600px]'} z-[45] bg-white ${isMobile ? 'rounded-2xl' : 'rounded-2xl'} shadow-2xl flex flex-col overflow-hidden border border-purple-200 animate-in fade-in zoom-in-95 duration-200`}
+          className={`fixed ${isMobile ? 'inset-0' : 'bottom-24 right-6 w-96 h-[600px]'} z-[45] bg-white ${isMobile ? 'rounded-none' : 'rounded-2xl'} shadow-2xl flex flex-col border border-purple-200 animate-in fade-in zoom-in-95 duration-200`}
           dir="rtl"
+          style={{ maxHeight: isMobile ? '100vh' : '600px' }}
         >
           <div className="p-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white flex items-center justify-between">
             <div className="flex items-center gap-2 flex-1">
@@ -786,8 +818,47 @@ ${projectsList || 'אין פרויקטים פעילים'}
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gradient-to-br from-purple-50/50 to-blue-50/50">
-            {showConversations ? (
+          <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gradient-to-br from-purple-50/50 to-blue-50/50" style={{ overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            {showClientPicker ? (
+              <div className="space-y-3">
+                <h4 className="font-semibold text-slate-800 mb-2">שיחה חדשה</h4>
+                <p className="text-sm text-slate-600 mb-3">האם לשייך לקוח?</p>
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  <button
+                    onClick={() => {
+                      setSelectedClientForChat(null);
+                      confirmNewConversation();
+                    }}
+                    className="w-full p-3 text-right border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+                  >
+                    <div className="font-medium text-slate-900">ללא שיוך לקוח</div>
+                    <div className="text-xs text-slate-500">שיחה כללית</div>
+                  </button>
+                  {clients.map(client => (
+                    <button
+                      key={client.id}
+                      onClick={() => {
+                        setSelectedClientForChat(client);
+                        confirmNewConversation();
+                      }}
+                      className="w-full p-3 text-right border border-slate-200 rounded-lg hover:bg-purple-50 hover:border-purple-300 transition-colors"
+                    >
+                      <div className="font-medium text-slate-900">{client.name}</div>
+                      {client.stage && (
+                        <div className="text-xs text-slate-500">{client.stage}</div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => setShowClientPicker(false)}
+                >
+                  ביטול
+                </Button>
+              </div>
+            ) : showConversations ? (
               <div className="space-y-2">
                 <div className="flex items-center justify-between mb-3">
                   <h4 className="font-semibold text-slate-800">שיחות אחרונות</h4>
