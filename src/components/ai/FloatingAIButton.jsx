@@ -20,6 +20,18 @@ export default function FloatingAIButton() {
   const [conversations, setConversations] = useState([]);
   const [showConversations, setShowConversations] = useState(false);
 
+  // Close chat with ESC key
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape' && isOpen) {
+        setIsOpen(false);
+      }
+    };
+    
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [isOpen]);
+
   // Fuzzy matching helper - finds best match even with typos
   const fuzzyMatch = (search, target) => {
     if (!search || !target) return 0;
@@ -98,7 +110,6 @@ export default function FloatingAIButton() {
       }
 
       console.log('📋 Parsed params:', params);
-      
       // Show processing toast
       toast.loading('מבצע פעולה...', { id: 'action-loading' });
 
@@ -167,7 +178,7 @@ ${meetings.filter(m => new Date(m.meeting_date) >= new Date()).slice(0, 3).map(m
           role: 'assistant', 
           content: reportData 
         }]);
-        toast.success(`📊 דוח נוצר עבור ${client.name}`);
+        toast.success('✅ בוצע - דוח נוצר');
         
       } else if (action.type === 'GENERATE_PROJECT_REPORT') {
         const projectName = params.project_name;
@@ -223,7 +234,7 @@ ${decisions.slice(0, 5).map(d => `- ${d.title} (${d.decision_date ? new Date(d.d
           role: 'assistant', 
           content: reportData 
         }]);
-        toast.success(`📊 דוח נוצר עבור ${project.name}`);
+        toast.success('✅ בוצע - דוח פרויקט נוצר');
         
       } else if (action.type === 'ANALYZE_SENTIMENT') {
         const clientName = params.client_name;
@@ -275,7 +286,7 @@ ${sentimentResult}
           role: 'assistant', 
           content: analysisData 
         }]);
-        toast.success(`🎭 ניתוח סנטימנט הושלם עבור ${client.name}`);
+        toast.success('✅ בוצע - ניתוח סנטימנט הושלם');
         
       } else if (action.type === 'SEND_EMAIL') {
         toast.dismiss('action-loading');
@@ -306,7 +317,7 @@ ${sentimentResult}
           project_name: params.project_name || ''
         });
         toast.dismiss('action-loading');
-        toast.success('✅ משימה נוצרה בהצלחה!');
+        toast.success('✅ בוצע - משימה נוצרה');
         
       } else if (action.type === 'UPDATE_MEETING') {
         const meetingTitle = params.meeting_title || params.title;
@@ -345,7 +356,7 @@ ${sentimentResult}
         
         await base44.entities.Meeting.update(meeting.id, updateData);
         toast.dismiss('action-loading');
-        toast.success(`📅 הפגישה "${meeting.title}" עודכנה בהצלחה`);
+        toast.success('✅ בוצע - הפגישה עודכנה בהצלחה');
         
       } else if (action.type === 'SCHEDULE_MEETING') {
         const title = params.title || 'פגישה חדשה';
@@ -410,7 +421,7 @@ ${sentimentResult}
         
         const newMeeting = await base44.entities.Meeting.create(meetingData);
         toast.dismiss('action-loading');
-        toast.success(`📅 פגישה "${title}" נקבעה ל-${meetingDate.split('T')[0]} בשעה ${meetingDate.split('T')[1]}`);
+        toast.success('✅ בוצע - הפגישה נוספה בהצלחה');
         
       } else if (action.type === 'UPDATE_CLIENT_STAGE') {
         const clientsToUpdate = params.clients?.split(';') || [];
@@ -428,9 +439,8 @@ ${sentimentResult}
             updated++;
           }
         }
-        
         toast.dismiss('action-loading');
-        toast.success(`🎯 ${updated} לקוחות עודכנו לשלב!`);
+        toast.success('✅ בוצע - לקוחות עודכנו');
         
       } else if (action.type === 'ADD_CLIENT_DATA') {
         const clientName = params.client_name;
@@ -449,10 +459,9 @@ ${sentimentResult}
         if (params.notes) updateData.notes = params.notes;
         if (params.stage) updateData.stage = params.stage;
         if (params.status) updateData.status = params.status;
-        
         await base44.entities.Client.update(client.id, updateData);
         toast.dismiss('action-loading');
-        toast.success(`✅ המידע עודכן עבור ${client.name}`);
+        toast.success('✅ בוצע - המידע עודכן');
       }
     } catch (error) {
       console.error('❌ Action execution error:', error);
