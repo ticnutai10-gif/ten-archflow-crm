@@ -1044,6 +1044,143 @@ export default function MeetingsPage() {
           }}
         />
       )}
+
+      {/* Day View Modal */}
+      {selectedDayMeetings !== null && selectedDayDate && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={closeDayView}>
+          <div 
+            className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[80vh] overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+            dir="rtl"
+          >
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-2xl font-bold">
+                    {format(selectedDayDate, 'EEEE', { locale: he })}
+                  </h3>
+                  <p className="text-blue-100 text-lg">
+                    {format(selectedDayDate, 'd בMMMM yyyy', { locale: he })}
+                  </p>
+                </div>
+                <button 
+                  onClick={closeDayView}
+                  className="p-2 hover:bg-white/20 rounded-full transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              {isToday(selectedDayDate) && (
+                <Badge className="mt-2 bg-white/20 text-white border-white/30">
+                  היום
+                </Badge>
+              )}
+            </div>
+
+            {/* Content */}
+            <div className="p-6 overflow-y-auto max-h-[50vh]">
+              {selectedDayMeetings.length === 0 ? (
+                <div className="text-center py-8">
+                  <CalendarIcon className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+                  <p className="text-slate-500 text-lg mb-2">אין פגישות ביום זה</p>
+                  <p className="text-slate-400 text-sm">לחץ על הכפתור למטה להוספת פגישה</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm text-slate-600 mb-4">
+                    {selectedDayMeetings.length} פגישות
+                  </p>
+                  {selectedDayMeetings.map((meeting) => (
+                    <div 
+                      key={meeting.id}
+                      className={`p-4 rounded-xl border-r-4 bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer ${
+                        meeting.color === 'blue' ? 'border-blue-500' :
+                        meeting.color === 'green' ? 'border-green-500' :
+                        meeting.color === 'red' ? 'border-red-500' :
+                        meeting.color === 'yellow' ? 'border-yellow-500' :
+                        meeting.color === 'purple' ? 'border-purple-500' :
+                        meeting.color === 'pink' ? 'border-pink-500' :
+                        meeting.color === 'orange' ? 'border-orange-500' :
+                        'border-blue-500'
+                      }`}
+                      onClick={() => {
+                        closeDayView();
+                        handleEdit(meeting);
+                      }}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Clock className="w-4 h-4 text-slate-500" />
+                            <span className="font-bold text-lg text-slate-800">
+                              {format(parseISO(meeting.meeting_date), 'HH:mm')}
+                            </span>
+                            {meeting.google_calendar_event_id && (
+                              <LinkIcon className="w-4 h-4 text-green-500" title="מסונכרן עם Google" />
+                            )}
+                          </div>
+                          <h4 className="font-semibold text-slate-900 mb-1">{meeting.title}</h4>
+                          {meeting.client_name && (
+                            <p className="text-sm text-slate-600 flex items-center gap-1">
+                              <Users className="w-3 h-3" />
+                              {meeting.client_name}
+                            </p>
+                          )}
+                          {meeting.location && (
+                            <p className="text-sm text-slate-500 flex items-center gap-1 mt-1">
+                              <MapPin className="w-3 h-3" />
+                              {meeting.location}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex gap-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              closeDayView();
+                              handleEdit(meeting);
+                            }}
+                            className="p-2 hover:bg-blue-100 rounded-lg transition-colors"
+                            title="ערוך"
+                          >
+                            <Edit className="w-4 h-4 text-blue-600" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(meeting.id);
+                              setSelectedDayMeetings(prev => prev.filter(m => m.id !== meeting.id));
+                            }}
+                            className="p-2 hover:bg-red-100 rounded-lg transition-colors"
+                            title="מחק"
+                          >
+                            <Trash2 className="w-4 h-4 text-red-600" />
+                          </button>
+                        </div>
+                      </div>
+                      <Badge className={`mt-2 ${statusColors[meeting.status] || 'bg-slate-100'}`}>
+                        {meeting.status}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t bg-slate-50">
+              <Button 
+                onClick={handleAddMeetingForDay}
+                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white gap-2"
+              >
+                <Plus className="w-5 h-5" />
+                הוסף פגישה ל-{format(selectedDayDate, 'd/M', { locale: he })}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
