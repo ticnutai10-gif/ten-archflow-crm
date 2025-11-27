@@ -83,6 +83,8 @@ export default function InternalChatPage() {
   const audioChunksRef = useRef([]);
   const recordingIntervalRef = useRef(null);
   const audioRef = useRef(null);
+  const recordingTimeRef = useRef(0);
+  const streamRef = useRef(null);
 
   useEffect(() => {
     loadData();
@@ -223,32 +225,45 @@ export default function InternalChatPage() {
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorderRef.current = new MediaRecorder(stream);
+      streamRef.current = stream;
+      
+      // Try different audio formats for better compatibility
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm') 
+        ? 'audio/webm' 
+        : MediaRecorder.isTypeSupported('audio/mp4') 
+          ? 'audio/mp4' 
+          : 'audio/ogg';
+      
+      mediaRecorderRef.current = new MediaRecorder(stream, { mimeType });
       audioChunksRef.current = [];
+      recordingTimeRef.current = 0;
 
       mediaRecorderRef.current.ondataavailable = (e) => {
-        audioChunksRef.current.push(e.data);
+        if (e.data && e.data.size > 0) {
+          audioChunksRef.current.push(e.data);
+        }
       };
 
       mediaRecorderRef.current.onstop = async () => {
+        // Stop stream tracks
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => track.stop());
+        }
+        
         // Check if cancelled
         if (audioChunksRef.current.length === 0) {
-          stream.getTracks().forEach(track => track.stop());
           return;
         }
         
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
         
         // Make sure there's actual audio data
         if (audioBlob.size < 100) {
           toast.error('ההקלטה קצרה מדי');
-          stream.getTracks().forEach(track => track.stop());
           return;
         }
         
-        // Create file-like object for upload
-        audioBlob.name = `voice_${Date.now()}.webm`;
-        const duration = recordingTime;
+        const duration = recordingTimeRef.current;
         
         try {
           toast.loading('מעלה הקלטה...', { id: 'voice-upload' });
@@ -257,7 +272,7 @@ export default function InternalChatPage() {
           await sendMessage('voice', {
             url: file_url,
             name: 'הודעה קולית',
-            type: 'audio/webm',
+            type: mimeType,
             duration: duration
           });
           
@@ -268,15 +283,15 @@ export default function InternalChatPage() {
           toast.dismiss('voice-upload');
           toast.error('שגיאה בשליחת ההקלטה: ' + (error.message || 'נסה שוב'));
         }
-        
-        stream.getTracks().forEach(track => track.stop());
       };
 
-      mediaRecorderRef.current.start(100); // Collect data every 100ms
+      mediaRecorderRef.current.start(200); // Collect data every 200ms
       setIsRecording(true);
       setRecordingTime(0);
+      recordingTimeRef.current = 0;
       
       recordingIntervalRef.current = setInterval(() => {
+        recordingTimeRef.current += 1;
         setRecordingTime(prev => prev + 1);
       }, 1000);
     } catch (error) {
@@ -295,10 +310,13 @@ export default function InternalChatPage() {
 
   const cancelRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
+      audioChunksRef.current = []; // Clear chunks before stopping so onstop won't upload
       mediaRecorderRef.current.stop();
       setIsRecording(false);
       clearInterval(recordingIntervalRef.current);
-      audioChunksRef.current = [];
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
     }
   };
 
