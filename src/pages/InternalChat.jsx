@@ -410,9 +410,8 @@ export default function InternalChatPage() {
         
         try {
           toast.loading('מעלה הקלטה...', { id: 'voice-upload' });
-          const audioFile = new File([audioBlob], `voice_${Date.now()}.webm`, { type: mimeType });
-          console.log('🎤 Uploading file...');
-          const { file_url } = await base44.integrations.Core.UploadFile({ file: audioFile });
+          console.log('🎤 Uploading blob directly...');
+          const { file_url } = await base44.integrations.Core.UploadFile({ file: audioBlob });
           console.log('🎤 Upload successful:', file_url);
           
           await sendMessage('voice', {
