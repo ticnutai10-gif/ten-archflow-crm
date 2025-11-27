@@ -50,6 +50,7 @@ const MENU_ITEMS = [
   { name: "Dashboard", icon: Home, path: "Dashboard" },
   { name: "צ'אט AI", icon: MessageSquare, path: "AIChat" },
   { name: "היסטוריית צ'אט", icon: MessageSquare, path: "ChatHistory" },
+  { name: "צ'אט פנימי", icon: MessageSquare, path: "InternalChat" },
   { name: "לקוחות", icon: Users, path: "Clients" },
   { name: "פרויקטים", icon: Briefcase, path: "Projects" },
   { name: "הצעות מחיר", icon: Calculator, path: "Quotes" },
