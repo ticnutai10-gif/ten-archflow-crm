@@ -42,8 +42,17 @@ import {
   X,
   Loader2,
   Check,
-  CheckCheck
+  CheckCheck,
+  Tag,
+  Hash
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator
+} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
@@ -57,7 +66,10 @@ export default function InternalChatPage() {
   const [users, setUsers] = useState([]);
   const [clients, setClients] = useState([]);
   const [showNewChatDialog, setShowNewChatDialog] = useState(false);
-  const [newChatData, setNewChatData] = useState({ participants: [], client_id: '', name: '' });
+  const [newChatData, setNewChatData] = useState({ participants: [], client_id: '', name: '', tags: [] });
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editChatData, setEditChatData] = useState(null);
+  const [newTag, setNewTag] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -219,8 +231,23 @@ export default function InternalChatPage() {
       };
 
       mediaRecorderRef.current.onstop = async () => {
+        // Check if cancelled
+        if (audioChunksRef.current.length === 0) {
+          stream.getTracks().forEach(track => track.stop());
+          return;
+        }
+        
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        
+        // Make sure there's actual audio data
+        if (audioBlob.size < 100) {
+          toast.error('ההקלטה קצרה מדי');
+          stream.getTracks().forEach(track => track.stop());
+          return;
+        }
+        
         const file = new File([audioBlob], `voice_${Date.now()}.webm`, { type: 'audio/webm' });
+        const duration = recordingTime;
         
         try {
           toast.loading('מעלה הקלטה...', { id: 'voice-upload' });
@@ -230,20 +257,21 @@ export default function InternalChatPage() {
             url: file_url,
             name: 'הודעה קולית',
             type: 'audio/webm',
-            duration: recordingTime
+            duration: duration
           });
           
           toast.dismiss('voice-upload');
           toast.success('ההודעה הקולית נשלחה');
         } catch (error) {
+          console.error('Voice upload error:', error);
           toast.dismiss('voice-upload');
-          toast.error('שגיאה בשליחת ההקלטה');
+          toast.error('שגיאה בשליחת ההקלטה: ' + (error.message || 'נסה שוב'));
         }
         
         stream.getTracks().forEach(track => track.stop());
       };
 
-      mediaRecorderRef.current.start();
+      mediaRecorderRef.current.start(100); // Collect data every 100ms
       setIsRecording(true);
       setRecordingTime(0);
       
@@ -251,7 +279,8 @@ export default function InternalChatPage() {
         setRecordingTime(prev => prev + 1);
       }, 1000);
     } catch (error) {
-      toast.error('אין גישה למיקרופון');
+      console.error('Microphone error:', error);
+      toast.error('אין גישה למיקרופון - אנא אשר גישה בהגדרות הדפדפן');
     }
   };
 
@@ -305,15 +334,69 @@ export default function InternalChatPage() {
         client_id: newChatData.client_id || null,
         client_name: client?.name || null,
         name: newChatData.name || participantNames.join(', '),
+        tags: newChatData.tags || [],
         last_message_at: new Date().toISOString()
       });
 
       toast.success('השיחה נוצרה');
       setShowNewChatDialog(false);
-      setNewChatData({ participants: [], client_id: '', name: '' });
+      setNewChatData({ participants: [], client_id: '', name: '', tags: [] });
       loadData();
     } catch (error) {
       toast.error('שגיאה ביצירת השיחה');
+    }
+  };
+
+  const handleDeleteChat = async (chatId) => {
+    if (!confirm('האם למחוק את השיחה?')) return;
+    try {
+      // Delete all messages first
+      const msgs = await base44.entities.InternalMessage.filter({ chat_id: chatId });
+      for (const msg of msgs) {
+        await base44.entities.InternalMessage.delete(msg.id);
+      }
+      await base44.entities.InternalChat.delete(chatId);
+      toast.success('השיחה נמחקה');
+      if (selectedChat?.id === chatId) {
+        setSelectedChat(null);
+        setMessages([]);
+      }
+      loadData();
+    } catch (error) {
+      toast.error('שגיאה במחיקה');
+    }
+  };
+
+  const handleEditChat = (chat) => {
+    setEditChatData({
+      id: chat.id,
+      name: chat.name || '',
+      client_id: chat.client_id || '',
+      tags: chat.tags || []
+    });
+    setShowEditDialog(true);
+  };
+
+  const saveEditChat = async () => {
+    try {
+      const client = clients.find(c => c.id === editChatData.client_id);
+      await base44.entities.InternalChat.update(editChatData.id, {
+        name: editChatData.name,
+        client_id: editChatData.client_id || null,
+        client_name: client?.name || null,
+        tags: editChatData.tags || []
+      });
+      toast.success('השיחה עודכנה');
+      setShowEditDialog(false);
+      loadData();
+    } catch (error) {
+      toast.error('שגיאה בעדכון');
+    }
+  };
+
+  const addTag = (tagList, setTagList, tag) => {
+    if (tag.trim() && !tagList.includes(tag.trim())) {
+      setTagList([...tagList, tag.trim()]);
     }
   };
 
@@ -380,34 +463,64 @@ export default function InternalChatPage() {
               return (
                 <div
                   key={chat.id}
-                  onClick={() => setSelectedChat(chat)}
-                  className={`p-4 border-b cursor-pointer hover:bg-slate-50 transition-colors ${
+                  className={`p-4 border-b cursor-pointer hover:bg-slate-50 transition-colors group ${
                     isSelected ? 'bg-blue-50 border-r-4 border-r-blue-500' : ''
                   }`}
                 >
                   <div className="flex items-start gap-3">
-                    <Avatar className="w-10 h-10">
+                    <Avatar className="w-10 h-10" onClick={() => setSelectedChat(chat)}>
                       <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white">
                         {others[0]?.charAt(0).toUpperCase() || 'U'}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0" onClick={() => setSelectedChat(chat)}>
                       <div className="flex items-center justify-between">
                         <h3 className="font-semibold text-sm truncate">
                           {chat.name || others.join(', ')}
                         </h3>
-                        {chat.last_message_at && (
-                          <span className="text-xs text-slate-500">
-                            {format(new Date(chat.last_message_at), 'HH:mm', { locale: he })}
-                          </span>
-                        )}
+                        <div className="flex items-center gap-1">
+                          {chat.last_message_at && (
+                            <span className="text-xs text-slate-500">
+                              {format(new Date(chat.last_message_at), 'HH:mm', { locale: he })}
+                            </span>
+                          )}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                              <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100">
+                                <MoreVertical className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" dir="rtl">
+                              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleEditChat(chat); }}>
+                                <Edit className="w-4 h-4 ml-2" />
+                                עריכה
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem 
+                                onClick={(e) => { e.stopPropagation(); handleDeleteChat(chat.id); }}
+                                className="text-red-600"
+                              >
+                                <Trash2 className="w-4 h-4 ml-2" />
+                                מחיקה
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </div>
-                      {chat.client_name && (
-                        <Badge variant="outline" className="text-xs mt-1">
-                          <User className="w-3 h-3 ml-1" />
-                          {chat.client_name}
-                        </Badge>
-                      )}
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {chat.client_name && (
+                          <Badge variant="outline" className="text-xs">
+                            <User className="w-3 h-3 ml-1" />
+                            {chat.client_name}
+                          </Badge>
+                        )}
+                        {chat.tags?.slice(0, 2).map(tag => (
+                          <Badge key={tag} className="text-xs bg-purple-100 text-purple-700">
+                            <Hash className="w-2 h-2 ml-1" />
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
                       {chat.last_message && (
                         <p className="text-xs text-slate-500 truncate mt-1">
                           {chat.last_message}
@@ -698,6 +811,98 @@ export default function InternalChatPage() {
               <Button onClick={createNewChat} className="bg-blue-600 hover:bg-blue-700">
                 צור שיחה
               </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+      {/* Edit Chat Dialog */}
+      {showEditDialog && editChatData && (
+        <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+          <DialogContent dir="rtl" className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>עריכת שיחה</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div>
+                <Label className="mb-2 block">שם השיחה</Label>
+                <Input
+                  value={editChatData.name}
+                  onChange={(e) => setEditChatData({ ...editChatData, name: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label className="mb-2 block">שיוך ללקוח</Label>
+                <Select 
+                  value={editChatData.client_id || 'none'} 
+                  onValueChange={(v) => setEditChatData({ ...editChatData, client_id: v === 'none' ? '' : v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="בחר לקוח" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">ללא לקוח</SelectItem>
+                    {clients.map(client => (
+                      <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="mb-2 block">תגיות</Label>
+                <div className="flex gap-2 mb-2">
+                  <Input
+                    value={newTag}
+                    onChange={(e) => setNewTag(e.target.value)}
+                    placeholder="הוסף תגית..."
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (newTag.trim()) {
+                          setEditChatData({ 
+                            ...editChatData, 
+                            tags: [...(editChatData.tags || []), newTag.trim()] 
+                          });
+                          setNewTag('');
+                        }
+                      }
+                    }}
+                  />
+                  <Button 
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      if (newTag.trim()) {
+                        setEditChatData({ 
+                          ...editChatData, 
+                          tags: [...(editChatData.tags || []), newTag.trim()] 
+                        });
+                        setNewTag('');
+                      }
+                    }}
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {editChatData.tags?.map((tag, i) => (
+                    <Badge key={i} variant="secondary" className="gap-1">
+                      <Hash className="w-3 h-3" />
+                      {tag}
+                      <X 
+                        className="w-3 h-3 cursor-pointer" 
+                        onClick={() => setEditChatData({
+                          ...editChatData,
+                          tags: editChatData.tags.filter((_, idx) => idx !== i)
+                        })}
+                      />
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowEditDialog(false)}>ביטול</Button>
+              <Button onClick={saveEditChat}>שמור</Button>
             </div>
           </DialogContent>
         </Dialog>
