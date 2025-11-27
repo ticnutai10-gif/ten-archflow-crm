@@ -69,6 +69,7 @@ const MENU_ITEMS = [
   { name: "מסמכים", icon: FileText, path: "Documents" },
   { name: "אינטגרציות", icon: Zap, path: "Integrations" },
   { name: "אוטומציות", icon: Settings, path: "Automations" },
+  { name: "אוטומציות תקשורת", icon: Zap, path: "ClientAutomations" },
   { name: "יצוא", icon: Archive, path: "Exports" },
   { name: "גיבוי", icon: Archive, path: "Backup" },
   { name: "הגדרות", icon: Settings, path: "Settings" }
