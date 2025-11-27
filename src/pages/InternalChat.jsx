@@ -840,7 +840,7 @@ export default function InternalChatPage() {
                                 rel="noopener noreferrer"
                                 className={`flex items-center gap-2 p-2 rounded-lg ${isMe ? 'bg-white/20' : 'bg-slate-100'}`}
                               >
-                                <File className="w-5 h-5" />
+                                <FileIcon className="w-5 h-5" />
                                 <span className="text-sm truncate">{msg.file_name}</span>
                               </a>
                             )}
