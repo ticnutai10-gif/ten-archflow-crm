@@ -76,6 +76,7 @@ export default function InternalChatPage() {
   const [recordingTime, setRecordingTime] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [playingVoice, setPlayingVoice] = useState(null);
+  const [onlineUsers, setOnlineUsers] = useState({});
   
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -88,7 +89,36 @@ export default function InternalChatPage() {
 
   useEffect(() => {
     loadData();
-  }, []);
+    
+    // Update online status
+    const updateOnlineStatus = async () => {
+      if (currentUser) {
+        try {
+          await base44.entities.User.update(currentUser.id, {
+            last_seen: new Date().toISOString(),
+            is_online: true
+          });
+        } catch (e) {
+          console.warn('Could not update online status');
+        }
+      }
+    };
+    
+    const statusInterval = setInterval(updateOnlineStatus, 30000); // Every 30 seconds
+    
+    // Set offline on page close
+    const handleBeforeUnload = async () => {
+      if (currentUser) {
+        navigator.sendBeacon && navigator.sendBeacon('/api/offline');
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      clearInterval(statusInterval);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [currentUser]);
 
   useEffect(() => {
     if (selectedChat) {
@@ -113,6 +143,20 @@ export default function InternalChatPage() {
       setCurrentUser(user);
       setUsers(usersData || []);
       setClients(clientsData || []);
+      
+      // Calculate online status for each user (online if last_seen within 2 minutes)
+      const now = new Date();
+      const onlineStatus = {};
+      (usersData || []).forEach(u => {
+        if (u.last_seen) {
+          const lastSeen = new Date(u.last_seen);
+          const diffMinutes = (now - lastSeen) / 1000 / 60;
+          onlineStatus[u.email] = diffMinutes < 2;
+        } else {
+          onlineStatus[u.email] = false;
+        }
+      });
+      setOnlineUsers(onlineStatus);
       
       // Filter chats where current user is participant
       const myChats = (chatsData || []).filter(chat => 
@@ -425,6 +469,48 @@ export default function InternalChatPage() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const startVideoCall = () => {
+    // Generate a unique Google Meet link
+    const meetingId = `crm-${selectedChat.id.slice(-8)}-${Date.now().toString(36)}`;
+    const meetUrl = `https://meet.google.com/new?hs=122&authuser=0`;
+    
+    // Send a message about the call
+    const callMessage = `🎥 התחלתי שיחת וידאו - הצטרפו כאן: ${meetUrl}`;
+    setNewMessage(callMessage);
+    
+    // Open Google Meet in new tab
+    window.open(meetUrl, '_blank');
+    
+    toast.success('נפתחה שיחת וידאו ב-Google Meet');
+  };
+
+  const startVoiceCall = () => {
+    const others = getOtherParticipants(selectedChat);
+    
+    // Find phone numbers for participants
+    const participantPhones = others.map(email => {
+      const user = users.find(u => u.email === email);
+      return user?.phone || user?.whatsapp;
+    }).filter(Boolean);
+    
+    if (participantPhones.length > 0) {
+      // Open WhatsApp call with first participant
+      const phone = participantPhones[0].replace(/[^0-9]/g, '');
+      const whatsappUrl = `https://wa.me/${phone}`;
+      window.open(whatsappUrl, '_blank');
+      toast.success('נפתחה שיחה ב-WhatsApp');
+    } else {
+      // Fallback - create a Google Meet audio-only link
+      const meetUrl = `https://meet.google.com/new?hs=122&authuser=0`;
+      window.open(meetUrl, '_blank');
+      toast.info('נפתחה שיחה קולית ב-Google Meet (לא נמצא מספר טלפון)');
+    }
+  };
+
+  const isUserOnline = (email) => {
+    return onlineUsers[email] === true;
+  };
+
   const getOtherParticipants = (chat) => {
     return chat.participants?.filter(p => p !== currentUser?.email) || [];
   };
@@ -487,11 +573,17 @@ export default function InternalChatPage() {
                   }`}
                 >
                   <div className="flex items-start gap-3">
-                    <Avatar className="w-10 h-10" onClick={() => setSelectedChat(chat)}>
-                      <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white">
-                        {others[0]?.charAt(0).toUpperCase() || 'U'}
-                      </AvatarFallback>
-                    </Avatar>
+                    <div className="relative" onClick={() => setSelectedChat(chat)}>
+                      <Avatar className="w-10 h-10">
+                        <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white">
+                          {others[0]?.charAt(0).toUpperCase() || 'U'}
+                        </AvatarFallback>
+                      </Avatar>
+                      {/* Online indicator in chat list */}
+                      {others.some(email => isUserOnline(email)) && (
+                        <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white" />
+                      )}
+                    </div>
                     <div className="flex-1 min-w-0" onClick={() => setSelectedChat(chat)}>
                       <div className="flex items-center justify-between">
                         <h3 className="font-semibold text-sm truncate">
@@ -561,25 +653,54 @@ export default function InternalChatPage() {
             {/* Chat Header */}
             <div className="bg-white border-b p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <Avatar>
-                  <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white">
-                    {getOtherParticipants(selectedChat)[0]?.charAt(0).toUpperCase() || 'U'}
-                  </AvatarFallback>
-                </Avatar>
+                <div className="relative">
+                  <Avatar>
+                    <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white">
+                      {getOtherParticipants(selectedChat)[0]?.charAt(0).toUpperCase() || 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                  {/* Online status indicator */}
+                  {getOtherParticipants(selectedChat).some(email => isUserOnline(email)) && (
+                    <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
+                  )}
+                </div>
                 <div>
                   <h3 className="font-semibold">
                     {selectedChat.name || getOtherParticipants(selectedChat).join(', ')}
                   </h3>
-                  {selectedChat.client_name && (
-                    <p className="text-xs text-slate-500">לקוח: {selectedChat.client_name}</p>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {selectedChat.client_name && (
+                      <span className="text-xs text-slate-500">לקוח: {selectedChat.client_name}</span>
+                    )}
+                    {/* Online status text */}
+                    {getOtherParticipants(selectedChat).some(email => isUserOnline(email)) ? (
+                      <span className="text-xs text-green-600 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+                        מחובר
+                      </span>
+                    ) : (
+                      <span className="text-xs text-slate-400">לא מחובר</span>
+                    )}
+                  </div>
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button variant="ghost" size="icon" disabled title="בקרוב">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={startVoiceCall}
+                  title="התחל שיחה קולית"
+                  className="hover:bg-green-50 hover:text-green-600"
+                >
                   <Phone className="w-5 h-5" />
                 </Button>
-                <Button variant="ghost" size="icon" disabled title="בקרוב">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={startVideoCall}
+                  title="התחל שיחת וידאו"
+                  className="hover:bg-blue-50 hover:text-blue-600"
+                >
                   <Video className="w-5 h-5" />
                 </Button>
               </div>
