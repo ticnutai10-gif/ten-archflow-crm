@@ -267,51 +267,90 @@ export default function InternalChatPage() {
   };
 
   const startRecording = async () => {
+    console.log('🎤 [VOICE] Starting recording...');
     try {
+      console.log('🎤 [VOICE] Requesting microphone access...');
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      console.log('🎤 [VOICE] ✅ Microphone access granted, tracks:', stream.getAudioTracks().length);
       streamRef.current = stream;
       
       // Try different audio formats for better compatibility
-      const mimeType = MediaRecorder.isTypeSupported('audio/webm') 
-        ? 'audio/webm' 
-        : MediaRecorder.isTypeSupported('audio/mp4') 
-          ? 'audio/mp4' 
-          : 'audio/ogg';
+      const supportedTypes = ['audio/webm', 'audio/mp4', 'audio/ogg', 'audio/wav'];
+      let mimeType = 'audio/webm';
+      for (const type of supportedTypes) {
+        if (MediaRecorder.isTypeSupported(type)) {
+          mimeType = type;
+          console.log('🎤 [VOICE] Using mimeType:', mimeType);
+          break;
+        }
+      }
+      console.log('🎤 [VOICE] Selected mimeType:', mimeType);
       
       mediaRecorderRef.current = new MediaRecorder(stream, { mimeType });
       audioChunksRef.current = [];
       recordingTimeRef.current = 0;
+      console.log('🎤 [VOICE] MediaRecorder created, state:', mediaRecorderRef.current.state);
 
       mediaRecorderRef.current.ondataavailable = (e) => {
+        console.log('🎤 [VOICE] Data available event, size:', e.data?.size || 0);
         if (e.data && e.data.size > 0) {
           audioChunksRef.current.push(e.data);
+          console.log('🎤 [VOICE] Chunk added, total chunks:', audioChunksRef.current.length);
         }
       };
 
+      mediaRecorderRef.current.onerror = (e) => {
+        console.error('🎤 [VOICE] ❌ MediaRecorder error:', e.error);
+        toast.error('שגיאה בהקלטה: ' + (e.error?.message || 'Unknown error'));
+      };
+
       mediaRecorderRef.current.onstop = async () => {
+        console.log('🎤 [VOICE] Recording stopped, chunks count:', audioChunksRef.current.length);
+        
         // Stop stream tracks
         if (streamRef.current) {
-          streamRef.current.getTracks().forEach(track => track.stop());
+          streamRef.current.getTracks().forEach(track => {
+            console.log('🎤 [VOICE] Stopping track:', track.kind, track.label);
+            track.stop();
+          });
         }
         
         // Check if cancelled
         if (audioChunksRef.current.length === 0) {
+          console.log('🎤 [VOICE] ⚠️ No chunks - recording was cancelled');
           return;
         }
         
+        const totalSize = audioChunksRef.current.reduce((sum, chunk) => sum + chunk.size, 0);
+        console.log('🎤 [VOICE] Total chunks size:', totalSize, 'bytes');
+        
         const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+        console.log('🎤 [VOICE] Created blob, size:', audioBlob.size, 'type:', audioBlob.type);
         
         // Make sure there's actual audio data
         if (audioBlob.size < 100) {
+          console.error('🎤 [VOICE] ❌ Blob too small:', audioBlob.size);
           toast.error('ההקלטה קצרה מדי');
           return;
         }
         
         const duration = recordingTimeRef.current;
+        console.log('🎤 [VOICE] Recording duration:', duration, 'seconds');
         
         try {
+          console.log('🎤 [VOICE] Uploading blob to server...');
           toast.loading('מעלה הקלטה...', { id: 'voice-upload' });
-          const { file_url } = await base44.integrations.Core.UploadFile({ file: audioBlob });
+          
+          const uploadResult = await base44.integrations.Core.UploadFile({ file: audioBlob });
+          console.log('🎤 [VOICE] ✅ Upload result:', uploadResult);
+          
+          const file_url = uploadResult.file_url;
+          if (!file_url) {
+            console.error('🎤 [VOICE] ❌ No file_url in response:', uploadResult);
+            throw new Error('No file URL returned from upload');
+          }
+          
+          console.log('🎤 [VOICE] File URL:', file_url);
           
           await sendMessage('voice', {
             url: file_url,
@@ -322,14 +361,23 @@ export default function InternalChatPage() {
           
           toast.dismiss('voice-upload');
           toast.success('ההודעה הקולית נשלחה');
+          console.log('🎤 [VOICE] ✅ Voice message sent successfully!');
         } catch (error) {
-          console.error('Voice upload error:', error);
+          console.error('🎤 [VOICE] ❌ Upload/send error:', error);
+          console.error('🎤 [VOICE] Error details:', {
+            message: error.message,
+            stack: error.stack,
+            name: error.name
+          });
           toast.dismiss('voice-upload');
           toast.error('שגיאה בשליחת ההקלטה: ' + (error.message || 'נסה שוב'));
         }
       };
 
+      console.log('🎤 [VOICE] Starting MediaRecorder with timeslice 200ms...');
       mediaRecorderRef.current.start(200); // Collect data every 200ms
+      console.log('🎤 [VOICE] MediaRecorder state after start:', mediaRecorderRef.current.state);
+      
       setIsRecording(true);
       setRecordingTime(0);
       recordingTimeRef.current = 0;
@@ -338,22 +386,40 @@ export default function InternalChatPage() {
         recordingTimeRef.current += 1;
         setRecordingTime(prev => prev + 1);
       }, 1000);
+      
+      console.log('🎤 [VOICE] ✅ Recording started successfully!');
     } catch (error) {
-      console.error('Microphone error:', error);
+      console.error('🎤 [VOICE] ❌ Microphone error:', error);
+      console.error('🎤 [VOICE] Error details:', {
+        message: error.message,
+        name: error.name,
+        constraint: error.constraint
+      });
       toast.error('אין גישה למיקרופון - אנא אשר גישה בהגדרות הדפדפן');
     }
   };
 
   const stopRecording = () => {
+    console.log('🎤 [VOICE] Stop button pressed, isRecording:', isRecording);
+    console.log('🎤 [VOICE] MediaRecorder exists:', !!mediaRecorderRef.current);
+    console.log('🎤 [VOICE] MediaRecorder state:', mediaRecorderRef.current?.state);
+    console.log('🎤 [VOICE] Current chunks count:', audioChunksRef.current.length);
+    
     if (mediaRecorderRef.current && isRecording) {
+      console.log('🎤 [VOICE] Stopping MediaRecorder...');
       mediaRecorderRef.current.stop();
       setIsRecording(false);
       clearInterval(recordingIntervalRef.current);
+      console.log('🎤 [VOICE] Stop called, waiting for onstop event...');
+    } else {
+      console.log('🎤 [VOICE] ⚠️ Cannot stop - conditions not met');
     }
   };
 
   const cancelRecording = () => {
+    console.log('🎤 [VOICE] Cancel button pressed');
     if (mediaRecorderRef.current && isRecording) {
+      console.log('🎤 [VOICE] Cancelling recording, clearing chunks...');
       audioChunksRef.current = []; // Clear chunks before stopping so onstop won't upload
       mediaRecorderRef.current.stop();
       setIsRecording(false);
@@ -361,6 +427,7 @@ export default function InternalChatPage() {
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
       }
+      console.log('🎤 [VOICE] Recording cancelled');
     }
   };
 
