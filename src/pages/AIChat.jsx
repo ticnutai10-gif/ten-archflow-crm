@@ -34,6 +34,63 @@ import { toast } from 'sonner';
 
 const FOLDERS = ['כללי', 'לקוחות', 'פרויקטים', 'משימות', 'דוחות', 'אחר'];
 
+function ActionButton({ action, onExecute }) {
+  const [isExecuting, setIsExecuting] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+
+  const handleClick = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (isExecuting) return;
+    
+    setIsExecuting(true);
+    try {
+      await onExecute(action);
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 1500);
+    } catch (error) {
+      console.error('❌ Error executing action:', error);
+      toast.error('שגיאה בביצוע: ' + error.message);
+    }
+    setIsExecuting(false);
+  };
+
+  if (showSuccess) {
+    return (
+      <div className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg animate-pulse">
+        <CheckCircle className="w-5 h-5" />
+        <span className="font-medium">בוצע!</span>
+      </div>
+    );
+  }
+
+  return (
+    <Button
+      size="sm"
+      onClick={handleClick}
+      disabled={isExecuting}
+      className={`transition-all duration-200 ${
+        isExecuting 
+          ? 'bg-slate-400 cursor-wait' 
+          : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 hover:scale-105'
+      } text-white`}
+    >
+      {isExecuting ? (
+        <>
+          <Loader2 className="w-4 h-4 ml-1 animate-spin" />
+          מבצע...
+        </>
+      ) : (
+        <>
+          <CheckCircle className="w-4 h-4 ml-1" />
+          בצע עכשיו
+        </>
+      )}
+    </Button>
+  );
+}
+
 export default function AIChat() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -921,24 +978,7 @@ ${mentionedProjects.size > 0 ? `- פרויקטים שהוזכרו בשיחה: ${
                                  {action.type === 'SEND_WHATSAPP' && '💬 שלח WhatsApp'}
                                  {action.type === 'SUMMARIZE_COMMUNICATIONS' && '📨 סכם תקשורת'}
                                 </span>
-                                <Button
-                                  size="sm"
-                                  onClick={async (e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    console.log('🖱️ Button clicked!', action);
-                                    try {
-                                      await executeAction(action);
-                                    } catch (error) {
-                                      console.error('❌ Error executing action:', error);
-                                      toast.error('שגיאה בביצוע: ' + error.message);
-                                    }
-                                  }}
-                                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
-                                >
-                                  <CheckCircle className="w-4 h-4 ml-1" />
-                                  בצע עכשיו
-                                </Button>
+                                <ActionButton action={action} onExecute={executeAction} />
                               </div>
                             ))}
                           </div>
