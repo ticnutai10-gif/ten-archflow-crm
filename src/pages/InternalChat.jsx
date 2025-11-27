@@ -133,16 +133,31 @@ export default function InternalChatPage() {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [user, chatsData, usersData, clientsData] = await Promise.all([
-        base44.auth.me(),
-        base44.entities.InternalChat.list('-last_message_at').catch(() => []),
-        base44.entities.User.list().catch(() => []),
-        base44.entities.Client.list().catch(() => [])
-      ]);
-      
+      // First get user
+      const user = await base44.auth.me();
       setCurrentUser(user);
+      
+      // Then load other data with small delays to avoid rate limiting
+      let chatsData = [];
+      let usersData = [];
+      let clientsData = [];
+      
+      try {
+        chatsData = await base44.entities.InternalChat.list('-last_message_at', 50);
+      } catch (e) {
+        console.warn('Failed to load chats:', e.message);
+      }
+      
+      try {
+        usersData = await base44.entities.User.list();
+      } catch (e) {
+        console.warn('Failed to load users:', e.message);
+      }
+      
+      // Only load clients if needed (for new chat dialog)
+      // Skip initially to reduce API calls
+      
       setUsers(usersData || []);
-      setClients(clientsData || []);
       
       // Calculate online status for each user (online if last_seen within 2 minutes)
       const now = new Date();
@@ -165,9 +180,24 @@ export default function InternalChatPage() {
       setChats(myChats);
     } catch (error) {
       console.error('Error loading data:', error);
-      toast.error('שגיאה בטעינת הנתונים');
+      if (error.message?.includes('Rate limit')) {
+        toast.error('יש להמתין מעט ולרענן שוב');
+      } else {
+        toast.error('שגיאה בטעינת הנתונים');
+      }
     }
     setIsLoading(false);
+  };
+
+  // Load clients only when needed (for dialogs)
+  const loadClients = async () => {
+    if (clients.length > 0) return; // Already loaded
+    try {
+      const clientsData = await base44.entities.Client.list('-created_date', 100);
+      setClients(clientsData || []);
+    } catch (e) {
+      console.warn('Failed to load clients:', e.message);
+    }
   };
 
   const loadMessages = async (chatId) => {
@@ -498,6 +528,7 @@ export default function InternalChatPage() {
   };
 
   const handleEditChat = (chat) => {
+    loadClients(); // Load clients for the dropdown
     setEditChatData({
       id: chat.id,
       name: chat.name || '',
@@ -606,7 +637,7 @@ export default function InternalChatPage() {
         <div className="p-4 border-b">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold">צ'אט פנימי</h2>
-            <Button size="sm" onClick={() => setShowNewChatDialog(true)}>
+            <Button size="sm" onClick={() => { loadClients(); setShowNewChatDialog(true); }}>
               <Plus className="w-4 h-4" />
             </Button>
           </div>
@@ -926,7 +957,7 @@ export default function InternalChatPage() {
               <MessageCircle className="w-20 h-20 text-slate-300 mx-auto mb-4" />
               <h3 className="text-xl font-semibold text-slate-600 mb-2">בחר שיחה</h3>
               <p className="text-slate-500 mb-4">או צור שיחה חדשה</p>
-              <Button onClick={() => setShowNewChatDialog(true)}>
+              <Button onClick={() => { loadClients(); setShowNewChatDialog(true); }}>
                 <Plus className="w-4 h-4 ml-2" />
                 שיחה חדשה
               </Button>
