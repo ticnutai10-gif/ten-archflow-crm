@@ -44,7 +44,11 @@ import {
   CheckCheck,
   Tag,
   Hash,
-  RefreshCw
+  RefreshCw,
+  Sparkles,
+  FileText,
+  Bell,
+  Clock
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -74,6 +78,15 @@ export default function InternalChatPage() {
   const [editChatData, setEditChatData] = useState(null);
   const [newTag, setNewTag] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // AI Features state
+  const [showSummaryDialog, setShowSummaryDialog] = useState(false);
+  const [chatSummary, setChatSummary] = useState('');
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+  const [showReminderDialog, setShowReminderDialog] = useState(false);
+  const [reminderMessage, setReminderMessage] = useState(null);
+  const [reminderTime, setReminderTime] = useState('');
+  const [isTranscribing, setIsTranscribing] = useState(null);
   
   // Loading states
   const [isLoading, setIsLoading] = useState(true);
@@ -567,6 +580,121 @@ export default function InternalChatPage() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // AI: Generate chat summary
+  const generateChatSummary = async () => {
+    if (messages.length === 0) {
+      toast.error('אין הודעות לסיכום');
+      return;
+    }
+    
+    setIsGeneratingSummary(true);
+    setShowSummaryDialog(true);
+    setChatSummary('');
+    
+    try {
+      const chatContent = messages.map(m => 
+        `${getDisplayName(m.sender_email)}: ${m.content}`
+      ).join('\n');
+      
+      const result = await base44.integrations.Core.InvokeLLM({
+        prompt: `סכם את השיחה הבאה בעברית. תן סיכום קצר וממוקד של הנקודות העיקריות, החלטות שהתקבלו, ומשימות שעלו:\n\n${chatContent}`,
+        response_json_schema: {
+          type: "object",
+          properties: {
+            summary: { type: "string", description: "סיכום השיחה" },
+            key_points: { type: "array", items: { type: "string" }, description: "נקודות מפתח" },
+            action_items: { type: "array", items: { type: "string" }, description: "משימות לביצוע" }
+          }
+        }
+      });
+      
+      let summaryText = result.summary || '';
+      if (result.key_points?.length > 0) {
+        summaryText += '\n\n📌 נקודות מפתח:\n' + result.key_points.map(p => `• ${p}`).join('\n');
+      }
+      if (result.action_items?.length > 0) {
+        summaryText += '\n\n✅ משימות:\n' + result.action_items.map(t => `• ${t}`).join('\n');
+      }
+      
+      setChatSummary(summaryText);
+    } catch (error) {
+      console.error('Error generating summary:', error);
+      toast.error('שגיאה ביצירת הסיכום');
+    } finally {
+      setIsGeneratingSummary(false);
+    }
+  };
+
+  // AI: Transcribe voice message
+  const transcribeVoice = async (msg) => {
+    if (!msg.file_url) return;
+    
+    setIsTranscribing(msg.id);
+    
+    try {
+      const result = await base44.integrations.Core.InvokeLLM({
+        prompt: 'תמלל את ההודעה הקולית הזו לעברית. אם זה לא אודיו או לא ניתן לתמלל, כתוב "לא ניתן לתמלל".',
+        file_urls: [msg.file_url],
+        response_json_schema: {
+          type: "object",
+          properties: {
+            transcription: { type: "string", description: "התמלול" }
+          }
+        }
+      });
+      
+      if (result.transcription && result.transcription !== 'לא ניתן לתמלל') {
+        // Update message with transcription
+        await base44.entities.InternalMessage.update(msg.id, {
+          content: result.transcription
+        });
+        
+        // Update local state
+        setMessages(prev => prev.map(m => 
+          m.id === msg.id ? { ...m, content: result.transcription } : m
+        ));
+        
+        toast.success('התמלול הושלם');
+      } else {
+        toast.error('לא ניתן לתמלל את ההודעה');
+      }
+    } catch (error) {
+      console.error('Error transcribing:', error);
+      toast.error('שגיאה בתמלול');
+    } finally {
+      setIsTranscribing(null);
+    }
+  };
+
+  // Create reminder from message
+  const createReminderFromMessage = async () => {
+    if (!reminderMessage || !reminderTime) {
+      toast.error('נא לבחור זמן לתזכורת');
+      return;
+    }
+    
+    try {
+      await base44.entities.Task.create({
+        title: `תזכורת: ${reminderMessage.content.substring(0, 50)}...`,
+        description: `מתוך שיחה עם ${getDisplayName(reminderMessage.sender_email)}:\n\n"${reminderMessage.content}"`,
+        status: 'חדשה',
+        priority: 'בינונית',
+        due_date: reminderTime,
+        reminder_enabled: true,
+        reminder_at: new Date(reminderTime).toISOString(),
+        category: 'אחר'
+      });
+      
+      toast.success('התזכורת נוצרה כמשימה');
+      setShowReminderDialog(false);
+      setReminderMessage(null);
+      setReminderTime('');
+    } catch (error) {
+      console.error('Error creating reminder:', error);
+      toast.error('שגיאה ביצירת התזכורת');
+    }
+  };
+
   const startVideoCall = () => {
     const meetUrl = `https://meet.google.com/new?hs=122&authuser=0`;
     window.open(meetUrl, '_blank');
@@ -777,6 +905,15 @@ export default function InternalChatPage() {
                 <Button 
                   variant="ghost" 
                   size="icon" 
+                  onClick={generateChatSummary}
+                  title="סיכום שיחה עם AI"
+                  className="hover:bg-purple-50 hover:text-purple-600"
+                >
+                  <Sparkles className="w-5 h-5" />
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
                   onClick={startVoiceCall}
                   title="התחל שיחה קולית"
                   className="hover:bg-green-50 hover:text-green-600"
@@ -807,7 +944,7 @@ export default function InternalChatPage() {
                     const isMe = msg.sender_email === currentUser?.email;
                     
                     return (
-                      <div key={msg.id} className={`flex ${isMe ? 'justify-start' : 'justify-end'}`}>
+                      <div key={msg.id} className={`flex ${isMe ? 'justify-start' : 'justify-end'} group`}>
                         <div className={`max-w-[70%] ${isMe ? 'order-1' : 'order-2'}`}>
                           <div
                             className={`rounded-2xl p-3 ${
@@ -848,23 +985,44 @@ export default function InternalChatPage() {
                             )}
                             
                             {msg.type === 'voice' && (
-                              <div className={`flex items-center gap-3 p-2 rounded-lg ${isMe ? 'bg-white/20' : 'bg-slate-100'}`}>
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-8 w-8"
-                                  onClick={() => playVoice(msg.file_url, msg.id)}
-                                >
-                                  {playingVoice === msg.id ? (
-                                    <Pause className="w-4 h-4" />
-                                  ) : (
-                                    <Play className="w-4 h-4" />
-                                  )}
-                                </Button>
-                                <div className="flex-1 h-1 bg-slate-300 rounded-full">
-                                  <div className="h-full bg-blue-500 rounded-full" style={{ width: '0%' }} />
+                              <div className={`flex flex-col gap-2 p-2 rounded-lg ${isMe ? 'bg-white/20' : 'bg-slate-100'}`}>
+                                <div className="flex items-center gap-3">
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-8 w-8"
+                                    onClick={() => playVoice(msg.file_url, msg.id)}
+                                  >
+                                    {playingVoice === msg.id ? (
+                                      <Pause className="w-4 h-4" />
+                                    ) : (
+                                      <Play className="w-4 h-4" />
+                                    )}
+                                  </Button>
+                                  <div className="flex-1 h-1 bg-slate-300 rounded-full">
+                                    <div className="h-full bg-blue-500 rounded-full" style={{ width: '0%' }} />
+                                  </div>
+                                  <span className="text-xs">{formatTime(msg.voice_duration || 0)}</span>
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-6 w-6"
+                                    onClick={() => transcribeVoice(msg)}
+                                    disabled={isTranscribing === msg.id}
+                                    title="תמלל הודעה"
+                                  >
+                                    {isTranscribing === msg.id ? (
+                                      <Loader2 className="w-3 h-3 animate-spin" />
+                                    ) : (
+                                      <FileText className="w-3 h-3" />
+                                    )}
+                                  </Button>
                                 </div>
-                                <span className="text-xs">{formatTime(msg.voice_duration || 0)}</span>
+                                {msg.content && msg.content !== 'הודעה קולית' && (
+                                  <p className="text-xs opacity-80 border-t pt-1 mt-1">
+                                    📝 {msg.content}
+                                  </p>
+                                )}
                               </div>
                             )}
                           </div>
@@ -879,6 +1037,18 @@ export default function InternalChatPage() {
                                 <Check className="w-3 h-3 text-slate-400" />
                               )
                             )}
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-5 w-5 opacity-0 group-hover:opacity-100 hover:bg-amber-50"
+                              onClick={() => {
+                                setReminderMessage(msg);
+                                setShowReminderDialog(true);
+                              }}
+                              title="צור תזכורת"
+                            >
+                              <Bell className="w-3 h-3 text-amber-600" />
+                            </Button>
                           </div>
                         </div>
                       </div>
@@ -1050,6 +1220,111 @@ export default function InternalChatPage() {
         </Dialog>
       )}
       
+      {/* AI Summary Dialog */}
+      {showSummaryDialog && (
+        <Dialog open={showSummaryDialog} onOpenChange={setShowSummaryDialog}>
+          <DialogContent dir="rtl" className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-purple-600" />
+                סיכום שיחה
+              </DialogTitle>
+            </DialogHeader>
+            <div className="py-4">
+              {isGeneratingSummary ? (
+                <div className="flex flex-col items-center justify-center py-8">
+                  <Loader2 className="w-8 h-8 animate-spin text-purple-600 mb-3" />
+                  <p className="text-slate-600">מייצר סיכום...</p>
+                </div>
+              ) : (
+                <div className="bg-slate-50 rounded-lg p-4 whitespace-pre-wrap text-sm">
+                  {chatSummary || 'אין סיכום'}
+                </div>
+              )}
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowSummaryDialog(false)}>סגור</Button>
+              {chatSummary && (
+                <Button 
+                  onClick={() => {
+                    navigator.clipboard.writeText(chatSummary);
+                    toast.success('הסיכום הועתק');
+                  }}
+                >
+                  העתק סיכום
+                </Button>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Reminder Dialog */}
+      {showReminderDialog && reminderMessage && (
+        <Dialog open={showReminderDialog} onOpenChange={setShowReminderDialog}>
+          <DialogContent dir="rtl" className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Bell className="w-5 h-5 text-amber-600" />
+                צור תזכורת מהודעה
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="bg-slate-50 rounded-lg p-3 text-sm">
+                <p className="text-xs text-slate-500 mb-1">ההודעה:</p>
+                <p>"{reminderMessage.content}"</p>
+                <p className="text-xs text-slate-400 mt-2">
+                  מאת: {getDisplayName(reminderMessage.sender_email)}
+                </p>
+              </div>
+              <div>
+                <Label className="mb-2 block">מתי להזכיר?</Label>
+                <Input
+                  type="datetime-local"
+                  value={reminderTime}
+                  onChange={(e) => setReminderTime(e.target.value)}
+                  min={new Date().toISOString().slice(0, 16)}
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    const tomorrow = new Date();
+                    tomorrow.setDate(tomorrow.getDate() + 1);
+                    tomorrow.setHours(9, 0, 0, 0);
+                    setReminderTime(tomorrow.toISOString().slice(0, 16));
+                  }}
+                >
+                  <Clock className="w-3 h-3 ml-1" />
+                  מחר 09:00
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    const inHour = new Date();
+                    inHour.setHours(inHour.getHours() + 1);
+                    setReminderTime(inHour.toISOString().slice(0, 16));
+                  }}
+                >
+                  <Clock className="w-3 h-3 ml-1" />
+                  בעוד שעה
+                </Button>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowReminderDialog(false)}>ביטול</Button>
+              <Button onClick={createReminderFromMessage} className="bg-amber-600 hover:bg-amber-700">
+                <Bell className="w-4 h-4 ml-2" />
+                צור תזכורת
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
       {/* Edit Chat Dialog */}
       {showEditDialog && editChatData && (
         <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
