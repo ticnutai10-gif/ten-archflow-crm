@@ -32,6 +32,7 @@ import AIChat from './pages/AIChat';
 import WorkflowBuilder from './pages/WorkflowBuilder';
 import ChatHistory from './pages/ChatHistory';
 import InternalChat from './pages/InternalChat';
+import ClientAutomations from './pages/ClientAutomations';
 import __Layout from './Layout.jsx';
 
 
@@ -70,6 +71,7 @@ export const PAGES = {
     "WorkflowBuilder": WorkflowBuilder,
     "ChatHistory": ChatHistory,
     "InternalChat": InternalChat,
+    "ClientAutomations": ClientAutomations,
 }
 
 export const pagesConfig = {
