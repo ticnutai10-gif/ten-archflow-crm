@@ -695,10 +695,72 @@ export default function InternalChatPage() {
     }
   };
 
-  const startVideoCall = () => {
-    const meetUrl = `https://meet.google.com/new?hs=122&authuser=0`;
-    window.open(meetUrl, '_blank');
-    toast.success('נפתחה שיחת וידאו ב-Google Meet');
+  // Video call state
+  const [showVideoCallDialog, setShowVideoCallDialog] = useState(false);
+  const [videoCallType, setVideoCallType] = useState('meet');
+  const [zoomApiKey, setZoomApiKey] = useState(() => localStorage.getItem('zoom_api_key') || '');
+  const [teamsLink, setTeamsLink] = useState('');
+
+  const startVideoCall = async (type = 'meet', customLink = null) => {
+    let meetingUrl = '';
+    let platform = '';
+    
+    if (type === 'meet') {
+      // Generate a unique meeting code
+      const meetCode = Math.random().toString(36).substring(2, 5) + '-' + 
+                       Math.random().toString(36).substring(2, 6) + '-' + 
+                       Math.random().toString(36).substring(2, 5);
+      meetingUrl = `https://meet.google.com/${meetCode}`;
+      platform = 'Google Meet';
+    } else if (type === 'zoom' && customLink) {
+      meetingUrl = customLink;
+      platform = 'Zoom';
+    } else if (type === 'teams' && customLink) {
+      meetingUrl = customLink;
+      platform = 'Microsoft Teams';
+    }
+    
+    if (!meetingUrl) {
+      toast.error('נא להזין קישור לפגישה');
+      return;
+    }
+    
+    // Send meeting link as message
+    try {
+      const messageContent = `📹 הזמנה לשיחת וידאו ב-${platform}\n\n🔗 ${meetingUrl}\n\nלחץ על הקישור כדי להצטרף`;
+      
+      const messageData = {
+        chat_id: selectedChat.id,
+        sender_email: currentUser.email,
+        sender_name: currentUser.full_name || currentUser.email,
+        content: messageContent,
+        type: 'text',
+        read_by: [currentUser.email]
+      };
+
+      const newMsg = await base44.entities.InternalMessage.create(messageData);
+
+      await base44.entities.InternalChat.update(selectedChat.id, {
+        last_message: `📹 שיחת וידאו ב-${platform}`,
+        last_message_at: new Date().toISOString()
+      });
+
+      setMessages(prev => [...prev, { ...messageData, id: newMsg.id, created_date: new Date().toISOString() }]);
+      
+      setChats(prev => prev.map(c => 
+        c.id === selectedChat.id 
+          ? { ...c, last_message: `📹 שיחת וידאו`, last_message_at: new Date().toISOString() }
+          : c
+      ).sort((a, b) => new Date(b.last_message_at) - new Date(a.last_message_at)));
+
+      // Open the meeting in new tab
+      window.open(meetingUrl, '_blank');
+      toast.success(`קישור ל-${platform} נשלח ונפתח`);
+      setShowVideoCallDialog(false);
+    } catch (error) {
+      console.error('Error sending video call link:', error);
+      toast.error('שגיאה בשליחת הקישור');
+    }
   };
 
   const startVoiceCall = () => {
@@ -713,8 +775,8 @@ export default function InternalChatPage() {
       window.open(`https://wa.me/${phone}`, '_blank');
       toast.success('נפתחה שיחה ב-WhatsApp');
     } else {
-      window.open(`https://meet.google.com/new?hs=122&authuser=0`, '_blank');
-      toast.info('נפתחה שיחה קולית ב-Google Meet');
+      // Start voice call via Meet
+      startVideoCall('meet');
     }
   };
 
@@ -923,7 +985,7 @@ export default function InternalChatPage() {
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  onClick={startVideoCall}
+                  onClick={() => setShowVideoCallDialog(true)}
                   title="התחל שיחת וידאו"
                   className="hover:bg-blue-50 hover:text-blue-600"
                 >
@@ -1220,6 +1282,109 @@ export default function InternalChatPage() {
         </Dialog>
       )}
       
+      {/* Video Call Dialog */}
+      {showVideoCallDialog && (
+        <Dialog open={showVideoCallDialog} onOpenChange={setShowVideoCallDialog}>
+          <DialogContent dir="rtl" className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Video className="w-5 h-5 text-blue-600" />
+                התחל שיחת וידאו
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="grid grid-cols-3 gap-2">
+                <Button
+                  variant={videoCallType === 'meet' ? 'default' : 'outline'}
+                  onClick={() => setVideoCallType('meet')}
+                  className="flex flex-col items-center gap-2 h-auto py-4"
+                >
+                  <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-blue-500 rounded-lg flex items-center justify-center">
+                    <Video className="w-5 h-5 text-white" />
+                  </div>
+                  <span className="text-xs">Google Meet</span>
+                </Button>
+                <Button
+                  variant={videoCallType === 'zoom' ? 'default' : 'outline'}
+                  onClick={() => setVideoCallType('zoom')}
+                  className="flex flex-col items-center gap-2 h-auto py-4"
+                >
+                  <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
+                    <span className="text-white font-bold text-sm">Z</span>
+                  </div>
+                  <span className="text-xs">Zoom</span>
+                </Button>
+                <Button
+                  variant={videoCallType === 'teams' ? 'default' : 'outline'}
+                  onClick={() => setVideoCallType('teams')}
+                  className="flex flex-col items-center gap-2 h-auto py-4"
+                >
+                  <div className="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center">
+                    <span className="text-white font-bold text-sm">T</span>
+                  </div>
+                  <span className="text-xs">Teams</span>
+                </Button>
+              </div>
+
+              {videoCallType === 'meet' && (
+                <div className="bg-green-50 rounded-lg p-4 text-center">
+                  <p className="text-sm text-green-800">
+                    ייווצר קישור חדש ל-Google Meet וישלח לשיחה
+                  </p>
+                </div>
+              )}
+
+              {videoCallType === 'zoom' && (
+                <div className="space-y-3">
+                  <div className="bg-blue-50 rounded-lg p-3 text-sm text-blue-800">
+                    הדבק קישור לפגישת Zoom קיימת, או צור פגישה חדשה ב-Zoom והדבק את הקישור
+                  </div>
+                  <Input
+                    placeholder="https://zoom.us/j/..."
+                    value={zoomApiKey}
+                    onChange={(e) => {
+                      setZoomApiKey(e.target.value);
+                      localStorage.setItem('zoom_api_key', e.target.value);
+                    }}
+                  />
+                </div>
+              )}
+
+              {videoCallType === 'teams' && (
+                <div className="space-y-3">
+                  <div className="bg-purple-50 rounded-lg p-3 text-sm text-purple-800">
+                    הדבק קישור לפגישת Teams קיימת
+                  </div>
+                  <Input
+                    placeholder="https://teams.microsoft.com/..."
+                    value={teamsLink}
+                    onChange={(e) => setTeamsLink(e.target.value)}
+                  />
+                </div>
+              )}
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowVideoCallDialog(false)}>ביטול</Button>
+              <Button 
+                onClick={() => {
+                  if (videoCallType === 'meet') {
+                    startVideoCall('meet');
+                  } else if (videoCallType === 'zoom') {
+                    startVideoCall('zoom', zoomApiKey);
+                  } else if (videoCallType === 'teams') {
+                    startVideoCall('teams', teamsLink);
+                  }
+                }}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                <Video className="w-4 h-4 ml-2" />
+                התחל שיחה
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
       {/* AI Summary Dialog */}
       {showSummaryDialog && (
         <Dialog open={showSummaryDialog} onOpenChange={setShowSummaryDialog}>
