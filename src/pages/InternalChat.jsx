@@ -246,12 +246,13 @@ export default function InternalChatPage() {
           return;
         }
         
-        const file = new File([audioBlob], `voice_${Date.now()}.webm`, { type: 'audio/webm' });
+        // Create file-like object for upload
+        audioBlob.name = `voice_${Date.now()}.webm`;
         const duration = recordingTime;
         
         try {
           toast.loading('מעלה הקלטה...', { id: 'voice-upload' });
-          const { file_url } = await base44.integrations.Core.UploadFile({ file });
+          const { file_url } = await base44.integrations.Core.UploadFile({ file: audioBlob });
           
           await sendMessage('voice', {
             url: file_url,
