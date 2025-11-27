@@ -349,37 +349,60 @@ export default function InternalChatPage() {
 
   // Voice recording functions
   const startRecording = async () => {
+    console.log('🎤 Starting recording...');
     try {
+      console.log('🎤 Requesting microphone access...');
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      console.log('🎤 Microphone access granted');
       streamRef.current = stream;
       
-      const supportedTypes = ['audio/webm', 'audio/mp4', 'audio/ogg'];
-      let mimeType = 'audio/webm';
+      const supportedTypes = ['audio/webm', 'audio/mp4', 'audio/ogg', 'audio/wav'];
+      let mimeType = '';
       for (const type of supportedTypes) {
         if (MediaRecorder.isTypeSupported(type)) {
           mimeType = type;
+          console.log('🎤 Using mimeType:', mimeType);
           break;
         }
+      }
+      
+      if (!mimeType) {
+        console.error('🎤 No supported audio format found');
+        toast.error('הדפדפן לא תומך בהקלטת אודיו');
+        return;
       }
       
       mediaRecorderRef.current = new MediaRecorder(stream, { mimeType });
       audioChunksRef.current = [];
       recordingTimeRef.current = 0;
+      console.log('🎤 MediaRecorder created');
 
       mediaRecorderRef.current.ondataavailable = (e) => {
+        console.log('🎤 Data available:', e.data?.size, 'bytes');
         if (e.data && e.data.size > 0) {
           audioChunksRef.current.push(e.data);
         }
       };
 
+      mediaRecorderRef.current.onerror = (e) => {
+        console.error('🎤 MediaRecorder error:', e.error);
+        toast.error('שגיאה בהקלטה');
+      };
+
       mediaRecorderRef.current.onstop = async () => {
+        console.log('🎤 Recording stopped, chunks:', audioChunksRef.current.length);
         if (streamRef.current) {
           streamRef.current.getTracks().forEach(track => track.stop());
         }
         
-        if (audioChunksRef.current.length === 0) return;
+        if (audioChunksRef.current.length === 0) {
+          console.log('🎤 No audio chunks - cancelled');
+          return;
+        }
         
         const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+        console.log('🎤 Audio blob size:', audioBlob.size);
+        
         if (audioBlob.size < 100) {
           toast.error('ההקלטה קצרה מדי');
           return;
@@ -387,9 +410,10 @@ export default function InternalChatPage() {
         
         try {
           toast.loading('מעלה הקלטה...', { id: 'voice-upload' });
-          // Convert blob to File object for proper upload
           const audioFile = new File([audioBlob], `voice_${Date.now()}.webm`, { type: mimeType });
+          console.log('🎤 Uploading file...');
           const { file_url } = await base44.integrations.Core.UploadFile({ file: audioFile });
+          console.log('🎤 Upload successful:', file_url);
           
           await sendMessage('voice', {
             url: file_url,
@@ -401,12 +425,16 @@ export default function InternalChatPage() {
           toast.dismiss('voice-upload');
           toast.success('ההודעה הקולית נשלחה');
         } catch (error) {
+          console.error('🎤 Upload error:', error);
           toast.dismiss('voice-upload');
           toast.error('שגיאה בשליחת ההקלטה');
         }
       };
 
+      console.log('🎤 Starting MediaRecorder...');
       mediaRecorderRef.current.start(200);
+      console.log('🎤 MediaRecorder state:', mediaRecorderRef.current.state);
+      
       setIsRecording(true);
       setRecordingTime(0);
       recordingTimeRef.current = 0;
@@ -415,8 +443,11 @@ export default function InternalChatPage() {
         recordingTimeRef.current += 1;
         setRecordingTime(prev => prev + 1);
       }, 1000);
+      
+      console.log('🎤 Recording started successfully');
     } catch (error) {
-      toast.error('אין גישה למיקרופון');
+      console.error('🎤 Error starting recording:', error);
+      toast.error('אין גישה למיקרופון - אנא אשר גישה בהגדרות הדפדפן');
     }
   };
 
