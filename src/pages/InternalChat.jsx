@@ -27,7 +27,7 @@ import {
   Mic, 
   Square,
   Image as ImageIcon,
-  File,
+  File as FileIcon,
   Play,
   Pause,
   Users,
