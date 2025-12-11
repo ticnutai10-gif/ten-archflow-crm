@@ -443,52 +443,53 @@ export default function ClientDetails({ client, onBack, onEdit }) {
         </Card>
 
         {/* Tabs */}
-        <Tabs 
-          value={activeTab} 
-          onValueChange={(newTab) => {
-            console.log('🔀 [CLIENT DETAILS] Tab changed:', {
-              from: activeTab,
-              to: newTab
-            });
-            setActiveTab(newTab);
-          }} 
-          className="w-full" 
-          dir="rtl"
-        >
-          <TabsList className="grid w-full grid-cols-8 bg-white shadow-sm">
-            <TabsTrigger value="timeline" className="gap-2">
-              <Clock className="w-4 h-4" />
-              ציר זמן
-            </TabsTrigger>
-            <TabsTrigger value="projects" className="gap-2">
-              <Briefcase className="w-4 h-4" />
-              פרויקטים
-            </TabsTrigger>
-            <TabsTrigger value="tasks" className="gap-2">
-              <CheckCircle className="w-4 h-4" />
-              משימות
-            </TabsTrigger>
-            <TabsTrigger value="spreadsheets" className="gap-2">
-              <FileText className="w-4 h-4" />
-              טבלאות
-            </TabsTrigger>
-            <TabsTrigger value="time" className="gap-2">
-              <Clock className="w-4 h-4" />
-              שעות
-            </TabsTrigger>
-            <TabsTrigger value="files" className="gap-2">
-              <FolderOpen className="w-4 h-4" />
-              קבצים
-            </TabsTrigger>
-            <TabsTrigger value="sheets" className="gap-2">
-              <FileText className="w-4 h-4" />
-              גיליונות
-            </TabsTrigger>
-            <TabsTrigger value="communication" className="gap-2">
-              <MessageSquare className="w-4 h-4" />
-              תקשורת
-            </TabsTrigger>
-          </TabsList>
+        <div className="flex items-center gap-3 mb-4">
+          <Tabs 
+            value={activeTab} 
+            onValueChange={(newTab) => {
+              console.log('🔀 [CLIENT DETAILS] Tab changed:', {
+                from: activeTab,
+                to: newTab
+              });
+              setActiveTab(newTab);
+            }} 
+            className="flex-1" 
+            dir="rtl"
+          >
+            <TabsList className="inline-flex h-9 items-center justify-start rounded-lg bg-slate-100 p-1 gap-1 overflow-x-auto w-full">
+              <TabsTrigger value="timeline" className="h-7 px-3 text-xs rounded-md gap-1.5">
+                <Clock className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">ציר זמן</span>
+              </TabsTrigger>
+              <TabsTrigger value="projects" className="h-7 px-3 text-xs rounded-md gap-1.5">
+                <Briefcase className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">פרויקטים</span>
+              </TabsTrigger>
+              <TabsTrigger value="tasks" className="h-7 px-3 text-xs rounded-md gap-1.5">
+                <CheckCircle className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">משימות</span>
+              </TabsTrigger>
+              <TabsTrigger value="spreadsheets" className="h-7 px-3 text-xs rounded-md gap-1.5">
+                <FileText className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">טבלאות</span>
+              </TabsTrigger>
+              <TabsTrigger value="time" className="h-7 px-3 text-xs rounded-md gap-1.5">
+                <Clock className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">שעות</span>
+              </TabsTrigger>
+              <TabsTrigger value="files" className="h-7 px-3 text-xs rounded-md gap-1.5">
+                <FolderOpen className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">קבצים</span>
+              </TabsTrigger>
+              <TabsTrigger value="sheets" className="h-7 px-3 text-xs rounded-md gap-1.5">
+                <FileText className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">גיליונות</span>
+              </TabsTrigger>
+              <TabsTrigger value="communication" className="h-7 px-3 text-xs rounded-md gap-1.5">
+                <MessageSquare className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">תקשורת</span>
+              </TabsTrigger>
+            </TabsList>
 
           <TabsContent value="timeline" className="mt-6">
             <ClientTimeline clientId={client.id} clientName={client.name} />
