@@ -214,16 +214,40 @@ export default function ClientsPage() {
 
     const clientId = urlParams.get("client_id");
     const clientName = urlParams.get("client_name");
+    const tab = urlParams.get("tab");
+
+    console.log('🔍 [CLIENTS PAGE] URL params detected:', {
+      open,
+      clientId,
+      clientName,
+      tab,
+      hasClients: clients.length
+    });
 
     let target = null;
     if (clientId) {
       target = clients.find((c) => String(c.id) === String(clientId));
+      console.log('🔍 [CLIENTS PAGE] Search by ID result:', target ? 'Found' : 'Not found');
     }
     if (!target && clientName) {
       target = clients.find((c) => c.name?.trim() === clientName.trim());
+      console.log('🔍 [CLIENTS PAGE] Search by name result:', target ? 'Found' : 'Not found');
     }
     if (target) {
+      console.log('✅ [CLIENTS PAGE] Opening client:', {
+        id: target.id,
+        name: target.name,
+        requestedTab: tab
+      });
       setSelectedClient(target);
+      
+      // Store tab in sessionStorage if provided
+      if (tab) {
+        console.log('💾 [CLIENTS PAGE] Storing tab in sessionStorage:', tab);
+        sessionStorage.setItem('clientDetailsActiveTab', tab);
+      }
+    } else {
+      console.log('❌ [CLIENTS PAGE] No matching client found');
     }
   }, [clients]);
 

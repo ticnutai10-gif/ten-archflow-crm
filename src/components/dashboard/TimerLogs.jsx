@@ -1053,8 +1053,15 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
                               </AvatarFallback>
                             </Avatar>
                             <Link
-                              to={`${createPageUrl("TimeLogs")}?user_filter=${encodeURIComponent(getCreatedBy(log) || '')}`}
+                              to={`${createPageUrl("Clients")}?open=details&client_name=${encodeURIComponent(log.client_name || "")}&tab=time`}
                               className="text-slate-600 text-sm flex-1 hover:text-blue-600 transition-colors"
+                              onClick={() => {
+                                console.log('🖱️ [TimerLogs] User link clicked:', {
+                                  userName: getUserDisplayName(getCreatedBy(log)),
+                                  clientName: log.client_name,
+                                  targetURL: `${createPageUrl("Clients")}?open=details&client_name=${encodeURIComponent(log.client_name || "")}&tab=time`
+                                });
+                              }}
                             >
                               {getUserDisplayName(getCreatedBy(log))}
                             </Link>
@@ -1150,8 +1157,15 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
                               </AvatarFallback>
                             </Avatar>
                             <Link
-                              to={`${createPageUrl("TimeLogs")}?user_filter=${encodeURIComponent(getCreatedBy(log) || '')}`}
+                              to={`${createPageUrl("Clients")}?open=details&client_name=${encodeURIComponent(log.client_name || "")}&tab=time`}
                               className="truncate max-w-[180px] hover:text-blue-600 transition-colors"
+                              onClick={() => {
+                                console.log('🖱️ [TimerLogs] User link clicked (list view):', {
+                                  userName: getUserDisplayName(getCreatedBy(log)),
+                                  clientName: log.client_name,
+                                  targetURL: `${createPageUrl("Clients")}?open=details&client_name=${encodeURIComponent(log.client_name || "")}&tab=time`
+                                });
+                              }}
                             >
                               {getUserDisplayName(getCreatedBy(log))}
                             </Link>

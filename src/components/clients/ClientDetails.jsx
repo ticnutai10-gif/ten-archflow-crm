@@ -60,7 +60,27 @@ export default function ClientDetails({ client, onBack, onEdit }) {
   const [invoices, setInvoices] = useState([]);
   const [timeLogs, setTimeLogs] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('timeline');
+  const [activeTab, setActiveTab] = useState(() => {
+    // Check URL params first
+    const urlParams = new URLSearchParams(window.location.search);
+    const tabParam = urlParams.get('tab');
+    
+    // Check sessionStorage second
+    const sessionTab = sessionStorage.getItem('clientDetailsActiveTab');
+    
+    console.log('🎯 [CLIENT DETAILS] Initial tab determination:', {
+      urlTab: tabParam,
+      sessionTab: sessionTab,
+      willUse: tabParam || sessionTab || 'timeline'
+    });
+    
+    // Clean up sessionStorage after reading
+    if (sessionTab) {
+      sessionStorage.removeItem('clientDetailsActiveTab');
+    }
+    
+    return tabParam || sessionTab || 'timeline';
+  });
 
   const [currentClient, setCurrentClient] = useState(client);
   const [isUpdatingStage, setIsUpdatingStage] = useState(false);
@@ -133,8 +153,20 @@ export default function ClientDetails({ client, onBack, onEdit }) {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const spreadsheetId = urlParams.get('spreadsheetId');
+    const tabParam = urlParams.get('tab');
+    
+    console.log('🔄 [CLIENT DETAILS] URL params check:', {
+      spreadsheetId,
+      tabParam,
+      currentActiveTab: activeTab
+    });
+    
     if (spreadsheetId) {
+      console.log('📊 [CLIENT DETAILS] Setting tab to spreadsheets (spreadsheetId found)');
       setActiveTab('spreadsheets');
+    } else if (tabParam && tabParam !== activeTab) {
+      console.log('📑 [CLIENT DETAILS] Setting tab from URL param:', tabParam);
+      setActiveTab(tabParam);
     }
   }, []);
 
@@ -411,7 +443,18 @@ export default function ClientDetails({ client, onBack, onEdit }) {
         </Card>
 
         {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full" dir="rtl">
+        <Tabs 
+          value={activeTab} 
+          onValueChange={(newTab) => {
+            console.log('🔀 [CLIENT DETAILS] Tab changed:', {
+              from: activeTab,
+              to: newTab
+            });
+            setActiveTab(newTab);
+          }} 
+          className="w-full" 
+          dir="rtl"
+        >
           <TabsList className="grid w-full grid-cols-8 bg-white shadow-sm">
             <TabsTrigger value="timeline" className="gap-2">
               <Clock className="w-4 h-4" />
