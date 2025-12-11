@@ -591,12 +591,13 @@ ${context}
   };
 
   const performSave = async () => {
-    const logDate = selectedLogDate.toISOString().slice(0, 10); // ✅ שימוש בתאריך הנבחר
+    const validDate = selectedLogDate && !isNaN(selectedLogDate.getTime()) ? selectedLogDate : new Date();
+    const logDate = validDate.toISOString().slice(0, 10);
     const secondsToSave = computeSecondsFromManual();
     await TimeLog.create({
       client_id: prefs.selectedClientId || "",
       client_name: prefs.selectedClientName || "",
-      log_date: logDate, // ✅ שימוש בתאריך הנבחר
+      log_date: logDate,
       duration_seconds: secondsToSave,
       title: title || "",
       notes: notes || ""
@@ -1322,13 +1323,18 @@ ${context}
                               </label>
                               <Input
                                 type="date"
-                                value={selectedLogDate ? selectedLogDate.toISOString().split('T')[0] : ''}
-                                onChange={(e) => setSelectedLogDate(new Date(e.target.value))}
+                                value={selectedLogDate && !isNaN(selectedLogDate.getTime()) ? selectedLogDate.toISOString().split('T')[0] : ''}
+                                onChange={(e) => {
+                                  const newDate = new Date(e.target.value);
+                                  if (!isNaN(newDate.getTime())) {
+                                    setSelectedLogDate(newDate);
+                                  }
+                                }}
                                 className="bg-white h-10 text-sm text-right border-blue-300 focus:border-blue-500 font-medium"
                                 dir="rtl"
                               />
                               <div className="text-xs text-slate-600 mt-2 text-right">
-                                📅 {selectedLogDate.toLocaleDateString('he-IL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                                📅 {selectedLogDate && !isNaN(selectedLogDate.getTime()) ? selectedLogDate.toLocaleDateString('he-IL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'תאריך לא זמין'}
                               </div>
                             </div>
 
