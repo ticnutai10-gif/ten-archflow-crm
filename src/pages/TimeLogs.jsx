@@ -1008,59 +1008,6 @@ export default function TimeLogsPage() {
         {/* Activity Sparklines - Always visible */}
         <ActivitySparklines dailyData={dailyActivity()} />
 
-        {/* Filters */}
-        <Card className="mb-6 shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-          <CardContent className="p-6">
-            <div className="flex flex-col lg:flex-row gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                <Input
-                  placeholder="חיפוש לקוח או פעילות..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pr-10"
-                />
-              </div>
-              
-              <Select value={clientFilter} onValueChange={setClientFilter}>
-                <SelectTrigger className="w-full lg:w-48">
-                  <SelectValue placeholder="כל הלקוחות" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">כל הלקוחות</SelectItem>
-                  {[...new Set(timeLogs.map(log => log?.client_name))].filter(Boolean).map(client => (
-                    <SelectItem key={client} value={client}>{client}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select value={employeeFilter} onValueChange={setEmployeeFilter}>
-                <SelectTrigger className="w-full lg:w-56">
-                  <SelectValue placeholder="כל העובדים" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">כל העובדים</SelectItem>
-                  {uniqueEmployees.map(emp => (
-                    <SelectItem key={emp} value={emp}>{emp}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select value={timeFilter} onValueChange={setTimeFilter}>
-                <SelectTrigger className="w-full lg:w-40">
-                  <SelectValue placeholder="תקופה" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">כל התקופות</SelectItem>
-                  <SelectItem value="today">היום</SelectItem>
-                  <SelectItem value="week">השבוע</SelectItem>
-                  <SelectItem value="month">החודש</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Content Based on View Mode */}
         {/* ✅ תצוגת לוח שנה חדשה */}
         {viewMode === 'calendar' ? (
