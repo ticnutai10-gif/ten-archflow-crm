@@ -70,11 +70,8 @@ export default function ClientDetails({ client, onBack, onEdit }) {
   const [timeLogs, setTimeLogs] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(() => {
-    // Check URL params first
     const urlParams = new URLSearchParams(window.location.search);
     const tabParam = urlParams.get('tab');
-    
-    // Check sessionStorage second
     const sessionTab = sessionStorage.getItem('clientDetailsActiveTab');
     
     console.log('🎯 [CLIENT DETAILS] Initial tab determination:', {
@@ -83,7 +80,6 @@ export default function ClientDetails({ client, onBack, onEdit }) {
       willUse: tabParam || sessionTab || 'timeline'
     });
     
-    // Clean up sessionStorage after reading
     if (sessionTab) {
       sessionStorage.removeItem('clientDetailsActiveTab');
     }
@@ -101,7 +97,6 @@ export default function ClientDetails({ client, onBack, onEdit }) {
     }
   });
 
-  // Save tab view mode
   useEffect(() => {
     try {
       localStorage.setItem('client-tabs-view-mode', tabViewMode);
@@ -110,7 +105,6 @@ export default function ClientDetails({ client, onBack, onEdit }) {
     }
   }, [tabViewMode]);
 
-  // Update currentClient when client prop changes
   useEffect(() => {
     if (client) {
       console.log('🔄 [CLIENT DETAILS] Client prop changed:', { 
@@ -209,7 +203,6 @@ export default function ClientDetails({ client, onBack, onEdit }) {
       await base44.entities.Client.update(currentClient.id, { stage: newStage });
       console.log('✅ [CLIENT DETAILS] Update sent successfully');
       
-      // טען מחדש את הלקוח מהשרת כדי לקבל את הגרסה העדכנית
       console.log('🔄 [CLIENT DETAILS] Reloading client from server...');
       const updatedClient = await base44.entities.Client.get(currentClient.id);
       console.log('📥 [CLIENT DETAILS] Client reloaded:', {
@@ -221,7 +214,6 @@ export default function ClientDetails({ client, onBack, onEdit }) {
       setCurrentClient(updatedClient);
       console.log('💾 [CLIENT DETAILS] Local state updated');
       
-      // שלח אירוע עם כל הנתונים של הלקוח
       console.log('📢 [CLIENT DETAILS] Dispatching client:updated event...');
       window.dispatchEvent(new CustomEvent('client:updated', {
         detail: updatedClient
@@ -582,30 +574,31 @@ export default function ClientDetails({ client, onBack, onEdit }) {
               )}
             </TabsList>
 
-          {/* View Mode Toggle */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-9 gap-2 shrink-0">
-                {tabViewMode === 'icons' ? <LayoutGrid className="w-4 h-4" /> : tabViewMode === 'compact' ? <Kanban className="w-4 h-4" /> : <List className="w-4 h-4" />}
-                <ChevronDown className="w-3 h-3" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" dir="rtl">
-              <DropdownMenuItem onClick={() => setTabViewMode('icons')} className={tabViewMode === 'icons' ? 'bg-blue-50' : ''}>
-                <LayoutGrid className="w-4 h-4 ml-2" />
-                אייקונים בלבד
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setTabViewMode('compact')} className={tabViewMode === 'compact' ? 'bg-blue-50' : ''}>
-                <Kanban className="w-4 h-4 ml-2" />
-                קומפקטי
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setTabViewMode('full')} className={tabViewMode === 'full' ? 'bg-blue-50' : ''}>
-                <List className="w-4 h-4 ml-2" />
-                מלא
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+            {/* View Mode Toggle */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-9 gap-2 shrink-0">
+                  {tabViewMode === 'icons' ? <LayoutGrid className="w-4 h-4" /> : tabViewMode === 'compact' ? <Kanban className="w-4 h-4" /> : <List className="w-4 h-4" />}
+                  <ChevronDown className="w-3 h-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" dir="rtl">
+                <DropdownMenuItem onClick={() => setTabViewMode('icons')} className={tabViewMode === 'icons' ? 'bg-blue-50' : ''}>
+                  <LayoutGrid className="w-4 h-4 ml-2" />
+                  אייקונים בלבד
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setTabViewMode('compact')} className={tabViewMode === 'compact' ? 'bg-blue-50' : ''}>
+                  <Kanban className="w-4 h-4 ml-2" />
+                  קומפקטי
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setTabViewMode('full')} className={tabViewMode === 'full' ? 'bg-blue-50' : ''}>
+                  <List className="w-4 h-4 ml-2" />
+                  מלא
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
           <TabsContent value="timeline" className="mt-6">
             <ClientTimeline clientId={client.id} clientName={client.name} />
           </TabsContent>
