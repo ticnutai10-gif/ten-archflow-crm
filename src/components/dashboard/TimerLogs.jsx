@@ -1254,23 +1254,23 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
 
               <div>
                 <label className="text-sm font-semibold text-slate-700 mb-2 block">משך זמן</label>
-                <div className="flex items-center gap-3 justify-center">
-                  <div className="flex flex-col items-center">
+                <div className="flex items-center gap-3">
+                  <div className="flex flex-col items-start flex-1">
                     <Input
                       value={editData.hours}
                       onChange={(e) => setEditData(d => ({ ...d, hours: e.target.value.replace(/\D/g, '').slice(0, 2) }))}
-                      className="w-20 h-12 text-center text-lg font-bold"
+                      className="w-full h-12 text-center text-lg font-bold"
                       placeholder="00"
                       maxLength={2}
                     />
                     <span className="text-xs text-slate-600 mt-1 font-medium">שעות</span>
                   </div>
-                  <span className="text-2xl font-bold text-blue-600">:</span>
-                  <div className="flex flex-col items-center">
+                  <span className="text-2xl font-bold text-blue-600 mt-[-20px]">:</span>
+                  <div className="flex flex-col items-start flex-1">
                     <Input
                       value={editData.minutes}
                       onChange={(e) => setEditData(d => ({ ...d, minutes: e.target.value.replace(/\D/g, '').slice(0, 2) }))}
-                      className="w-20 h-12 text-center text-lg font-bold"
+                      className="w-full h-12 text-center text-lg font-bold"
                       placeholder="00"
                       maxLength={2}
                     />
