@@ -17,7 +17,7 @@ const DEFAULT_STAGE_OPTIONS = [
   { value: 'סיום', label: 'סיום', color: '#6b7280', glow: 'rgba(107, 114, 128, 0.4)' }
 ];
 
-export default function RecentClients({ isLoading }) {
+export default function RecentClients({ isLoading, className = '' }) {
   const [clients, setClients] = useState([]);
   const [allProjects, setAllProjects] = useState([]);
   const [clientsLimit, setClientsLimit] = useState('10');
