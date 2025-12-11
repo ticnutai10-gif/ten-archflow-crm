@@ -53,6 +53,7 @@ import HeatmapView from "../components/dashboard/HeatmapView";
 import TrendsView from "../components/dashboard/TrendsView";
 import AIInsightsPanel from "../components/ai/AIInsightsPanel";
 import { useIsMobile } from "../components/utils/useMediaQuery";
+import TabsPanelLayout from "../components/dashboard/TabsPanelLayout";
 
 const VIEW_MODE_OPTIONS = [
   { value: 'list', label: 'שורות', icon: LayoutList },
@@ -109,6 +110,13 @@ export default function Dashboard() {
   const [allTasks, setAllTasks] = useState([]);
   const [showDashboardSettings, setShowDashboardSettings] = useState(false);
   const [showCustomizer, setShowCustomizer] = useState(false);
+  const [useTabsLayout, setUseTabsLayout] = useState(() => {
+    try {
+      return localStorage.getItem('dashboard-tabs-layout') === 'true';
+    } catch {
+      return false;
+    }
+  });
   const [dashboardCards, setDashboardCards] = useState(() => {
     try {
       const saved = localStorage.getItem('dashboard-cards-order');
@@ -387,6 +395,26 @@ export default function Dashboard() {
               <div className={`flex gap-2 ${isMobile ? 'flex-col' : 'gap-3'}`} dir="rtl">
                 {!isMobile && <ReminderManager />}
                 
+                {!isMobile && (
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => {
+                      const newValue = !useTabsLayout;
+                      setUseTabsLayout(newValue);
+                      try {
+                        localStorage.setItem('dashboard-tabs-layout', newValue.toString());
+                      } catch (e) {
+                        console.error('Error saving tabs layout:', e);
+                      }
+                    }}
+                    title={useTabsLayout ? 'תצוגה רגילה' : 'תצוגת טאבים'}
+                    className="bg-white/10 border-white/20 hover:bg-white/20 text-white"
+                  >
+                    <LayoutGrid className="w-5 h-5" />
+                  </Button>
+                )}
+                
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button 
@@ -620,6 +648,36 @@ export default function Dashboard() {
         )}
 
         <div dir="rtl">
+          {/* Tabs Layout Mode */}
+          {useTabsLayout && !isMobile ? (
+            <TabsPanelLayout
+              renderContent={(tabId) => {
+                if (tabId === 'clients') {
+                  return <RecentClients isLoading={loading} />;
+                }
+                if (tabId === 'projects') {
+                  return <RecentProjects projects={recentProjects} isLoading={loading} onUpdate={loadDashboardData} />;
+                }
+                if (tabId === 'tasks') {
+                  return <UpcomingTasks tasks={upcomingTasks} isLoading={loading} onUpdate={loadDashboardData} />;
+                }
+                if (tabId === 'timeLogs') {
+                  return <TimerLogs timeLogs={timeLogs} isLoading={loading} onUpdate={loadDashboardData} clients={allClients} />;
+                }
+                if (tabId === 'meetings') {
+                  return <UpcomingMeetings meetings={upcomingMeetings} isLoading={loading} onUpdate={loadDashboardData} />;
+                }
+                if (tabId === 'quotes') {
+                  return <QuoteStatus quotes={quotes} isLoading={loading} />;
+                }
+                if (tabId === 'analytics') {
+                  return <AnalyticsView clients={allClients} projects={allProjects} tasks={allTasks} quotes={quotes} />;
+                }
+                return <div className="text-slate-500">תוכן לא זמין</div>;
+              }}
+            />
+          ) : (
+            <>
           {!compactHeaders && !['kanban', 'timeline', 'analytics', 'heatmap', 'trends'].includes(viewMode) && (
             <h2 className="text-xl font-bold text-slate-800 mb-4 text-right">פעילויות אחרונות</h2>
           )}
@@ -867,6 +925,8 @@ export default function Dashboard() {
               return null;
             })}
           </div>
+          )}
+            </>
           )}
         </div>
       </div>
