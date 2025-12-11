@@ -90,7 +90,7 @@ export default function RecentClients({ isLoading, className = '' }) {
   }
 
   return (
-    <div>
+    <div className="flex flex-col h-full">
       {/* Filters */}
       <div className="p-4 border-b bg-slate-50 flex gap-3 items-center flex-wrap">
         <div className="flex items-center gap-2">
@@ -138,7 +138,7 @@ export default function RecentClients({ isLoading, className = '' }) {
       </div>
 
       {/* Clients List */}
-      <div className="p-4 space-y-3 max-h-96 overflow-y-auto">
+      <div className="p-4 space-y-3 flex-1 overflow-y-auto">
         {filteredClients.length === 0 ? (
           <div className="p-8 text-center text-slate-500">
             <p className="mb-4">אין לקוחות להצגה</p>
