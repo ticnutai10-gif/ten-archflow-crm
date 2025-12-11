@@ -468,20 +468,20 @@ export default function ClientDetails({ client, onBack, onEdit }) {
         </Card>
 
         {/* Tabs */}
-        <div className="flex items-center gap-3 mb-4">
-          <Tabs 
-            value={activeTab} 
-            onValueChange={(newTab) => {
-              console.log('🔀 [CLIENT DETAILS] Tab changed:', {
-                from: activeTab,
-                to: newTab
-              });
-              setActiveTab(newTab);
-            }} 
-            className="flex-1" 
-            dir="rtl"
-          >
-            <TabsList className="inline-flex h-9 items-center justify-start rounded-lg bg-slate-100 p-1 gap-1 overflow-x-auto w-full">
+        <Tabs 
+          value={activeTab} 
+          onValueChange={(newTab) => {
+            console.log('🔀 [CLIENT DETAILS] Tab changed:', {
+              from: activeTab,
+              to: newTab
+            });
+            setActiveTab(newTab);
+          }} 
+          className="w-full" 
+          dir="rtl"
+        >
+          <div className="flex items-center gap-3 mb-4">
+            <TabsList className="inline-flex h-9 items-center justify-start rounded-lg bg-slate-100 p-1 gap-1 overflow-x-auto flex-1">
               {tabViewMode === 'icons' ? (
                 <>
                   <TabsTrigger value="timeline" className="h-7 w-9 px-0 text-xs rounded-md flex items-center justify-center" title="ציר זמן">
@@ -581,7 +581,6 @@ export default function ClientDetails({ client, onBack, onEdit }) {
                 </>
               )}
             </TabsList>
-          </Tabs>
 
           {/* View Mode Toggle */}
           <DropdownMenu>
@@ -607,19 +606,6 @@ export default function ClientDetails({ client, onBack, onEdit }) {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-
-        <Tabs 
-          value={activeTab} 
-          onValueChange={(newTab) => {
-            console.log('🔀 [CLIENT DETAILS] Tab changed:', {
-              from: activeTab,
-              to: newTab
-            });
-            setActiveTab(newTab);
-          }} 
-          className="w-full" 
-          dir="rtl"
-        >
           <TabsContent value="timeline" className="mt-6">
             <ClientTimeline clientId={client.id} clientName={client.name} />
           </TabsContent>
