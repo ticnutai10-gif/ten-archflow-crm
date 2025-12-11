@@ -36,7 +36,7 @@ export default function TimeLogView({ client, timeLogs: initialTimeLogs, onTimeL
   const [deleteLogId, setDeleteLogId] = useState(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [editData, setEditData] = useState({ title: '', notes: '', duration_seconds: 0, log_date: '' });
+  const [editData, setEditData] = useState({ title: '', notes: '', hours: '0', minutes: '0', log_date: '' });
   const [canEdit, setCanEdit] = useState(false);
 
   // ✅ עדכון timeLogs עם הגנה מלאה
@@ -92,11 +92,15 @@ export default function TimeLogView({ client, timeLogs: initialTimeLogs, onTimeL
   }, []);
 
   const handleEdit = (log) => {
+    const hours = Math.floor((log.duration_seconds || 0) / 3600);
+    const minutes = Math.floor(((log.duration_seconds || 0) % 3600) / 60);
+    
     setEditingLog(log);
     setEditData({
       title: log.title || '',
       notes: log.notes || '',
-      duration_seconds: log.duration_seconds || 0,
+      hours: String(hours),
+      minutes: String(minutes),
       log_date: log.log_date || ''
     });
     setEditDialogOpen(true);
@@ -104,8 +108,23 @@ export default function TimeLogView({ client, timeLogs: initialTimeLogs, onTimeL
 
   const handleSaveEdit = async () => {
     if (!editingLog) return;
+    
+    const hours = parseInt(editData.hours || '0', 10);
+    const minutes = parseInt(editData.minutes || '0', 10);
+    const totalSeconds = (hours * 3600) + (minutes * 60);
+    
+    if (totalSeconds <= 0) {
+      alert('יש להזין זמן גדול מ-0');
+      return;
+    }
+    
     try {
-      await base44.entities.TimeLog.update(editingLog.id, editData);
+      await base44.entities.TimeLog.update(editingLog.id, {
+        title: editData.title,
+        notes: editData.notes,
+        duration_seconds: totalSeconds,
+        log_date: editData.log_date
+      });
       setEditDialogOpen(false);
       setEditingLog(null);
       if (onTimeLogUpdate) await onTimeLogUpdate();
@@ -282,35 +301,53 @@ export default function TimeLogView({ client, timeLogs: initialTimeLogs, onTimeL
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium">כותרת</label>
+              <label className="text-sm font-semibold text-slate-700 mb-2 block">כותרת</label>
               <Input
                 value={editData.title}
                 onChange={(e) => setEditData({ ...editData, title: e.target.value })}
                 placeholder="כותרת רישום הזמן"
               />
             </div>
+            
             <div>
-              <label className="text-sm font-medium">הערות</label>
+              <label className="text-sm font-semibold text-slate-700 mb-2 block">משך זמן</label>
+              <div className="flex items-center gap-3 justify-center">
+                <div className="flex flex-col items-center">
+                  <Input
+                    value={editData.hours}
+                    onChange={(e) => setEditData({ ...editData, hours: e.target.value.replace(/\D/g, '').slice(0, 2) })}
+                    className="w-20 h-12 text-center text-lg font-bold"
+                    placeholder="00"
+                    maxLength={2}
+                  />
+                  <span className="text-xs text-slate-600 mt-1 font-medium">שעות</span>
+                </div>
+                <span className="text-2xl font-bold text-blue-600">:</span>
+                <div className="flex flex-col items-center">
+                  <Input
+                    value={editData.minutes}
+                    onChange={(e) => setEditData({ ...editData, minutes: e.target.value.replace(/\D/g, '').slice(0, 2) })}
+                    className="w-20 h-12 text-center text-lg font-bold"
+                    placeholder="00"
+                    maxLength={2}
+                  />
+                  <span className="text-xs text-slate-600 mt-1 font-medium">דקות</span>
+                </div>
+              </div>
+            </div>
+            
+            <div>
+              <label className="text-sm font-semibold text-slate-700 mb-2 block">הערות</label>
               <Textarea
                 value={editData.notes}
                 onChange={(e) => setEditData({ ...editData, notes: e.target.value })}
                 placeholder="הערות נוספות"
-                rows={4}
+                className="min-h-[80px]"
               />
             </div>
+            
             <div>
-              <label className="text-sm font-medium">משך זמן (בשניות)</label>
-              <Input
-                type="number"
-                value={editData.duration_seconds}
-                onChange={(e) => setEditData({ ...editData, duration_seconds: parseInt(e.target.value) || 0 })}
-              />
-              <p className="text-xs text-slate-500 mt-1">
-                משך זמן נוכחי: {formatDuration(editData.duration_seconds)}
-              </p>
-            </div>
-            <div>
-              <label className="text-sm font-medium">תאריך</label>
+              <label className="text-sm font-semibold text-slate-700 mb-2 block">תאריך</label>
               <Input
                 type="date"
                 value={editData.log_date}
