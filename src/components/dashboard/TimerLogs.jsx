@@ -1261,10 +1261,10 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
       {editing && (
         <Dialog open={true} onOpenChange={() => setEditing(null)}>
           <DialogContent dir="rtl" className="sm:max-w-[500px]">
-            <DialogHeader>
+            <DialogHeader className="px-6 pt-6">
               <DialogTitle>עריכת רישום זמן</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4">
+            <div className="space-y-4 px-6 py-4">
               <div>
                 <label className="text-sm font-semibold text-slate-700 mb-2 block">כותרת</label>
                 <Input value={editData.title} onChange={(e) => setEditData(d => ({ ...d, title: e.target.value }))} />
@@ -1302,13 +1302,13 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
                 <Textarea value={editData.notes} onChange={(e) => setEditData(d => ({ ...d, notes: e.target.value }))} className="min-h-[80px]" />
               </div>
             </div>
-            <DialogFooter className="gap-2">
+            <DialogFooter className="gap-2 px-6 pb-6">
               <Button variant="outline" onClick={() => setEditing(null)}>ביטול</Button>
               <Button onClick={saveEdit}>שמור שינויים</Button>
             </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
+            </DialogContent>
+            </Dialog>
+            )}
 
       {/* Added total summary at the bottom */}
       <div className="flex-shrink-0 p-4 text-sm text-slate-600 border-t border-slate-200 mt-auto">
