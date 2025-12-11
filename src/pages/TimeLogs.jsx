@@ -204,87 +204,7 @@ const CustomTreemapContent = ({ root, depth, x, y, width, height, index, payload
 };
 
 
-// Activity sparklines component
-function ActivitySparklines({ dailyData }) {
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-      <Card className="shadow-lg border-0 bg-gradient-to-r from-blue-500 to-blue-600 text-white">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <p className="text-blue-100 text-sm">שעות השבוע</p>
-              <div className="text-2xl font-bold">
-                {Math.round(dailyData.slice(-7).reduce((sum, d) => sum + d.hours, 0) * 10) / 10}
-              </div>
-            </div>
-            <Activity className="w-8 h-8 text-blue-200" />
-          </div>
-          <div className="h-12">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={dailyData.slice(-7)}>
-                <Area 
-                  type="monotone" 
-                  dataKey="hours" 
-                  stroke="#fff" 
-                  fill="rgba(255,255,255,0.3)"
-                  strokeWidth={2}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
 
-      <Card className="shadow-lg border-0 bg-gradient-to-r from-green-500 to-green-600 text-white">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <p className="text-green-100 text-sm">פעילות יומית</p>
-              <div className="text-2xl font-bold">
-                {dailyData.slice(-1)[0]?.hours.toFixed(1) || 0}
-              </div>
-            </div>
-            <Zap className="w-8 h-8 text-green-200" />
-          </div>
-          <div className="h-12">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={dailyData.slice(-7)}>
-                <Bar dataKey="hours" fill="rgba(255,255,255,0.8)" radius={[2, 2, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="shadow-lg border-0 bg-gradient-to-r from-purple-500 to-purple-600 text-white">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <p className="text-purple-100 text-sm">יעילות</p>
-              <div className="text-2xl font-bold">
-                {dailyData.length > 0 ? Math.round((dailyData.slice(-7).reduce((sum, d) => sum + d.hours, 0) / 7) * 10) : 0}%
-              </div>
-            </div>
-            <Target className="w-8 h-8 text-purple-200" />
-          </div>
-          <div className="h-12">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={dailyData.slice(-7)}>
-                <Line 
-                  type="monotone" 
-                  dataKey="hours" 
-                  stroke="#fff" 
-                  strokeWidth={3}
-                  dot={{ fill: '#fff', strokeWidth: 2, r: 4 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
 
 // ✅ קומפוננטת לוח שנה חדשה
 function CalendarView({ timeLogs, onDateClick, clients }) {
@@ -1014,9 +934,6 @@ export default function TimeLogsPage() {
             </DropdownMenu>
           </div>
         </div>
-
-        {/* Activity Sparklines - Always visible */}
-        <ActivitySparklines dailyData={dailyActivity()} />
 
         {/* Content Based on View Mode */}
         {/* ✅ תצוגת לוח שנה חדשה */}
