@@ -143,10 +143,14 @@ export default function AddTimeLogDialog({
       const client = clients.find(c => c.id === formData.client_id);
       const currentUser = await base44.auth.me();
       
+      const logDate = selectedDate && !isNaN(selectedDate.getTime())
+        ? format(selectedDate, 'yyyy-MM-dd')
+        : format(new Date(), 'yyyy-MM-dd');
+
       await base44.entities.TimeLog.create({
         client_id: formData.client_id,
         client_name: client?.name || '',
-        log_date: format(selectedDate, 'yyyy-MM-dd'),
+        log_date: logDate,
         duration_seconds: totalSeconds,
         title: formData.title || '',
         notes: formData.notes || '',
@@ -272,8 +276,13 @@ export default function AddTimeLogDialog({
               <label className="text-sm font-semibold text-slate-700 mb-2 block">תאריך</label>
               <Input
                 type="date"
-                value={format(selectedDate, 'yyyy-MM-dd')}
-                onChange={(e) => setSelectedDate(new Date(e.target.value))}
+                value={selectedDate && !isNaN(selectedDate.getTime()) ? format(selectedDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd')}
+                onChange={(e) => {
+                  const newDate = new Date(e.target.value);
+                  if (!isNaN(newDate.getTime())) {
+                    setSelectedDate(newDate);
+                  }
+                }}
               />
             </div>
 
