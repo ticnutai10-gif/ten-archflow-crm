@@ -156,7 +156,7 @@ export default function RecentClients({ isLoading, className = '' }) {
             return (
               <Link 
                 key={client.id} 
-                to={createPageUrl(`Clients?view=${client.id}`)}
+                to={createPageUrl(`Clients?open=details&client_name=${encodeURIComponent(client.name || "")}`)}
                 className="block"
               >
                 <div className="p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-all cursor-pointer">
