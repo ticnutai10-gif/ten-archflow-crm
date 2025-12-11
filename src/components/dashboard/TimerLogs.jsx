@@ -1052,7 +1052,12 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
                                 {getUserDisplayName(getCreatedBy(log)).substring(0, 2).toUpperCase()}
                               </AvatarFallback>
                             </Avatar>
-                            <span className="text-slate-600 text-sm flex-1">{getUserDisplayName(getCreatedBy(log))}</span>
+                            <Link
+                              to={`${createPageUrl("Clients")}?user_email=${encodeURIComponent(getUserEmail(getCreatedBy(log)) || '')}&tab=timelogs`}
+                              className="text-slate-600 text-sm flex-1 hover:text-blue-600 transition-colors"
+                            >
+                              {getUserDisplayName(getCreatedBy(log))}
+                            </Link>
                             <Button
                               size="icon"
                               variant="ghost"
@@ -1144,7 +1149,12 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
                                 {getUserDisplayName(getCreatedBy(log)).substring(0, 2).toUpperCase()}
                               </AvatarFallback>
                             </Avatar>
-                            <span className="truncate max-w-[180px]">{getUserDisplayName(getCreatedBy(log))}</span>
+                            <Link
+                              to={`${createPageUrl("Clients")}?user_email=${encodeURIComponent(getUserEmail(getCreatedBy(log)) || '')}&tab=timelogs`}
+                              className="truncate max-w-[180px] hover:text-blue-600 transition-colors"
+                            >
+                              {getUserDisplayName(getCreatedBy(log))}
+                            </Link>
                           </div>
                           <div className="flex items-center gap-2">
                             <User className="w-3 h-3" />
