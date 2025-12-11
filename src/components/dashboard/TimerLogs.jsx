@@ -1242,7 +1242,7 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
       {/* Edit dialog */}
       {editing && (
         <Dialog open={true} onOpenChange={() => setEditing(null)}>
-          <DialogContent dir="rtl">
+          <DialogContent dir="rtl" className="sm:max-w-[500px]">
             <DialogHeader>
               <DialogTitle>עריכת רישום זמן</DialogTitle>
             </DialogHeader>
