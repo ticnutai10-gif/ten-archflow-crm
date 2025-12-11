@@ -64,7 +64,7 @@ export default function TabsPanelLayout({ children, renderContent }) {
   };
 
   return (
-    <div className="flex h-[calc(100vh-200px)] gap-4" dir="rtl">
+    <div className="flex min-h-[calc(100vh-150px)] gap-4" dir="rtl">
       {/* Tabs Sidebar */}
       {tabsStyle === 'compact' ? (
         <div className="w-64 bg-white rounded-xl shadow-lg p-4 flex-shrink-0 border border-slate-200">
@@ -100,7 +100,7 @@ export default function TabsPanelLayout({ children, renderContent }) {
           </div>
         </div>
       ) : (
-        <div className="w-48 flex-shrink-0 space-y-3">
+        <div className="w-48 flex-shrink-0 space-y-6">
           {TAB_ITEMS.map(tab => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -201,7 +201,7 @@ export default function TabsPanelLayout({ children, renderContent }) {
               <div 
                 key={panel.id} 
                 className="border border-slate-200 rounded-lg bg-slate-50 overflow-hidden flex flex-col"
-                style={{ minHeight: layout === 'quad' ? '300px' : '400px' }}
+                style={{ minHeight: layout === 'quad' ? '400px' : '600px' }}
               >
                 {/* Panel Header (only show in multi-panel mode) */}
                 {layout !== 'single' && (
