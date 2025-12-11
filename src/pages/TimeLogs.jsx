@@ -496,23 +496,42 @@ export default function TimeLogsPage() {
       const me = await User.me();
       setCurrentUser(me);
 
-      // Check if user can see all time logs (admin or manager_plus)
+      // Check if user can see all time logs (admin, super_admin, or manager_plus)
       let canSeeAll = me?.role === 'admin';
+      
+      // If not admin in User table, check AccessControl
       if (!canSeeAll && me?.email) {
         try {
-          const rows = await AccessControl.filter({ email: me.email, active: true }).catch(() => []);
+          const rows = await AccessControl.filter({ email: me.email }).catch(() => []);
           const validRows = Array.isArray(rows) ? rows : [];
           const rule = validRows?.[0];
-          if (rule?.role === 'manager_plus') canSeeAll = true;
+          
+          // Allow admin, super_admin, or manager_plus roles
+          if (rule?.role === 'admin' || rule?.role === 'super_admin' || rule?.role === 'manager_plus') {
+            canSeeAll = true;
+            console.log('✅ User has elevated permissions via AccessControl:', rule.role);
+          }
         } catch (e) {
           console.warn('Access control check failed:', e);
         }
       }
 
+      console.log('👤 User permissions check:', {
+        email: me?.email,
+        userRole: me?.role,
+        canSeeAll
+      });
+
       // Load time logs based on permissions
       const timeLogsData = canSeeAll
         ? await TimeLog.filter({}, '-log_date', 1000).catch(() => [])
         : await TimeLog.filter({ created_by: me.email }, '-log_date', 1000).catch(() => []);
+
+      console.log('📊 Loaded time logs:', {
+        total: timeLogsData?.length || 0,
+        canSeeAll,
+        filter: canSeeAll ? 'all logs' : 'user logs only'
+      });
 
       const clientsData = await Client.list().catch(() => []);
 
