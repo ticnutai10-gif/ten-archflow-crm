@@ -521,14 +521,18 @@ export default function TimeLogsPage() {
         return;
       }
 
+      const logDate = selectedDate && !isNaN(selectedDate.getTime()) 
+        ? format(selectedDate, 'yyyy-MM-dd') 
+        : format(new Date(), 'yyyy-MM-dd');
+
       await TimeLog.create({
         client_id: newLogData.client_id,
-        client_name: client.name, // Ensure client_name is correctly taken from selected client object
-        log_date: format(selectedDate, 'yyyy-MM-dd'),
+        client_name: client.name,
+        log_date: logDate,
         duration_seconds: totalSeconds,
         title: newLogData.title || '',
         notes: newLogData.notes || '',
-        created_by: currentUser?.email || 'unknown', // Ensure created_by is set
+        created_by: currentUser?.email || 'unknown',
       });
 
       setAddTimeDialogOpen(false);
@@ -1165,13 +1169,20 @@ export default function TimeLogsPage() {
               </label>
               <Input
                 type="date"
-                value={selectedDate ? format(selectedDate, 'yyyy-MM-dd') : ''}
-                onChange={(e) => setSelectedDate(new Date(e.target.value))}
+                value={selectedDate && !isNaN(selectedDate.getTime()) ? format(selectedDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd')}
+                onChange={(e) => {
+                  const newDate = new Date(e.target.value);
+                  if (!isNaN(newDate.getTime())) {
+                    setSelectedDate(newDate);
+                  }
+                }}
                 className="text-right"
                 dir="rtl"
               />
               <div className="text-xs text-slate-600 mt-1 text-right">
-                📅 {selectedDate.toLocaleDateString('he-IL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                📅 {selectedDate && !isNaN(selectedDate.getTime()) 
+                  ? selectedDate.toLocaleDateString('he-IL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+                  : new Date().toLocaleDateString('he-IL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
               </div>
             </div>
 
