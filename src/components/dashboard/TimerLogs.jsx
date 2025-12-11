@@ -642,7 +642,7 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
 
       {/* כלי בקרה - שורה אחת קומפקטית */}
       <div className="flex-shrink-0 bg-white border-b border-slate-200">
-        <div className="flex items-center gap-2 p-3">
+        <div className="flex items-center gap-2 p-3 flex-wrap">
           {/* חיפוש */}
           <div className="relative w-48">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -656,10 +656,8 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
 
           {/* פילטר לקוחות */}
           <Select value={clientFilter} onValueChange={setClientFilter}>
-            <SelectTrigger className="w-9 h-9 p-0" title="לקוח">
-              <div className="flex items-center justify-center w-full">
-                <User className="w-4 h-4 text-slate-600" />
-              </div>
+            <SelectTrigger className="w-40 h-9" title="לקוח">
+              <SelectValue placeholder="כל הלקוחות" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">כל הלקוחות</SelectItem>
@@ -671,10 +669,8 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
 
           {/* פילטר משתמשים */}
           <Select value={userFilter} onValueChange={setUserFilter}>
-            <SelectTrigger className="w-9 h-9 p-0" title="משתמש">
-              <div className="flex items-center justify-center w-full">
-                <UserCircle className="w-4 h-4 text-slate-600" />
-              </div>
+            <SelectTrigger className="w-40 h-9" title="משתמש">
+              <SelectValue placeholder="כל העובדים" />
             </SelectTrigger>
             <SelectContent className="w-80">
               <div className="p-2 border-b sticky top-0 bg-white z-10">
@@ -743,10 +739,8 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
 
           {/* פילטר זמן */}
           <Select value={timeFilter} onValueChange={setTimeFilter}>
-            <SelectTrigger className="w-9 h-9 p-0" title="תקופה">
-              <div className="flex items-center justify-center w-full">
-                <Calendar className="w-4 h-4 text-slate-600" />
-              </div>
+            <SelectTrigger className="w-40 h-9" title="תקופה">
+              <SelectValue placeholder="כל התקופות" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">כל התקופות</SelectItem>
