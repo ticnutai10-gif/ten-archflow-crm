@@ -1053,7 +1053,7 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
                               </AvatarFallback>
                             </Avatar>
                             <Link
-                              to={`${createPageUrl("Clients")}?open=details&client_name=${encodeURIComponent(log.client_name || "")}&tab=timelogs`}
+                              to={`${createPageUrl("Clients")}?open=details&client_name=${encodeURIComponent(log.client_name || "")}&tab=time`}
                               className="text-slate-600 text-sm flex-1 hover:text-blue-600 transition-colors"
                               onClick={() => {
                                 console.log('🖱️ [TimerLogs] User link clicked:', {
@@ -1083,7 +1083,7 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
                           <div className="flex items-center gap-2">
                             <User className="w-3 h-3" />
                             <Link
-                              to={`${createPageUrl("Clients")}?open=details&client_name=${encodeURIComponent(log.client_name || "")}&tab=timelogs`}
+                              to={`${createPageUrl("Clients")}?open=details&client_name=${encodeURIComponent(log.client_name || "")}&tab=time`}
                               className="hover:text-blue-600 transition-colors flex-1"
                             >
                               {log.client_name}
@@ -1175,7 +1175,7 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
                               </AvatarFallback>
                             </Avatar>
                             <Link
-                              to={`${createPageUrl("Clients")}?open=details&client_name=${encodeURIComponent(log.client_name || "")}&tab=timelogs`}
+                              to={`${createPageUrl("Clients")}?open=details&client_name=${encodeURIComponent(log.client_name || "")}&tab=time`}
                               className="truncate max-w-[180px] hover:text-blue-600 transition-colors"
                               onClick={() => {
                                 console.log('🖱️ [TimerLogs] User link clicked (list view):', {
@@ -1191,7 +1191,7 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
                           <div className="flex items-center gap-2">
                             <User className="w-3 h-3" />
                             <Link
-                              to={`${createPageUrl("Clients")}?open=details&client_name=${encodeURIComponent(log.client_name || "")}&tab=timelogs`}
+                              to={`${createPageUrl("Clients")}?open=details&client_name=${encodeURIComponent(log.client_name || "")}&tab=time`}
                               className="hover:text-blue-600 transition-colors"
                             >
                               {log.client_name}
