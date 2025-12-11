@@ -1106,7 +1106,18 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
                         <TableCell className="whitespace-nowrap">{getDateLabel(log.log_date)}</TableCell>
                         <TableCell className="max-w-[280px] truncate">{log.title || '—'}</TableCell>
                         <TableCell className="max-w-[360px] truncate text-slate-600">{log.notes || ''}</TableCell>
-                        <TableCell className="whitespace-nowrap font-medium">{formatDuration(log.duration_seconds)}</TableCell>
+                        <TableCell className="whitespace-nowrap group/duration">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{formatDuration(log.duration_seconds)}</span>
+                            <button
+                              onClick={() => openEdit(log)}
+                              className="opacity-0 group-hover/duration:opacity-100 transition-opacity p-1 hover:bg-blue-50 rounded"
+                              title="ערוך משך זמן"
+                            >
+                              <Clock className="w-4 h-4 text-blue-600" />
+                            </button>
+                          </div>
+                        </TableCell>
                         <TableCell className="whitespace-nowrap">
                           <div className="flex items-center gap-1">
                             <Button variant="ghost" size="sm" onClick={() => openEdit(log)} title="ערוך">
@@ -1144,8 +1155,15 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
                           <h4 className="font-semibold text-slate-900">{log.title || 'פעילות ללא כותרת'}</h4>
-                          <Badge variant="outline" className="bg-blue-50 text-blue-700">
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700 group/badge relative">
                             {formatDuration(log.duration_seconds)}
+                            <button
+                              onClick={() => openEdit(log)}
+                              className="absolute -left-1 top-1/2 -translate-y-1/2 opacity-0 group-hover/badge:opacity-100 transition-opacity p-0.5 bg-white rounded-full shadow-sm hover:shadow-md"
+                              title="ערוך משך זמן"
+                            >
+                              <Clock className="w-3 h-3 text-blue-600" />
+                            </button>
                           </Badge>
                         </div>
 
