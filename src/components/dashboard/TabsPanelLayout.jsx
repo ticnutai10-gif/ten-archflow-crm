@@ -100,7 +100,7 @@ export default function TabsPanelLayout({ children, renderContent }) {
           </div>
         </div>
       ) : (
-        <div className="w-48 flex-shrink-0 space-y-8">
+        <div className="w-48 flex-shrink-0 space-y-10">
           {TAB_ITEMS.map(tab => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -221,8 +221,10 @@ export default function TabsPanelLayout({ children, renderContent }) {
                 )}
 
                 {/* Panel Content */}
-                <div className="flex-1 overflow-auto p-4 bg-white">
-                  {renderContent(panel.tab)}
+                <div className="flex-1 overflow-auto bg-white">
+                  <div className="h-full">
+                    {renderContent(panel.tab)}
+                  </div>
                 </div>
               </div>
             );
