@@ -1037,14 +1037,26 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
                             </button>
                           </TableCell>
                         )}
-                        <TableCell className="whitespace-nowrap">
+                        <TableCell className="whitespace-nowrap group">
                           <div className="flex items-center gap-2">
                             <Avatar className="w-6 h-6">
                               <AvatarFallback className="text-[10px] bg-gradient-to-br from-blue-500 to-purple-600 text-white">
                                 {getUserDisplayName(getCreatedBy(log)).substring(0, 2).toUpperCase()}
                               </AvatarFallback>
                             </Avatar>
-                            <span className="text-slate-600 text-sm">{getUserDisplayName(getCreatedBy(log))}</span>
+                            <span className="text-slate-600 text-sm flex-1">{getUserDisplayName(getCreatedBy(log))}</span>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={() => {
+                                setSelectedClientForAdd(null);
+                                setShowAddDialog(true);
+                              }}
+                              title="הוסף רישום זמן"
+                            >
+                              <Plus className="w-3 h-3 text-blue-600" />
+                            </Button>
                           </div>
                         </TableCell>
                         <TableCell className="whitespace-nowrap">
