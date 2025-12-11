@@ -42,7 +42,7 @@ import { createPageUrl } from "@/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { TimeLog } from "@/entities/all";
+import { TimeLog, Client } from "@/entities/all";
 import { User as UserEntity } from "@/entities/User";
 
 function formatDuration(seconds) {
@@ -83,13 +83,16 @@ function isEmail(str) {
   return result;
 }
 
-export default function TimerLogs({ timeLogs, isLoading, onUpdate }) {
+import AddTimeLogDialog from "@/components/timelogs/AddTimeLogDialog";
+
+export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] }) {
   console.log('🎬 [TimerLogs] Component rendered with:', {
     timeLogs,
     timeLogsType: typeof timeLogs,
     isArray: Array.isArray(timeLogs),
     timeLogsCount: timeLogs?.length || 0,
-    isLoading
+    isLoading,
+    clientsCount: clients?.length || 0
   });
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -115,6 +118,10 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate }) {
   const [editing, setEditing] = useState(null);
   const [editData, setEditData] = useState({ title: "", notes: "" });
   const [userIdToDataMap, setUserIdToDataMap] = useState({});
+  
+  // Add time log dialog state
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [selectedClientForAdd, setSelectedClientForAdd] = useState(null);
 
   useEffect(() => {
     console.log('💾 [TimerLogs] Saving viewMode to localStorage:', viewMode);
@@ -489,13 +496,15 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate }) {
     return uniqueClients.map(clientName => {
       const clientLogs = filteredLogs.filter(log => log?.client_name === clientName);
       const clientTime = clientLogs.reduce((sum, log) => sum + (log?.duration_seconds || 0), 0);
+      const client = clients.find(c => c.name === clientName);
       return {
         clientName,
+        clientId: client?.id || null,
         time: clientTime,
         sessions: clientLogs.length
       };
     }).sort((a, b) => b.time - a.time);
-  }, [uniqueClients, filteredLogs]);
+  }, [uniqueClients, filteredLogs, clients]);
 
   // ✅ הגנה על userStats
   const userStats = React.useMemo(() => {
@@ -899,10 +908,23 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate }) {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {clientStats.slice(0, 3).map(stat => (
-              <div key={stat.clientName} className="bg-white p-3 rounded-lg border">
+              <div key={stat.clientName} className="bg-white p-3 rounded-lg border hover:shadow-md transition-all group relative">
                 <div className="font-medium text-slate-800 truncate">{stat.clientName}</div>
                 <div className="text-sm text-slate-600">{formatDuration(stat.time)}</div>
                 <div className="text-xs text-slate-500">{stat.sessions} פעילויות</div>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="absolute left-2 top-2 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity bg-blue-50 hover:bg-blue-100"
+                  onClick={() => {
+                    const client = clients.find(c => c.name === stat.clientName);
+                    setSelectedClientForAdd(client);
+                    setShowAddDialog(true);
+                  }}
+                  title="הוסף רישום זמן"
+                >
+                  <Plus className="w-4 h-4 text-blue-600" />
+                </Button>
               </div>
             ))}
           </div>
@@ -933,15 +955,30 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate }) {
                   </TableRow>
                 ) : (
                   summaryRows.map(row => (
-                    <TableRow key={row.clientName}>
-                      <TableCell className="font-medium">
-                        <Link
-                          to={`${createPageUrl("Clients")}?open=details&client_name=${encodeURIComponent(row.clientName || "")}`}
-                          className="hover:text-blue-600 transition-colors"
-                        >
-                          {row.clientName}
-                        </Link>
-                      </TableCell>
+                    <TableRow key={row.clientName} className="group">
+                     <TableCell className="font-medium">
+                       <div className="flex items-center gap-2">
+                         <Link
+                           to={`${createPageUrl("Clients")}?open=details&client_name=${encodeURIComponent(row.clientName || "")}`}
+                           className="hover:text-blue-600 transition-colors flex-1"
+                         >
+                           {row.clientName}
+                         </Link>
+                         <Button
+                           size="icon"
+                           variant="ghost"
+                           className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                           onClick={() => {
+                             const client = clients.find(c => c.name === row.clientName);
+                             setSelectedClientForAdd(client);
+                             setShowAddDialog(true);
+                           }}
+                           title="הוסף רישום זמן"
+                         >
+                           <Plus className="w-3 h-3 text-blue-600" />
+                         </Button>
+                       </div>
+                     </TableCell>
                       {summaryColumns.map(col => (
                         <TableCell key={col.key} className="whitespace-nowrap">{formatDuration(row.totals[col.key] || 0)}</TableCell>
                       ))}
@@ -998,14 +1035,27 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate }) {
                           </div>
                         </TableCell>
                         <TableCell className="whitespace-nowrap">
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-2">
                             <User className="w-3 h-3" />
                             <Link
                               to={`${createPageUrl("Clients")}?open=details&client_name=${encodeURIComponent(log.client_name || "")}`}
-                              className="hover:text-blue-600 transition-colors"
+                              className="hover:text-blue-600 transition-colors flex-1"
                             >
                               {log.client_name}
                             </Link>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={() => {
+                                const client = clients.find(c => c.name === log.client_name);
+                                setSelectedClientForAdd(client);
+                                setShowAddDialog(true);
+                              }}
+                              title="הוסף רישום זמן"
+                            >
+                              <Plus className="w-3 h-3 text-blue-600" />
+                            </Button>
                           </div>
                         </TableCell>
                         <TableCell className="whitespace-nowrap">{getDateLabel(log.log_date)}</TableCell>
@@ -1035,7 +1085,7 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate }) {
             ) : (
               <div className="space-y-3">
                 {filteredLogs.map((log) => (
-                  <div key={log.id} className="bg-white border border-slate-200 rounded-lg p-4 hover:shadow-md transition-all relative">
+                  <div key={log.id} className="bg-white border border-slate-200 rounded-lg p-4 hover:shadow-md transition-all relative group">
                     {selectionMode && (
                       <button
                         onClick={() => toggleSelect(log.id)}
@@ -1063,7 +1113,7 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate }) {
                             </Avatar>
                             <span className="truncate max-w-[180px]">{getUserDisplayName(getCreatedBy(log))}</span>
                           </div>
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-2">
                             <User className="w-3 h-3" />
                             <Link
                               to={`${createPageUrl("Clients")}?open=details&client_name=${encodeURIComponent(log.client_name || "")}`}
@@ -1071,6 +1121,19 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate }) {
                             >
                               {log.client_name}
                             </Link>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={() => {
+                                const client = clients.find(c => c.name === log.client_name);
+                                setSelectedClientForAdd(client);
+                                setShowAddDialog(true);
+                              }}
+                              title="הוסף רישום זמן נוסף ללקוח זה"
+                            >
+                              <Plus className="w-3 h-3 text-blue-600" />
+                            </Button>
                           </div>
                           <div className="flex items-center gap-1">
                             <Calendar className="w-3 h-3" />
@@ -1148,6 +1211,19 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate }) {
       <div className="flex-shrink-0 p-4 text-sm text-slate-600 border-t border-slate-200 mt-auto">
         <span className="font-medium text-slate-800">{allUsers.length}</span> משתמשים • <span className="font-medium text-slate-800">{safeTimeLogs.length}</span> רישומים
       </div>
+
+      {/* Add Time Log Dialog */}
+      <AddTimeLogDialog
+        open={showAddDialog}
+        onClose={() => {
+          setShowAddDialog(false);
+          setSelectedClientForAdd(null);
+        }}
+        preselectedClient={selectedClientForAdd}
+        clients={clients}
+        timeLogs={safeTimeLogs}
+        onSuccess={onUpdate}
+      />
     </div>
   );
 }

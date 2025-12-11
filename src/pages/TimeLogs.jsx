@@ -1249,6 +1249,7 @@ export default function TimeLogsPage() {
                 timeLogs={filteredLogs}
                 isLoading={isLoading}
                 onUpdate={loadData}
+                clients={clients}
               />
             </CardContent>
           </Card>
