@@ -346,8 +346,15 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
 
   const openEdit = (log) => {
     console.log('✏️ [TimerLogs] openEdit:', log);
+    const hours = Math.floor((log.duration_seconds || 0) / 3600);
+    const minutes = Math.floor(((log.duration_seconds || 0) % 3600) / 60);
     setEditing(log);
-    setEditData({ title: log.title || "", notes: log.notes || "" });
+    setEditData({ 
+      title: log.title || "", 
+      notes: log.notes || "",
+      hours: String(hours),
+      minutes: String(minutes)
+    });
   };
 
   const saveEdit = async () => {
@@ -356,9 +363,23 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
       console.log('💾 [TimerLogs] saveEdit - no editing log');
       return;
     }
+    
+    const hours = parseInt(editData.hours || '0', 10);
+    const minutes = parseInt(editData.minutes || '0', 10);
+    const totalSeconds = (hours * 3600) + (minutes * 60);
+    
+    if (totalSeconds <= 0) {
+      alert('יש להזין זמן גדול מ-0');
+      return;
+    }
+    
     try {
       console.log('💾 [TimerLogs] Calling TimeLog.update...');
-      await TimeLog.update(editing.id, { title: editData.title, notes: editData.notes });
+      await TimeLog.update(editing.id, { 
+        title: editData.title, 
+        notes: editData.notes,
+        duration_seconds: totalSeconds
+      });
       console.log('✅ [TimerLogs] TimeLog updated successfully');
       setEditing(null);
       onUpdate && onUpdate();
@@ -1201,19 +1222,47 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
             <DialogHeader>
               <DialogTitle>עריכת רישום זמן</DialogTitle>
             </DialogHeader>
-            <div className="space-y-3">
+            <div className="space-y-4">
               <div>
-                <label className="text-xs text-slate-500 mb-1 block">כותרת</label>
+                <label className="text-sm font-semibold text-slate-700 mb-2 block">כותרת</label>
                 <Input value={editData.title} onChange={(e) => setEditData(d => ({ ...d, title: e.target.value }))} />
               </div>
+
               <div>
-                <label className="text-xs text-slate-500 mb-1 block">הערות</label>
-                <Textarea value={editData.notes} onChange={(e) => setEditData(d => ({ ...d, notes: e.target.value }))} />
+                <label className="text-sm font-semibold text-slate-700 mb-2 block">משך זמן</label>
+                <div className="flex items-center gap-3 justify-center">
+                  <div className="flex flex-col items-center">
+                    <Input
+                      value={editData.hours}
+                      onChange={(e) => setEditData(d => ({ ...d, hours: e.target.value.replace(/\D/g, '').slice(0, 2) }))}
+                      className="w-20 h-12 text-center text-lg font-bold"
+                      placeholder="00"
+                      maxLength={2}
+                    />
+                    <span className="text-xs text-slate-600 mt-1 font-medium">שעות</span>
+                  </div>
+                  <span className="text-2xl font-bold text-blue-600">:</span>
+                  <div className="flex flex-col items-center">
+                    <Input
+                      value={editData.minutes}
+                      onChange={(e) => setEditData(d => ({ ...d, minutes: e.target.value.replace(/\D/g, '').slice(0, 2) }))}
+                      className="w-20 h-12 text-center text-lg font-bold"
+                      placeholder="00"
+                      maxLength={2}
+                    />
+                    <span className="text-xs text-slate-600 mt-1 font-medium">דקות</span>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-semibold text-slate-700 mb-2 block">הערות</label>
+                <Textarea value={editData.notes} onChange={(e) => setEditData(d => ({ ...d, notes: e.target.value }))} className="min-h-[80px]" />
               </div>
             </div>
             <DialogFooter className="gap-2">
               <Button variant="outline" onClick={() => setEditing(null)}>ביטול</Button>
-              <Button onClick={saveEdit}>שמור</Button>
+              <Button onClick={saveEdit}>שמור שינויים</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
