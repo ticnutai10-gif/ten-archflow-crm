@@ -62,13 +62,13 @@ const DialogContent = React.forwardRef(({ className, children, ...props }, ref) 
   <div
     ref={ref}
     className={cn(
-      "fixed z-50 bg-white rounded-xl shadow-2xl p-6 w-auto min-w-[400px] max-w-2xl max-h-[85vh] overflow-y-auto",
+      "fixed z-[100] bg-white rounded-xl shadow-2xl p-6 w-auto min-w-[400px] max-w-2xl max-h-[80vh] overflow-y-auto",
       className
     )}
     style={{
-      top: '50%',
+      top: '10%',
       left: '50%',
-      transform: 'translate(-50%, -50%)',
+      transform: 'translateX(-50%)',
       animation: 'dialogSlideIn 0.25s ease-out'
     }}
     onClick={(e) => e.stopPropagation()}
