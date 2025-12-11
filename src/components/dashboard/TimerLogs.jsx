@@ -972,7 +972,7 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
                      <TableCell className="font-medium">
                        <div className="flex items-center gap-2">
                          <Link
-                           to={`${createPageUrl("Clients")}?open=details&client_name=${encodeURIComponent(row.clientName || "")}`}
+                           to={`${createPageUrl("Clients")}?open=details&client_name=${encodeURIComponent(row.clientName || "")}&tab=timelogs`}
                            className="hover:text-blue-600 transition-colors flex-1"
                          >
                            {row.clientName}
@@ -1063,7 +1063,7 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
                           <div className="flex items-center gap-2">
                             <User className="w-3 h-3" />
                             <Link
-                              to={`${createPageUrl("Clients")}?open=details&client_name=${encodeURIComponent(log.client_name || "")}`}
+                              to={`${createPageUrl("Clients")}?open=details&client_name=${encodeURIComponent(log.client_name || "")}&tab=timelogs`}
                               className="hover:text-blue-600 transition-colors flex-1"
                             >
                               {log.client_name}
@@ -1141,7 +1141,7 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
                           <div className="flex items-center gap-2">
                             <User className="w-3 h-3" />
                             <Link
-                              to={`${createPageUrl("Clients")}?open=details&client_name=${encodeURIComponent(log.client_name || "")}`}
+                              to={`${createPageUrl("Clients")}?open=details&client_name=${encodeURIComponent(log.client_name || "")}&tab=timelogs`}
                               className="hover:text-blue-600 transition-colors"
                             >
                               {log.client_name}
