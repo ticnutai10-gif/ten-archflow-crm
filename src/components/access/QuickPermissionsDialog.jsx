@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -22,6 +21,7 @@ import {
   X // Added X icon
 } from "lucide-react";
 import { AccessControl } from "@/entities/all";
+import { User } from "@/entities/User";
 import { toast } from "react-hot-toast";
 
 const ROLE_OPTIONS = [
@@ -79,6 +79,8 @@ const ROLE_OPTIONS = [
 
 export default function QuickPermissionsDialog({ open, onClose, onSuccess, clients = [], projects = [] }) {
   const [email, setEmail] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [notes, setNotes] = useState("");
   const [selectedRole, setSelectedRole] = useState(null);
   const [assignedClients, setAssignedClients] = useState([]);
   const [assignedProjects, setAssignedProjects] = useState([]);
@@ -88,6 +90,8 @@ export default function QuickPermissionsDialog({ open, onClose, onSuccess, clien
 
   const handleClose = () => {
     setEmail("");
+    setDisplayName("");
+    setNotes("");
     setSelectedRole(null);
     setAssignedClients([]);
     setAssignedProjects([]);
@@ -184,10 +188,29 @@ export default function QuickPermissionsDialog({ open, onClose, onSuccess, clien
         active: true,
         assigned_clients: userAssignedClients,
         assigned_projects: userAssignedProjects,
-        notes: `נוצר דרך הגדרת הרשאות מהירה - ${new Date().toLocaleDateString('he-IL')}`
+        notes: notes || `נוצר דרך הגדרת הרשאות מהירה - ${new Date().toLocaleDateString('he-IL')}`
       });
 
       console.log('✅ [CREATE USER] Success:', newUser);
+      
+      // אם יש שם משתמש, נסה לעדכן את רשומת המשתמש
+      if (displayName) {
+        try {
+          const users = await User.list();
+          const userRecord = users.find(u => u.email?.toLowerCase() === email.toLowerCase().trim());
+          if (userRecord) {
+            await User.update(userRecord.id, {
+              display_name: displayName,
+              notes: notes || undefined
+            });
+            console.log('✅ [CREATE USER] User record updated with display name');
+          }
+        } catch (err) {
+          console.warn('⚠️ Could not update user display name:', err);
+          // לא נראה שגיאה למשתמש - המשתמש נוצר בהצלחה
+        }
+      }
+      
       toast.success('משתמש נוסף בהצלחה! 🎉');
       
       onSuccess?.();
@@ -249,7 +272,7 @@ export default function QuickPermissionsDialog({ open, onClose, onSuccess, clien
         </DialogHeader>
 
         <div className="space-y-6" dir="rtl">
-          {/* שלב 1: אימייל */}
+          {/* שלב 1: פרטי משתמש */}
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-bold text-sm">
@@ -257,14 +280,41 @@ export default function QuickPermissionsDialog({ open, onClose, onSuccess, clien
               </div>
               <Label className="text-base font-semibold">פרטי המשתמש</Label>
             </div>
-            <Input
-              type="email"
-              placeholder="הזן כתובת אימייל..."
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="text-right"
-              dir="rtl"
-            />
+            <div className="space-y-3">
+              <div>
+                <Label className="text-sm text-slate-600 mb-1 block">אימייל *</Label>
+                <Input
+                  type="email"
+                  placeholder="דוגמה: user@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="text-right"
+                  dir="rtl"
+                />
+              </div>
+              <div>
+                <Label className="text-sm text-slate-600 mb-1 block">שם משתמש (אופציונלי)</Label>
+                <Input
+                  type="text"
+                  placeholder="דוגמה: יוסי כהן"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  className="text-right"
+                  dir="rtl"
+                />
+              </div>
+              <div>
+                <Label className="text-sm text-slate-600 mb-1 block">הערה (אופציונלי)</Label>
+                <Input
+                  type="text"
+                  placeholder="הערות נוספות על המשתמש..."
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  className="text-right"
+                  dir="rtl"
+                />
+              </div>
+            </div>
           </div>
 
           {/* שלב 2: בחירת תפקיד */}
