@@ -21,7 +21,8 @@ import {
   Users,
   Mail,
   UserCircle,
-  ChevronDown
+  ChevronDown,
+  Plus
 } from 'lucide-react';
 import { Table as UITable, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
