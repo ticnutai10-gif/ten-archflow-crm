@@ -870,7 +870,7 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 max-h-64 overflow-y-auto">
             {userStats.slice(0, 9).map(user => (
-              <div key={user.id} className="bg-white p-3 rounded-lg border border-slate-200 hover:shadow-md transition-shadow">
+              <div key={user.id} className="bg-white p-3 rounded-lg border border-slate-200 hover:shadow-md transition-all group relative">
                 <div className="flex items-start gap-3">
                   <Avatar className="w-10 h-10 flex-shrink-0">
                     <AvatarFallback className="text-sm font-bold bg-gradient-to-br from-blue-500 to-purple-600 text-white">
@@ -891,6 +891,18 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
                     </div>
                   </div>
                 </div>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="absolute left-2 top-2 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity bg-blue-50 hover:bg-blue-100"
+                  onClick={() => {
+                    setSelectedClientForAdd(null);
+                    setShowAddDialog(true);
+                  }}
+                  title="הוסף רישום זמן"
+                >
+                  <Plus className="w-4 h-4 text-blue-600" />
+                </Button>
               </div>
             ))}
           </div>
