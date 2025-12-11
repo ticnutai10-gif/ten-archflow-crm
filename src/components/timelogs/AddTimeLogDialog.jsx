@@ -243,7 +243,7 @@ export default function AddTimeLogDialog({
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent 
         dir="rtl" 
-        className="max-w-2xl max-h-[85vh] overflow-y-auto"
+        className="max-w-2xl max-h-[85vh] overflow-y-auto p-6"
       >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
