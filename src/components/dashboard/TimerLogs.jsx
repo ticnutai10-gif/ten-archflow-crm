@@ -160,20 +160,18 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
     const loadUserMapping = async () => {
       console.log('👥 [TimerLogs] 🚀 Starting loadUserMapping...');
       try {
-        // קבלת כל ה-IDs הייחודיים שהם לא מיילים
+        // קבלת כל ה-created_by הייחודיים
         const allCreatedBys = safeTimeLogs.map(log => getCreatedBy(log)).filter(Boolean);
-        const userIds = [...new Set(allCreatedBys)].filter(id => !isEmail(id));
+        const uniqueCreatedBys = [...new Set(allCreatedBys)];
 
         console.log('👥 [TimerLogs] Extracted user data:', {
           totalLogs: safeTimeLogs.length,
           allCreatedBys: allCreatedBys.length,
-          uniqueCreatedBys: [...new Set(allCreatedBys)],
-          userIds,
-          userIdsCount: userIds.length
+          uniqueCreatedBys
         });
 
-        if (userIds.length === 0) {
-          console.log('⚠️ [TimerLogs] No user IDs to map (all are emails or null)');
+        if (uniqueCreatedBys.length === 0) {
+          console.log('⚠️ [TimerLogs] No users to map');
           return;
         }
 
@@ -184,14 +182,22 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
           users: users.map(u => ({ id: u.id, email: u.email, full_name: u.full_name }))
         });
         
-        // יצירת מיפוי מ-ID למייל ושם מלא
+        // יצירת מיפוי - גם לפי ID וגם לפי מייל
         const mapping = {};
         users.forEach(user => {
+          const userData = {
+            email: user.email || null,
+            full_name: user.full_name || null
+          };
+          
+          // מיפוי לפי ID
           if (user.id) {
-            mapping[user.id] = {
-              email: user.email || null,
-              full_name: user.full_name || null
-            };
+            mapping[user.id] = userData;
+          }
+          
+          // מיפוי גם לפי מייל
+          if (user.email) {
+            mapping[user.email] = userData;
           }
         });
 
@@ -220,56 +226,43 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
 
   // פונקציה לקבלת מייל מ-ID או מייל
   const getUserEmail = (idOrEmail) => {
-    console.log('📧 [TimerLogs] getUserEmail called:', { idOrEmail });
-    if (!idOrEmail) {
-      console.log('📧 [TimerLogs] getUserEmail → null (no input)');
-      return null;
+    if (!idOrEmail) return null;
+    
+    // אם יש מיפוי, השתמש בו (יעבוד גם עבור ID וגם עבור מייל)
+    if (userIdToDataMap[idOrEmail]?.email) {
+      return userIdToDataMap[idOrEmail].email;
     }
+    
+    // אם זה מייל, החזר אותו
     if (isEmail(idOrEmail)) {
-      console.log('📧 [TimerLogs] getUserEmail → (is already email):', idOrEmail);
       return idOrEmail;
     }
-    const result = userIdToDataMap[idOrEmail]?.email || idOrEmail;
-    console.log('📧 [TimerLogs] getUserEmail → mapped:', { idOrEmail, result, mapping: userIdToDataMap[idOrEmail] });
-    return result;
+    
+    return idOrEmail;
   };
 
-  // פונקציה לקבלת שם מלא מ-ID
+  // פונקציה לקבלת שם מלא מ-ID או מייל
   const getUserFullName = (idOrEmail) => {
-    console.log('👤 [TimerLogs] getUserFullName called:', { idOrEmail });
-    if (!idOrEmail) {
-      console.log('👤 [TimerLogs] getUserFullName → null (no input)');
-      return null;
-    }
-    if (isEmail(idOrEmail)) {
-      console.log('👤 [TimerLogs] getUserFullName → null (is email)');
-      return null;
-    }
-    const result = userIdToDataMap[idOrEmail]?.full_name || null;
-    console.log('👤 [TimerLogs] getUserFullName → mapped:', { idOrEmail, result, mapping: userIdToDataMap[idOrEmail] });
-    return result;
+    if (!idOrEmail) return null;
+    
+    // השתמש במיפוי שיכול לעבוד גם עם ID וגם עם מייל
+    return userIdToDataMap[idOrEmail]?.full_name || null;
   };
 
   // פונקציה לקבלת שם תצוגה - מעדיף שם מלא, אחרת חלק מהמייל
   const getUserDisplayName = (idOrEmail) => {
-    console.log('🏷️ [TimerLogs] getUserDisplayName called:', { idOrEmail });
     const fullName = getUserFullName(idOrEmail);
     if (fullName) {
-      console.log('🏷️ [TimerLogs] getUserDisplayName → full_name:', fullName);
       return fullName;
     }
     
     const email = getUserEmail(idOrEmail);
     if (!email) {
-      console.log('🏷️ [TimerLogs] getUserDisplayName → "לא ידוע" (no email)');
       return 'לא ידוע';
     }
     if (isEmail(email)) {
-      const displayName = email.split('@')[0];
-      console.log('🏷️ [TimerLogs] getUserDisplayName → email prefix:', displayName);
-      return displayName;
+      return email.split('@')[0];
     }
-    console.log('🏷️ [TimerLogs] getUserDisplayName → ID as string:', email);
     return String(email);
   };
 
