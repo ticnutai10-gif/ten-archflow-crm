@@ -221,10 +221,8 @@ export default function TabsPanelLayout({ children, renderContent }) {
                 )}
 
                 {/* Panel Content */}
-                <div className="flex-1 overflow-auto bg-white">
-                  <div className="h-full">
-                    {renderContent(panel.tab)}
-                  </div>
+                <div className="flex-1 overflow-y-auto bg-white flex flex-col">
+                  {renderContent(panel.tab)}
                 </div>
               </div>
             );
