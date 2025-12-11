@@ -225,7 +225,13 @@ export default function AddTimeLogDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent dir="rtl" className="max-w-2xl">
+      <DialogContent 
+        dir="rtl" 
+        className="max-w-2xl max-h-[90vh] overflow-y-auto"
+        style={{
+          animation: 'dialogFadeIn 0.3s ease-out'
+        }}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Clock className="w-5 h-5 text-blue-600" />
