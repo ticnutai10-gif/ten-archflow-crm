@@ -1229,7 +1229,7 @@ export default function TimeLogsPage() {
             <DialogTitle>הוסף רישום זמן</DialogTitle>
           </DialogHeader>
           
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 px-6 py-4 overflow-y-auto flex-1">
             {/* תאריך */}
             <div>
               <label className="text-sm font-semibold text-slate-700 mb-2 block text-right flex items-center gap-2">

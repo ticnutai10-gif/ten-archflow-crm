@@ -62,13 +62,13 @@ const DialogContent = React.forwardRef(({ className, children, ...props }, ref) 
   <div
     ref={ref}
     className={cn(
-      "fixed z-[100] bg-white rounded-xl shadow-2xl p-6 w-auto min-w-[400px] max-w-2xl max-h-[80vh] overflow-y-auto",
+      "fixed z-[100] bg-white rounded-xl shadow-2xl w-auto min-w-[400px] max-w-2xl max-h-[85vh] overflow-hidden flex flex-col",
       className
     )}
     style={{
-      top: '10%',
+      top: '50%',
       left: '50%',
-      transform: 'translateX(-50%)',
+      transform: 'translate(-50%, -50%)',
       animation: 'dialogSlideIn 0.25s ease-out'
     }}
     onClick={(e) => e.stopPropagation()}
@@ -81,7 +81,7 @@ DialogContent.displayName = "DialogContent"
 
 const DialogHeader = ({ className, ...props }) => (
   <div
-    className={cn("flex flex-col space-y-1.5 text-center sm:text-right", className)}
+    className={cn("flex flex-col space-y-1.5 text-right px-6 pt-6 pb-4 border-b border-slate-200", className)}
     {...props}
   />
 );
@@ -89,7 +89,7 @@ DialogHeader.displayName = "DialogHeader"
 
 const DialogFooter = ({ className, ...props }) => (
   <div
-    className={cn("flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 mt-6", className)}
+    className={cn("flex flex-row justify-end gap-2 px-6 py-4 border-t border-slate-200 bg-slate-50", className)}
     {...props}
   />
 );
@@ -98,7 +98,7 @@ DialogFooter.displayName = "DialogFooter"
 const DialogTitle = React.forwardRef(({ className, ...props }, ref) => (
   <h3
     ref={ref}
-    className={cn("text-lg font-semibold leading-none tracking-tight", className)}
+    className={cn("text-xl font-bold text-slate-900 leading-none tracking-tight", className)}
     {...props}
   />
 ));
