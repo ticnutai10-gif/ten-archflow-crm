@@ -473,6 +473,16 @@ export default function TimeLogsPage() {
   const [viewMode, setViewMode] = useState("table");
   const [currentUser, setCurrentUser] = useState(null);
 
+  // Check URL params for user filter
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const userFilterParam = urlParams.get('user_filter');
+    if (userFilterParam) {
+      setEmployeeFilter(userFilterParam);
+      setViewMode('table'); // Force table view to show the filtered logs
+    }
+  }, []);
+
   // ✅ מצב טופס הוספת זמן
   const [addTimeDialogOpen, setAddTimeDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());

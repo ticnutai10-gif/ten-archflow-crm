@@ -1053,7 +1053,7 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
                               </AvatarFallback>
                             </Avatar>
                             <Link
-                              to={`${createPageUrl("Clients")}?user_email=${encodeURIComponent(getUserEmail(getCreatedBy(log)) || '')}&tab=timelogs`}
+                              to={`${createPageUrl("TimeLogs")}?user_filter=${encodeURIComponent(getCreatedBy(log) || '')}`}
                               className="text-slate-600 text-sm flex-1 hover:text-blue-600 transition-colors"
                             >
                               {getUserDisplayName(getCreatedBy(log))}
@@ -1150,7 +1150,7 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
                               </AvatarFallback>
                             </Avatar>
                             <Link
-                              to={`${createPageUrl("Clients")}?user_email=${encodeURIComponent(getUserEmail(getCreatedBy(log)) || '')}&tab=timelogs`}
+                              to={`${createPageUrl("TimeLogs")}?user_filter=${encodeURIComponent(getCreatedBy(log) || '')}`}
                               className="truncate max-w-[180px] hover:text-blue-600 transition-colors"
                             >
                               {getUserDisplayName(getCreatedBy(log))}
