@@ -32,9 +32,17 @@ function MiniCalendar({ selectedDate, onSelectDate, timeLogs }) {
   };
 
   const getHoursForDay = (date) => {
-    const logsForDay = timeLogs.filter(log => 
-      log && log.log_date && isSameDay(new Date(log.log_date), date)
-    );
+    if (!date || isNaN(date.getTime())) return 0;
+    
+    const logsForDay = timeLogs.filter(log => {
+      if (!log || !log.log_date) return false;
+      try {
+        const logDate = new Date(log.log_date);
+        return !isNaN(logDate.getTime()) && isSameDay(logDate, date);
+      } catch {
+        return false;
+      }
+    });
     const totalSeconds = logsForDay.reduce((sum, log) => sum + (log.duration_seconds || 0), 0);
     return totalSeconds / 3600;
   };
@@ -48,7 +56,11 @@ function MiniCalendar({ selectedDate, onSelectDate, timeLogs }) {
         <Button variant="outline" size="sm" onClick={() => setCurrentMonth(addDays(currentMonth, -30))}>
           ←
         </Button>
-        <h3 className="font-semibold">{format(currentMonth, 'MMMM yyyy', { locale: he })}</h3>
+        <h3 className="font-semibold">
+          {currentMonth && !isNaN(currentMonth.getTime()) 
+            ? format(currentMonth, 'MMMM yyyy', { locale: he })
+            : format(new Date(), 'MMMM yyyy', { locale: he })}
+        </h3>
         <Button variant="outline" size="sm" onClick={() => setCurrentMonth(addDays(currentMonth, 30))}>
           →
         </Button>
