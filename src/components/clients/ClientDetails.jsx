@@ -22,21 +22,12 @@ import {
   CheckCircle,
   Globe,
   Circle,
-  ChevronDown,
-  LayoutGrid,
-  List,
-  Kanban
+  ChevronDown
 } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import { base44 } from "@/api/base44Client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 
 import ClientFiles from "./ClientFiles";
@@ -70,8 +61,11 @@ export default function ClientDetails({ client, onBack, onEdit }) {
   const [timeLogs, setTimeLogs] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(() => {
+    // Check URL params first
     const urlParams = new URLSearchParams(window.location.search);
     const tabParam = urlParams.get('tab');
+    
+    // Check sessionStorage second
     const sessionTab = sessionStorage.getItem('clientDetailsActiveTab');
     
     console.log('🎯 [CLIENT DETAILS] Initial tab determination:', {
@@ -80,6 +74,7 @@ export default function ClientDetails({ client, onBack, onEdit }) {
       willUse: tabParam || sessionTab || 'timeline'
     });
     
+    // Clean up sessionStorage after reading
     if (sessionTab) {
       sessionStorage.removeItem('clientDetailsActiveTab');
     }
@@ -89,22 +84,8 @@ export default function ClientDetails({ client, onBack, onEdit }) {
 
   const [currentClient, setCurrentClient] = useState(client);
   const [isUpdatingStage, setIsUpdatingStage] = useState(false);
-  const [tabViewMode, setTabViewMode] = useState(() => {
-    try {
-      return localStorage.getItem('client-tabs-view-mode') || 'icons';
-    } catch {
-      return 'icons';
-    }
-  });
 
-  useEffect(() => {
-    try {
-      localStorage.setItem('client-tabs-view-mode', tabViewMode);
-    } catch (e) {
-      console.error('Error saving tab view mode:', e);
-    }
-  }, [tabViewMode]);
-
+  // Update currentClient when client prop changes
   useEffect(() => {
     if (client) {
       console.log('🔄 [CLIENT DETAILS] Client prop changed:', { 
@@ -203,6 +184,7 @@ export default function ClientDetails({ client, onBack, onEdit }) {
       await base44.entities.Client.update(currentClient.id, { stage: newStage });
       console.log('✅ [CLIENT DETAILS] Update sent successfully');
       
+      // טען מחדש את הלקוח מהשרת כדי לקבל את הגרסה העדכנית
       console.log('🔄 [CLIENT DETAILS] Reloading client from server...');
       const updatedClient = await base44.entities.Client.get(currentClient.id);
       console.log('📥 [CLIENT DETAILS] Client reloaded:', {
@@ -214,6 +196,7 @@ export default function ClientDetails({ client, onBack, onEdit }) {
       setCurrentClient(updatedClient);
       console.log('💾 [CLIENT DETAILS] Local state updated');
       
+      // שלח אירוע עם כל הנתונים של הלקוח
       console.log('📢 [CLIENT DETAILS] Dispatching client:updated event...');
       window.dispatchEvent(new CustomEvent('client:updated', {
         detail: updatedClient
@@ -472,132 +455,40 @@ export default function ClientDetails({ client, onBack, onEdit }) {
           className="w-full" 
           dir="rtl"
         >
-          <div className="flex items-center gap-3 mb-4">
-            <TabsList className="inline-flex h-9 items-center justify-start rounded-lg bg-slate-100 p-1 gap-1 overflow-x-auto flex-1">
-              {tabViewMode === 'icons' ? (
-                <>
-                  <TabsTrigger value="timeline" className="h-7 w-9 px-0 text-xs rounded-md flex items-center justify-center" title="ציר זמן">
-                    <Clock className="w-3.5 h-3.5" />
-                  </TabsTrigger>
-                  <TabsTrigger value="projects" className="h-7 w-9 px-0 text-xs rounded-md flex items-center justify-center" title="פרויקטים">
-                    <Briefcase className="w-3.5 h-3.5" />
-                  </TabsTrigger>
-                  <TabsTrigger value="tasks" className="h-7 w-9 px-0 text-xs rounded-md flex items-center justify-center" title="משימות">
-                    <CheckCircle className="w-3.5 h-3.5" />
-                  </TabsTrigger>
-                  <TabsTrigger value="spreadsheets" className="h-7 w-9 px-0 text-xs rounded-md flex items-center justify-center" title="טבלאות">
-                    <FileText className="w-3.5 h-3.5" />
-                  </TabsTrigger>
-                  <TabsTrigger value="time" className="h-7 w-9 px-0 text-xs rounded-md flex items-center justify-center" title="שעות">
-                    <Clock className="w-3.5 h-3.5" />
-                  </TabsTrigger>
-                  <TabsTrigger value="files" className="h-7 w-9 px-0 text-xs rounded-md flex items-center justify-center" title="קבצים">
-                    <FolderOpen className="w-3.5 h-3.5" />
-                  </TabsTrigger>
-                  <TabsTrigger value="sheets" className="h-7 w-9 px-0 text-xs rounded-md flex items-center justify-center" title="גיליונות">
-                    <FileText className="w-3.5 h-3.5" />
-                  </TabsTrigger>
-                  <TabsTrigger value="communication" className="h-7 w-9 px-0 text-xs rounded-md flex items-center justify-center" title="תקשורת">
-                    <MessageSquare className="w-3.5 h-3.5" />
-                  </TabsTrigger>
-                </>
-              ) : tabViewMode === 'compact' ? (
-                <>
-                  <TabsTrigger value="timeline" className="h-7 px-2 text-[11px] rounded-md gap-1">
-                    <Clock className="w-3 h-3" />
-                    ציר זמן
-                  </TabsTrigger>
-                  <TabsTrigger value="projects" className="h-7 px-2 text-[11px] rounded-md gap-1">
-                    <Briefcase className="w-3 h-3" />
-                    פרויקטים
-                  </TabsTrigger>
-                  <TabsTrigger value="tasks" className="h-7 px-2 text-[11px] rounded-md gap-1">
-                    <CheckCircle className="w-3 h-3" />
-                    משימות
-                  </TabsTrigger>
-                  <TabsTrigger value="spreadsheets" className="h-7 px-2 text-[11px] rounded-md gap-1">
-                    <FileText className="w-3 h-3" />
-                    טבלאות
-                  </TabsTrigger>
-                  <TabsTrigger value="time" className="h-7 px-2 text-[11px] rounded-md gap-1">
-                    <Clock className="w-3 h-3" />
-                    שעות
-                  </TabsTrigger>
-                  <TabsTrigger value="files" className="h-7 px-2 text-[11px] rounded-md gap-1">
-                    <FolderOpen className="w-3 h-3" />
-                    קבצים
-                  </TabsTrigger>
-                  <TabsTrigger value="sheets" className="h-7 px-2 text-[11px] rounded-md gap-1">
-                    <FileText className="w-3 h-3" />
-                    גיליונות
-                  </TabsTrigger>
-                  <TabsTrigger value="communication" className="h-7 px-2 text-[11px] rounded-md gap-1">
-                    <MessageSquare className="w-3 h-3" />
-                    תקשורת
-                  </TabsTrigger>
-                </>
-              ) : (
-                <>
-                  <TabsTrigger value="timeline" className="h-7 px-3 text-xs rounded-md gap-1.5">
-                    <Clock className="w-3.5 h-3.5" />
-                    ציר זמן
-                  </TabsTrigger>
-                  <TabsTrigger value="projects" className="h-7 px-3 text-xs rounded-md gap-1.5">
-                    <Briefcase className="w-3.5 h-3.5" />
-                    פרויקטים
-                  </TabsTrigger>
-                  <TabsTrigger value="tasks" className="h-7 px-3 text-xs rounded-md gap-1.5">
-                    <CheckCircle className="w-3.5 h-3.5" />
-                    משימות
-                  </TabsTrigger>
-                  <TabsTrigger value="spreadsheets" className="h-7 px-3 text-xs rounded-md gap-1.5">
-                    <FileText className="w-3.5 h-3.5" />
-                    טבלאות
-                  </TabsTrigger>
-                  <TabsTrigger value="time" className="h-7 px-3 text-xs rounded-md gap-1.5">
-                    <Clock className="w-3.5 h-3.5" />
-                    שעות
-                  </TabsTrigger>
-                  <TabsTrigger value="files" className="h-7 px-3 text-xs rounded-md gap-1.5">
-                    <FolderOpen className="w-3.5 h-3.5" />
-                    קבצים
-                  </TabsTrigger>
-                  <TabsTrigger value="sheets" className="h-7 px-3 text-xs rounded-md gap-1.5">
-                    <FileText className="w-3.5 h-3.5" />
-                    גיליונות
-                  </TabsTrigger>
-                  <TabsTrigger value="communication" className="h-7 px-3 text-xs rounded-md gap-1.5">
-                    <MessageSquare className="w-3.5 h-3.5" />
-                    תקשורת
-                  </TabsTrigger>
-                </>
-              )}
-            </TabsList>
-
-            {/* View Mode Toggle */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-9 gap-2 shrink-0">
-                  {tabViewMode === 'icons' ? <LayoutGrid className="w-4 h-4" /> : tabViewMode === 'compact' ? <Kanban className="w-4 h-4" /> : <List className="w-4 h-4" />}
-                  <ChevronDown className="w-3 h-3" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" dir="rtl">
-                <DropdownMenuItem onClick={() => setTabViewMode('icons')} className={tabViewMode === 'icons' ? 'bg-blue-50' : ''}>
-                  <LayoutGrid className="w-4 h-4 ml-2" />
-                  אייקונים בלבד
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setTabViewMode('compact')} className={tabViewMode === 'compact' ? 'bg-blue-50' : ''}>
-                  <Kanban className="w-4 h-4 ml-2" />
-                  קומפקטי
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setTabViewMode('full')} className={tabViewMode === 'full' ? 'bg-blue-50' : ''}>
-                  <List className="w-4 h-4 ml-2" />
-                  מלא
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+          <TabsList className="grid w-full grid-cols-8 bg-white shadow-sm">
+            <TabsTrigger value="timeline" className="gap-2">
+              <Clock className="w-4 h-4" />
+              ציר זמן
+            </TabsTrigger>
+            <TabsTrigger value="projects" className="gap-2">
+              <Briefcase className="w-4 h-4" />
+              פרויקטים
+            </TabsTrigger>
+            <TabsTrigger value="tasks" className="gap-2">
+              <CheckCircle className="w-4 h-4" />
+              משימות
+            </TabsTrigger>
+            <TabsTrigger value="spreadsheets" className="gap-2">
+              <FileText className="w-4 h-4" />
+              טבלאות
+            </TabsTrigger>
+            <TabsTrigger value="time" className="gap-2">
+              <Clock className="w-4 h-4" />
+              שעות
+            </TabsTrigger>
+            <TabsTrigger value="files" className="gap-2">
+              <FolderOpen className="w-4 h-4" />
+              קבצים
+            </TabsTrigger>
+            <TabsTrigger value="sheets" className="gap-2">
+              <FileText className="w-4 h-4" />
+              גיליונות
+            </TabsTrigger>
+            <TabsTrigger value="communication" className="gap-2">
+              <MessageSquare className="w-4 h-4" />
+              תקשורת
+            </TabsTrigger>
+          </TabsList>
 
           <TabsContent value="timeline" className="mt-6">
             <ClientTimeline clientId={client.id} clientName={client.name} />
