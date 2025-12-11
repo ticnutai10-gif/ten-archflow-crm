@@ -19,7 +19,8 @@ import {
   MoreVertical,
   Copy,
   Trash2,
-  Plus
+  Plus,
+  Circle
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
