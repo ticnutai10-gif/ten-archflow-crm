@@ -14,6 +14,7 @@ import ReminderPopup from "@/components/reminders/ReminderPopup";
 import FloatingDebugPanel from "@/components/debug/FloatingDebugPanel";
 import NotificationBell from "@/components/notifications/NotificationBell";
 import FloatingAIButton from "@/components/ai/FloatingAIButton";
+import PerformanceMonitor from "@/components/debug/PerformanceMonitor";
 import MobileBottomNav from "@/components/mobile/MobileBottomNav";
 import MobileHeader from "@/components/mobile/MobileHeader";
 import MobileSidebar from "@/components/mobile/MobileSidebar";
@@ -721,6 +722,7 @@ export default function Layout({ children, currentPageName }) {
         <ReminderPopup />
         {!isMobile && <FloatingDebugPanel />}
         <FloatingAIButton />
+        <PerformanceMonitor />
 
         {/* Mobile Bottom Navigation */}
         {isMobile && <MobileBottomNav />}
