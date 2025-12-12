@@ -61,25 +61,16 @@ export default function ClientDetails({ client, onBack, onEdit }) {
   const [timeLogs, setTimeLogs] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(() => {
-    // Check URL params first
+    // Check URL params ONLY - this is the source of truth
     const urlParams = new URLSearchParams(window.location.search);
     const tabParam = urlParams.get('tab');
     
-    // Check sessionStorage second
-    const sessionTab = sessionStorage.getItem('clientDetailsActiveTab');
-    
-    console.log('🎯 [CLIENT DETAILS] Initial tab determination:', {
+    console.log('🎯 [CLIENT DETAILS] Initial tab from URL:', {
       urlTab: tabParam,
-      sessionTab: sessionTab,
-      willUse: tabParam || sessionTab || 'timeline'
+      willUse: tabParam || 'timeline'
     });
     
-    // Clean up sessionStorage after reading
-    if (sessionTab) {
-      sessionStorage.removeItem('clientDetailsActiveTab');
-    }
-    
-    return tabParam || sessionTab || 'timeline';
+    return tabParam || 'timeline';
   });
 
   const [currentClient, setCurrentClient] = useState(client);
@@ -150,25 +141,7 @@ export default function ClientDetails({ client, onBack, onEdit }) {
     };
   }, [client?.id, loadClientData]);
 
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const spreadsheetId = urlParams.get('spreadsheetId');
-    const tabParam = urlParams.get('tab');
-    
-    console.log('🔄 [CLIENT DETAILS] URL params check:', {
-      spreadsheetId,
-      tabParam,
-      currentActiveTab: activeTab
-    });
-    
-    if (spreadsheetId) {
-      console.log('📊 [CLIENT DETAILS] Setting tab to spreadsheets (spreadsheetId found)');
-      setActiveTab('spreadsheets');
-    } else if (tabParam && tabParam !== activeTab) {
-      console.log('📑 [CLIENT DETAILS] Setting tab from URL param:', tabParam);
-      setActiveTab(tabParam);
-    }
-  }, []);
+  // Removed - initial state handles tab from URL correctly
 
   const handleStageChange = async (newStage) => {
     console.log('🎯 [CLIENT DETAILS] handleStageChange called:', {

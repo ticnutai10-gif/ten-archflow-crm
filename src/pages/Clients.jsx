@@ -239,13 +239,8 @@ export default function ClientsPage() {
         name: target.name,
         requestedTab: tab
       });
+      // The tab is already in the URL, ClientDetails will read it directly
       setSelectedClient(target);
-      
-      // Store tab in sessionStorage if provided
-      if (tab) {
-        console.log('💾 [CLIENTS PAGE] Storing tab in sessionStorage:', tab);
-        sessionStorage.setItem('clientDetailsActiveTab', tab);
-      }
     } else {
       console.log('❌ [CLIENTS PAGE] No matching client found');
     }
