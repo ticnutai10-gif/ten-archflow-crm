@@ -117,34 +117,17 @@ export default function Dashboard() {
       return false;
     }
   });
-  const [dashboardCards, setDashboardCards] = useState(() => {
-    try {
-      const saved = localStorage.getItem('dashboard-cards-order');
-      return saved ? JSON.parse(saved) : [
-        { id: 'stats', name: 'סטטיסטיקות', visible: true, size: 'full' },
-        { id: 'aiInsights', name: 'תובנות AI', visible: true, size: 'large' },
-        { id: 'projectsOverview', name: 'סקירת פרויקטים', visible: true, size: 'large' },
-        { id: 'recentProjects', name: 'פרויקטים אחרונים', visible: true, size: 'medium' },
-        { id: 'recentClients', name: 'לקוחות אחרונים', visible: true, size: 'medium' },
-        { id: 'upcomingTasks', name: 'משימות קרובות', visible: true, size: 'medium' },
-        { id: 'quoteStatus', name: 'הצעות מחיר', visible: true, size: 'medium' },
-        { id: 'timerLogs', name: 'לוגי זמן', visible: true, size: 'medium' },
-        { id: 'upcomingMeetings', name: 'פגישות קרובות', visible: true, size: 'medium' }
-      ];
-    } catch {
-      return [
-        { id: 'stats', name: 'סטטיסטיקות', visible: true, size: 'full' },
-        { id: 'aiInsights', name: 'תובנות AI', visible: true, size: 'large' },
-        { id: 'projectsOverview', name: 'סקירת פרויקטים', visible: true, size: 'large' },
-        { id: 'recentProjects', name: 'פרויקטים אחרונים', visible: true, size: 'medium' },
-        { id: 'recentClients', name: 'לקוחות אחרונים', visible: true, size: 'medium' },
-        { id: 'upcomingTasks', name: 'משימות קרובות', visible: true, size: 'medium' },
-        { id: 'quoteStatus', name: 'הצעות מחיר', visible: true, size: 'medium' },
-        { id: 'timerLogs', name: 'לוגי זמן', visible: true, size: 'medium' },
-        { id: 'upcomingMeetings', name: 'פגישות קרובות', visible: true, size: 'medium' }
-      ];
-    }
-  });
+  const [dashboardCards, setDashboardCards] = useState([
+    { id: 'stats', name: 'סטטיסטיקות', visible: true, size: 'full' },
+    { id: 'aiInsights', name: 'תובנות AI', visible: true, size: 'large' },
+    { id: 'projectsOverview', name: 'סקירת פרויקטים', visible: true, size: 'large' },
+    { id: 'recentProjects', name: 'פרויקטים אחרונים', visible: true, size: 'medium' },
+    { id: 'recentClients', name: 'לקוחות אחרונים', visible: true, size: 'medium' },
+    { id: 'upcomingTasks', name: 'משימות קרובות', visible: true, size: 'medium' },
+    { id: 'quoteStatus', name: 'הצעות מחיר', visible: true, size: 'medium' },
+    { id: 'timerLogs', name: 'לוגי זמן', visible: true, size: 'medium' },
+    { id: 'upcomingMeetings', name: 'פגישות קרובות', visible: true, size: 'medium' }
+  ]);
 
   const getSizeClass = (size) => {
     const sizeMap = {
@@ -156,43 +139,17 @@ export default function Dashboard() {
     return sizeMap[size] || 'md:col-span-2';
   };
 
-  const [viewMode, setViewMode] = useState(() => {
-    try {
-      return localStorage.getItem('dashboard-view-mode') || 'grid-medium';
-    } catch {
-      return 'grid-medium';
-    }
-  });
+  const [viewMode, setViewMode] = useState('grid-medium');
 
-  const [compactHeaders, setCompactHeaders] = useState(() => {
-    try {
-      return localStorage.getItem('dashboard-compact-headers') === 'true';
-    } catch {
-      return false;
-    }
-  });
+  const [compactHeaders, setCompactHeaders] = useState(false);
 
-  const [expandedCards, setExpandedCards] = useState(() => {
-    try {
-      const saved = localStorage.getItem('dashboard-expanded-cards');
-      return saved ? JSON.parse(saved) : {
-        projects: true,
-        clients: true,
-        tasks: true,
-        quotes: true,
-        timeLogs: true,
-        meetings: true
-      };
-    } catch {
-      return {
-        projects: true,
-        clients: true,
-        tasks: true,
-        quotes: true,
-        timeLogs: true,
-        meetings: true
-      };
-    }
+  const [expandedCards, setExpandedCards] = useState({
+    projects: true,
+    clients: true,
+    tasks: true,
+    quotes: true,
+    timeLogs: true,
+    meetings: true
   });
 
   const [dashboardSettings, setDashboardSettings] = useState(() => {
@@ -222,29 +179,62 @@ export default function Dashboard() {
     }
   });
 
+  // Load dashboard preferences from database
   useEffect(() => {
-    try {
-      localStorage.setItem('dashboard-expanded-cards', JSON.stringify(expandedCards));
-    } catch (e) {
-      console.error('Error saving expanded cards:', e);
-    }
-  }, [expandedCards]);
+    const loadDashboardPrefs = async () => {
+      try {
+        const user = await base44.auth.me();
+        const userPrefs = await base44.entities.UserPreferences.filter({ user_email: user.email });
+        
+        if (userPrefs.length > 0 && userPrefs[0].dashboard_preferences) {
+          const prefs = userPrefs[0].dashboard_preferences;
+          if (prefs.viewMode) setViewMode(prefs.viewMode);
+          if (prefs.compactHeaders !== undefined) setCompactHeaders(prefs.compactHeaders);
+          if (prefs.expandedCards) setExpandedCards(prefs.expandedCards);
+          if (prefs.dashboardCards) setDashboardCards(prefs.dashboardCards);
+          if (prefs.useTabsLayout !== undefined) setUseTabsLayout(prefs.useTabsLayout);
+        }
+      } catch (e) {
+        console.error('Error loading dashboard preferences:', e);
+      }
+    };
+    
+    loadDashboardPrefs();
+  }, []);
 
+  // Save dashboard preferences to database
   useEffect(() => {
-    try {
-      localStorage.setItem('dashboard-view-mode', viewMode);
-    } catch (e) {
-      console.error('Error saving view mode:', e);
-    }
-  }, [viewMode]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('dashboard-compact-headers', compactHeaders.toString());
-    } catch (e) {
-      console.error('Error saving compact headers:', e);
-    }
-  }, [compactHeaders]);
+    const saveDashboardPrefs = async () => {
+      try {
+        const user = await base44.auth.me();
+        const existingPrefs = await base44.entities.UserPreferences.filter({ user_email: user.email });
+        
+        const dashboardPrefs = {
+          viewMode,
+          compactHeaders,
+          expandedCards,
+          dashboardCards,
+          useTabsLayout
+        };
+        
+        if (existingPrefs.length > 0) {
+          await base44.entities.UserPreferences.update(existingPrefs[0].id, {
+            dashboard_preferences: dashboardPrefs
+          });
+        } else {
+          await base44.entities.UserPreferences.create({
+            user_email: user.email,
+            dashboard_preferences: dashboardPrefs
+          });
+        }
+      } catch (e) {
+        console.error('Error saving dashboard preferences:', e);
+      }
+    };
+    
+    const timeoutId = setTimeout(saveDashboardPrefs, 1000);
+    return () => clearTimeout(timeoutId);
+  }, [viewMode, compactHeaders, expandedCards, dashboardCards, useTabsLayout]);
 
   const toggleCard = useCallback((cardName) => {
     setExpandedCards(prev => ({
@@ -938,11 +928,6 @@ export default function Dashboard() {
           cards={dashboardCards}
           onSave={(newCards) => {
             setDashboardCards(newCards);
-            try {
-              localStorage.setItem('dashboard-cards-order', JSON.stringify(newCards));
-            } catch (e) {
-              console.error('Error saving cards order:', e);
-            }
           }}
         />
       )}
