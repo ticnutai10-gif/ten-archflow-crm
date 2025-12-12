@@ -100,6 +100,17 @@ export default function Dashboard() {
     timerLogs: true,
     upcomingMeetings: true
   });
+  const [cardOrder, setCardOrder] = useState([
+    { id: 'stats', name: 'סטטיסטיקות' },
+    { id: 'aiInsights', name: 'תובנות AI' },
+    { id: 'projectsOverview', name: 'סקירת פרויקטים' },
+    { id: 'recentProjects', name: 'פרויקטים אחרונים' },
+    { id: 'recentClients', name: 'לקוחות אחרונים' },
+    { id: 'upcomingTasks', name: 'משימות קרובות' },
+    { id: 'quoteStatus', name: 'הצעות מחיר' },
+    { id: 'timerLogs', name: 'לוגי זמן' },
+    { id: 'upcomingMeetings', name: 'פגישות קרובות' }
+  ]);
 
   // Load preferences from database
   useEffect(() => {
@@ -113,6 +124,7 @@ export default function Dashboard() {
           if (p.viewMode) setViewMode(p.viewMode);
           if (p.expandedCards) setExpandedCards(p.expandedCards);
           if (p.visibleCards) setVisibleCards(p.visibleCards);
+          if (p.cardOrder) setCardOrder(p.cardOrder);
         }
       } catch (e) {
         console.error('Error loading preferences:', e);
@@ -129,7 +141,7 @@ export default function Dashboard() {
         const user = await base44.auth.me();
         const existing = await base44.entities.UserPreferences.filter({ user_email: user.email });
         
-        const prefs = { viewMode, expandedCards, visibleCards };
+        const prefs = { viewMode, expandedCards, visibleCards, cardOrder };
         
         if (existing.length > 0) {
           await base44.entities.UserPreferences.update(existing[0].id, {
@@ -148,7 +160,7 @@ export default function Dashboard() {
     
     const timeoutId = setTimeout(savePrefs, 500);
     return () => clearTimeout(timeoutId);
-  }, [viewMode, expandedCards, visibleCards]);
+  }, [viewMode, expandedCards, visibleCards, cardOrder]);
 
   const toggleCard = useCallback((cardName) => {
     setExpandedCards(prev => ({
@@ -449,180 +461,195 @@ export default function Dashboard() {
           )
         )}
 
-        {/* Cards Grid */}
-        <div className={getGridClass()} dir="rtl">
-          {/* AI Insights */}
-          {visibleCards.aiInsights && (
-            <div>
-              <AIInsightsPanel />
-            </div>
-          )}
+          {cardOrder.map((cardDef) => {
+            const cardId = cardDef.id;
+            
+            // Skip stats - rendered separately
+            if (cardId === 'stats' || !visibleCards[cardId]) return null;
 
-          {/* Projects Overview */}
-          {visibleCards.projectsOverview && (
-            <div>
-              <ProjectsOverview isExpanded={expandedCards.projectsOverview !== false} />
-            </div>
-          )}
+            // AI Insights
+            if (cardId === 'aiInsights') {
+              return <div key={cardId}><AIInsightsPanel /></div>;
+            }
 
-          {/* Recent Projects */}
-          {visibleCards.recentProjects && (
-            <Card className="bg-white shadow-md">
-              <CardHeader 
-                className="border-b cursor-pointer hover:bg-slate-50 transition-colors"
-                onClick={() => toggleCard('projects')}
-              >
-                <CardTitle className="flex items-center justify-between text-base">
-                  <span className="text-right">פרויקטים אחרונים</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-slate-500 text-sm">{recentProjects.length}</span>
-                    {expandedCards.projects ? (
-                      <ChevronUp className="w-5 h-5 text-slate-400" />
-                    ) : (
-                      <ChevronDown className="w-5 h-5 text-slate-400" />
-                    )}
-                  </div>
-                </CardTitle>
-              </CardHeader>
-              {expandedCards.projects && (
-                <CardContent className="p-0">
-                  <RecentProjects projects={recentProjects} isLoading={loading} onUpdate={loadDashboardData} />
-                </CardContent>
-              )}
-            </Card>
-          )}
+            // Projects Overview
+            if (cardId === 'projectsOverview') {
+              return <div key={cardId}><ProjectsOverview isExpanded={expandedCards.projectsOverview !== false} /></div>;
+            }
 
-          {/* Recent Clients */}
-          {visibleCards.recentClients && (
-            <Card className="bg-white shadow-md">
-              <CardHeader 
-                className="border-b cursor-pointer hover:bg-slate-50 transition-colors"
-                onClick={() => toggleCard('clients')}
-              >
-                <CardTitle className="flex items-center justify-between text-base">
-                  <span className="text-right">לקוחות אחרונים</span>
-                  {expandedCards.clients ? (
-                    <ChevronUp className="w-5 h-5 text-slate-400" />
-                  ) : (
-                    <ChevronDown className="w-5 h-5 text-slate-400" />
+            // Recent Projects
+            if (cardId === 'recentProjects') {
+              return (
+                <Card key={cardId} className="bg-white shadow-md">
+                  <CardHeader 
+                    className="border-b cursor-pointer hover:bg-slate-50 transition-colors"
+                    onClick={() => toggleCard('projects')}
+                  >
+                    <CardTitle className="flex items-center justify-between text-base">
+                      <span className="text-right">פרויקטים אחרונים</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-slate-500 text-sm">{recentProjects.length}</span>
+                        {expandedCards.projects ? (
+                          <ChevronUp className="w-5 h-5 text-slate-400" />
+                        ) : (
+                          <ChevronDown className="w-5 h-5 text-slate-400" />
+                        )}
+                      </div>
+                    </CardTitle>
+                  </CardHeader>
+                  {expandedCards.projects && (
+                    <CardContent className="p-0">
+                      <RecentProjects projects={recentProjects} isLoading={loading} onUpdate={loadDashboardData} />
+                    </CardContent>
                   )}
-                </CardTitle>
-              </CardHeader>
-              {expandedCards.clients && (
-                <CardContent className="p-0">
-                  <RecentClients isLoading={loading} />
-                </CardContent>
-              )}
-            </Card>
-          )}
+                </Card>
+              );
+            }
 
-          {/* Upcoming Tasks */}
-          {visibleCards.upcomingTasks && (
-            <Card className="bg-white shadow-md">
-              <CardHeader 
-                className="border-b cursor-pointer hover:bg-slate-50 transition-colors"
-                onClick={() => toggleCard('tasks')}
-              >
-                <CardTitle className="flex items-center justify-between text-base">
-                  <span className="text-right">משימות קרובות</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-slate-500 text-sm">{upcomingTasks.length}</span>
-                    {expandedCards.tasks ? (
-                      <ChevronUp className="w-5 h-5 text-slate-400" />
-                    ) : (
-                      <ChevronDown className="w-5 h-5 text-slate-400" />
-                    )}
-                  </div>
-                </CardTitle>
-              </CardHeader>
-              {expandedCards.tasks && (
-                <CardContent className="p-0">
-                  <UpcomingTasks tasks={upcomingTasks} isLoading={loading} onUpdate={loadDashboardData} clients={allClients} />
-                </CardContent>
-              )}
-            </Card>
-          )}
+            // Recent Clients
+            if (cardId === 'recentClients') {
+              return (
+                <Card key={cardId} className="bg-white shadow-md">
+                  <CardHeader 
+                    className="border-b cursor-pointer hover:bg-slate-50 transition-colors"
+                    onClick={() => toggleCard('clients')}
+                  >
+                    <CardTitle className="flex items-center justify-between text-base">
+                      <span className="text-right">לקוחות אחרונים</span>
+                      {expandedCards.clients ? (
+                        <ChevronUp className="w-5 h-5 text-slate-400" />
+                      ) : (
+                        <ChevronDown className="w-5 h-5 text-slate-400" />
+                      )}
+                    </CardTitle>
+                  </CardHeader>
+                  {expandedCards.clients && (
+                    <CardContent className="p-0">
+                      <RecentClients isLoading={loading} />
+                    </CardContent>
+                  )}
+                </Card>
+              );
+            }
 
-          {/* Quotes */}
-          {visibleCards.quoteStatus && (
-            <Card className="bg-white shadow-md">
-              <CardHeader 
-                className="border-b cursor-pointer hover:bg-slate-50 transition-colors"
-                onClick={() => toggleCard('quotes')}
-              >
-                <CardTitle className="flex items-center justify-between text-base">
-                  <span className="text-right">הצעות מחיר</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-slate-500 text-sm">{quotes.length}</span>
-                    {expandedCards.quotes ? (
-                      <ChevronUp className="w-5 h-5 text-slate-400" />
-                    ) : (
-                      <ChevronDown className="w-5 h-5 text-slate-400" />
-                    )}
-                  </div>
-                </CardTitle>
-              </CardHeader>
-              {expandedCards.quotes && (
-                <CardContent className="p-0">
-                  <QuoteStatus quotes={quotes} isLoading={loading} clients={allClients} onUpdate={loadDashboardData} />
-                </CardContent>
-              )}
-            </Card>
-          )}
+            // Upcoming Tasks
+            if (cardId === 'upcomingTasks') {
+              return (
+                <Card key={cardId} className="bg-white shadow-md">
+                  <CardHeader 
+                    className="border-b cursor-pointer hover:bg-slate-50 transition-colors"
+                    onClick={() => toggleCard('tasks')}
+                  >
+                    <CardTitle className="flex items-center justify-between text-base">
+                      <span className="text-right">משימות קרובות</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-slate-500 text-sm">{upcomingTasks.length}</span>
+                        {expandedCards.tasks ? (
+                          <ChevronUp className="w-5 h-5 text-slate-400" />
+                        ) : (
+                          <ChevronDown className="w-5 h-5 text-slate-400" />
+                        )}
+                      </div>
+                    </CardTitle>
+                  </CardHeader>
+                  {expandedCards.tasks && (
+                    <CardContent className="p-0">
+                      <UpcomingTasks tasks={upcomingTasks} isLoading={loading} onUpdate={loadDashboardData} clients={allClients} />
+                    </CardContent>
+                  )}
+                </Card>
+              );
+            }
 
-          {/* Time Logs */}
-          {visibleCards.timerLogs && (
-            <Card className="bg-white shadow-md">
-              <CardHeader 
-                className="border-b cursor-pointer hover:bg-slate-50 transition-colors"
-                onClick={() => toggleCard('timeLogs')}
-              >
-                <CardTitle className="flex items-center justify-between text-base">
-                  <span className="text-right">לוגי זמן</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-slate-500 text-sm">{timeLogs.length}</span>
-                    {expandedCards.timeLogs ? (
-                      <ChevronUp className="w-5 h-5 text-slate-400" />
-                    ) : (
-                      <ChevronDown className="w-5 h-5 text-slate-400" />
-                    )}
-                  </div>
-                </CardTitle>
-              </CardHeader>
-              {expandedCards.timeLogs && (
-                <CardContent className="p-0">
-                  <TimerLogs timeLogs={timeLogs} isLoading={loading} onUpdate={loadDashboardData} clients={allClients} />
-                </CardContent>
-              )}
-            </Card>
-          )}
+            // Quote Status
+            if (cardId === 'quoteStatus') {
+              return (
+                <Card key={cardId} className="bg-white shadow-md">
+                  <CardHeader 
+                    className="border-b cursor-pointer hover:bg-slate-50 transition-colors"
+                    onClick={() => toggleCard('quotes')}
+                  >
+                    <CardTitle className="flex items-center justify-between text-base">
+                      <span className="text-right">הצעות מחיר</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-slate-500 text-sm">{quotes.length}</span>
+                        {expandedCards.quotes ? (
+                          <ChevronUp className="w-5 h-5 text-slate-400" />
+                        ) : (
+                          <ChevronDown className="w-5 h-5 text-slate-400" />
+                        )}
+                      </div>
+                    </CardTitle>
+                  </CardHeader>
+                  {expandedCards.quotes && (
+                    <CardContent className="p-0">
+                      <QuoteStatus quotes={quotes} isLoading={loading} clients={allClients} onUpdate={loadDashboardData} />
+                    </CardContent>
+                  )}
+                </Card>
+              );
+            }
 
-          {/* Upcoming Meetings */}
-          {visibleCards.upcomingMeetings && (
-            <Card className="bg-white shadow-md">
-              <CardHeader 
-                className="border-b cursor-pointer hover:bg-slate-50 transition-colors"
-                onClick={() => toggleCard('meetings')}
-              >
-                <CardTitle className="flex items-center justify-between text-base">
-                  <span className="text-right">פגישות קרובות</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-slate-500 text-sm">{upcomingMeetings.length}</span>
-                    {expandedCards.meetings ? (
-                      <ChevronUp className="w-5 h-5 text-slate-400" />
-                    ) : (
-                      <ChevronDown className="w-5 h-5 text-slate-400" />
-                    )}
-                  </div>
-                </CardTitle>
-              </CardHeader>
-              {expandedCards.meetings && (
-                <CardContent className="p-0">
-                  <UpcomingMeetings meetings={upcomingMeetings} isLoading={loading} onUpdate={loadDashboardData} clients={allClients} />
-                </CardContent>
-              )}
-            </Card>
-          )}
+            // Timer Logs
+            if (cardId === 'timerLogs') {
+              return (
+                <Card key={cardId} className="bg-white shadow-md">
+                  <CardHeader 
+                    className="border-b cursor-pointer hover:bg-slate-50 transition-colors"
+                    onClick={() => toggleCard('timeLogs')}
+                  >
+                    <CardTitle className="flex items-center justify-between text-base">
+                      <span className="text-right">לוגי זמן</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-slate-500 text-sm">{timeLogs.length}</span>
+                        {expandedCards.timeLogs ? (
+                          <ChevronUp className="w-5 h-5 text-slate-400" />
+                        ) : (
+                          <ChevronDown className="w-5 h-5 text-slate-400" />
+                        )}
+                      </div>
+                    </CardTitle>
+                  </CardHeader>
+                  {expandedCards.timeLogs && (
+                    <CardContent className="p-0">
+                      <TimerLogs timeLogs={timeLogs} isLoading={loading} onUpdate={loadDashboardData} clients={allClients} />
+                    </CardContent>
+                  )}
+                </Card>
+              );
+            }
+
+            // Upcoming Meetings
+            if (cardId === 'upcomingMeetings') {
+              return (
+                <Card key={cardId} className="bg-white shadow-md">
+                  <CardHeader 
+                    className="border-b cursor-pointer hover:bg-slate-50 transition-colors"
+                    onClick={() => toggleCard('meetings')}
+                  >
+                    <CardTitle className="flex items-center justify-between text-base">
+                      <span className="text-right">פגישות קרובות</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-slate-500 text-sm">{upcomingMeetings.length}</span>
+                        {expandedCards.meetings ? (
+                          <ChevronUp className="w-5 h-5 text-slate-400" />
+                        ) : (
+                          <ChevronDown className="w-5 h-5 text-slate-400" />
+                        )}
+                      </div>
+                    </CardTitle>
+                  </CardHeader>
+                  {expandedCards.meetings && (
+                    <CardContent className="p-0">
+                      <UpcomingMeetings meetings={upcomingMeetings} isLoading={loading} onUpdate={loadDashboardData} clients={allClients} />
+                    </CardContent>
+                  )}
+                </Card>
+              );
+            }
+
+            return null;
+          })}
         </div>
       </div>
 
@@ -632,8 +659,10 @@ export default function Dashboard() {
           open={showCustomizer}
           onClose={() => setShowCustomizer(false)}
           visibleCards={visibleCards}
-          onSave={(newVisibleCards) => {
-            setVisibleCards(newVisibleCards);
+          cardOrder={cardOrder}
+          onSave={({ visibleCards: newVisible, cardOrder: newOrder }) => {
+            setVisibleCards(newVisible);
+            setCardOrder(newOrder);
           }}
         />
       )}
