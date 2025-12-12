@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,7 +13,7 @@ const statusColors = {
   'פגה תוקף': 'bg-slate-100 text-slate-800 border-slate-200'
 };
 
-export default function QuoteStatus({ quotes, isLoading }) {
+export default function QuoteStatus({ quotes, isLoading, clients = [], onUpdate }) {
   const formatAmount = (amount) => {
     return new Intl.NumberFormat('he-IL', { 
       style: 'currency', 

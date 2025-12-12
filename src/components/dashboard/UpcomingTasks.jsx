@@ -259,5 +259,21 @@ export default function UpcomingTasks({ tasks = [], isLoading, onUpdate }) {
         </Link>
       </div>
     </div>
+
+    {/* Add Task Dialog */}
+    {showAddDialog && (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <TaskForm
+          clients={clients}
+          onSubmit={async (data) => {
+            await Task.create(data);
+            setShowAddDialog(false);
+            onUpdate && onUpdate();
+          }}
+          onCancel={() => setShowAddDialog(false)}
+        />
+      </div>
+    )}
+    </>
   );
 }

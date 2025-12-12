@@ -52,7 +52,7 @@ const getDateLabel = (dateString) => {
   }
 };
 
-export default function UpcomingMeetings({ meetings, isLoading, onUpdate }) {
+export default function UpcomingMeetings({ meetings, isLoading, onUpdate, clients = [] }) {
   const [editingMeeting, setEditingMeeting] = useState(null);
   const [formData, setFormData] = useState({});
   const [saving, setSaving] = useState(false);

@@ -659,16 +659,16 @@ export default function Dashboard() {
                   return <RecentProjects projects={recentProjects} isLoading={loading} onUpdate={loadDashboardData} />;
                 }
                 if (tabId === 'tasks') {
-                  return <UpcomingTasks tasks={upcomingTasks} isLoading={loading} onUpdate={loadDashboardData} />;
+                  return <UpcomingTasks tasks={upcomingTasks} isLoading={loading} onUpdate={loadDashboardData} clients={allClients} />;
                 }
                 if (tabId === 'timeLogs') {
                   return <TimerLogs timeLogs={timeLogs} isLoading={loading} onUpdate={loadDashboardData} clients={allClients} />;
                 }
                 if (tabId === 'meetings') {
-                  return <UpcomingMeetings meetings={upcomingMeetings} isLoading={loading} onUpdate={loadDashboardData} />;
+                  return <UpcomingMeetings meetings={upcomingMeetings} isLoading={loading} onUpdate={loadDashboardData} clients={allClients} />;
                 }
                 if (tabId === 'quotes') {
-                  return <QuoteStatus quotes={quotes} isLoading={loading} />;
+                  return <QuoteStatus quotes={quotes} isLoading={loading} clients={allClients} onUpdate={loadDashboardData} />;
                 }
                 if (tabId === 'analytics') {
                   return <AnalyticsView clients={allClients} projects={allProjects} tasks={allTasks} quotes={quotes} />;
@@ -825,7 +825,7 @@ export default function Dashboard() {
                   </CardHeader>
                   {expandedCards.tasks && (
                     <CardContent className="p-0">
-                      <UpcomingTasks tasks={upcomingTasks} isLoading={loading} onUpdate={loadDashboardData} />
+                      <UpcomingTasks tasks={upcomingTasks} isLoading={loading} onUpdate={loadDashboardData} clients={allClients} />
                     </CardContent>
                   )}
                 </Card>
@@ -855,7 +855,7 @@ export default function Dashboard() {
                     </CardHeader>
                     {expandedCards.quotes && (
                       <CardContent className="p-0">
-                        <QuoteStatus quotes={quotes} isLoading={loading} />
+                        <QuoteStatus quotes={quotes} isLoading={loading} clients={allClients} onUpdate={loadDashboardData} />
                       </CardContent>
                     )}
                   </Card>
@@ -915,7 +915,7 @@ export default function Dashboard() {
                     </CardHeader>
                     {expandedCards.meetings && (
                       <CardContent className="p-0">
-                        <UpcomingMeetings meetings={upcomingMeetings} isLoading={loading} onUpdate={loadDashboardData} />
+                        <UpcomingMeetings meetings={upcomingMeetings} isLoading={loading} onUpdate={loadDashboardData} clients={allClients} />
                       </CardContent>
                     )}
                   </Card>
