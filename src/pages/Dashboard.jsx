@@ -129,16 +129,23 @@ export default function Dashboard() {
         const user = await base44.auth.me();
         const userPrefs = await base44.entities.UserPreferences.filter({ user_email: user.email });
         
+        console.log('📂 [Dashboard] Loading preferences for:', user.email);
+        console.log('📂 [Dashboard] Found preferences:', userPrefs);
+        
         if (userPrefs.length > 0 && userPrefs[0].dashboard_preferences) {
           const p = userPrefs[0].dashboard_preferences;
+          console.log('✅ [Dashboard] Applying preferences:', p);
+          
           if (p.viewMode) setViewMode(p.viewMode);
           if (p.expandedCards) setExpandedCards(p.expandedCards);
           if (p.visibleCards) setVisibleCards(p.visibleCards);
           if (p.cardOrder) setCardOrder(p.cardOrder);
           if (p.savedLayouts) setSavedLayouts(p.savedLayouts);
+        } else {
+          console.log('ℹ️ [Dashboard] No preferences found, using defaults');
         }
       } catch (e) {
-        console.error('Error loading preferences:', e);
+        console.error('❌ [Dashboard] Error loading preferences:', e);
       }
     };
     
@@ -154,18 +161,22 @@ export default function Dashboard() {
         
         const prefs = { viewMode, expandedCards, visibleCards, cardOrder, savedLayouts };
         
+        console.log('💾 [Dashboard] Saving preferences:', prefs);
+        
         if (existing.length > 0) {
           await base44.entities.UserPreferences.update(existing[0].id, {
             dashboard_preferences: prefs
           });
+          console.log('✅ [Dashboard] Preferences updated');
         } else {
           await base44.entities.UserPreferences.create({
             user_email: user.email,
             dashboard_preferences: prefs
           });
+          console.log('✅ [Dashboard] Preferences created');
         }
       } catch (e) {
-        console.error('Error saving preferences:', e);
+        console.error('❌ [Dashboard] Error saving preferences:', e);
       }
     };
     
