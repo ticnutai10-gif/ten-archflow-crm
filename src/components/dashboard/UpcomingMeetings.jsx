@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { Calendar, Clock, MapPin, Users, Video, Phone, ExternalLink, Edit, Trash2, Bell, Mail, X } from "lucide-react";
+import { Calendar, Clock, MapPin, Users, Video, Phone, ExternalLink, Edit, Trash2, Bell, Mail, X, Plus } from "lucide-react";
 import { format, isToday, isTomorrow } from "date-fns";
 import { he } from "date-fns/locale";
 import { base44 } from "@/api/base44Client";
@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import MeetingForm from "@/components/dashboard/MeetingForm";
 
 const statusColors = {
   'מתוכננת': 'bg-blue-50 text-blue-700 border-blue-200',
@@ -54,6 +55,7 @@ const getDateLabel = (dateString) => {
 
 export default function UpcomingMeetings({ meetings, isLoading, onUpdate, clients = [] }) {
   const [editingMeeting, setEditingMeeting] = useState(null);
+  const [showAddDialog, setShowAddDialog] = useState(false);
   const [formData, setFormData] = useState({});
   const [saving, setSaving] = useState(false);
 
@@ -148,11 +150,21 @@ export default function UpcomingMeetings({ meetings, isLoading, onUpdate, client
                 {meetings.length} פגישות קרובות
               </span>
             </div>
-            <Link to={createPageUrl("Meetings")}>
-              <Button variant="ghost" size="sm" className="text-xs">
-                צפה בהכל →
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={() => setShowAddDialog(true)}
+                size="sm"
+                className="h-8 w-8 p-0 bg-blue-600 hover:bg-blue-700 text-white shadow-md"
+                title="הוסף פגישה"
+              >
+                <Plus className="w-4 h-4" />
               </Button>
-            </Link>
+              <Link to={createPageUrl("Meetings")}>
+                <Button variant="ghost" size="sm" className="text-xs">
+                  צפה בהכל →
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
 
@@ -398,6 +410,21 @@ export default function UpcomingMeetings({ meetings, isLoading, onUpdate, client
             </div>
           </DialogContent>
         </Dialog>
+      )}
+
+      {/* Add Meeting Dialog */}
+      {showAddDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <MeetingForm
+            clients={clients}
+            onSubmit={async (data) => {
+              await base44.entities.Meeting.create(data);
+              setShowAddDialog(false);
+              onUpdate && onUpdate();
+            }}
+            onCancel={() => setShowAddDialog(false)}
+          />
+        </div>
       )}
     </>
   );
