@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, Suspense } from "react";
 import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -591,7 +591,7 @@ export default function Dashboard() {
         )}
 
         {/* Cards Grid */}
-        <React.Suspense fallback={<div className="text-center py-8"><div className="animate-spin w-8 h-8 border-4 border-slate-300 border-t-blue-600 rounded-full mx-auto"></div></div>}>
+        <Suspense fallback={<div className="text-center py-8"><div className="animate-spin w-8 h-8 border-4 border-slate-300 border-t-blue-600 rounded-full mx-auto"></div></div>}>
         <div 
           className={focusedCard ? 'fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-6' : getGridClass()} 
           dir="rtl"
@@ -880,7 +880,7 @@ export default function Dashboard() {
             return null;
           })}
         </div>
-        </React.Suspense>
+        </Suspense>
       </div>
 
       {/* Customizer Dialog */}
