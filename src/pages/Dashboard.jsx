@@ -70,6 +70,7 @@ const VIEW_MODES = [
 export default function Dashboard() {
   const isMobile = useIsMobile();
   const [loading, setLoading] = useState(true);
+  const [prefsLoaded, setPrefsLoaded] = useState(false);
   
   // Data
   const [stats, setStats] = useState({ clients: 0, projects: 0, quotes: 0, tasks: 0 });
@@ -146,14 +147,22 @@ export default function Dashboard() {
         }
       } catch (e) {
         console.error('❌ [Dashboard] Error loading preferences:', e);
+      } finally {
+        setPrefsLoaded(true);
+        console.log('🏁 [Dashboard] Preferences loading complete');
       }
     };
     
     loadPrefs();
   }, []);
 
-  // Save preferences to database (debounced)
+  // Save preferences to database (debounced) - only after initial load
   useEffect(() => {
+    if (!prefsLoaded) {
+      console.log('⏸️ [Dashboard] Skipping save - preferences not loaded yet');
+      return;
+    }
+    
     const savePrefs = async () => {
       try {
         const user = await base44.auth.me();
@@ -167,13 +176,13 @@ export default function Dashboard() {
           await base44.entities.UserPreferences.update(existing[0].id, {
             dashboard_preferences: prefs
           });
-          console.log('✅ [Dashboard] Preferences updated');
+          console.log('✅ [Dashboard] Preferences updated in DB');
         } else {
           await base44.entities.UserPreferences.create({
             user_email: user.email,
             dashboard_preferences: prefs
           });
-          console.log('✅ [Dashboard] Preferences created');
+          console.log('✅ [Dashboard] Preferences created in DB');
         }
       } catch (e) {
         console.error('❌ [Dashboard] Error saving preferences:', e);
@@ -182,7 +191,7 @@ export default function Dashboard() {
     
     const timeoutId = setTimeout(savePrefs, 500);
     return () => clearTimeout(timeoutId);
-  }, [viewMode, expandedCards, visibleCards, cardOrder, savedLayouts]);
+  }, [viewMode, expandedCards, visibleCards, cardOrder, savedLayouts, prefsLoaded]);
 
   const toggleCard = useCallback((cardName) => {
     setExpandedCards(prev => ({
