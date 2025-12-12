@@ -123,33 +123,50 @@ export default function Dashboard() {
     { id: 'upcomingMeetings', name: 'פגישות קרובות' }
   ]);
 
-  // Load preferences from database
+  // Load preferences from localStorage immediately, then sync with database
   useEffect(() => {
     const loadPrefs = async () => {
       try {
+        // Load from localStorage immediately (synchronous, fast)
+        const cached = localStorage.getItem('dashboard_preferences');
+        if (cached) {
+          try {
+            const p = JSON.parse(cached);
+            if (p.viewMode) setViewMode(p.viewMode);
+            if (p.expandedCards) setExpandedCards(p.expandedCards);
+            if (p.visibleCards) setVisibleCards(p.visibleCards);
+            if (p.cardOrder) setCardOrder(p.cardOrder);
+            if (p.savedLayouts) setSavedLayouts(p.savedLayouts);
+            console.log('⚡ [Dashboard] Loaded from cache instantly');
+          } catch (e) {
+            console.warn('Failed to parse cached preferences');
+          }
+        }
+        
+        setPrefsLoaded(true);
+        
+        // Then sync with database in background
         const user = await base44.auth.me();
         const userPrefs = await base44.entities.UserPreferences.filter({ user_email: user.email });
         
-        console.log('📂 [Dashboard] Loading preferences for:', user.email);
-        console.log('📂 [Dashboard] Found preferences:', userPrefs);
-        
         if (userPrefs.length > 0 && userPrefs[0].dashboard_preferences) {
           const p = userPrefs[0].dashboard_preferences;
-          console.log('✅ [Dashboard] Applying preferences:', p);
           
+          // Update localStorage cache
+          localStorage.setItem('dashboard_preferences', JSON.stringify(p));
+          
+          // Update state if different from cache
           if (p.viewMode) setViewMode(p.viewMode);
           if (p.expandedCards) setExpandedCards(p.expandedCards);
           if (p.visibleCards) setVisibleCards(p.visibleCards);
           if (p.cardOrder) setCardOrder(p.cardOrder);
           if (p.savedLayouts) setSavedLayouts(p.savedLayouts);
-        } else {
-          console.log('ℹ️ [Dashboard] No preferences found, using defaults');
+          
+          console.log('🔄 [Dashboard] Synced from database');
         }
       } catch (e) {
         console.error('❌ [Dashboard] Error loading preferences:', e);
-      } finally {
         setPrefsLoaded(true);
-        console.log('🏁 [Dashboard] Preferences loading complete');
       }
     };
     
@@ -159,30 +176,29 @@ export default function Dashboard() {
   // Save preferences to database (debounced) - only after initial load
   useEffect(() => {
     if (!prefsLoaded) {
-      console.log('⏸️ [Dashboard] Skipping save - preferences not loaded yet');
       return;
     }
     
     const savePrefs = async () => {
       try {
-        const user = await base44.auth.me();
-        const existing = await base44.entities.UserPreferences.filter({ user_email: user.email });
-        
         const prefs = { viewMode, expandedCards, visibleCards, cardOrder, savedLayouts };
         
-        console.log('💾 [Dashboard] Saving preferences:', prefs);
+        // Save to localStorage immediately
+        localStorage.setItem('dashboard_preferences', JSON.stringify(prefs));
+        
+        // Save to database in background
+        const user = await base44.auth.me();
+        const existing = await base44.entities.UserPreferences.filter({ user_email: user.email });
         
         if (existing.length > 0) {
           await base44.entities.UserPreferences.update(existing[0].id, {
             dashboard_preferences: prefs
           });
-          console.log('✅ [Dashboard] Preferences updated in DB');
         } else {
           await base44.entities.UserPreferences.create({
             user_email: user.email,
             dashboard_preferences: prefs
           });
-          console.log('✅ [Dashboard] Preferences created in DB');
         }
       } catch (e) {
         console.error('❌ [Dashboard] Error saving preferences:', e);
@@ -329,18 +345,6 @@ export default function Dashboard() {
     if (viewMode === 'list') return 'flex flex-col gap-4';
     return 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6';
   };
-
-  // Show loading state until preferences are loaded
-  if (!prefsLoaded) {
-    return (
-      <div className={`${isMobile ? 'p-3 pb-24' : 'p-6'} min-h-screen flex items-center justify-center`} dir="rtl" style={{ backgroundColor: '#FCF6E3' }}>
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-slate-300 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-slate-600 text-lg">טוען העדפות...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className={`${isMobile ? 'p-3 pb-24' : 'p-6'} min-h-screen`} dir="rtl" style={{ backgroundColor: '#FCF6E3' }}>
