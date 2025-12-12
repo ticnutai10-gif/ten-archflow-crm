@@ -330,6 +330,18 @@ export default function Dashboard() {
     return 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6';
   };
 
+  // Show loading state until preferences are loaded
+  if (!prefsLoaded) {
+    return (
+      <div className={`${isMobile ? 'p-3 pb-24' : 'p-6'} min-h-screen flex items-center justify-center`} dir="rtl" style={{ backgroundColor: '#FCF6E3' }}>
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-slate-300 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-slate-600 text-lg">טוען העדפות...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={`${isMobile ? 'p-3 pb-24' : 'p-6'} min-h-screen`} dir="rtl" style={{ backgroundColor: '#FCF6E3' }}>
       <div className="max-w-7xl mx-auto" dir="rtl">
