@@ -21,32 +21,7 @@ export default function UpcomingTasks({ tasks = [], isLoading, onUpdate, clients
   const [selectedIds, setSelectedIds] = useState([]);
   const [showAddDialog, setShowAddDialog] = useState(false);
 
-  useEffect(() => {
-    console.log('🔍 [UpcomingTasks] Received tasks:', {
-      tasksCount: tasks?.length,
-      tasksType: typeof tasks,
-      isArray: Array.isArray(tasks),
-      firstTask: tasks?.[0],
-      allTasks: tasks
-    });
 
-    if (tasks && Array.isArray(tasks)) {
-      tasks.forEach((task, index) => {
-        if (!task) {
-          console.error(`❌ [UpcomingTasks] Task at index ${index} is null/undefined!`);
-        } else if (typeof task !== 'object') {
-          console.error(`❌ [UpcomingTasks] Task at index ${index} is not an object:`, task);
-        } else {
-          console.log(`✅ [UpcomingTasks] Task ${index}:`, {
-            id: task.id,
-            title: task.title,
-            hasTitle: 'title' in task,
-            keys: Object.keys(task)
-          });
-        }
-      });
-    }
-  }, [tasks]);
 
   const toggleSelect = (id) => {
     setSelectedIds(prev => 
@@ -65,7 +40,6 @@ export default function UpcomingTasks({ tasks = [], isLoading, onUpdate, clients
       toast.success('המשימות נמחקו בהצלחה');
       onUpdate?.();
     } catch (error) {
-      console.error('❌ [UpcomingTasks] Error deleting tasks:', error);
       toast.error('שגיאה במחיקת המשימות');
     }
   };
@@ -79,7 +53,6 @@ export default function UpcomingTasks({ tasks = [], isLoading, onUpdate, clients
       toast.success('המשימה נמחקה בהצלחה');
       onUpdate?.();
     } catch (error) {
-      console.error('❌ [UpcomingTasks] Error deleting task:', error);
       toast.error('שגיאה במחיקת המשימה');
     }
   };
@@ -100,13 +73,11 @@ export default function UpcomingTasks({ tasks = [], isLoading, onUpdate, clients
       if (diffDays === 1) return "מחר";
       return format(date, 'dd/MM', { locale: he });
     } catch (error) {
-      console.error('❌ [UpcomingTasks] Error processing date:', error, dateString);
       return null;
     }
   };
 
   if (isLoading) {
-    console.log('⏳ [UpcomingTasks] Loading...');
     return (
       <div className="p-4 space-y-3">
         {[1, 2, 3].map(i => (
@@ -117,7 +88,6 @@ export default function UpcomingTasks({ tasks = [], isLoading, onUpdate, clients
   }
 
   if (!tasks || tasks.length === 0) {
-    console.log('📭 [UpcomingTasks] No tasks to display');
     return (
       <div className="p-8 text-center text-slate-500">
         <p className="mb-4">אין משימות קרובות</p>
@@ -129,7 +99,6 @@ export default function UpcomingTasks({ tasks = [], isLoading, onUpdate, clients
   }
 
   const validTasks = tasks.filter(t => t && typeof t === 'object');
-  console.log('📊 [UpcomingTasks] Valid tasks:', validTasks.length, 'out of', tasks.length);
 
   return (
     <>

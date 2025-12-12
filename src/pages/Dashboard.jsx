@@ -42,22 +42,22 @@ import {
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 
-import RecentProjects from "../components/dashboard/RecentProjects";
-import RecentClients from "../components/dashboard/RecentClients";
-import UpcomingTasks from "../components/dashboard/UpcomingTasks";
-import QuoteStatus from "../components/dashboard/QuoteStatus";
-import TimerLogs from "../components/dashboard/TimerLogs";
-import ReminderManager from "../components/reminders/ReminderManager";
-import DashboardSettings from "../components/dashboard/DashboardSettings";
-import UpcomingMeetings from "../components/dashboard/UpcomingMeetings";
-import ProjectsOverview from "../components/dashboard/ProjectsOverview";
-import DashboardCustomizer from "../components/dashboard/DashboardCustomizer";
-import KanbanView from "../components/dashboard/KanbanView";
-import TimelineView from "../components/dashboard/TimelineView";
-import AnalyticsView from "../components/dashboard/AnalyticsView";
-import HeatmapView from "../components/dashboard/HeatmapView";
-import TrendsView from "../components/dashboard/TrendsView";
-import AIInsightsPanel from "../components/ai/AIInsightsPanel";
+const RecentProjects = React.lazy(() => import("../components/dashboard/RecentProjects"));
+const RecentClients = React.lazy(() => import("../components/dashboard/RecentClients"));
+const UpcomingTasks = React.lazy(() => import("../components/dashboard/UpcomingTasks"));
+const QuoteStatus = React.lazy(() => import("../components/dashboard/QuoteStatus"));
+const TimerLogs = React.lazy(() => import("../components/dashboard/TimerLogs"));
+const ReminderManager = React.lazy(() => import("../components/reminders/ReminderManager"));
+const DashboardSettings = React.lazy(() => import("../components/dashboard/DashboardSettings"));
+const UpcomingMeetings = React.lazy(() => import("../components/dashboard/UpcomingMeetings"));
+const ProjectsOverview = React.lazy(() => import("../components/dashboard/ProjectsOverview"));
+const DashboardCustomizer = React.lazy(() => import("../components/dashboard/DashboardCustomizer"));
+const KanbanView = React.lazy(() => import("../components/dashboard/KanbanView"));
+const TimelineView = React.lazy(() => import("../components/dashboard/TimelineView"));
+const AnalyticsView = React.lazy(() => import("../components/dashboard/AnalyticsView"));
+const HeatmapView = React.lazy(() => import("../components/dashboard/HeatmapView"));
+const TrendsView = React.lazy(() => import("../components/dashboard/TrendsView"));
+const AIInsightsPanel = React.lazy(() => import("../components/ai/AIInsightsPanel"));
 import { useIsMobile } from "../components/utils/useMediaQuery";
 
 const VIEW_MODES = [
@@ -291,12 +291,13 @@ export default function Dashboard() {
       const validTasks = Array.isArray(tasksData) ? tasksData : [];
       const validTimeLogs = Array.isArray(myTimeLogs) ? myTimeLogs : [];
 
-      setStats({
+      const newStats = {
         clients: validClients.length,
         projects: validProjects.filter((p) => p?.status !== 'הושלם').length,
         quotes: validQuotes.filter((q) => q?.status === 'בהמתנה').length,
         tasks: validTasks.length
-      });
+      };
+      setStats(newStats);
 
       setRecentProjects(validProjects.slice(0, 5));
       setUpcomingTasks(validTasks.slice(0, 5));
@@ -309,7 +310,7 @@ export default function Dashboard() {
       setAllProjects(validProjects);
       setAllTasks(validTasks);
     } catch (error) {
-      console.error('Error loading dashboard data:', error);
+      // Error loading data
     }
     setLoading(false);
   }, []);
@@ -590,6 +591,7 @@ export default function Dashboard() {
         )}
 
         {/* Cards Grid */}
+        <React.Suspense fallback={<div className="text-center py-8"><div className="animate-spin w-8 h-8 border-4 border-slate-300 border-t-blue-600 rounded-full mx-auto"></div></div>}>
         <div 
           className={focusedCard ? 'fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-6' : getGridClass()} 
           dir="rtl"
@@ -878,6 +880,7 @@ export default function Dashboard() {
             return null;
           })}
         </div>
+        </React.Suspense>
       </div>
 
       {/* Customizer Dialog */}

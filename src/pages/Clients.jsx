@@ -135,13 +135,7 @@ export default function ClientsPage() {
   // Search highlight function
   const highlightText = useCallback((text, search) => {
     if (!search || !text) return text;
-
-    const parts = String(text).split(new RegExp(`(${search})`, 'gi'));
-    return parts.map((part, i) =>
-      part.toLowerCase() === search.toLowerCase()
-        ? <mark key={i} className="bg-yellow-200 px-1 rounded">{part}</mark>
-        : part
-    );
+    return text;
   }, []);
 
   // MOVED BEFORE useEffect that uses it
@@ -174,11 +168,6 @@ export default function ClientsPage() {
 
   useEffect(() => {
     if (!accessLoading) {
-      console.log('📊 [CLIENTS PAGE] Access loaded:', {
-        user: me?.email,
-        isAdmin,
-        canCreate: canCreateClient
-      });
       loadClients();
     }
   }, [accessLoading]);
@@ -214,61 +203,24 @@ export default function ClientsPage() {
 
     const clientId = urlParams.get("client_id");
     const clientName = urlParams.get("client_name");
-    const tab = urlParams.get("tab");
-
-    console.log('🔍 [CLIENTS PAGE] URL params detected:', {
-      open,
-      clientId,
-      clientName,
-      tab,
-      hasClients: clients.length
-    });
 
     let target = null;
     if (clientId) {
       target = clients.find((c) => String(c.id) === String(clientId));
-      console.log('🔍 [CLIENTS PAGE] Search by ID result:', target ? 'Found' : 'Not found');
     }
     if (!target && clientName) {
       target = clients.find((c) => c.name?.trim() === clientName.trim());
-      console.log('🔍 [CLIENTS PAGE] Search by name result:', target ? 'Found' : 'Not found');
     }
     if (target) {
-      console.log('✅ [CLIENTS PAGE] Opening client:', {
-        id: target.id,
-        name: target.name,
-        requestedTab: tab
-      });
-      // The tab is already in the URL, ClientDetails will read it directly
       setSelectedClient(target);
-    } else {
-      console.log('❌ [CLIENTS PAGE] No matching client found');
     }
   }, [clients]);
 
   const loadClients = async () => {
-    console.log('📄 [CLIENTS PAGE] 🔄 loadClients() called');
     setIsLoading(true);
     try {
-      console.log('📄 [CLIENTS PAGE] 📤 Fetching from server...');
       const clientsData = await base44.entities.Client.list('-created_date');
-      console.log('📄 [CLIENTS PAGE] 📥 Received from server:', {
-        count: clientsData.length,
-        firstClient: clientsData[0] ? {
-          name: clientsData[0].name,
-          stage: clientsData[0].stage
-        } : null
-      });
-
-      // ✅ סינון לפי הרשאות
-      console.log('📄 [CLIENTS PAGE] 🔍 Filtering clients...');
       const filteredData = filterClients(clientsData);
-      console.log('📄 [CLIENTS PAGE] ✅ After filtering:', {
-        total: clientsData.length,
-        filtered: filteredData.length,
-        userEmail: me?.email,
-        isAdmin
-      });
 
       // Clean and deduplicate clients
       const cleanedClients = filteredData.map((client) => {
@@ -295,46 +247,29 @@ export default function ClientsPage() {
         }
       }
 
-      console.log('📄 [CLIENTS PAGE] ✅ Setting clients state with', uniqueClients.length, 'items');
       setClients(uniqueClients);
-      console.log('📄 [CLIENTS PAGE] 💾 Clients state updated');
     } catch (error) {
-      console.error('📄 [CLIENTS PAGE] ❌ Error loading clients:', error);
       toast.error('שגיאה בטעינת לקוחות');
     }
     setIsLoading(false);
-    console.log('📄 [CLIENTS PAGE] ✅ loadClients() completed');
   };
 
   const handleSubmit = async (clientData) => {
     try {
-      console.log('Starting client submission...', clientData);
-
       if (editingClient) {
-        console.log('Updating existing client:', editingClient.id, 'with stage:', clientData.stage);
-        
-        // עדכן בשרת
         await base44.entities.Client.update(editingClient.id, clientData);
-        
-        // טען את הלקוח המעודכן מהשרת
         const updatedClient = await base44.entities.Client.get(editingClient.id);
-        console.log('✅ Client updated on server, reloaded:', updatedClient.name, 'Stage:', updatedClient.stage);
-
-        // שלח אירוע עם כל הנתונים המעודכנים מהשרת
+        
         try {
           window.dispatchEvent(new CustomEvent('client:updated', {
             detail: updatedClient
           }));
-          console.log('📢 Dispatched client:updated event with:', updatedClient.stage);
         } catch (e) {
-          console.warn('client:updated event dispatch failed', e);
+          // Event dispatch failed
         }
       } else {
-        console.log('Creating new client...');
         const created = await base44.entities.Client.create(clientData);
-        console.log('Client created successfully:', created);
 
-        // ✅ שיוך אוטומטי לעובד שיצר את הלקוח
         if (created?.id) {
           await autoAssignToCreator('client', created.id);
         }
@@ -344,19 +279,15 @@ export default function ClientsPage() {
             detail: created || clientData
           }));
         } catch (e) {
-          console.warn('client:created event dispatch failed', e);
+          // Event dispatch failed
         }
       }
 
       setShowForm(false);
       setEditingClient(null);
-
-      console.log('Reloading clients...');
       await loadClients();
-      console.log('Client submission completed successfully');
 
     } catch (error) {
-      console.error('Error saving client:', error);
       throw new Error(error.message || 'שגיאה בשמירת הלקוח');
     }
   };
@@ -569,31 +500,21 @@ export default function ClientsPage() {
   };
 
   const cleanAllNames = async () => {
-    console.log('🧹 [CLEAN NAMES] Starting clean process...');
-
     if (!confirm('האם לנקות את השמות של כל הלקוחות? פעולה זו תעדכן את כל הרשומות.')) {
-      console.log('🧹 [CLEAN NAMES] User cancelled');
       return;
     }
 
     setIsCleaningNames(true);
     try {
-      console.log('🧹 [CLEAN NAMES] Calling backend function...');
       const response = await base44.functions.invoke('cleanClientNames');
-      console.log('🧹 [CLEAN NAMES] Response:', response);
 
       if (response.data && response.data.success) {
-        console.log('✅ [CLEAN NAMES] Success:', response.data.message);
         toast.success(response.data.message);
-        console.log('🔄 [CLEAN NAMES] Reloading clients...');
         await loadClients();
-        console.log('✅ [CLEAN NAMES] Done!');
       } else {
-        console.error('❌ [CLEAN NAMES] Error:', response.data?.error);
         toast.error('שגיאה: ' + (response.data?.error || 'Unknown error'));
       }
     } catch (error) {
-      console.error('❌ [CLEAN NAMES] Exception:', error);
       toast.error('שגיאה בניקוי השמות: ' + error.message);
     } finally {
       setIsCleaningNames(false);
@@ -620,7 +541,7 @@ export default function ClientsPage() {
   };
 
 
-  console.log('🔵 [CLIENTS PAGE] Rendering, viewMode:', viewMode);
+
 
   // הצגת הודעה אם אין הרשאות
   if (accessLoading) {
@@ -912,10 +833,7 @@ export default function ClientsPage() {
           </DropdownMenu>
 
           <Button
-            onClick={() => {
-              console.log('🖱️ [UI] Clean Names button clicked!');
-              cleanAllNames();
-            }}
+            onClick={cleanAllNames}
             disabled={isCleaningNames}
             variant="outline"
             className="bg-background text-slate-800 px-4 py-2 text-sm font-medium rounded-xl inline-flex items-center justify-center gap-2 whitespace-nowrap ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-10 border-slate-200 hover:bg-slate-50">

@@ -235,10 +235,6 @@ function ColorPicker({ onApply, currentStyle = {}, onClose }) {
 }
 
 export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }) {
-  console.log('[ClientSpreadsheet] Props received:', { 
-    hasOnEdit: typeof onEdit === 'function',
-    hasOnView: typeof onView === 'function'
-  });
 
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [showUserPreferences, setShowUserPreferences] = useState(false);
@@ -309,7 +305,6 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
       try {
         const userSettings = await loadUserSettings('clients');
         if (userSettings && userSettings.order) {
-          console.log('📊 Loading saved columns from user settings:', userSettings);
           
           // Build columns ONLY from saved settings
           const restoredColumns = [];
@@ -445,24 +440,11 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
   }, []);
 
   useEffect(() => {
-    console.log('📊 [SPREADSHEET] 🔄 clients prop changed:', {
-      hasClients: !!clients,
-      count: clients?.length,
-      firstClient: clients?.[0] ? {
-        name: clients[0].name,
-        stage: clients[0].stage
-      } : null
-    });
-    
     if (!clients || clients.length === 0) {
-      console.log('📊 [SPREADSHEET] No clients, clearing local state');
       setLocalClients([]);
       return;
     }
-    
-    console.log('📊 [SPREADSHEET] Setting localClients with', clients.length, 'items');
     setLocalClients(clients);
-    console.log('✅ [SPREADSHEET] localClients updated');
   }, [clients]);
 
   // Listen for client updates - optimized
@@ -488,7 +470,6 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
       
       saveTimeoutRef.current = setTimeout(() => {
-        console.log('💾 Saving user settings to database (debounced)');
         saveUserSettings('clients', columns, cellStyles, showSubHeaders, subHeaders, stageOptions);
       }, 1000);
     }
@@ -496,7 +477,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
     return () => {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     };
-  }, [columns, cellStyles, showSubHeaders, subHeaders, settingsLoaded]);
+  }, [columns, cellStyles, showSubHeaders, subHeaders, settingsLoaded, stageOptions]);
 
   useEffect(() => {
     if (editingColumnKey && columnEditRef.current) {
@@ -570,7 +551,6 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
   const addPresetColumn = () => {
     const preset = PRESET_CLIENT_COLUMNS.find((p) => p.slug === presetToAdd);
     if (!preset) {
-      console.error('Preset not found:', presetToAdd);
       toast.error('לא נבחר סוג עמודה');
       return;
     }
@@ -578,7 +558,6 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
     const columnKey = `cf:${preset.slug}`;
 
     if (columns.some((col) => col.key === columnKey)) {
-      console.warn('Column already exists:', columnKey);
       toast.error('עמודה זו כבר קיימת בטבלה');
       return;
     }
@@ -642,7 +621,6 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
       toast.success('לקוח חדש נוסף בהצלחה');
       window.location.reload();
     } catch (error) {
-      console.error('Error adding client:', error);
       toast.error('שגיאה בהוספת לקוח: ' + error.message);
     }
   };
@@ -751,8 +729,6 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
         delete dataToSave.created_by;
 
         await base44.entities.Client.update(clientId, dataToSave);
-        
-        // Get updated client and dispatch event
         const refreshedClient = await base44.entities.Client.get(clientId);
         window.dispatchEvent(new CustomEvent('client:updated', {
           detail: refreshedClient
@@ -760,11 +736,10 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
         
         toast.success('התא עודכן');
       } catch (error) {
-        console.error('Error saving cell:', error);
         toast.error('שגיאה בשמירת התא');
       }
     } else {
-      toast.info('התא עודכן מקומית (שמירה אוטומטית כבויה)');
+      toast.info('התא עודכן מקומית');
     }
 
     if (autoCloseEdit) {
@@ -873,7 +848,6 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
       }));
       toast.success('העמודות מוזגו בהצלחה');
     } catch (error) {
-      console.error('Error saving merged data:', error);
       toast.error('שגיאה בשמירת נתונים ממוזגים: ' + error.message);
     }
 
@@ -1191,7 +1165,6 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
       await Client.update(clientId, dataToSave);
       toast.success('התא נוקה');
     } catch (error) {
-      console.error('Error deleting cell:', error);
       toast.error('שגיאה במחיקת התא');
     }
 
@@ -1272,7 +1245,6 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
       }));
       toast.success(`${cellsArray.length} תאים נוקו`);
     } catch (error) {
-      console.error('Error clearing cells:', error);
       toast.error('שגיאה בניקוי תאים');
     }
 
@@ -1368,7 +1340,6 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
       }));
       toast.success(`${cellsArray.length} תאים מולאו בערך "${fillValue}"`);
     } catch (error) {
-      console.error('Error filling cells:', error);
       toast.error('שגיאה במילוי תאים');
     }
 
@@ -2788,7 +2759,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                                 }}
                                 stageOptions={stageOptions}
                                 onDirectSave={async (stageValue) => {
-                                  console.log('🟣 [STAGE SAVE] Direct save called with:', stageValue);
+
                                   
                                   let updatedClient = { ...client };
                                   
@@ -2828,7 +2799,6 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                                     
                                     toast.success('✓ שלב עודכן');
                                   } catch (error) {
-                                    console.error('Error saving stage:', error);
                                     toast.error('שגיאה בשמירת השלב');
                                   }
                                 }}

@@ -65,36 +65,17 @@ function getDateLabel(dateString) {
   return format(date, 'dd/MM/yyyy', { locale: he });
 }
 
-// פונקציה לקבלת created_by מהלוג - תומך ב-created_by או created_by_id
 function getCreatedBy(log) {
-  const result = log.created_by || log.created_by_id || null;
-  console.log('🔍 [TimerLogs] getCreatedBy:', { 
-    logId: log.id, 
-    created_by: log.created_by, 
-    created_by_id: log.created_by_id,
-    result 
-  });
-  return result;
+  return log.created_by || log.created_by_id || null;
 }
 
-// פונקציה לבדוק אם זה מייל
 function isEmail(str) {
-  const result = str && typeof str === 'string' && str.includes('@');
-  console.log('📧 [TimerLogs] isEmail:', { str, result });
-  return result;
+  return str && typeof str === 'string' && str.includes('@');
 }
 
 import AddTimeLogDialog from "@/components/timelogs/AddTimeLogDialog";
 
 export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] }) {
-  console.log('🎬 [TimerLogs] Component rendered with:', {
-    timeLogs,
-    timeLogsType: typeof timeLogs,
-    isArray: Array.isArray(timeLogs),
-    timeLogsCount: timeLogs?.length || 0,
-    isLoading,
-    clientsCount: clients?.length || 0
-  });
 
   const [searchTerm, setSearchTerm] = useState("");
   const [clientFilter, setClientFilter] = useState("all");
@@ -135,52 +116,20 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
 
   // ✅ הגנה מלאה על timeLogs prop
   const safeTimeLogs = React.useMemo(() => {
-    if (!timeLogs) {
-      console.warn('⚠️ [TimerLogs] timeLogs is null/undefined');
-      return [];
-    }
-    if (!Array.isArray(timeLogs)) {
-      console.error('❌ [TimerLogs] timeLogs is not an array!', {
-        type: typeof timeLogs,
-        value: timeLogs
-      });
-      return [];
-    }
-    // Filter out invalid items
-    const valid = timeLogs.filter(log => log && typeof log === 'object');
-    console.log('✅ [TimerLogs] safeTimeLogs:', { 
-      original: timeLogs.length, 
-      valid: valid.length 
-    });
-    return valid;
+    if (!timeLogs || !Array.isArray(timeLogs)) return [];
+    return timeLogs.filter(log => log && typeof log === 'object');
   }, [timeLogs]);
 
   // טעינת מיפוי של user IDs למיילים ושמות
   useEffect(() => {
     const loadUserMapping = async () => {
-      console.log('👥 [TimerLogs] 🚀 Starting loadUserMapping...');
       try {
-        // קבלת כל ה-created_by הייחודיים
         const allCreatedBys = safeTimeLogs.map(log => getCreatedBy(log)).filter(Boolean);
         const uniqueCreatedBys = [...new Set(allCreatedBys)];
 
-        console.log('👥 [TimerLogs] Extracted user data:', {
-          totalLogs: safeTimeLogs.length,
-          allCreatedBys: allCreatedBys.length,
-          uniqueCreatedBys
-        });
+        if (uniqueCreatedBys.length === 0) return;
 
-        if (uniqueCreatedBys.length === 0) {
-          console.log('⚠️ [TimerLogs] No users to map');
-          return;
-        }
-
-        console.log('📞 [TimerLogs] Calling UserEntity.list()...');
         const users = await UserEntity.list();
-        console.log('✅ [TimerLogs] UserEntity.list() returned:', {
-          count: users.length,
-          users: users.map(u => ({ id: u.id, email: u.email, full_name: u.full_name }))
-        });
         
         // יצירת מיפוי - גם לפי ID וגם לפי מייל
         const mapping = {};
@@ -200,27 +149,15 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
             mapping[user.email] = userData;
           }
         });
-
-        console.log('✅ [TimerLogs] User mapping created:', {
-          mappingSize: Object.keys(mapping).length,
-          mapping
-        });
         
         setUserIdToDataMap(mapping);
       } catch (error) {
-        console.error('❌ [TimerLogs] Error loading user mapping:', {
-          error,
-          message: error.message,
-          stack: error.stack
-        });
+        // Error loading user mapping
       }
     };
 
     if (safeTimeLogs.length > 0) {
-      console.log('🎯 [TimerLogs] Triggering loadUserMapping (safeTimeLogs.length > 0)');
       loadUserMapping();
-    } else {
-      console.log('⏭️ [TimerLogs] Skipping loadUserMapping (no timeLogs)');
     }
   }, [safeTimeLogs]);
 
@@ -267,85 +204,48 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
   };
 
   const toggleSelect = (id) => {
-    console.log('☑️ [TimerLogs] toggleSelect:', { id, currentSelected: selectedIds });
-    setSelectedIds((prev) => {
-      const newSelected = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id];
-      console.log('☑️ [TimerLogs] toggleSelect → new selection:', newSelected);
-      return newSelected;
-    });
+    setSelectedIds((prev) => 
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
   };
 
   const selectAll = () => {
-    console.log('☑️ [TimerLogs] selectAll called');
     const all = filteredLogs.map(l => l.id);
     const isAllSelected = selectedIds.length === all.length && all.length > 0 && selectedIds.every(id => all.includes(id));
-    const newSelection = isAllSelected ? [] : all;
-    console.log('☑️ [TimerLogs] selectAll:', { all, isAllSelected, newSelection });
-    setSelectedIds(newSelection);
+    setSelectedIds(isAllSelected ? [] : all);
   };
 
   const deleteOne = async (id) => {
-    console.log('🗑️ [TimerLogs] deleteOne called:', { id });
-    if (!confirm("למחוק רישום זמן זה?")) {
-      console.log('🗑️ [TimerLogs] deleteOne cancelled by user');
-      return;
-    }
+    if (!confirm("למחוק רישום זמן זה?")) return;
     try {
-      console.log('🗑️ [TimerLogs] Calling TimeLog.delete...');
       await TimeLog.delete(id);
-      console.log('✅ [TimerLogs] TimeLog deleted successfully');
       onUpdate && onUpdate();
       setSelectedIds(prev => prev.filter(x => x !== id));
     } catch (error) {
-      console.error('❌ [TimerLogs] Error deleting TimeLog:', error);
+      // Error deleting
     }
   };
 
   const bulkDelete = async () => {
-    console.log('🗑️ [TimerLogs] bulkDelete called:', { selectedCount: selectedIds.length });
-    if (selectedIds.length === 0) {
-      console.log('🗑️ [TimerLogs] bulkDelete - no items selected');
-      return;
-    }
+    if (selectedIds.length === 0) return;
     
     const allSelectedInFilter = selectedIds.length === filteredLogs.length && 
                                 filteredLogs.length > 0 && 
                                 selectedIds.every(id => filteredLogs.map(l => l.id).includes(id));
 
-    let confirmationMessage = `למחוק ${selectedIds.length} רישומים?`;
-    if (allSelectedInFilter) {
-      confirmationMessage = `נבחרו כל ${selectedIds.length} הרישומים המוצגים למחיקה. להמשיך?`;
-    }
+    const confirmationMessage = allSelectedInFilter 
+      ? `נבחרו כל ${selectedIds.length} הרישומים המוצגים למחיקה. להמשיך?`
+      : `למחוק ${selectedIds.length} רישומים?`;
 
-    console.log('🗑️ [TimerLogs] bulkDelete confirmation:', { 
-      allSelectedInFilter, 
-      confirmationMessage 
-    });
+    if (!confirm(confirmationMessage)) return;
 
-    if (!confirm(confirmationMessage)) {
-      console.log('🗑️ [TimerLogs] bulkDelete cancelled by user');
-      return;
-    }
-
-    console.log('🗑️ [TimerLogs] Starting bulk delete...');
-    const results = await Promise.allSettled(selectedIds.map((id) => TimeLog.delete(id)));
-
-    results.forEach((result, index) => {
-      if (result.status === 'rejected') {
-        console.error(`❌ [TimerLogs] Failed to delete log ID ${selectedIds[index]}:`, result.reason);
-      } else {
-        console.log(`✅ [TimerLogs] Successfully deleted log ID ${selectedIds[index]}`);
-      }
-    });
-
+    await Promise.allSettled(selectedIds.map((id) => TimeLog.delete(id)));
     setSelectedIds([]);
     setSelectionMode(false);
     onUpdate && onUpdate();
-    console.log('✅ [TimerLogs] bulkDelete completed');
   };
 
   const openEdit = (log) => {
-    console.log('✏️ [TimerLogs] openEdit:', log);
     const hours = Math.floor((log.duration_seconds || 0) / 3600);
     const minutes = Math.floor(((log.duration_seconds || 0) % 3600) / 60);
     setEditing(log);
@@ -358,11 +258,7 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
   };
 
   const saveEdit = async () => {
-    console.log('💾 [TimerLogs] saveEdit called:', { editing, editData });
-    if (!editing) {
-      console.log('💾 [TimerLogs] saveEdit - no editing log');
-      return;
-    }
+    if (!editing) return;
     
     const hours = parseInt(editData.hours || '0', 10);
     const minutes = parseInt(editData.minutes || '0', 10);
@@ -374,36 +270,27 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
     }
     
     try {
-      console.log('💾 [TimerLogs] Calling TimeLog.update...');
       await TimeLog.update(editing.id, { 
         title: editData.title, 
         notes: editData.notes,
         duration_seconds: totalSeconds
       });
-      console.log('✅ [TimerLogs] TimeLog updated successfully');
       setEditing(null);
       onUpdate && onUpdate();
     } catch (error) {
-      console.error('❌ [TimerLogs] Error updating TimeLog:', error);
+      // Error updating
     }
   };
 
   // ✅ הגנה על uniqueClients
-  const uniqueClients = React.useMemo(() => {
-    const clients = [...new Set(safeTimeLogs.map(log => log?.client_name))].filter(Boolean);
-    console.log('👥 [TimerLogs] uniqueClients:', { count: clients.length, clients });
-    return clients;
-  }, [safeTimeLogs]);
+  const uniqueClients = React.useMemo(() => 
+    [...new Set(safeTimeLogs.map(log => log?.client_name))].filter(Boolean),
+    [safeTimeLogs]
+  );
 
   // קבלת רשימת משתמשים ייחודיים עם פרטים מלאים
   const allUsers = React.useMemo(() => {
-    console.log('👥 [TimerLogs] 🔄 Computing allUsers...');
     const uniqueIds = [...new Set(safeTimeLogs.map(log => getCreatedBy(log)))].filter(Boolean);
-
-    console.log('👥 [TimerLogs] Found unique user IDs/Emails:', {
-      count: uniqueIds.length,
-      ids: uniqueIds
-    });
 
     const users = uniqueIds.map(idOrEmail => {
       const userLogs = safeTimeLogs.filter(l => getCreatedBy(l) === idOrEmail);
@@ -420,15 +307,8 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
         sessionsCount: userLogs.length,
         clients: [...new Set(userLogs.map(l => l?.client_name).filter(Boolean))]
       };
-
-      console.log('👥 [TimerLogs] Created user object:', user);
       return user;
     }).sort((a, b) => b.totalHours - a.totalHours);
-
-    console.log('👥 [TimerLogs] ✅ allUsers computed:', {
-      count: users.length,
-      users
-    });
 
     return users;
   }, [safeTimeLogs, userIdToDataMap]);
@@ -437,16 +317,13 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
   const filteredUsers = React.useMemo(() => {
     if (!userSearchTerm) return allUsers;
     
-    return allUsers.filter(user => {
-      const matches = user?.email?.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
-                     user?.name?.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
-                     user?.full_name?.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
-                     user?.id?.toLowerCase().includes(userSearchTerm.toLowerCase());
-      return matches;
-    });
+    return allUsers.filter(user => 
+      user?.email?.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+      user?.name?.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+      user?.full_name?.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+      user?.id?.toLowerCase().includes(userSearchTerm.toLowerCase())
+    );
   }, [allUsers, userSearchTerm]);
-
-  console.log('🔍 [TimerLogs] filteredUsers:', { count: filteredUsers.length });
 
   // ✅ הגנה על filteredLogs
   const filteredLogs = React.useMemo(() => {
@@ -482,24 +359,9 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
         }
       }
 
-      const result = matchesSearch && matchesClient && matchesUser && matchesTime;
-      if (!result) {
-        // console.log('🔍 [TimerLogs] Log filtered out:', { 
-        //   logId: log.id, 
-        //   matchesSearch, 
-        //   matchesClient, 
-        //   matchesUser, 
-        //   matchesTime 
-        // });
-      }
-      return result;
+      return matchesSearch && matchesClient && matchesUser && matchesTime;
     });
   }, [safeTimeLogs, searchTerm, clientFilter, userFilter, timeFilter]);
-
-  console.log('🔍 [TimerLogs] filteredLogs:', { 
-    count: filteredLogs.length,
-    filters: { searchTerm, clientFilter, userFilter, timeFilter }
-  });
 
   // ✅ הגנה על totalTime
   const totalTime = React.useMemo(() => {
@@ -624,7 +486,6 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
   })();
 
   if (isLoading) {
-    console.log('⏳ [TimerLogs] Rendering loading state...');
     return (
       <div className="p-6 h-[400px] overflow-y-auto">
         <div className="space-y-3">
@@ -637,8 +498,6 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
       </div>
     );
   }
-
-  console.log('🎨 [TimerLogs] Rendering main component...');
 
   return (
     <div className="flex flex-col" style={{ minHeight: '400px', maxHeight: '600px' }}>
