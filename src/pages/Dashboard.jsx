@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,7 +33,11 @@ import {
   Briefcase,
   DollarSign,
   CheckSquare,
-  Smartphone
+  Smartphone,
+  Save,
+  Bookmark,
+  X,
+  Trash2
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -78,6 +84,10 @@ export default function Dashboard() {
   
   // UI State
   const [showCustomizer, setShowCustomizer] = useState(false);
+  const [focusedCard, setFocusedCard] = useState(null);
+  const [showSaveLayoutDialog, setShowSaveLayoutDialog] = useState(false);
+  const [savedLayouts, setSavedLayouts] = useState([]);
+  const [layoutName, setLayoutName] = useState('');
   
   // User Preferences
   const [viewMode, setViewMode] = useState('grid-3');
@@ -125,6 +135,7 @@ export default function Dashboard() {
           if (p.expandedCards) setExpandedCards(p.expandedCards);
           if (p.visibleCards) setVisibleCards(p.visibleCards);
           if (p.cardOrder) setCardOrder(p.cardOrder);
+          if (p.savedLayouts) setSavedLayouts(p.savedLayouts);
         }
       } catch (e) {
         console.error('Error loading preferences:', e);
@@ -141,7 +152,7 @@ export default function Dashboard() {
         const user = await base44.auth.me();
         const existing = await base44.entities.UserPreferences.filter({ user_email: user.email });
         
-        const prefs = { viewMode, expandedCards, visibleCards, cardOrder };
+        const prefs = { viewMode, expandedCards, visibleCards, cardOrder, savedLayouts };
         
         if (existing.length > 0) {
           await base44.entities.UserPreferences.update(existing[0].id, {
@@ -160,13 +171,42 @@ export default function Dashboard() {
     
     const timeoutId = setTimeout(savePrefs, 500);
     return () => clearTimeout(timeoutId);
-  }, [viewMode, expandedCards, visibleCards, cardOrder]);
+  }, [viewMode, expandedCards, visibleCards, cardOrder, savedLayouts]);
 
   const toggleCard = useCallback((cardName) => {
     setExpandedCards(prev => ({
       ...prev,
       [cardName]: !prev[cardName]
     }));
+  }, []);
+
+  const saveCurrentLayout = useCallback(() => {
+    if (!layoutName.trim()) return;
+    
+    const newLayout = {
+      id: Date.now().toString(),
+      name: layoutName,
+      viewMode,
+      expandedCards,
+      visibleCards,
+      cardOrder,
+      createdAt: new Date().toISOString()
+    };
+    
+    setSavedLayouts(prev => [...prev, newLayout]);
+    setLayoutName('');
+    setShowSaveLayoutDialog(false);
+  }, [layoutName, viewMode, expandedCards, visibleCards, cardOrder]);
+
+  const loadLayout = useCallback((layout) => {
+    setViewMode(layout.viewMode);
+    setExpandedCards(layout.expandedCards);
+    setVisibleCards(layout.visibleCards);
+    setCardOrder(layout.cardOrder);
+  }, []);
+
+  const deleteLayout = useCallback((layoutId) => {
+    setSavedLayouts(prev => prev.filter(l => l.id !== layoutId));
   }, []);
 
   const loadDashboardData = useCallback(async () => {
@@ -278,6 +318,58 @@ export default function Dashboard() {
               
               <div className="flex gap-3" dir="rtl">
                 {!isMobile && <ReminderManager />}
+                
+                {/* Saved Layouts Selector */}
+                {!isMobile && savedLayouts.length > 0 && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button 
+                        variant="outline" 
+                        size="icon"
+                        title="תצוגות שמורות"
+                        className="bg-white/10 border-white/20 hover:bg-white/20 text-white"
+                      >
+                        <Bookmark className="w-5 h-5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-64" dir="rtl">
+                      <DropdownMenuLabel>תצוגות שמורות</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      {savedLayouts.map((layout) => (
+                        <div key={layout.id} className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 rounded-sm">
+                          <button
+                            onClick={() => loadLayout(layout)}
+                            className="flex-1 text-right text-sm hover:text-blue-600 transition-colors"
+                          >
+                            {layout.name}
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteLayout(layout.id);
+                            }}
+                            className="p-1 hover:bg-red-100 rounded"
+                          >
+                            <Trash2 className="w-3 h-3 text-red-600" />
+                          </button>
+                        </div>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+                
+                {/* Save Current Layout */}
+                {!isMobile && (
+                  <Button 
+                    variant="outline" 
+                    size="icon"
+                    title="שמור תצוגה נוכחית"
+                    onClick={() => setShowSaveLayoutDialog(true)}
+                    className="bg-white/10 border-white/20 hover:bg-white/20 text-white"
+                  >
+                    <Save className="w-5 h-5" />
+                  </Button>
+                )}
                 
                 {/* View Mode Selector */}
                 {!isMobile && (
@@ -462,12 +554,15 @@ export default function Dashboard() {
         )}
 
         {/* Cards Grid */}
-        <div className={getGridClass()} dir="rtl">
+        <div className={focusedCard ? 'fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-6' : getGridClass()} dir="rtl">
           {cardOrder.map((cardDef) => {
             const cardId = cardDef.id;
             
             // Skip stats - rendered separately
             if (cardId === 'stats' || !visibleCards[cardId]) return null;
+            
+            // Skip non-focused cards in focus mode
+            if (focusedCard && focusedCard !== cardId) return null;
 
             // AI Insights
             if (cardId === 'aiInsights') {
@@ -482,7 +577,7 @@ export default function Dashboard() {
             // Recent Projects
             if (cardId === 'recentProjects') {
               return (
-                <Card key={cardId} className="bg-white shadow-md">
+                <Card key={cardId} className={`bg-white shadow-md ${focusedCard === cardId ? 'w-full max-w-6xl max-h-[90vh] overflow-y-auto' : ''}`}>
                   <CardHeader 
                     className="border-b cursor-pointer hover:bg-slate-50 transition-colors"
                     onClick={() => toggleCard('projects')}
@@ -491,6 +586,20 @@ export default function Dashboard() {
                       <span className="text-right">פרויקטים אחרונים</span>
                       <div className="flex items-center gap-2">
                         <span className="text-slate-500 text-sm">{recentProjects.length}</span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setFocusedCard(focusedCard === cardId ? null : cardId);
+                          }}
+                          className="p-1 hover:bg-slate-200 rounded transition-colors"
+                          title={focusedCard === cardId ? "צא ממצב פוקוס" : "מצב פוקוס"}
+                        >
+                          {focusedCard === cardId ? (
+                            <Minimize2 className="w-4 h-4 text-slate-600" />
+                          ) : (
+                            <Maximize2 className="w-4 h-4 text-slate-600" />
+                          )}
+                        </button>
                         {expandedCards.projects ? (
                           <ChevronUp className="w-5 h-5 text-slate-400" />
                         ) : (
@@ -511,18 +620,34 @@ export default function Dashboard() {
             // Recent Clients
             if (cardId === 'recentClients') {
               return (
-                <Card key={cardId} className="bg-white shadow-md">
+                <Card key={cardId} className={`bg-white shadow-md ${focusedCard === cardId ? 'w-full max-w-6xl max-h-[90vh] overflow-y-auto' : ''}`}>
                   <CardHeader 
                     className="border-b cursor-pointer hover:bg-slate-50 transition-colors"
                     onClick={() => toggleCard('clients')}
                   >
                     <CardTitle className="flex items-center justify-between text-base">
                       <span className="text-right">לקוחות אחרונים</span>
-                      {expandedCards.clients ? (
-                        <ChevronUp className="w-5 h-5 text-slate-400" />
-                      ) : (
-                        <ChevronDown className="w-5 h-5 text-slate-400" />
-                      )}
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setFocusedCard(focusedCard === cardId ? null : cardId);
+                          }}
+                          className="p-1 hover:bg-slate-200 rounded transition-colors"
+                          title={focusedCard === cardId ? "צא ממצב פוקוס" : "מצב פוקוס"}
+                        >
+                          {focusedCard === cardId ? (
+                            <Minimize2 className="w-4 h-4 text-slate-600" />
+                          ) : (
+                            <Maximize2 className="w-4 h-4 text-slate-600" />
+                          )}
+                        </button>
+                        {expandedCards.clients ? (
+                          <ChevronUp className="w-5 h-5 text-slate-400" />
+                        ) : (
+                          <ChevronDown className="w-5 h-5 text-slate-400" />
+                        )}
+                      </div>
                     </CardTitle>
                   </CardHeader>
                   {expandedCards.clients && (
@@ -537,7 +662,7 @@ export default function Dashboard() {
             // Upcoming Tasks
             if (cardId === 'upcomingTasks') {
               return (
-                <Card key={cardId} className="bg-white shadow-md">
+                <Card key={cardId} className={`bg-white shadow-md ${focusedCard === cardId ? 'w-full max-w-6xl max-h-[90vh] overflow-y-auto' : ''}`}>
                   <CardHeader 
                     className="border-b cursor-pointer hover:bg-slate-50 transition-colors"
                     onClick={() => toggleCard('tasks')}
@@ -546,6 +671,20 @@ export default function Dashboard() {
                       <span className="text-right">משימות קרובות</span>
                       <div className="flex items-center gap-2">
                         <span className="text-slate-500 text-sm">{upcomingTasks.length}</span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setFocusedCard(focusedCard === cardId ? null : cardId);
+                          }}
+                          className="p-1 hover:bg-slate-200 rounded transition-colors"
+                          title={focusedCard === cardId ? "צא ממצב פוקוס" : "מצב פוקוס"}
+                        >
+                          {focusedCard === cardId ? (
+                            <Minimize2 className="w-4 h-4 text-slate-600" />
+                          ) : (
+                            <Maximize2 className="w-4 h-4 text-slate-600" />
+                          )}
+                        </button>
                         {expandedCards.tasks ? (
                           <ChevronUp className="w-5 h-5 text-slate-400" />
                         ) : (
@@ -566,7 +705,7 @@ export default function Dashboard() {
             // Quote Status
             if (cardId === 'quoteStatus') {
               return (
-                <Card key={cardId} className="bg-white shadow-md">
+                <Card key={cardId} className={`bg-white shadow-md ${focusedCard === cardId ? 'w-full max-w-6xl max-h-[90vh] overflow-y-auto' : ''}`}>
                   <CardHeader 
                     className="border-b cursor-pointer hover:bg-slate-50 transition-colors"
                     onClick={() => toggleCard('quotes')}
@@ -575,6 +714,20 @@ export default function Dashboard() {
                       <span className="text-right">הצעות מחיר</span>
                       <div className="flex items-center gap-2">
                         <span className="text-slate-500 text-sm">{quotes.length}</span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setFocusedCard(focusedCard === cardId ? null : cardId);
+                          }}
+                          className="p-1 hover:bg-slate-200 rounded transition-colors"
+                          title={focusedCard === cardId ? "צא ממצב פוקוס" : "מצב פוקוס"}
+                        >
+                          {focusedCard === cardId ? (
+                            <Minimize2 className="w-4 h-4 text-slate-600" />
+                          ) : (
+                            <Maximize2 className="w-4 h-4 text-slate-600" />
+                          )}
+                        </button>
                         {expandedCards.quotes ? (
                           <ChevronUp className="w-5 h-5 text-slate-400" />
                         ) : (
@@ -595,7 +748,7 @@ export default function Dashboard() {
             // Timer Logs
             if (cardId === 'timerLogs') {
               return (
-                <Card key={cardId} className="bg-white shadow-md">
+                <Card key={cardId} className={`bg-white shadow-md ${focusedCard === cardId ? 'w-full max-w-6xl max-h-[90vh] overflow-y-auto' : ''}`}>
                   <CardHeader 
                     className="border-b cursor-pointer hover:bg-slate-50 transition-colors"
                     onClick={() => toggleCard('timeLogs')}
@@ -604,6 +757,20 @@ export default function Dashboard() {
                       <span className="text-right">לוגי זמן</span>
                       <div className="flex items-center gap-2">
                         <span className="text-slate-500 text-sm">{timeLogs.length}</span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setFocusedCard(focusedCard === cardId ? null : cardId);
+                          }}
+                          className="p-1 hover:bg-slate-200 rounded transition-colors"
+                          title={focusedCard === cardId ? "צא ממצב פוקוס" : "מצב פוקוס"}
+                        >
+                          {focusedCard === cardId ? (
+                            <Minimize2 className="w-4 h-4 text-slate-600" />
+                          ) : (
+                            <Maximize2 className="w-4 h-4 text-slate-600" />
+                          )}
+                        </button>
                         {expandedCards.timeLogs ? (
                           <ChevronUp className="w-5 h-5 text-slate-400" />
                         ) : (
@@ -624,7 +791,7 @@ export default function Dashboard() {
             // Upcoming Meetings
             if (cardId === 'upcomingMeetings') {
               return (
-                <Card key={cardId} className="bg-white shadow-md">
+                <Card key={cardId} className={`bg-white shadow-md ${focusedCard === cardId ? 'w-full max-w-6xl max-h-[90vh] overflow-y-auto' : ''}`}>
                   <CardHeader 
                     className="border-b cursor-pointer hover:bg-slate-50 transition-colors"
                     onClick={() => toggleCard('meetings')}
@@ -633,6 +800,20 @@ export default function Dashboard() {
                       <span className="text-right">פגישות קרובות</span>
                       <div className="flex items-center gap-2">
                         <span className="text-slate-500 text-sm">{upcomingMeetings.length}</span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setFocusedCard(focusedCard === cardId ? null : cardId);
+                          }}
+                          className="p-1 hover:bg-slate-200 rounded transition-colors"
+                          title={focusedCard === cardId ? "צא ממצב פוקוס" : "מצב פוקוס"}
+                        >
+                          {focusedCard === cardId ? (
+                            <Minimize2 className="w-4 h-4 text-slate-600" />
+                          ) : (
+                            <Maximize2 className="w-4 h-4 text-slate-600" />
+                          )}
+                        </button>
                         {expandedCards.meetings ? (
                           <ChevronUp className="w-5 h-5 text-slate-400" />
                         ) : (
@@ -668,6 +849,57 @@ export default function Dashboard() {
           }}
         />
       )}
+
+      {/* Save Layout Dialog */}
+      <Dialog open={showSaveLayoutDialog} onOpenChange={setShowSaveLayoutDialog}>
+        <DialogContent className="max-w-md" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="text-right">שמור תצוגה נוכחית</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4" dir="rtl">
+            <div>
+              <label className="text-sm font-medium text-slate-700 mb-2 block text-right">
+                שם התצוגה
+              </label>
+              <Input
+                value={layoutName}
+                onChange={(e) => setLayoutName(e.target.value)}
+                placeholder="לדוגמה: תצוגה יומית, דוח שבועי..."
+                className="text-right"
+                dir="rtl"
+              />
+            </div>
+            <div className="text-xs text-slate-500 bg-slate-50 p-3 rounded-lg text-right" dir="rtl">
+              <p className="font-semibold mb-1">התצוגה תכלול:</p>
+              <ul className="space-y-1 mr-4 list-disc">
+                <li>סדר הכרטיסים</li>
+                <li>כרטיסים גלויים/מוסתרים</li>
+                <li>כרטיסים מורחבים/מכווצים</li>
+                <li>סוג התצוגה (רשת/רשימה)</li>
+              </ul>
+            </div>
+            <div className="flex gap-2 justify-end" dir="rtl">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowSaveLayoutDialog(false);
+                  setLayoutName('');
+                }}
+              >
+                ביטול
+              </Button>
+              <Button
+                onClick={saveCurrentLayout}
+                disabled={!layoutName.trim()}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                <Save className="w-4 h-4 ml-2" />
+                שמור
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
