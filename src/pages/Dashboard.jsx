@@ -420,27 +420,28 @@ export default function Dashboard() {
                 </DropdownMenu>
 
                 {!isMobile && (
-                <>
-                <Button 
-                  variant="outline" 
-                  size="icon" 
-                  title="התאמה אישית" 
-                  onClick={() => setShowCustomizer(true)}
-                  className="bg-white/10 border-white/20 hover:bg-white/20 text-white"
-                >
-                  <LayoutGrid className="w-5 h-5" />
-                </Button>
-
-                <Button 
-                  variant="outline" 
-                  size="icon" 
-                  title="הגדרות לוח מחוונים" 
-                  onClick={() => setShowDashboardSettings(true)}
-                  className="bg-white/10 border-white/20 hover:bg-white/20 text-white"
-                >
-                  <Settings className="w-5 h-5" />
-                </Button>
-                </>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      size="icon" 
+                      title="הגדרות דשבורד" 
+                      className="bg-white/10 border-white/20 hover:bg-white/20 text-white"
+                    >
+                      <Settings className="w-5 h-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" dir="rtl">
+                    <DropdownMenuItem onClick={() => setShowCustomizer(true)} className="gap-2">
+                      <LayoutGrid className="w-4 h-4" />
+                      התאמה אישית של כרטיסים
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setShowDashboardSettings(true)} className="gap-2">
+                      <Settings className="w-4 h-4" />
+                      הגדרות תצוגה
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 )}
               </div>
             </div>
