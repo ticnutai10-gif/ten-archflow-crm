@@ -393,9 +393,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
           setColumns(defaultCols.map(col => ({ ...col, visible: col.visible !== false })));
         }
         
-        // Restore cell styles (existing code)
-        if (userSettings) {
-        // Restore cell styles (existing code)
+        // Restore cell styles and other settings
         if (userSettings) {
           if (userSettings.cellStyles) {
             setCellStyles(userSettings.cellStyles);
