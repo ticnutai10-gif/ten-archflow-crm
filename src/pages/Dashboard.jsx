@@ -54,89 +54,33 @@ import TrendsView from "../components/dashboard/TrendsView";
 import AIInsightsPanel from "../components/ai/AIInsightsPanel";
 import { useIsMobile } from "../components/utils/useMediaQuery";
 
-
-const VIEW_MODE_OPTIONS = [
-  { value: 'list', label: 'שורות', icon: LayoutList },
-  { value: 'grid-small', label: 'רשת קטנה (4 עמודות)', icon: Grid3x3 },
-  { value: 'grid-medium', label: 'רשת בינונית (3 עמודות)', icon: LayoutGrid },
-  { value: 'grid-large', label: 'רשת גדולה (2 עמודות)', icon: Grid2x2 },
-  { value: 'vertical', label: 'אנכי (עמודה אחת)', icon: AlignLeft },
-  { value: 'kanban', label: 'לוח קנבן', icon: Columns },
-  { value: 'timeline', label: 'ציר זמן', icon: Calendar },
-  { value: 'analytics', label: 'אנליטיקה חזותית', icon: BarChart3 },
-  { value: 'heatmap', label: 'מפת חום פעילות', icon: Activity },
-  { value: 'trends', label: 'גרף מגמות', icon: TrendingUp },
+const VIEW_MODES = [
+  { value: 'grid-2', label: 'רשת 2 עמודות', icon: Grid2x2 },
+  { value: 'grid-3', label: 'רשת 3 עמודות', icon: LayoutGrid },
+  { value: 'grid-4', label: 'רשת 4 עמודות', icon: Grid3x3 },
+  { value: 'list', label: 'רשימה', icon: LayoutList }
 ];
-
-const getGridClass = (viewMode) => {
-  switch (viewMode) {
-    case 'list':
-      return 'grid grid-cols-1 gap-4';
-    case 'grid-small':
-      return 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4';
-    case 'grid-medium':
-      return 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6';
-    case 'grid-large':
-      return 'grid grid-cols-1 md:grid-cols-2 gap-6';
-    case 'vertical':
-      return 'flex flex-col gap-4 max-w-2xl mx-auto';
-    case 'kanban':
-    case 'timeline':
-    case 'analytics':
-    case 'heatmap':
-    case 'trends':
-      return 'flex flex-col gap-6 w-full';
-    default:
-      return 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6';
-  }
-};
 
 export default function Dashboard() {
   const isMobile = useIsMobile();
-  const [stats, setStats] = useState({
-    clients: 0,
-    projects: 0,
-    quotes: 0,
-    tasks: 0
-  });
+  const [loading, setLoading] = useState(true);
+  
+  // Data
+  const [stats, setStats] = useState({ clients: 0, projects: 0, quotes: 0, tasks: 0 });
   const [recentProjects, setRecentProjects] = useState([]);
   const [upcomingTasks, setUpcomingTasks] = useState([]);
   const [quotes, setQuotes] = useState([]);
   const [timeLogs, setTimeLogs] = useState([]);
   const [upcomingMeetings, setUpcomingMeetings] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [allClients, setAllClients] = useState([]);
   const [allProjects, setAllProjects] = useState([]);
   const [allTasks, setAllTasks] = useState([]);
-  const [showDashboardSettings, setShowDashboardSettings] = useState(false);
+  
+  // UI State
   const [showCustomizer, setShowCustomizer] = useState(false);
-
-  const [dashboardCards, setDashboardCards] = useState([
-    { id: 'stats', name: 'סטטיסטיקות', visible: true, size: 'full' },
-    { id: 'aiInsights', name: 'תובנות AI', visible: true, size: 'large' },
-    { id: 'projectsOverview', name: 'סקירת פרויקטים', visible: true, size: 'large' },
-    { id: 'recentProjects', name: 'פרויקטים אחרונים', visible: true, size: 'medium' },
-    { id: 'recentClients', name: 'לקוחות אחרונים', visible: true, size: 'medium' },
-    { id: 'upcomingTasks', name: 'משימות קרובות', visible: true, size: 'medium' },
-    { id: 'quoteStatus', name: 'הצעות מחיר', visible: true, size: 'medium' },
-    { id: 'timerLogs', name: 'לוגי זמן', visible: true, size: 'medium' },
-    { id: 'upcomingMeetings', name: 'פגישות קרובות', visible: true, size: 'medium' }
-  ]);
-
-  const getSizeClass = (size) => {
-    const sizeMap = {
-      'small': 'md:col-span-1',
-      'medium': 'md:col-span-2', 
-      'large': 'md:col-span-3',
-      'full': 'md:col-span-4'
-    };
-    return sizeMap[size] || 'md:col-span-2';
-  };
-
-  const [viewMode, setViewMode] = useState('grid-medium');
-
-  const [compactHeaders, setCompactHeaders] = useState(false);
-
+  
+  // User Preferences
+  const [viewMode, setViewMode] = useState('grid-3');
   const [expandedCards, setExpandedCards] = useState({
     projects: true,
     clients: true,
@@ -145,15 +89,16 @@ export default function Dashboard() {
     timeLogs: true,
     meetings: true
   });
-
-  const [dashboardSettings, setDashboardSettings] = useState({
-    showWeeklyGoals: false,
-    showStats: true,
-    showRecentProjects: true,
-    showUpcomingTasks: true,
-    showQuoteStatus: true,
-    showTimerLogs: true,
-    showMeetings: true
+  const [visibleCards, setVisibleCards] = useState({
+    stats: true,
+    aiInsights: true,
+    projectsOverview: true,
+    recentProjects: true,
+    recentClients: true,
+    upcomingTasks: true,
+    quoteStatus: true,
+    timerLogs: true,
+    upcomingMeetings: true
   });
 
   // Load preferences from database
@@ -303,14 +248,8 @@ export default function Dashboard() {
 
   return (
     <div className={`${isMobile ? 'p-3 pb-24' : 'p-6'} min-h-screen`} dir="rtl" style={{ backgroundColor: '#FCF6E3' }}>
-      <DashboardSettings
-        visible={showDashboardSettings}
-        settings={dashboardSettings}
-        onChange={updateDashboardSettings}
-        onClose={() => setShowDashboardSettings(false)}
-      />
-
       <div className="max-w-7xl mx-auto" dir="rtl">
+        {/* Header */}
         <div className={isMobile ? "mb-4" : "mb-8"} dir="rtl">
           <div className={`${isMobile ? 'px-4 py-4' : 'px-8 py-6'} rounded-2xl shadow-md`} style={{ backgroundColor: '#2C3E50' }} dir="rtl">
             <div className="flex justify-between items-center" dir="rtl">
@@ -319,111 +258,60 @@ export default function Dashboard() {
                   {isMobile ? 'CRM טננבאום' : 'ניהול לקוחות CRM'}
                 </h1>
                 {!isMobile && (
-                <p className="text-slate-300 text-sm text-right">
-                  סקירה כללית על הפעילות העסקית
-                </p>
+                  <p className="text-slate-300 text-sm text-right">
+                    סקירה כללית על הפעילות העסקית
+                  </p>
                 )}
               </div>
-              <div className={`flex gap-2 ${isMobile ? 'flex-col' : 'gap-3'}`} dir="rtl">
+              
+              <div className="flex gap-3" dir="rtl">
                 {!isMobile && <ReminderManager />}
                 
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button 
-                      variant="outline"
-                      size={isMobile ? "sm" : "icon"}
-                      title="מצב תצוגה"
-                      className={`bg-white/10 border-white/20 hover:bg-white/20 text-white ${isMobile ? 'px-3' : ''}`}
-                    >
-                      <CurrentViewIcon className={isMobile ? "w-4 h-4" : "w-5 h-5"} />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-64" dir="rtl">
-                    <DropdownMenuLabel className="text-right">מצב תצוגה</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    {VIEW_MODE_OPTIONS.map((option) => {
-                      const OptionIcon = option.icon;
-                      return (
-                        <DropdownMenuItem
-                          key={option.value}
-                          onClick={() => setViewMode(option.value)}
-                          className={`flex items-center gap-3 cursor-pointer ${
-                            viewMode === option.value ? 'bg-blue-50 text-blue-700' : ''
-                          }`}
-                        >
-                          <OptionIcon className={`w-4 h-4 ${viewMode === option.value ? 'text-blue-600' : 'text-slate-600'}`} />
-                          <span className="flex-1 text-right">{option.label}</span>
-                          {viewMode === option.value && (
-                            <Eye className="w-4 h-4 text-blue-600" />
-                          )}
-                        </DropdownMenuItem>
-                      );
-                    })}
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={() => setCompactHeaders(!compactHeaders)}
-                      className="flex items-center gap-3 cursor-pointer"
-                    >
-                      {compactHeaders ? (
-                        <Maximize2 className="w-4 h-4 text-slate-600" />
-                      ) : (
-                        <Minimize2 className="w-4 h-4 text-slate-600" />
-                      )}
-                      <span className="flex-1 text-right">
-                        {compactHeaders ? 'הרחב כותרות' : 'מזעור כותרות'}
-                      </span>
-                      {compactHeaders && (
-                        <Eye className="w-4 h-4 text-blue-600" />
-                      )}
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={() => {
-                        const current = localStorage.getItem('force-mobile-view');
-                        if (current === 'true') {
-                          localStorage.removeItem('force-mobile-view');
-                        } else {
-                          localStorage.setItem('force-mobile-view', 'true');
-                        }
-                        window.dispatchEvent(new Event('force-mobile-changed'));
-                        window.location.reload();
-                      }}
-                      className="flex items-center gap-3 cursor-pointer"
-                    >
-                      <Smartphone className="w-4 h-4 text-slate-600" />
-                      <span className="flex-1 text-right">
-                        {localStorage.getItem('force-mobile-view') === 'true' ? 'בטל תצוגת מובייל' : 'הפעל תצוגת מובייל'}
-                      </span>
-                      {localStorage.getItem('force-mobile-view') === 'true' && (
-                        <Eye className="w-4 h-4 text-blue-600" />
-                      )}
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
+                {/* View Mode Selector */}
                 {!isMobile && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button 
-                      variant="outline" 
-                      size="icon" 
-                      title="הגדרות דשבורד" 
-                      className="bg-white/10 border-white/20 hover:bg-white/20 text-white"
-                    >
-                      <Settings className="w-5 h-5" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" dir="rtl">
-                    <DropdownMenuItem onClick={() => setShowCustomizer(true)} className="gap-2">
-                      <LayoutGrid className="w-4 h-4" />
-                      התאמה אישית של כרטיסים
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setShowDashboardSettings(true)} className="gap-2">
-                      <Settings className="w-4 h-4" />
-                      הגדרות תצוגה
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button 
+                        variant="outline" 
+                        size="icon"
+                        title="סוג תצוגה"
+                        className="bg-white/10 border-white/20 hover:bg-white/20 text-white"
+                      >
+                        <ViewIcon className="w-5 h-5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56" dir="rtl">
+                      <DropdownMenuLabel>בחר תצוגה</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      {VIEW_MODES.map((mode) => {
+                        const Icon = mode.icon;
+                        return (
+                          <DropdownMenuItem
+                            key={mode.value}
+                            onClick={() => setViewMode(mode.value)}
+                            className={`gap-3 ${viewMode === mode.value ? 'bg-blue-50' : ''}`}
+                          >
+                            <Icon className="w-4 h-4" />
+                            <span className="flex-1">{mode.label}</span>
+                            {viewMode === mode.value && <Eye className="w-4 h-4 text-blue-600" />}
+                          </DropdownMenuItem>
+                        );
+                      })}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+                
+                {/* Settings */}
+                {!isMobile && (
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    title="התאמה אישית" 
+                    onClick={() => setShowCustomizer(true)}
+                    className="bg-white/10 border-white/20 hover:bg-white/20 text-white"
+                  >
+                    <Settings className="w-5 h-5" />
+                  </Button>
                 )}
               </div>
             </div>
@@ -487,13 +375,13 @@ export default function Dashboard() {
             /* Desktop Stats */
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8" dir="rtl">
               <Card className="bg-white shadow-md hover:shadow-lg transition-shadow">
-                <CardHeader className={compactHeaders ? "pb-1" : "pb-2"}>
-                  <CardTitle className={`text-sm text-slate-600 font-normal text-center ${compactHeaders ? 'text-xs' : ''}`}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm text-slate-600 font-normal text-center">
                     לקוחות פעילים
                   </CardTitle>
                 </CardHeader>
-                <CardContent className={compactHeaders ? "pt-2" : ""}>
-                  <div className={`font-bold text-center mb-2 ${compactHeaders ? 'text-3xl' : 'text-4xl'}`}>
+                <CardContent>
+                  <div className="font-bold text-center mb-2 text-4xl">
                     {stats.clients}
                   </div>
                   <Link to={createPageUrl("Clients")} className="block">
@@ -505,13 +393,13 @@ export default function Dashboard() {
               </Card>
 
               <Card className="bg-white shadow-md hover:shadow-lg transition-shadow">
-                <CardHeader className={compactHeaders ? "pb-1" : "pb-2"}>
-                  <CardTitle className={`text-sm text-slate-600 font-normal text-center ${compactHeaders ? 'text-xs' : ''}`}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm text-slate-600 font-normal text-center">
                     פרויקטים פעילים
                   </CardTitle>
                 </CardHeader>
-                <CardContent className={compactHeaders ? "pt-2" : ""}>
-                  <div className={`font-bold text-center mb-2 ${compactHeaders ? 'text-3xl' : 'text-4xl'}`}>
+                <CardContent>
+                  <div className="font-bold text-center mb-2 text-4xl">
                     {stats.projects}
                   </div>
                   <Link to={createPageUrl("Projects")} className="block">
@@ -523,13 +411,13 @@ export default function Dashboard() {
               </Card>
 
               <Card className="bg-white shadow-md hover:shadow-lg transition-shadow">
-                <CardHeader className={compactHeaders ? "pb-1" : "pb-2"}>
-                  <CardTitle className={`text-sm text-slate-600 font-normal text-center ${compactHeaders ? 'text-xs' : ''}`}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm text-slate-600 font-normal text-center">
                     הצעות בהמתנה
                   </CardTitle>
                 </CardHeader>
-                <CardContent className={compactHeaders ? "pt-2" : ""}>
-                  <div className={`font-bold text-center mb-2 ${compactHeaders ? 'text-3xl' : 'text-4xl'}`}>
+                <CardContent>
+                  <div className="font-bold text-center mb-2 text-4xl">
                     {stats.quotes}
                   </div>
                   <Link to={createPageUrl("Quotes")} className="block">
@@ -541,13 +429,13 @@ export default function Dashboard() {
               </Card>
 
               <Card className="bg-white shadow-md hover:shadow-lg transition-shadow">
-                <CardHeader className={compactHeaders ? "pb-1" : "pb-2"}>
-                  <CardTitle className={`text-sm text-slate-600 font-normal text-center ${compactHeaders ? 'text-xs' : ''}`}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm text-slate-600 font-normal text-center">
                     משימות פתוחות
                   </CardTitle>
                 </CardHeader>
-                <CardContent className={compactHeaders ? "pt-2" : ""}>
-                  <div className={`font-bold text-center mb-2 ${compactHeaders ? 'text-3xl' : 'text-4xl'}`}>
+                <CardContent>
+                  <div className="font-bold text-center mb-2 text-4xl">
                     {stats.tasks}
                   </div>
                   <Link to={createPageUrl("Tasks")} className="block">
