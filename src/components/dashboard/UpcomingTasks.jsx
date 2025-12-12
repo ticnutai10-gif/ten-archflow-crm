@@ -281,7 +281,7 @@ export default function UpcomingTasks({ tasks = [], isLoading, onUpdate, clients
         <TaskForm
           clients={clients}
           onSubmit={async (data) => {
-            await Task.create(data);
+            await base44.entities.Task.create(data);
             setShowAddDialog(false);
             onUpdate && onUpdate();
           }}
