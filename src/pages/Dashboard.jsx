@@ -461,6 +461,8 @@ export default function Dashboard() {
           )
         )}
 
+        {/* Cards Grid */}
+        <div className={getGridClass()} dir="rtl">
           {cardOrder.map((cardDef) => {
             const cardId = cardDef.id;
             
