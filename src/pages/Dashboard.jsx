@@ -110,13 +110,7 @@ export default function Dashboard() {
   const [allTasks, setAllTasks] = useState([]);
   const [showDashboardSettings, setShowDashboardSettings] = useState(false);
   const [showCustomizer, setShowCustomizer] = useState(false);
-  const [useTabsLayout, setUseTabsLayout] = useState(() => {
-    try {
-      return localStorage.getItem('dashboard-tabs-layout') === 'true';
-    } catch {
-      return false;
-    }
-  });
+  const [useTabsLayout, setUseTabsLayout] = useState(false);
   const [dashboardCards, setDashboardCards] = useState([
     { id: 'stats', name: 'סטטיסטיקות', visible: true, size: 'full' },
     { id: 'aiInsights', name: 'תובנות AI', visible: true, size: 'large' },
@@ -152,31 +146,14 @@ export default function Dashboard() {
     meetings: true
   });
 
-  const [dashboardSettings, setDashboardSettings] = useState(() => {
-    try {
-      const raw = localStorage.getItem("app-preferences");
-      const p = raw ? JSON.parse(raw) : {};
-      const dp = p.dashboardSettings || {};
-      return {
-        showWeeklyGoals: dp.showWeeklyGoals !== undefined ? dp.showWeeklyGoals : false,
-        showStats: dp.showStats !== undefined ? dp.showStats : true,
-        showRecentProjects: dp.showRecentProjects !== undefined ? dp.showRecentProjects : true,
-        showUpcomingTasks: dp.showUpcomingTasks !== undefined ? dp.showUpcomingTasks : true,
-        showQuoteStatus: dp.showQuoteStatus !== undefined ? dp.showQuoteStatus : true,
-        showTimerLogs: dp.showTimerLogs !== undefined ? dp.showTimerLogs : true,
-        showMeetings: dp.showMeetings !== undefined ? dp.showMeetings : true,
-      };
-    } catch (e) {
-      return {
-        showWeeklyGoals: false,
-        showStats: true,
-        showRecentProjects: true,
-        showUpcomingTasks: true,
-        showQuoteStatus: true,
-        showTimerLogs: true,
-        showMeetings: true,
-      };
-    }
+  const [dashboardSettings, setDashboardSettings] = useState({
+    showWeeklyGoals: false,
+    showStats: true,
+    showRecentProjects: true,
+    showUpcomingTasks: true,
+    showQuoteStatus: true,
+    showTimerLogs: true,
+    showMeetings: true
   });
 
   // Load dashboard preferences from database
@@ -193,6 +170,7 @@ export default function Dashboard() {
           if (prefs.expandedCards) setExpandedCards(prefs.expandedCards);
           if (prefs.dashboardCards) setDashboardCards(prefs.dashboardCards);
           if (prefs.useTabsLayout !== undefined) setUseTabsLayout(prefs.useTabsLayout);
+          if (prefs.dashboardSettings) setDashboardSettings(prefs.dashboardSettings);
         }
       } catch (e) {
         console.error('Error loading dashboard preferences:', e);
@@ -214,7 +192,8 @@ export default function Dashboard() {
           compactHeaders,
           expandedCards,
           dashboardCards,
-          useTabsLayout
+          useTabsLayout,
+          dashboardSettings
         };
         
         if (existingPrefs.length > 0) {
@@ -234,7 +213,7 @@ export default function Dashboard() {
     
     const timeoutId = setTimeout(saveDashboardPrefs, 1000);
     return () => clearTimeout(timeoutId);
-  }, [viewMode, compactHeaders, expandedCards, dashboardCards, useTabsLayout]);
+  }, [viewMode, compactHeaders, expandedCards, dashboardCards, useTabsLayout, dashboardSettings]);
 
   const toggleCard = useCallback((cardName) => {
     setExpandedCards(prev => ({
@@ -244,22 +223,7 @@ export default function Dashboard() {
   }, []);
 
   const updateDashboardSettings = useCallback((newSettings) => {
-    setDashboardSettings((prev) => {
-      const updated = { ...prev, ...newSettings };
-      try {
-        const raw = localStorage.getItem("app-preferences");
-        const prefs = raw ? JSON.parse(raw) : {};
-        const mergedAppPrefs = {
-          ...prefs,
-          dashboardSettings: updated,
-        };
-        localStorage.setItem("app-preferences", JSON.stringify(mergedAppPrefs));
-        window.dispatchEvent(new CustomEvent("preferences:changed", { detail: mergedAppPrefs }));
-      } catch (e) {
-        console.error("Failed saving dashboard settings to localStorage", e);
-      }
-      return updated;
-    });
+    setDashboardSettings((prev) => ({ ...prev, ...newSettings }));
   }, []);
 
   const loadDashboardData = useCallback(async () => {
@@ -338,23 +302,7 @@ export default function Dashboard() {
     return () => { window.removeEventListener('timelog:created', onTimelogCreated); };
   }, [loadDashboardData]);
 
-  useEffect(() => {
-    const onPrefsChanged = (e) => {
-      const p = e.detail || {};
-      const dp = p.dashboardSettings || {};
-      setDashboardSettings({
-        showWeeklyGoals: dp.showWeeklyGoals !== undefined ? dp.showWeeklyGoals : false,
-        showStats: dp.showStats !== undefined ? dp.showStats : true,
-        showRecentProjects: dp.showRecentProjects !== undefined ? dp.showRecentProjects : true,
-        showUpcomingTasks: dp.showUpcomingTasks !== undefined ? dp.showUpcomingTasks : true,
-        showQuoteStatus: dp.showQuoteStatus !== undefined ? dp.showQuoteStatus : true,
-        showTimerLogs: dp.showTimerLogs !== undefined ? dp.showTimerLogs : true,
-        showMeetings: dp.showMeetings !== undefined ? dp.showMeetings : true,
-      });
-    };
-    window.addEventListener("preferences:changed", onPrefsChanged);
-    return () => window.removeEventListener("preferences:changed", onPrefsChanged);
-  }, []);
+
 
   const currentViewOption = VIEW_MODE_OPTIONS.find(opt => opt.value === viewMode) || VIEW_MODE_OPTIONS[2];
   const CurrentViewIcon = currentViewOption.icon;
@@ -389,15 +337,7 @@ export default function Dashboard() {
                   <Button
                     variant="outline"
                     size="icon"
-                    onClick={() => {
-                      const newValue = !useTabsLayout;
-                      setUseTabsLayout(newValue);
-                      try {
-                        localStorage.setItem('dashboard-tabs-layout', newValue.toString());
-                      } catch (e) {
-                        console.error('Error saving tabs layout:', e);
-                      }
-                    }}
+                    onClick={() => setUseTabsLayout(!useTabsLayout)}
                     title={useTabsLayout ? 'תצוגה רגילה' : 'תצוגת טאבים'}
                     className="bg-white/10 border-white/20 hover:bg-white/20 text-white"
                   >
