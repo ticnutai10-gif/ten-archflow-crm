@@ -53,7 +53,7 @@ import HeatmapView from "../components/dashboard/HeatmapView";
 import TrendsView from "../components/dashboard/TrendsView";
 import AIInsightsPanel from "../components/ai/AIInsightsPanel";
 import { useIsMobile } from "../components/utils/useMediaQuery";
-import TabsPanelLayout from "../components/dashboard/TabsPanelLayout";
+
 
 const VIEW_MODE_OPTIONS = [
   { value: 'list', label: 'שורות', icon: LayoutList },
@@ -110,7 +110,7 @@ export default function Dashboard() {
   const [allTasks, setAllTasks] = useState([]);
   const [showDashboardSettings, setShowDashboardSettings] = useState(false);
   const [showCustomizer, setShowCustomizer] = useState(false);
-  const [useTabsLayout, setUseTabsLayout] = useState(false);
+
   const [dashboardCards, setDashboardCards] = useState([
     { id: 'stats', name: 'סטטיסטיקות', visible: true, size: 'full' },
     { id: 'aiInsights', name: 'תובנות AI', visible: true, size: 'large' },
@@ -169,7 +169,6 @@ export default function Dashboard() {
           if (prefs.compactHeaders !== undefined) setCompactHeaders(prefs.compactHeaders);
           if (prefs.expandedCards) setExpandedCards(prefs.expandedCards);
           if (prefs.dashboardCards) setDashboardCards(prefs.dashboardCards);
-          if (prefs.useTabsLayout !== undefined) setUseTabsLayout(prefs.useTabsLayout);
           if (prefs.dashboardSettings) setDashboardSettings(prefs.dashboardSettings);
         }
       } catch (e) {
@@ -192,7 +191,6 @@ export default function Dashboard() {
           compactHeaders,
           expandedCards,
           dashboardCards,
-          useTabsLayout,
           dashboardSettings
         };
         
@@ -213,7 +211,7 @@ export default function Dashboard() {
     
     const timeoutId = setTimeout(saveDashboardPrefs, 1000);
     return () => clearTimeout(timeoutId);
-  }, [viewMode, compactHeaders, expandedCards, dashboardCards, useTabsLayout, dashboardSettings]);
+  }, [viewMode, compactHeaders, expandedCards, dashboardCards, dashboardSettings]);
 
   const toggleCard = useCallback((cardName) => {
     setExpandedCards(prev => ({
@@ -332,18 +330,6 @@ export default function Dashboard() {
               </div>
               <div className={`flex gap-2 ${isMobile ? 'flex-col' : 'gap-3'}`} dir="rtl">
                 {!isMobile && <ReminderManager />}
-                
-                {!isMobile && (
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setUseTabsLayout(!useTabsLayout)}
-                    title={useTabsLayout ? 'תצוגה רגילה' : 'תצוגת טאבים'}
-                    className="bg-white/10 border-white/20 hover:bg-white/20 text-white"
-                  >
-                    <LayoutGrid className="w-5 h-5" />
-                  </Button>
-                )}
                 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -579,36 +565,6 @@ export default function Dashboard() {
         )}
 
         <div dir="rtl">
-          {/* Tabs Layout Mode */}
-          {useTabsLayout && !isMobile ? (
-            <TabsPanelLayout
-              renderContent={(tabId) => {
-                if (tabId === 'clients') {
-                  return <RecentClients isLoading={loading} />;
-                }
-                if (tabId === 'projects') {
-                  return <RecentProjects projects={recentProjects} isLoading={loading} onUpdate={loadDashboardData} />;
-                }
-                if (tabId === 'tasks') {
-                  return <UpcomingTasks tasks={upcomingTasks} isLoading={loading} onUpdate={loadDashboardData} clients={allClients} />;
-                }
-                if (tabId === 'timeLogs') {
-                  return <TimerLogs timeLogs={timeLogs} isLoading={loading} onUpdate={loadDashboardData} clients={allClients} />;
-                }
-                if (tabId === 'meetings') {
-                  return <UpcomingMeetings meetings={upcomingMeetings} isLoading={loading} onUpdate={loadDashboardData} clients={allClients} />;
-                }
-                if (tabId === 'quotes') {
-                  return <QuoteStatus quotes={quotes} isLoading={loading} clients={allClients} onUpdate={loadDashboardData} />;
-                }
-                if (tabId === 'analytics') {
-                  return <AnalyticsView clients={allClients} projects={allProjects} tasks={allTasks} quotes={quotes} />;
-                }
-                return <div className="text-slate-500">תוכן לא זמין</div>;
-              }}
-            />
-          ) : (
-            <>
           {!compactHeaders && !['kanban', 'timeline', 'analytics', 'heatmap', 'trends'].includes(viewMode) && (
             <h2 className="text-xl font-bold text-slate-800 mb-4 text-right">פעילויות אחרונות</h2>
           )}
@@ -856,8 +812,6 @@ export default function Dashboard() {
               return null;
             })}
           </div>
-          )}
-            </>
           )}
         </div>
       </div>
