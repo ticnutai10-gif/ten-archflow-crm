@@ -55,13 +55,9 @@ const COLORS = [
 
 const fixedDefaultColumns = [
 { key: 'name', title: 'שם לקוח', width: '200px', type: 'text', required: true },
-{ key: 'name_clean', title: 'שם נקי', width: '200px', type: 'text', required: false },
 { key: 'phone', title: 'טלפון', width: '150px', type: 'phone', required: false },
 { key: 'email', title: 'אימייל', width: '150px', type: 'email', required: false },
-{ key: 'company', title: 'חברה', width: '150px', type: 'text', required: false },
-{ key: 'status', title: 'סטטוס', width: '120px', type: 'status', required: false },
-{ key: 'budget_range', title: 'תקציב', width: '120px', type: 'text', required: false },
-{ key: 'created_date', title: 'תאריך יצירה', width: '120px', type: 'date', required: false }];
+{ key: 'status', title: 'סטטוס', width: '120px', type: 'status', required: false }];
 
 
 const isValidPhone = (phone) => {
@@ -312,45 +308,95 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
     const loadUserPrefs = async () => {
       try {
         const userSettings = await loadUserSettings('clients');
-        if (userSettings) {
-          // Restore column order
-          if (userSettings.order) {
-            const orderedColumns = userSettings.order.map(key => {
-              const existing = columns.find(c => c.key === key);
-              if (existing) return existing;
-              
-              // Restore custom column
-              const customCol = userSettings.custom_columns?.find(c => c.key === key);
-              return customCol;
-            }).filter(Boolean);
+        if (userSettings && userSettings.order) {
+          console.log('📊 Loading saved columns from user settings:', userSettings);
+          
+          // Build columns ONLY from saved settings
+          const restoredColumns = [];
+          
+          // Restore saved columns
+          userSettings.order.forEach(key => {
+            // Try to find in custom columns
+            const customCol = userSettings.custom_columns?.find(c => c.key === key);
+            if (customCol) {
+              restoredColumns.push({
+                ...customCol,
+                visible: userSettings.visibility?.[key] !== false,
+                width: userSettings.widths?.[key] || customCol.width
+              });
+              return;
+            }
             
-            // Add any new columns that weren't in saved order
-            columns.forEach(col => {
-              if (!orderedColumns.find(c => c.key === col.key)) {
-                orderedColumns.push(col);
-              }
+            // Try to find in default columns
+            const defaultCol = fixedDefaultColumns.find(c => c.key === key);
+            if (defaultCol) {
+              restoredColumns.push({
+                ...defaultCol,
+                visible: userSettings.visibility?.[key] !== false,
+                width: userSettings.widths?.[key] || defaultCol.width
+              });
+              return;
+            }
+            
+            // Special columns
+            if (key === 'actions') {
+              restoredColumns.push({
+                key: 'actions',
+                title: 'פעולות',
+                width: userSettings.widths?.[key] || '120px',
+                type: 'actions',
+                required: true,
+                visible: true
+              });
+            }
+          });
+          
+          // Ensure 'name' is always first and visible
+          const nameIndex = restoredColumns.findIndex(c => c.key === 'name');
+          if (nameIndex > 0) {
+            const [nameCol] = restoredColumns.splice(nameIndex, 1);
+            restoredColumns.unshift(nameCol);
+          }
+          
+          // Ensure actions is always last
+          const actionsIndex = restoredColumns.findIndex(c => c.key === 'actions');
+          if (actionsIndex !== -1 && actionsIndex < restoredColumns.length - 1) {
+            const [actionsCol] = restoredColumns.splice(actionsIndex, 1);
+            restoredColumns.push(actionsCol);
+          } else if (actionsIndex === -1) {
+            restoredColumns.push({
+              key: 'actions',
+              title: 'פעולות',
+              width: '120px',
+              type: 'actions',
+              required: true,
+              visible: true
             });
-            
-            setColumns(orderedColumns);
           }
           
-          // Restore visibility
-          if (userSettings.visibility) {
-            setColumns(prev => prev.map(col => ({
-              ...col,
-              visible: userSettings.visibility[col.key] !== false
-            })));
+          console.log('📊 Restored columns:', restoredColumns);
+          setColumns(restoredColumns);
+        } else {
+          console.log('📊 No saved settings, using defaults');
+          // No saved settings - use defaults
+          const defaultCols = [...fixedDefaultColumns];
+          if (!defaultCols.some(c => c.key === 'actions')) {
+            defaultCols.push({
+              key: 'actions',
+              title: 'פעולות',
+              width: '120px',
+              type: 'actions',
+              required: true,
+              visible: true
+            });
           }
-          
-          // Restore widths
-          if (userSettings.widths) {
-            setColumns(prev => prev.map(col => ({
-              ...col,
-              width: userSettings.widths[col.key] || col.width
-            })));
-          }
-          
-          // Restore cell styles
+          setColumns(defaultCols.map(col => ({ ...col, visible: col.visible !== false })));
+        }
+        
+        // Restore cell styles (existing code)
+        if (userSettings) {
+        // Restore cell styles (existing code)
+        if (userSettings) {
           if (userSettings.cellStyles) {
             setCellStyles(userSettings.cellStyles);
           }
