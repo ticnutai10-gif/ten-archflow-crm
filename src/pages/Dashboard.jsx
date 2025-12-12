@@ -156,72 +156,60 @@ export default function Dashboard() {
     showMeetings: true
   });
 
-  // Load dashboard preferences from database
+  // Load preferences from database
   useEffect(() => {
-    const loadDashboardPrefs = async () => {
+    const loadPrefs = async () => {
       try {
         const user = await base44.auth.me();
         const userPrefs = await base44.entities.UserPreferences.filter({ user_email: user.email });
         
         if (userPrefs.length > 0 && userPrefs[0].dashboard_preferences) {
-          const prefs = userPrefs[0].dashboard_preferences;
-          if (prefs.viewMode) setViewMode(prefs.viewMode);
-          if (prefs.compactHeaders !== undefined) setCompactHeaders(prefs.compactHeaders);
-          if (prefs.expandedCards) setExpandedCards(prefs.expandedCards);
-          if (prefs.dashboardCards) setDashboardCards(prefs.dashboardCards);
-          if (prefs.dashboardSettings) setDashboardSettings(prefs.dashboardSettings);
+          const p = userPrefs[0].dashboard_preferences;
+          if (p.viewMode) setViewMode(p.viewMode);
+          if (p.expandedCards) setExpandedCards(p.expandedCards);
+          if (p.visibleCards) setVisibleCards(p.visibleCards);
         }
       } catch (e) {
-        console.error('Error loading dashboard preferences:', e);
+        console.error('Error loading preferences:', e);
       }
     };
     
-    loadDashboardPrefs();
+    loadPrefs();
   }, []);
 
-  // Save dashboard preferences to database
+  // Save preferences to database (debounced)
   useEffect(() => {
-    const saveDashboardPrefs = async () => {
+    const savePrefs = async () => {
       try {
         const user = await base44.auth.me();
-        const existingPrefs = await base44.entities.UserPreferences.filter({ user_email: user.email });
+        const existing = await base44.entities.UserPreferences.filter({ user_email: user.email });
         
-        const dashboardPrefs = {
-          viewMode,
-          compactHeaders,
-          expandedCards,
-          dashboardCards,
-          dashboardSettings
-        };
+        const prefs = { viewMode, expandedCards, visibleCards };
         
-        if (existingPrefs.length > 0) {
-          await base44.entities.UserPreferences.update(existingPrefs[0].id, {
-            dashboard_preferences: dashboardPrefs
+        if (existing.length > 0) {
+          await base44.entities.UserPreferences.update(existing[0].id, {
+            dashboard_preferences: prefs
           });
         } else {
           await base44.entities.UserPreferences.create({
             user_email: user.email,
-            dashboard_preferences: dashboardPrefs
+            dashboard_preferences: prefs
           });
         }
       } catch (e) {
-        console.error('Error saving dashboard preferences:', e);
+        console.error('Error saving preferences:', e);
       }
     };
     
-    const timeoutId = setTimeout(saveDashboardPrefs, 1000);
+    const timeoutId = setTimeout(savePrefs, 500);
     return () => clearTimeout(timeoutId);
-  }, [viewMode, compactHeaders, expandedCards, dashboardCards, dashboardSettings]);
+  }, [viewMode, expandedCards, visibleCards]);
 
   const toggleCard = useCallback((cardName) => {
     setExpandedCards(prev => ({
       ...prev,
       [cardName]: !prev[cardName]
     }));
-  }, []);
-
-  const updateDashboardSettings = useCallback((newSettings) => {
-    setDashboardSettings((prev) => ({ ...prev, ...newSettings }));
   }, []);
 
   const loadDashboardData = useCallback(async () => {
@@ -302,8 +290,16 @@ export default function Dashboard() {
 
 
 
-  const currentViewOption = VIEW_MODE_OPTIONS.find(opt => opt.value === viewMode) || VIEW_MODE_OPTIONS[2];
-  const CurrentViewIcon = currentViewOption.icon;
+  const currentView = VIEW_MODES.find(v => v.value === viewMode) || VIEW_MODES[1];
+  const ViewIcon = currentView.icon;
+  
+  const getGridClass = () => {
+    if (viewMode === 'grid-2') return 'grid grid-cols-1 md:grid-cols-2 gap-6';
+    if (viewMode === 'grid-3') return 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6';
+    if (viewMode === 'grid-4') return 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4';
+    if (viewMode === 'list') return 'flex flex-col gap-4';
+    return 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6';
+  };
 
   return (
     <div className={`${isMobile ? 'p-3 pb-24' : 'p-6'} min-h-screen`} dir="rtl" style={{ backgroundColor: '#FCF6E3' }}>
@@ -434,7 +430,8 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {dashboardSettings.showStats && (
+        {/* Stats Cards */}
+        {visibleCards.stats && (
           isMobile ? (
             /* Mobile Stats - Large Touch-Friendly Grid */
             <div className="grid grid-cols-2 gap-3 mb-4" dir="rtl">
@@ -564,265 +561,191 @@ export default function Dashboard() {
           )
         )}
 
-        <div dir="rtl">
-          {!compactHeaders && !['kanban', 'timeline', 'analytics', 'heatmap', 'trends'].includes(viewMode) && (
-            <h2 className="text-xl font-bold text-slate-800 mb-4 text-right">פעילויות אחרונות</h2>
+        {/* Cards Grid */}
+        <div className={getGridClass()} dir="rtl">
+          {/* AI Insights */}
+          {visibleCards.aiInsights && (
+            <div>
+              <AIInsightsPanel />
+            </div>
           )}
 
-          {/* Special Views */}
-          {viewMode === 'kanban' && (
-            <KanbanView tasks={allTasks} onUpdate={loadDashboardData} />
+          {/* Projects Overview */}
+          {visibleCards.projectsOverview && (
+            <div>
+              <ProjectsOverview isExpanded={expandedCards.projectsOverview !== false} />
+            </div>
           )}
 
-          {viewMode === 'timeline' && (
-            <TimelineView 
-              tasks={upcomingTasks} 
-              meetings={upcomingMeetings} 
-              projects={recentProjects} 
-            />
-          )}
-
-          {viewMode === 'analytics' && (
-            <AnalyticsView 
-              clients={allClients}
-              projects={allProjects}
-              tasks={allTasks}
-              quotes={quotes}
-            />
-          )}
-
-          {viewMode === 'heatmap' && (
-            <HeatmapView 
-              tasks={allTasks}
-              timeLogs={timeLogs}
-              meetings={upcomingMeetings}
-            />
-          )}
-
-          {viewMode === 'trends' && (
-            <TrendsView 
-              clients={allClients}
-              projects={allProjects}
-              tasks={allTasks}
-              quotes={quotes}
-            />
-          )}
-
-          {/* Regular Grid Views */}
-          {!['kanban', 'timeline', 'analytics', 'heatmap', 'trends'].includes(viewMode) && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 auto-rows-min" dir="rtl">
-            {dashboardCards.map(card => {
-              if (!card.visible) return null;
-              
-              const sizeClass = getSizeClass(card.size);
-
-              if (card.id === 'aiInsights') {
-                return (
-                  <div key={card.id} className={sizeClass}>
-                    <AIInsightsPanel />
-                  </div>
-                );
-              }
-
-              if (card.id === 'projectsOverview') {
-                return (
-                  <div key={card.id} className={sizeClass}>
-                    <ProjectsOverview compactHeader={compactHeaders} isExpanded={expandedCards.projectsOverview !== false} />
-                  </div>
-                );
-              }
-
-              if (card.id === 'recentProjects' && dashboardSettings.showRecentProjects) {
-                return (
-                  <Card key={card.id} className={`bg-white shadow-md ${sizeClass}`}>
-                    <CardHeader 
-                      className={`border-b cursor-pointer hover:bg-slate-50 transition-colors ${compactHeaders ? 'py-3' : ''}`}
-                      onClick={() => toggleCard('projects')}
-                    >
-                      <CardTitle className={`flex items-center justify-between ${compactHeaders ? 'text-sm' : 'text-base'}`}>
-                        <span className="text-right">פרויקטים אחרונים</span>
-                        <div className="flex items-center gap-2">
-                          <span className={`text-slate-500 ${compactHeaders ? 'text-xs' : 'text-sm'}`}>
-                            {recentProjects.length}
-                          </span>
-                          {expandedCards.projects ? (
-                            <ChevronUp className="w-5 h-5 text-slate-400" />
-                          ) : (
-                            <ChevronDown className="w-5 h-5 text-slate-400" />
-                          )}
-                        </div>
-                      </CardTitle>
-                    </CardHeader>
-                    {expandedCards.projects && (
-                      <CardContent className="p-0">
-                        <RecentProjects projects={recentProjects} isLoading={loading} onUpdate={loadDashboardData} />
-                      </CardContent>
+          {/* Recent Projects */}
+          {visibleCards.recentProjects && (
+            <Card className="bg-white shadow-md">
+              <CardHeader 
+                className="border-b cursor-pointer hover:bg-slate-50 transition-colors"
+                onClick={() => toggleCard('projects')}
+              >
+                <CardTitle className="flex items-center justify-between text-base">
+                  <span className="text-right">פרויקטים אחרונים</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-500 text-sm">{recentProjects.length}</span>
+                    {expandedCards.projects ? (
+                      <ChevronUp className="w-5 h-5 text-slate-400" />
+                    ) : (
+                      <ChevronDown className="w-5 h-5 text-slate-400" />
                     )}
-                  </Card>
-                );
-              }
+                  </div>
+                </CardTitle>
+              </CardHeader>
+              {expandedCards.projects && (
+                <CardContent className="p-0">
+                  <RecentProjects projects={recentProjects} isLoading={loading} onUpdate={loadDashboardData} />
+                </CardContent>
+              )}
+            </Card>
+          )}
 
-              if (card.id === 'recentClients' && dashboardSettings.showRecentProjects) {
-                return (
-                  <Card key={card.id} className={`bg-white shadow-md ${sizeClass}`}>
-                    <CardHeader 
-                      className={`border-b cursor-pointer hover:bg-slate-50 transition-colors ${compactHeaders ? 'py-3' : ''}`}
-                      onClick={() => toggleCard('clients')}
-                    >
-                      <CardTitle className={`flex items-center justify-between ${compactHeaders ? 'text-sm' : 'text-base'}`}>
-                        <span className="text-right">לקוחות אחרונים</span>
-                        <div className="flex items-center gap-2">
-                          {expandedCards.clients ? (
-                            <ChevronUp className="w-5 h-5 text-slate-400" />
-                          ) : (
-                            <ChevronDown className="w-5 h-5 text-slate-400" />
-                          )}
-                        </div>
-                      </CardTitle>
-                    </CardHeader>
-                    {expandedCards.clients && (
-                      <CardContent className="p-0">
-                        <RecentClients isLoading={loading} />
-                      </CardContent>
-                    )}
-                  </Card>
-                );
-              }
-
-              if (card.id === 'upcomingTasks' && dashboardSettings.showUpcomingTasks) {
-                return (
-                  <Card key={card.id} className={`bg-white shadow-md ${sizeClass}`}>
-                    <CardHeader 
-                    className={`border-b cursor-pointer hover:bg-slate-50 transition-colors ${compactHeaders ? 'py-3' : ''}`}
-                    onClick={() => toggleCard('tasks')}
-                  >
-                    <CardTitle className={`flex items-center justify-between ${compactHeaders ? 'text-sm' : 'text-base'}`}>
-                      <span className="text-right">משימות קרובות</span>
-                      <div className="flex items-center gap-2">
-                        <span className={`text-slate-500 ${compactHeaders ? 'text-xs' : 'text-sm'}`}>
-                          {upcomingTasks.length}
-                        </span>
-                        {expandedCards.tasks ? (
-                          <ChevronUp className="w-5 h-5 text-slate-400" />
-                        ) : (
-                          <ChevronDown className="w-5 h-5 text-slate-400" />
-                        )}
-                      </div>
-                    </CardTitle>
-                  </CardHeader>
-                  {expandedCards.tasks && (
-                    <CardContent className="p-0">
-                      <UpcomingTasks tasks={upcomingTasks} isLoading={loading} onUpdate={loadDashboardData} clients={allClients} />
-                    </CardContent>
+          {/* Recent Clients */}
+          {visibleCards.recentClients && (
+            <Card className="bg-white shadow-md">
+              <CardHeader 
+                className="border-b cursor-pointer hover:bg-slate-50 transition-colors"
+                onClick={() => toggleCard('clients')}
+              >
+                <CardTitle className="flex items-center justify-between text-base">
+                  <span className="text-right">לקוחות אחרונים</span>
+                  {expandedCards.clients ? (
+                    <ChevronUp className="w-5 h-5 text-slate-400" />
+                  ) : (
+                    <ChevronDown className="w-5 h-5 text-slate-400" />
                   )}
-                </Card>
-              );
-            }
+                </CardTitle>
+              </CardHeader>
+              {expandedCards.clients && (
+                <CardContent className="p-0">
+                  <RecentClients isLoading={loading} />
+                </CardContent>
+              )}
+            </Card>
+          )}
 
-              if (card.id === 'quoteStatus' && dashboardSettings.showQuoteStatus) {
-                return (
-                  <Card key={card.id} className={`bg-white shadow-md ${sizeClass}`}>
-                    <CardHeader 
-                      className={`border-b cursor-pointer hover:bg-slate-50 transition-colors ${compactHeaders ? 'py-3' : ''}`}
-                      onClick={() => toggleCard('quotes')}
-                    >
-                      <CardTitle className={`flex items-center justify-between ${compactHeaders ? 'text-sm' : 'text-base'}`}>
-                        <span className="text-right">הצעות מחיר</span>
-                        <div className="flex items-center gap-2">
-                          <span className={`text-slate-500 ${compactHeaders ? 'text-xs' : 'text-sm'}`}>
-                            {quotes.length}
-                          </span>
-                          {expandedCards.quotes ? (
-                            <ChevronUp className="w-5 h-5 text-slate-400" />
-                          ) : (
-                            <ChevronDown className="w-5 h-5 text-slate-400" />
-                          )}
-                        </div>
-                      </CardTitle>
-                    </CardHeader>
-                    {expandedCards.quotes && (
-                      <CardContent className="p-0">
-                        <QuoteStatus quotes={quotes} isLoading={loading} clients={allClients} onUpdate={loadDashboardData} />
-                      </CardContent>
+          {/* Upcoming Tasks */}
+          {visibleCards.upcomingTasks && (
+            <Card className="bg-white shadow-md">
+              <CardHeader 
+                className="border-b cursor-pointer hover:bg-slate-50 transition-colors"
+                onClick={() => toggleCard('tasks')}
+              >
+                <CardTitle className="flex items-center justify-between text-base">
+                  <span className="text-right">משימות קרובות</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-500 text-sm">{upcomingTasks.length}</span>
+                    {expandedCards.tasks ? (
+                      <ChevronUp className="w-5 h-5 text-slate-400" />
+                    ) : (
+                      <ChevronDown className="w-5 h-5 text-slate-400" />
                     )}
-                  </Card>
-                );
-              }
+                  </div>
+                </CardTitle>
+              </CardHeader>
+              {expandedCards.tasks && (
+                <CardContent className="p-0">
+                  <UpcomingTasks tasks={upcomingTasks} isLoading={loading} onUpdate={loadDashboardData} clients={allClients} />
+                </CardContent>
+              )}
+            </Card>
+          )}
 
-              if (card.id === 'timerLogs' && dashboardSettings.showTimerLogs) {
-                return (
-                  <Card key={card.id} className={`bg-white shadow-md ${sizeClass}`}>
-                    <CardHeader 
-                      className={`border-b cursor-pointer hover:bg-slate-50 transition-colors ${compactHeaders ? 'py-3' : ''}`}
-                      onClick={() => toggleCard('timeLogs')}
-                    >
-                      <CardTitle className={`flex items-center justify-between ${compactHeaders ? 'text-sm' : 'text-base'}`}>
-                        <span className="text-right">לוגי זמן</span>
-                        <div className="flex items-center gap-2">
-                          <span className={`text-slate-500 ${compactHeaders ? 'text-xs' : 'text-sm'}`}>
-                            {timeLogs.length}
-                          </span>
-                          {expandedCards.timeLogs ? (
-                            <ChevronUp className="w-5 h-5 text-slate-400" />
-                          ) : (
-                            <ChevronDown className="w-5 h-5 text-slate-400" />
-                          )}
-                        </div>
-                      </CardTitle>
-                    </CardHeader>
-                    {expandedCards.timeLogs && (
-                      <CardContent className="p-0">
-                        <TimerLogs timeLogs={timeLogs} isLoading={loading} onUpdate={loadDashboardData} clients={allClients} />
-                      </CardContent>
+          {/* Quotes */}
+          {visibleCards.quoteStatus && (
+            <Card className="bg-white shadow-md">
+              <CardHeader 
+                className="border-b cursor-pointer hover:bg-slate-50 transition-colors"
+                onClick={() => toggleCard('quotes')}
+              >
+                <CardTitle className="flex items-center justify-between text-base">
+                  <span className="text-right">הצעות מחיר</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-500 text-sm">{quotes.length}</span>
+                    {expandedCards.quotes ? (
+                      <ChevronUp className="w-5 h-5 text-slate-400" />
+                    ) : (
+                      <ChevronDown className="w-5 h-5 text-slate-400" />
                     )}
-                  </Card>
-                );
-              }
+                  </div>
+                </CardTitle>
+              </CardHeader>
+              {expandedCards.quotes && (
+                <CardContent className="p-0">
+                  <QuoteStatus quotes={quotes} isLoading={loading} clients={allClients} onUpdate={loadDashboardData} />
+                </CardContent>
+              )}
+            </Card>
+          )}
 
-              if (card.id === 'upcomingMeetings' && dashboardSettings.showMeetings) {
-                return (
-                  <Card key={card.id} className={`bg-white shadow-md ${sizeClass}`}>
-                    <CardHeader 
-                      className={`border-b cursor-pointer hover:bg-slate-50 transition-colors ${compactHeaders ? 'py-3' : ''}`}
-                      onClick={() => toggleCard('meetings')}
-                    >
-                      <CardTitle className={`flex items-center justify-between ${compactHeaders ? 'text-sm' : 'text-base'}`}>
-                        <span className="text-right">פגישות קרובות</span>
-                        <div className="flex items-center gap-2">
-                          <span className={`text-slate-500 ${compactHeaders ? 'text-xs' : 'text-sm'}`}>
-                            {upcomingMeetings.length}
-                          </span>
-                          {expandedCards.meetings ? (
-                            <ChevronUp className="w-5 h-5 text-slate-400" />
-                          ) : (
-                            <ChevronDown className="w-5 h-5 text-slate-400" />
-                          )}
-                        </div>
-                      </CardTitle>
-                    </CardHeader>
-                    {expandedCards.meetings && (
-                      <CardContent className="p-0">
-                        <UpcomingMeetings meetings={upcomingMeetings} isLoading={loading} onUpdate={loadDashboardData} clients={allClients} />
-                      </CardContent>
+          {/* Time Logs */}
+          {visibleCards.timerLogs && (
+            <Card className="bg-white shadow-md">
+              <CardHeader 
+                className="border-b cursor-pointer hover:bg-slate-50 transition-colors"
+                onClick={() => toggleCard('timeLogs')}
+              >
+                <CardTitle className="flex items-center justify-between text-base">
+                  <span className="text-right">לוגי זמן</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-500 text-sm">{timeLogs.length}</span>
+                    {expandedCards.timeLogs ? (
+                      <ChevronUp className="w-5 h-5 text-slate-400" />
+                    ) : (
+                      <ChevronDown className="w-5 h-5 text-slate-400" />
                     )}
-                  </Card>
-                );
-              }
+                  </div>
+                </CardTitle>
+              </CardHeader>
+              {expandedCards.timeLogs && (
+                <CardContent className="p-0">
+                  <TimerLogs timeLogs={timeLogs} isLoading={loading} onUpdate={loadDashboardData} clients={allClients} />
+                </CardContent>
+              )}
+            </Card>
+          )}
 
-              return null;
-            })}
-          </div>
+          {/* Upcoming Meetings */}
+          {visibleCards.upcomingMeetings && (
+            <Card className="bg-white shadow-md">
+              <CardHeader 
+                className="border-b cursor-pointer hover:bg-slate-50 transition-colors"
+                onClick={() => toggleCard('meetings')}
+              >
+                <CardTitle className="flex items-center justify-between text-base">
+                  <span className="text-right">פגישות קרובות</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-500 text-sm">{upcomingMeetings.length}</span>
+                    {expandedCards.meetings ? (
+                      <ChevronUp className="w-5 h-5 text-slate-400" />
+                    ) : (
+                      <ChevronDown className="w-5 h-5 text-slate-400" />
+                    )}
+                  </div>
+                </CardTitle>
+              </CardHeader>
+              {expandedCards.meetings && (
+                <CardContent className="p-0">
+                  <UpcomingMeetings meetings={upcomingMeetings} isLoading={loading} onUpdate={loadDashboardData} clients={allClients} />
+                </CardContent>
+              )}
+            </Card>
           )}
         </div>
       </div>
 
+      {/* Customizer Dialog */}
       {showCustomizer && (
         <DashboardCustomizer
           open={showCustomizer}
           onClose={() => setShowCustomizer(false)}
-          cards={dashboardCards}
-          onSave={(newCards) => {
-            setDashboardCards(newCards);
+          visibleCards={visibleCards}
+          onSave={(newVisibleCards) => {
+            setVisibleCards(newVisibleCards);
           }}
         />
       )}
