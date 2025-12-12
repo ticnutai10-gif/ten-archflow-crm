@@ -657,6 +657,18 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
       {/* כלי בקרה - שורה אחת קומפקטית */}
       <div className="flex-shrink-0 bg-white border-b border-slate-200">
         <div className="flex items-center gap-2 p-3 flex-wrap">
+          {/* כפתור הוספת זמן */}
+          <Button
+            onClick={() => {
+              setSelectedClientForAdd(null);
+              setShowAddDialog(true);
+            }}
+            size="icon"
+            className="h-9 w-9 bg-blue-600 hover:bg-blue-700 text-white shadow-md"
+            title="הוסף רישום זמן"
+          >
+            <Plus className="w-5 h-5" />
+          </Button>
           {/* חיפוש */}
           <div className="relative w-48">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
