@@ -70,7 +70,6 @@ const VIEW_MODES = [
 export default function Dashboard() {
   const isMobile = useIsMobile();
   const [loading, setLoading] = useState(true);
-  const [prefsLoaded, setPrefsLoaded] = useState(false);
   
   // Data
   const [stats, setStats] = useState({ clients: 0, projects: 0, quotes: 0, tasks: 0 });
@@ -90,9 +89,24 @@ export default function Dashboard() {
   const [savedLayouts, setSavedLayouts] = useState([]);
   const [layoutName, setLayoutName] = useState('');
   
-  // User Preferences
-  const [viewMode, setViewMode] = useState('grid-3');
-  const [expandedCards, setExpandedCards] = useState({
+  // Load preferences from localStorage immediately (synchronous - no delay)
+  const loadInitialPrefs = () => {
+    try {
+      const cached = localStorage.getItem('dashboard_preferences');
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    } catch (e) {
+      console.warn('Failed to load cached preferences');
+    }
+    return null;
+  };
+
+  const initialPrefs = loadInitialPrefs();
+
+  // User Preferences - loaded instantly from localStorage
+  const [viewMode, setViewMode] = useState(initialPrefs?.viewMode || 'grid-3');
+  const [expandedCards, setExpandedCards] = useState(initialPrefs?.expandedCards || {
     projects: true,
     clients: true,
     tasks: true,
@@ -100,7 +114,7 @@ export default function Dashboard() {
     timeLogs: true,
     meetings: true
   });
-  const [visibleCards, setVisibleCards] = useState({
+  const [visibleCards, setVisibleCards] = useState(initialPrefs?.visibleCards || {
     stats: true,
     aiInsights: true,
     projectsOverview: true,
@@ -111,7 +125,7 @@ export default function Dashboard() {
     timerLogs: true,
     upcomingMeetings: true
   });
-  const [cardOrder, setCardOrder] = useState([
+  const [cardOrder, setCardOrder] = useState(initialPrefs?.cardOrder || [
     { id: 'stats', name: 'סטטיסטיקות' },
     { id: 'aiInsights', name: 'תובנות AI' },
     { id: 'projectsOverview', name: 'סקירת פרויקטים' },
@@ -123,70 +137,44 @@ export default function Dashboard() {
     { id: 'upcomingMeetings', name: 'פגישות קרובות' }
   ]);
 
-  // Load preferences from localStorage immediately, then sync with database
+  // Sync with database in background (non-blocking)
   useEffect(() => {
-    const loadPrefs = async () => {
+    const syncWithDB = async () => {
       try {
-        // Load from localStorage immediately (synchronous, fast)
-        const cached = localStorage.getItem('dashboard_preferences');
-        if (cached) {
-          try {
-            const p = JSON.parse(cached);
-            if (p.viewMode) setViewMode(p.viewMode);
-            if (p.expandedCards) setExpandedCards(p.expandedCards);
-            if (p.visibleCards) setVisibleCards(p.visibleCards);
-            if (p.cardOrder) setCardOrder(p.cardOrder);
-            if (p.savedLayouts) setSavedLayouts(p.savedLayouts);
-            console.log('⚡ [Dashboard] Loaded from cache instantly');
-          } catch (e) {
-            console.warn('Failed to parse cached preferences');
-          }
-        }
-        
-        setPrefsLoaded(true);
-        
-        // Then sync with database in background
         const user = await base44.auth.me();
         const userPrefs = await base44.entities.UserPreferences.filter({ user_email: user.email });
         
         if (userPrefs.length > 0 && userPrefs[0].dashboard_preferences) {
           const p = userPrefs[0].dashboard_preferences;
-          
-          // Update localStorage cache
           localStorage.setItem('dashboard_preferences', JSON.stringify(p));
           
-          // Update state if different from cache
-          if (p.viewMode) setViewMode(p.viewMode);
-          if (p.expandedCards) setExpandedCards(p.expandedCards);
-          if (p.visibleCards) setVisibleCards(p.visibleCards);
-          if (p.cardOrder) setCardOrder(p.cardOrder);
-          if (p.savedLayouts) setSavedLayouts(p.savedLayouts);
-          
-          console.log('🔄 [Dashboard] Synced from database');
+          // Only update if different from current state
+          if (JSON.stringify(p) !== JSON.stringify({ viewMode, expandedCards, visibleCards, cardOrder, savedLayouts })) {
+            if (p.viewMode) setViewMode(p.viewMode);
+            if (p.expandedCards) setExpandedCards(p.expandedCards);
+            if (p.visibleCards) setVisibleCards(p.visibleCards);
+            if (p.cardOrder) setCardOrder(p.cardOrder);
+            if (p.savedLayouts) setSavedLayouts(p.savedLayouts);
+          }
         }
       } catch (e) {
-        console.error('❌ [Dashboard] Error loading preferences:', e);
-        setPrefsLoaded(true);
+        // Silently fail - user is not logged in or no preferences
       }
     };
     
-    loadPrefs();
+    syncWithDB();
   }, []);
 
-  // Save preferences to database (debounced) - only after initial load
+  // Save preferences (debounced)
   useEffect(() => {
-    if (!prefsLoaded) {
-      return;
-    }
-    
     const savePrefs = async () => {
       try {
         const prefs = { viewMode, expandedCards, visibleCards, cardOrder, savedLayouts };
         
-        // Save to localStorage immediately
+        // Save to localStorage immediately (synchronous)
         localStorage.setItem('dashboard_preferences', JSON.stringify(prefs));
         
-        // Save to database in background
+        // Save to database in background (non-blocking)
         const user = await base44.auth.me();
         const existing = await base44.entities.UserPreferences.filter({ user_email: user.email });
         
@@ -201,13 +189,13 @@ export default function Dashboard() {
           });
         }
       } catch (e) {
-        console.error('❌ [Dashboard] Error saving preferences:', e);
+        // Silently fail
       }
     };
     
     const timeoutId = setTimeout(savePrefs, 500);
     return () => clearTimeout(timeoutId);
-  }, [viewMode, expandedCards, visibleCards, cardOrder, savedLayouts, prefsLoaded]);
+  }, [viewMode, expandedCards, visibleCards, cardOrder, savedLayouts]);
 
   const toggleCard = useCallback((cardName) => {
     setExpandedCards(prev => ({
