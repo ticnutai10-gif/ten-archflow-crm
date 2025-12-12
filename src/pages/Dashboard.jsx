@@ -209,6 +209,18 @@ export default function Dashboard() {
     setSavedLayouts(prev => prev.filter(l => l.id !== layoutId));
   }, []);
 
+  // ESC key to close focus mode
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape' && focusedCard) {
+        setFocusedCard(null);
+      }
+    };
+    
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [focusedCard]);
+
   const loadDashboardData = useCallback(async () => {
     setLoading(true);
     try {
@@ -554,7 +566,15 @@ export default function Dashboard() {
         )}
 
         {/* Cards Grid */}
-        <div className={focusedCard ? 'fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-6' : getGridClass()} dir="rtl">
+        <div 
+          className={focusedCard ? 'fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-6' : getGridClass()} 
+          dir="rtl"
+          onClick={(e) => {
+            if (focusedCard && e.target === e.currentTarget) {
+              setFocusedCard(null);
+            }
+          }}
+        >
           {cardOrder.map((cardDef) => {
             const cardId = cardDef.id;
             
