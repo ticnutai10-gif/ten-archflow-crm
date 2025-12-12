@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, AlertCircle, CheckSquare, Square, Trash2 } from "lucide-react";
+import { Calendar, AlertCircle, CheckSquare, Square, Trash2, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
+import TaskForm from "@/components/tasks/TaskForm";
 
 const PRIORITY_COLORS = {
   "גבוהה": "bg-red-100 text-red-800 border-red-200",
@@ -15,9 +16,10 @@ const PRIORITY_COLORS = {
   "נמוכה": "bg-green-100 text-green-800 border-green-200"
 };
 
-export default function UpcomingTasks({ tasks = [], isLoading, onUpdate }) {
+export default function UpcomingTasks({ tasks = [], isLoading, onUpdate, clients = [] }) {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
+  const [showAddDialog, setShowAddDialog] = useState(false);
 
   useEffect(() => {
     console.log('🔍 [UpcomingTasks] Received tasks:', {
@@ -130,7 +132,20 @@ export default function UpcomingTasks({ tasks = [], isLoading, onUpdate }) {
   console.log('📊 [UpcomingTasks] Valid tasks:', validTasks.length, 'out of', tasks.length);
 
   return (
+    <>
     <div>
+      {/* כפתור הוספה */}
+      <div className="flex justify-end p-3 border-b">
+        <Button
+          onClick={() => setShowAddDialog(true)}
+          size="sm"
+          className="h-8 w-8 p-0 bg-blue-600 hover:bg-blue-700 text-white shadow-md"
+          title="הוסף משימה"
+        >
+          <Plus className="w-4 h-4" />
+        </Button>
+      </div>
+
       {selectionMode && selectedIds.length > 0 && (
         <div className="p-3 bg-blue-50 border-b flex items-center justify-between">
           <span className="text-sm text-blue-900">נבחרו {selectedIds.length} משימות</span>

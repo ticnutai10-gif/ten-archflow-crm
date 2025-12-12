@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { TrendingUp, ExternalLink } from "lucide-react";
+import { TrendingUp, ExternalLink, Plus } from "lucide-react";
+import QuoteForm from "@/components/quotes/QuoteForm";
+import { base44 } from "@/api/base44Client";
 
 const statusColors = {
   'נשלחה': 'bg-blue-100 text-blue-800 border-blue-200',
@@ -14,6 +16,8 @@ const statusColors = {
 };
 
 export default function QuoteStatus({ quotes, isLoading, clients = [], onUpdate }) {
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  
   const formatAmount = (amount) => {
     return new Intl.NumberFormat('he-IL', { 
       style: 'currency', 
@@ -43,7 +47,20 @@ export default function QuoteStatus({ quotes, isLoading, clients = [], onUpdate 
   }
 
   return (
+    <>
     <div className="h-[400px] flex flex-col" dir="rtl">
+      {/* כפתור הוספה */}
+      <div className="flex justify-end p-3 border-b">
+        <Button
+          onClick={() => setShowAddDialog(true)}
+          size="sm"
+          className="h-8 w-8 p-0 bg-blue-600 hover:bg-blue-700 text-white shadow-md"
+          title="הוסף הצעת מחיר"
+        >
+          <Plus className="w-4 h-4" />
+        </Button>
+      </div>
+
       {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto px-6 py-4" dir="rtl">
         <div className="space-y-4">
@@ -77,5 +94,21 @@ export default function QuoteStatus({ quotes, isLoading, clients = [], onUpdate 
         </Link>
       </div>
     </div>
+
+    {/* Add Quote Dialog */}
+    {showAddDialog && (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <QuoteForm
+          clients={clients}
+          onSubmit={async (data) => {
+            await base44.entities.Quote.create(data);
+            setShowAddDialog(false);
+            onUpdate && onUpdate();
+          }}
+          onCancel={() => setShowAddDialog(false)}
+        />
+      </div>
+    )}
+    </>
   );
 }
