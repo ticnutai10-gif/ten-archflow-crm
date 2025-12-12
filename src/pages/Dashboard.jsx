@@ -885,7 +885,7 @@ export default function Dashboard() {
                     </CardHeader>
                     {expandedCards.timeLogs && (
                       <CardContent className="p-0">
-                        <TimerLogs timeLogs={timeLogs} isLoading={loading} onUpdate={loadDashboardData} />
+                        <TimerLogs timeLogs={timeLogs} isLoading={loading} onUpdate={loadDashboardData} clients={allClients} />
                       </CardContent>
                     )}
                   </Card>
