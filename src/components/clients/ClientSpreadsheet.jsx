@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -71,6 +72,32 @@ const isValidPhone = (phone) => {
 
   return true;
 };
+
+// Component to display stage icon
+function StageIcon({ client, columns, stageOptions }) {
+  const stageColumn = columns.find(col => col.type === 'stage' || col.key === 'stage');
+  if (!stageColumn) return null;
+  
+  const stageValue = stageColumn.key === 'stage' 
+    ? client.stage 
+    : client.custom_data?.[stageColumn.key.slice(3)];
+  
+  if (!stageValue) return null;
+  
+  const currentStage = stageOptions.find(s => s.value === stageValue);
+  if (!currentStage) return null;
+  
+  return (
+    <div
+      className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+      style={{ 
+        backgroundColor: currentStage.color,
+        boxShadow: `0 0 8px ${currentStage.color}, 0 0 12px ${currentStage.color}60`
+      }}
+      title={currentStage.label}
+    />
+  );
+}
 
 // Load settings from database (per user)
 const loadUserSettings = async (tableName = 'clients') => {
@@ -970,7 +997,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
     }
 
     const column = columns.find((c) => c.key === columnKey);
-    if (!column) return; // Should not happen with valid key
+    if (!column) return;
 
     if (!column.required && column.key !== 'actions' && !editingColumnKey) {
       setEditingColumnKey(column.key);
@@ -1211,7 +1238,6 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
     toast.success(`${cellsArray.length} תאים נמחקו`);
   };
 
-  // NEW: Clear selected cells (without deleting)
   const clearSelectedCells = async () => {
     if (selectedCells.size === 0) return;
 
@@ -1220,7 +1246,6 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
     const cellsArray = Array.from(selectedCells);
     const clientsToUpdate = new Map();
 
-    // Group cells by client
     cellsArray.forEach(cellKey => {
       const [clientId, columnKey] = cellKey.split('_');
       if (!clientsToUpdate.has(clientId)) {
@@ -1229,7 +1254,6 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
       clientsToUpdate.get(clientId).push(columnKey);
     });
 
-    // Update clients
     const updatedClientsMap = new Map();
     localClients.forEach(client => {
       if (clientsToUpdate.has(client.id)) {
@@ -1257,7 +1281,6 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
 
     setLocalClients(prev => prev.map(c => updatedClientsMap.get(c.id) || c));
 
-    // Save to backend
     try {
       await Promise.all(Array.from(updatedClientsMap.values()).map(async (client) => {
         const dataToSave = { ...client };
@@ -1276,7 +1299,6 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
     setSelectionMode(false);
   };
 
-  // NEW: Copy selected cells to clipboard
   const copySelectedCells = () => {
     if (selectedCells.size === 0) return;
 
@@ -1308,7 +1330,6 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
     toast.success(`${selectedCells.size} תאים הועתקו ללוח`);
   };
 
-  // NEW: Fill selected cells with same value
   const fillSelectedCells = async () => {
     if (selectedCells.size === 0) return;
 
@@ -1371,7 +1392,6 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
     setSelectionMode(false);
   };
 
-  // NEW: Export selected cells to CSV
   const exportSelectedCells = () => {
     if (selectedCells.size === 0) return;
 
@@ -1400,8 +1420,8 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
 
     const csvData = [
       ['לקוח', 'עמודה', 'ערך'],
-      ...cellsData.map(row => [row.client, row.column, row.value])
-    ].map(row => row.map(cell => `"${String(cell || '').replace(/"/g, '""')}"`).join(',')).join('\n');
+      ...cellsData.map(row => row.map(cell => `"${String(cell || '').replace(/"/g, '""')}"`).join(',')),
+    ].join('\n');
 
     const blob = new Blob(['\uFEFF' + csvData], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
@@ -2686,9 +2706,6 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                       </td>
                     )}
                     {visibleColumns.map((column, colIndex) => {
-                      return renderRegularCell(client, column, colIndex, rowIndex);
-                      
-                      function renderRegularCell(client, column, colIndex, rowIndex) {
                       const cellKey = `${client.id}_${column.key}`;
                       const isEditing = editingCell === cellKey;
                       const cellStyle = cellStyles[cellKey] || {};
@@ -2880,30 +2897,11 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                                 <div className="text-sm w-full" dir="rtl">
                                   {column.key === 'name' ? (
                                     <div className="flex items-center gap-2">
-                                      {(() => {
-                                        const stageColumn = columns.find(col => col.type === 'stage' || col.key === 'stage');
-                                        if (!stageColumn) return null;
-                                        
-                                        let stageValue = stageColumn.key === 'stage' 
-                                          ? client.stage 
-                                          : client.custom_data?.[stageColumn.key.slice(3)];
-                                        
-                                        if (!stageValue) return null;
-                                        
-                                        const currentStage = stageOptions.find(s => s.value === stageValue);
-                                        if (!currentStage) return null;
-                                        
-                                        return (
-                                          <div
-                                            className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                                            style={{ 
-                                              backgroundColor: currentStage.color,
-                                              boxShadow: `0 0 6px ${currentStage.color}80, 0 0 10px ${currentStage.color}40`
-                                            }}
-                                            title={currentStage.label}
-                                          />
-                                        );
-                                      })()}
+                                      <StageIcon 
+                                        client={client} 
+                                        columns={columns} 
+                                        stageOptions={stageOptions} 
+                                      />
                                       <span style={{
                                         color: column.type === 'email' || column.type === 'phone' ? '#000000' : 'inherit',
                                         fontWeight: column.type === 'email' || column.type === 'phone' ? '500' : 'normal'
@@ -3036,7 +3034,6 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                             </Popover>
                           }
                         </td>);
-                      }
 
                     })}
                   </tr>
