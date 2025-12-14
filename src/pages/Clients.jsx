@@ -899,11 +899,11 @@ export default function ClientsPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">כל השלבים</SelectItem>
-                    <SelectItem value="ברור_תכן">ברור תכן</SelectItem>
-                    <SelectItem value="תיק_מידע">תיק מידע</SelectItem>
-                    <SelectItem value="היתרים">היתרים</SelectItem>
-                    <SelectItem value="ביצוע">ביצוע</SelectItem>
-                    <SelectItem value="סיום">סיום</SelectItem>
+                    {STAGE_OPTIONS.map(stage => (
+                      <SelectItem key={stage.value} value={stage.value}>
+                        {stage.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
 
@@ -986,16 +986,22 @@ export default function ClientsPage() {
             <Select value={stageFilter} onValueChange={setStageFilter}>
               <SelectTrigger className="w-9 h-9 p-0 bg-white border-slate-300" title="שלב">
                 <div className="flex items-center justify-center w-full">
-                  <Filter className="w-4 h-4 text-slate-600" />
+                  <Circle className="w-4 h-4 text-slate-600" />
                 </div>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">כל השלבים</SelectItem>
-                <SelectItem value="ברור_תכן">ברור תכן</SelectItem>
-                <SelectItem value="תיק_מידע">תיק מידע</SelectItem>
-                <SelectItem value="היתרים">היתרים</SelectItem>
-                <SelectItem value="ביצוע">ביצוע</SelectItem>
-                <SelectItem value="סיום">סיום</SelectItem>
+                {STAGE_OPTIONS.map(stage => (
+                  <SelectItem key={stage.value} value={stage.value}>
+                    <div className="flex items-center gap-2">
+                      <Circle 
+                        className="w-3 h-3 fill-current" 
+                        style={{ color: stage.color }}
+                      />
+                      {stage.label}
+                    </div>
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             </>
