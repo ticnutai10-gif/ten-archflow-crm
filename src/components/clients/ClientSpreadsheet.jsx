@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Edit, Eye, X, Trash2, Maximize2, Minimize2, Settings, Bug, Save, Phone as PhoneIcon, Palette, Split, Merge, Edit2, Copy, Table, Info, Sparkles, Clock, FileText, Eraser, Circle, User } from "lucide-react";
+import { Plus, Edit, Eye, X, Trash2, Maximize2, Minimize2, Settings, Bug, Save, Phone as PhoneIcon, Palette, Split, Merge, Edit2, Copy, Table, Info, Sparkles, Clock, FileText, Eraser, Circle, User, ArrowUpDown } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -278,6 +278,8 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
 
   const [editingSubHeader, setEditingSubHeader] = useState(null);
   const [tempSubHeaderValue, setTempSubHeaderValue] = useState('');
+  
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
 
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [autoSave, setAutoSave] = useState(true);
@@ -1468,6 +1470,21 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
     toast.success('כותרת משנה עודכנה');
   };
 
+  const handleSort = (columnKey) => {
+    setSortConfig((prev) => {
+      if (prev.key === columnKey) {
+        // Toggle: asc -> desc -> none
+        if (prev.direction === 'asc') {
+          return { key: columnKey, direction: 'desc' };
+        } else {
+          return { key: null, direction: 'asc' };
+        }
+      }
+      // New column sort
+      return { key: columnKey, direction: 'asc' };
+    });
+  };
+
   if (isLoading) {
     return (
       <div className="bg-white p-6 rounded-lg shadow-lg">
@@ -2180,10 +2197,31 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                                     </Button>
                                   </div> :
 
-                              <div className="flex items-center justify-between group">
+                              <div className="flex items-center justify-between group w-full">
                                     <span>{column.title}</span>
 
-                                    {canEdit && !snapshot.isDragging &&
+                                    <div className="flex items-center gap-1">
+                                      {/* Sort Icon - Always Visible */}
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleSort(column.key);
+                                        }}
+                                        className="p-1 hover:bg-slate-200 rounded transition-colors"
+                                        title={`מיין לפי ${column.title}`}
+                                      >
+                                        {sortConfig.key === column.key ? (
+                                          sortConfig.direction === 'asc' ? (
+                                            <ArrowUpDown className="w-4 h-4 text-blue-600" />
+                                          ) : (
+                                            <ArrowUpDown className="w-4 h-4 text-blue-600 rotate-180" />
+                                          )
+                                        ) : (
+                                          <ArrowUpDown className="w-4 h-4 text-slate-400 hover:text-slate-600" />
+                                        )}
+                                      </button>
+
+                                      {canEdit && !snapshot.isDragging &&
                                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <Button
                                     size="sm"
@@ -2398,6 +2436,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                                         </Popover>
                                       </div>
                                 }
+                                    </div>
                                   </div>
                               }
                               </th>
