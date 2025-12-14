@@ -2908,7 +2908,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                                         
                                         if (!stageValue) return null;
                                         
-                                        const currentStage = STAGE_OPTIONS.find(s => s.value === stageValue);
+                                        const currentStage = stageOptions.find(s => s.value === stageValue);
                                         if (currentStage) {
                                           return (
                                             <Circle 
