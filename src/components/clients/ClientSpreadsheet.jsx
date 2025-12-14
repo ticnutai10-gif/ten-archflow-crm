@@ -444,8 +444,27 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
       setLocalClients([]);
       return;
     }
-    setLocalClients(clients);
-  }, [clients]);
+    
+    // Apply sorting if active
+    if (sortConfig.key) {
+      const sorted = [...clients].sort((a, b) => {
+        const aVal = a[sortConfig.key];
+        const bVal = b[sortConfig.key];
+        
+        // Handle empty values
+        if (!aVal && !bVal) return 0;
+        if (!aVal) return sortConfig.direction === 'asc' ? 1 : -1;
+        if (!bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+        
+        // Compare values
+        const comparison = String(aVal).localeCompare(String(bVal), 'he');
+        return sortConfig.direction === 'asc' ? comparison : -comparison;
+      });
+      setLocalClients(sorted);
+    } else {
+      setLocalClients(clients);
+    }
+  }, [clients, sortConfig]);
 
   // Listen for client updates - optimized
   useEffect(() => {
