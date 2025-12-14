@@ -78,8 +78,8 @@ import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { useIsMobile } from "../components/utils/useMediaQuery";
 import SwipeableCard from "../components/mobile/SwipeableCard";
 
-// Stage options
-const STAGE_OPTIONS = [
+// Default stage options
+const DEFAULT_STAGE_OPTIONS = [
   { value: 'ברור_תכן', label: 'ברור תכן', color: '#3b82f6' },
   { value: 'תיק_מידע', label: 'תיק מידע', color: '#8b5cf6' },
   { value: 'היתרים', label: 'היתרים', color: '#f59e0b' },
@@ -89,6 +89,7 @@ const STAGE_OPTIONS = [
 
 export default function ClientsPage() {
   const [clients, setClients] = useState([]);
+  const [stageOptions, setStageOptions] = useState(DEFAULT_STAGE_OPTIONS);
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingClient, setEditingClient] = useState(null);
@@ -169,8 +170,23 @@ export default function ClientsPage() {
   useEffect(() => {
     if (!accessLoading) {
       loadClients();
+      loadStageOptions();
     }
   }, [accessLoading]);
+
+  // Load stage options from UserPreferences
+  const loadStageOptions = async () => {
+    try {
+      const user = await base44.auth.me();
+      const userPrefs = await base44.entities.UserPreferences.filter({ user_email: user.email });
+      
+      if (userPrefs.length > 0 && userPrefs[0].spreadsheet_columns?.clients?.stageOptions) {
+        setStageOptions(userPrefs[0].spreadsheet_columns.clients.stageOptions);
+      }
+    } catch (e) {
+      console.warn('Failed to load stage options, using defaults');
+    }
+  };
 
   useEffect(() => {
     let timeoutId;
@@ -182,10 +198,16 @@ export default function ClientsPage() {
       }, 100);
     };
     
+    const handleStageOptionsUpdate = () => {
+      loadStageOptions();
+    };
+    
     window.addEventListener('client:updated', handleClientUpdate);
+    window.addEventListener('stage:options:updated', handleStageOptionsUpdate);
     return () => {
       if (timeoutId) clearTimeout(timeoutId);
       window.removeEventListener('client:updated', handleClientUpdate);
+      window.removeEventListener('stage:options:updated', handleStageOptionsUpdate);
     };
   }, []);
 
@@ -991,7 +1013,7 @@ export default function ClientsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">כל השלבים</SelectItem>
-                {STAGE_OPTIONS.map(stage => (
+                {stageOptions.map(stage => (
                   <SelectItem key={stage.value} value={stage.value}>
                     <div className="flex items-center gap-2">
                       <Circle 
@@ -1116,7 +1138,7 @@ export default function ClientsPage() {
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         {client.stage && (() => {
-                          const currentStage = STAGE_OPTIONS.find(s => s.value === client.stage);
+                          const currentStage = stageOptions.find(s => s.value === client.stage);
                           return currentStage ? (
                             <Badge 
                               className="text-white text-xs px-2 py-0.5"
@@ -1258,7 +1280,7 @@ export default function ClientsPage() {
                           }}
                         >
                           {client.stage && (() => {
-                            const currentStage = STAGE_OPTIONS.find(s => s.value === client.stage);
+                            const currentStage = stageOptions.find(s => s.value === client.stage);
                             if (currentStage) {
                               return (
                                 <Circle 
@@ -1368,7 +1390,7 @@ export default function ClientsPage() {
                             }}
                           >
                             {client.stage && (() => {
-                              const currentStage = STAGE_OPTIONS.find(s => s.value === client.stage);
+                              const currentStage = stageOptions.find(s => s.value === client.stage);
                               if (currentStage) {
                                 return (
                                   <Circle 
