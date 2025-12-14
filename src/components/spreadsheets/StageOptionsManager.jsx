@@ -10,6 +10,13 @@ export default function StageOptionsManager({ open, onClose, stageOptions, onSav
   const [editedOptions, setEditedOptions] = useState(stageOptions || []);
   const [editingIndex, setEditingIndex] = useState(null);
 
+  // Update editedOptions when stageOptions prop changes
+  React.useEffect(() => {
+    if (stageOptions) {
+      setEditedOptions(stageOptions);
+    }
+  }, [stageOptions]);
+
   const handleAddStage = () => {
     const newStage = {
       value: `שלב_${Date.now()}`,
