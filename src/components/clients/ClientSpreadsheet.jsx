@@ -2820,48 +2820,36 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                                 }}
                                 stageOptions={stageOptions}
                                 onDirectSave={async (stageValue) => {
-
-                                  
-                                  let updatedClient = { ...client };
-                                  
-                                  if (column.key.startsWith('cf:')) {
-                                    const slug = column.key.slice(3);
-                                    updatedClient = {
-                                      ...updatedClient,
-                                      custom_data: {
-                                        ...(updatedClient.custom_data || {}),
-                                        [slug]: stageValue
+                                  // Update local state immediately
+                                  const updatedClient = column.key.startsWith('cf:')
+                                    ? {
+                                        ...client,
+                                        custom_data: {
+                                          ...(client.custom_data || {}),
+                                          [column.key.slice(3)]: stageValue
+                                        }
                                       }
-                                    };
-                                  } else {
-                                    updatedClient = {
-                                      ...updatedClient,
-                                      [column.key]: stageValue
-                                    };
-                                  }
-                                  
+                                    : { ...client, [column.key]: stageValue };
+
                                   setLocalClients(prev => prev.map(c => c.id === client.id ? updatedClient : c));
                                   setEditingCell(null);
                                   setEditValue("");
-                                  
-                                  try {
-                                    const dataToSave = { ...updatedClient };
-                                    delete dataToSave.id;
-                                    delete dataToSave.created_date;
-                                    delete dataToSave.updated_date;
-                                    delete dataToSave.created_by;
-                                    
-                                    await base44.entities.Client.update(client.id, dataToSave);
-                                    
-                                    const refreshedClient = await base44.entities.Client.get(client.id);
-                                    window.dispatchEvent(new CustomEvent('client:updated', {
-                                      detail: refreshedClient
-                                    }));
-                                    
-                                    toast.success('✓ שלב עודכן');
-                                  } catch (error) {
-                                    toast.error('שגיאה בשמירת השלב');
-                                  }
+
+                                  // Save to backend
+                                  const dataToSave = { ...updatedClient };
+                                  delete dataToSave.id;
+                                  delete dataToSave.created_date;
+                                  delete dataToSave.updated_date;
+                                  delete dataToSave.created_by;
+
+                                  await base44.entities.Client.update(client.id, dataToSave);
+                                  const refreshedClient = await base44.entities.Client.get(client.id);
+
+                                  window.dispatchEvent(new CustomEvent('client:updated', {
+                                    detail: refreshedClient
+                                  }));
+
+                                  toast.success('✓ שלב עודכן');
                                 }}
                               />
                             </div>
