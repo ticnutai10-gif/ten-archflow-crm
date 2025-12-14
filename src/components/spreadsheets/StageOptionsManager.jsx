@@ -86,6 +86,16 @@ export default function StageOptionsManager({ open, onClose, stageOptions, onSav
     }
 
     onSave(editedOptions);
+    
+    // Dispatch event to notify other components
+    try {
+      window.dispatchEvent(new CustomEvent('stage:options:updated', {
+        detail: { stageOptions: editedOptions }
+      }));
+    } catch (e) {
+      console.warn('Failed to dispatch stage options update event');
+    }
+    
     onClose();
   };
 
