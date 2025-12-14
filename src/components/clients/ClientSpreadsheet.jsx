@@ -2881,32 +2881,28 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                                   {column.key === 'name' ? (
                                     <div className="flex items-center gap-2">
                                       {(() => {
-                                        // מצא עמודת שלבים בטבלה
                                         const stageColumn = columns.find(col => col.type === 'stage' || col.key === 'stage');
                                         if (!stageColumn) return null;
                                         
-                                        // קבל את ערך השלב מהמקום הנכון
-                                        let stageValue = '';
-                                        if (stageColumn.key === 'stage') {
-                                          stageValue = client.stage;
-                                        } else if (stageColumn.key.startsWith('cf:')) {
-                                          const slug = stageColumn.key.slice(3);
-                                          stageValue = client.custom_data?.[slug];
-                                        }
+                                        let stageValue = stageColumn.key === 'stage' 
+                                          ? client.stage 
+                                          : client.custom_data?.[stageColumn.key.slice(3)];
                                         
                                         if (!stageValue) return null;
                                         
                                         const currentStage = stageOptions.find(s => s.value === stageValue);
-                                        if (currentStage) {
-                                          return (
-                                            <Circle 
-                                              className="w-2.5 h-2.5 flex-shrink-0 fill-current"
-                                              style={{ color: currentStage.color }}
-                                              title={currentStage.label}
-                                            />
-                                          );
-                                        }
-                                        return null;
+                                        if (!currentStage) return null;
+                                        
+                                        return (
+                                          <div
+                                            className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                                            style={{ 
+                                              backgroundColor: currentStage.color,
+                                              boxShadow: `0 0 6px ${currentStage.color}80, 0 0 10px ${currentStage.color}40`
+                                            }}
+                                            title={currentStage.label}
+                                          />
+                                        );
                                       })()}
                                       <span style={{
                                         color: column.type === 'email' || column.type === 'phone' ? '#000000' : 'inherit',
