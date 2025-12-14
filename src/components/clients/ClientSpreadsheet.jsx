@@ -306,6 +306,12 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
     const loadUserPrefs = async () => {
       try {
         const userSettings = await loadUserSettings('clients');
+        
+        // Load stage options first
+        if (userSettings?.stageOptions) {
+          setStageOptions(userSettings.stageOptions);
+        }
+        
         if (userSettings && userSettings.order) {
           
           // Build columns ONLY from saved settings
@@ -404,10 +410,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
             setSubHeaders(userSettings.subHeaders);
           }
           
-          // Restore stage options
-          if (userSettings.stageOptions) {
-            setStageOptions(userSettings.stageOptions);
-          }
+          // Stage options already loaded above
         }
         
         // Load general preferences
