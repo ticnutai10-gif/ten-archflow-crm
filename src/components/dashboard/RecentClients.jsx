@@ -8,6 +8,7 @@ import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { base44 } from "@/api/base44Client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import ExpandableCard from "./ExpandableCard";
 
 const DEFAULT_STAGE_OPTIONS = [
   { value: 'ברור_תכן', label: 'ברור תכן', color: '#3b82f6', glow: 'rgba(59, 130, 246, 0.4)' },
@@ -90,9 +91,10 @@ export default function RecentClients({ isLoading, className = '' }) {
   }
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Filters */}
-      <div className="p-4 border-b bg-slate-50 flex gap-3 items-center flex-wrap">
+    <ExpandableCard defaultHeight="500px">
+      <div className="flex flex-col h-full">
+        {/* Filters */}
+        <div className="p-4 border-b bg-slate-50 flex gap-3 items-center flex-wrap">
         <div className="flex items-center gap-2">
           <span className="text-sm text-slate-600">הצג:</span>
           <Select value={clientsLimit} onValueChange={setClientsLimit}>
@@ -230,11 +232,12 @@ export default function RecentClients({ isLoading, className = '' }) {
         )}
       </div>
 
-      <div className="p-3 border-t flex justify-end">
-        <Link to={createPageUrl("Clients")}>
-          <Button variant="outline" size="sm">כל הלקוחות →</Button>
-        </Link>
+        <div className="p-3 border-t flex justify-end">
+          <Link to={createPageUrl("Clients")}>
+            <Button variant="outline" size="sm">כל הלקוחות →</Button>
+          </Link>
+        </div>
       </div>
-    </div>
+    </ExpandableCard>
   );
 }

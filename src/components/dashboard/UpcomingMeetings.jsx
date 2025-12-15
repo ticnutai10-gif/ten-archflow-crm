@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import MeetingForm from "@/components/dashboard/MeetingForm";
+import ExpandableCard from "./ExpandableCard";
 
 const statusColors = {
   'מתוכננת': 'bg-blue-50 text-blue-700 border-blue-200',
@@ -141,7 +142,8 @@ export default function UpcomingMeetings({ meetings, isLoading, onUpdate, client
 
   return (
     <>
-      <div className="h-[400px] flex flex-col">
+      <ExpandableCard defaultHeight="500px">
+        <div className="flex flex-col">
         <div className="flex-shrink-0 px-6 pt-4 pb-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -300,7 +302,7 @@ export default function UpcomingMeetings({ meetings, isLoading, onUpdate, client
             </Button>
           </Link>
         </div>
-      </div>
+      </ExpandableCard>
 
       {editingMeeting && (
         <Dialog open={!!editingMeeting} onOpenChange={() => setEditingMeeting(null)}>
