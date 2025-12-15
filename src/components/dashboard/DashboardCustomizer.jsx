@@ -112,7 +112,7 @@ export default function DashboardCustomizer({ open, onClose, visibleCards, cardO
         <DragDropContext onDragEnd={handleDragEnd}>
           <Droppable droppableId="dashboard-cards">
             {(provided, snapshot) => (
-              <ScrollArea className="flex-1 pr-2">
+              <ScrollArea className="h-[500px] pr-4">
                 <div
                   {...provided.droppableProps}
                   ref={provided.innerRef}
