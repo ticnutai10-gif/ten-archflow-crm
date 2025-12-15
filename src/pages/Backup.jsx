@@ -15,7 +15,7 @@ import { importBackupData } from "@/functions/importBackupData";
 import { base44 } from "@/api/base44Client";
 
 const ALL_CATEGORIES = [
-  "Client","Project","Task","TimeLog","Quote","Invoice","Decision","ClientApproval","ClientFeedback","CommunicationMessage","Document","TeamMember","AccessControl","ClientFile","QuoteFile"
+  "Client","Project","Task","TimeLog","Quote","Invoice","Decision","ClientApproval","ClientFeedback","CommunicationMessage","Document","TeamMember","AccessControl","ClientFile","QuoteFile","Meeting","UserPreferences","Notification","WorkflowAutomation","InternalChat","InternalMessage","ChatConversation","CustomSpreadsheet","DailyReportSchedule","SubTask","MessageTemplate","AIInsight","AutomationRule"
 ];
 
 export default function BackupPage() {
