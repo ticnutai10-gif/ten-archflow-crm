@@ -143,7 +143,6 @@ export default function UpcomingMeetings({ meetings, isLoading, onUpdate, client
   return (
     <>
       <ExpandableCard defaultHeight="500px">
-        <div className="flex flex-col">
         <div className="flex-shrink-0 px-6 pt-4 pb-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -302,6 +301,7 @@ export default function UpcomingMeetings({ meetings, isLoading, onUpdate, client
             </Button>
           </Link>
         </div>
+      </div>
       </ExpandableCard>
 
       {editingMeeting && (
