@@ -301,7 +301,6 @@ export default function UpcomingMeetings({ meetings, isLoading, onUpdate, client
             </Button>
           </Link>
         </div>
-      </div>
       </ExpandableCard>
 
       {editingMeeting && (
