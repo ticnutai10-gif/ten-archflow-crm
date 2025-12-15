@@ -219,9 +219,11 @@ export default function Dashboard() {
       createdAt: new Date().toISOString()
     };
     
-    setSavedLayouts(prev => [...prev, newLayout]);
-    setLayoutName('');
-    setShowSaveLayoutDialog(false);
+    startTransition(() => {
+      setSavedLayouts(prev => [...prev, newLayout]);
+      setLayoutName('');
+      setShowSaveLayoutDialog(false);
+    });
   }, [layoutName, viewMode, expandedCards, visibleCards, cardOrder]);
 
   const loadLayout = useCallback((layout) => {
@@ -234,7 +236,9 @@ export default function Dashboard() {
   }, []);
 
   const deleteLayout = useCallback((layoutId) => {
-    setSavedLayouts(prev => prev.filter(l => l.id !== layoutId));
+    startTransition(() => {
+      setSavedLayouts(prev => prev.filter(l => l.id !== layoutId));
+    });
   }, []);
 
   // ESC key to close focus mode
@@ -411,7 +415,11 @@ export default function Dashboard() {
                     variant="outline" 
                     size="icon"
                     title="שמור תצוגה נוכחית"
-                    onClick={() => setShowSaveLayoutDialog(true)}
+                    onClick={() => {
+                      startTransition(() => {
+                        setShowSaveLayoutDialog(true);
+                      });
+                    }}
                     className="bg-white/10 border-white/20 hover:bg-white/20 text-white"
                   >
                     <Save className="w-5 h-5" />
@@ -462,7 +470,11 @@ export default function Dashboard() {
                     variant="outline" 
                     size="icon" 
                     title="התאמה אישית" 
-                    onClick={() => setShowCustomizer(true)}
+                    onClick={() => {
+                      startTransition(() => {
+                        setShowCustomizer(true);
+                      });
+                    }}
                     className="bg-white/10 border-white/20 hover:bg-white/20 text-white"
                   >
                     <Settings className="w-5 h-5" />
@@ -915,7 +927,11 @@ export default function Dashboard() {
       {showCustomizer && (
         <DashboardCustomizer
           open={showCustomizer}
-          onClose={() => setShowCustomizer(false)}
+          onClose={() => {
+            startTransition(() => {
+              setShowCustomizer(false);
+            });
+          }}
           visibleCards={visibleCards}
           cardOrder={cardOrder}
           onSave={({ visibleCards: newVisible, cardOrder: newOrder }) => {
@@ -959,8 +975,10 @@ export default function Dashboard() {
               <Button
                 variant="outline"
                 onClick={() => {
-                  setShowSaveLayoutDialog(false);
-                  setLayoutName('');
+                  startTransition(() => {
+                    setShowSaveLayoutDialog(false);
+                    setLayoutName('');
+                  });
                 }}
               >
                 ביטול
