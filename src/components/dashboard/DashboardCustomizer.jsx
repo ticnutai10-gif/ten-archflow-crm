@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, startTransition } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -24,20 +24,24 @@ export default function DashboardCustomizer({ open, onClose, visibleCards, cardO
   const [localOrder, setLocalOrder] = useState(cardOrder || DEFAULT_CARD_ORDER);
 
   const toggleCard = (cardId) => {
-    setLocalVisible(prev => ({
-      ...prev,
-      [cardId]: !prev[cardId]
-    }));
+    startTransition(() => {
+      setLocalVisible(prev => ({
+        ...prev,
+        [cardId]: !prev[cardId]
+      }));
+    });
   };
 
   const handleDragEnd = (result) => {
     if (!result.destination) return;
 
-    const items = Array.from(localOrder);
-    const [reorderedItem] = items.splice(result.source.index, 1);
-    items.splice(result.destination.index, 0, reorderedItem);
+    startTransition(() => {
+      const items = Array.from(localOrder);
+      const [reorderedItem] = items.splice(result.source.index, 1);
+      items.splice(result.destination.index, 0, reorderedItem);
 
-    setLocalOrder(items);
+      setLocalOrder(items);
+    });
   };
 
   const handleSave = () => {
@@ -47,17 +51,19 @@ export default function DashboardCustomizer({ open, onClose, visibleCards, cardO
 
   const resetToDefault = () => {
     if (!confirm('האם לאפס את הדשבורד להגדרות ברירת המחדל?')) return;
-    setLocalOrder(DEFAULT_CARD_ORDER);
-    setLocalVisible({
-      stats: true,
-      aiInsights: true,
-      projectsOverview: true,
-      recentProjects: true,
-      recentClients: true,
-      upcomingTasks: true,
-      quoteStatus: true,
-      timerLogs: true,
-      upcomingMeetings: true
+    startTransition(() => {
+      setLocalOrder(DEFAULT_CARD_ORDER);
+      setLocalVisible({
+        stats: true,
+        aiInsights: true,
+        projectsOverview: true,
+        recentProjects: true,
+        recentClients: true,
+        upcomingTasks: true,
+        quoteStatus: true,
+        timerLogs: true,
+        upcomingMeetings: true
+      });
     });
   };
 
