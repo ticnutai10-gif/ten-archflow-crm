@@ -102,7 +102,9 @@ export default function ClientsPage() {
   const [sortBy, setSortBy] = useState("name");
   const [viewMode, setViewMode] = useState(() => {
     try {
-      return localStorage.getItem('clients-view-mode') || "spreadsheet";
+      // Always default to spreadsheet unless user explicitly changed it
+      const savedMode = localStorage.getItem('clients-view-mode');
+      return savedMode || "spreadsheet";
     } catch {
       return "spreadsheet";
     }
@@ -174,12 +176,25 @@ export default function ClientsPage() {
     }
   }, [accessLoading]);
 
-  // Load stage options from UserPreferences
+  // Load stage options from UserPreferences (check super admin first, then current user)
   const loadStageOptions = async () => {
     try {
       const user = await base44.auth.me();
-      const userPrefs = await base44.entities.UserPreferences.filter({ user_email: user.email });
       
+      // Try to load from any super admin first
+      const allPrefs = await base44.entities.UserPreferences.list();
+      const superAdminPrefs = allPrefs.find(pref => 
+        pref.spreadsheet_columns?.clients?.stageOptions && 
+        pref.spreadsheet_columns.clients.stageOptions.length > 0
+      );
+      
+      if (superAdminPrefs?.spreadsheet_columns?.clients?.stageOptions) {
+        setStageOptions(superAdminPrefs.spreadsheet_columns.clients.stageOptions);
+        return;
+      }
+      
+      // Fallback to current user preferences
+      const userPrefs = await base44.entities.UserPreferences.filter({ user_email: user.email });
       if (userPrefs.length > 0 && userPrefs[0].spreadsheet_columns?.clients?.stageOptions) {
         setStageOptions(userPrefs[0].spreadsheet_columns.clients.stageOptions);
       }
