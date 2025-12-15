@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, Suspense } from "react";
+import React, { useState, useEffect, useCallback, Suspense, startTransition } from "react";
 import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -198,10 +198,12 @@ export default function Dashboard() {
   }, [viewMode, expandedCards, visibleCards, cardOrder, savedLayouts]);
 
   const toggleCard = useCallback((cardName) => {
-    setExpandedCards(prev => ({
-      ...prev,
-      [cardName]: !prev[cardName]
-    }));
+    startTransition(() => {
+      setExpandedCards(prev => ({
+        ...prev,
+        [cardName]: !prev[cardName]
+      }));
+    });
   }, []);
 
   const saveCurrentLayout = useCallback(() => {
@@ -223,10 +225,12 @@ export default function Dashboard() {
   }, [layoutName, viewMode, expandedCards, visibleCards, cardOrder]);
 
   const loadLayout = useCallback((layout) => {
-    setViewMode(layout.viewMode);
-    setExpandedCards(layout.expandedCards);
-    setVisibleCards(layout.visibleCards);
-    setCardOrder(layout.cardOrder);
+    startTransition(() => {
+      setViewMode(layout.viewMode);
+      setExpandedCards(layout.expandedCards);
+      setVisibleCards(layout.visibleCards);
+      setCardOrder(layout.cardOrder);
+    });
   }, []);
 
   const deleteLayout = useCallback((layoutId) => {
@@ -429,7 +433,11 @@ export default function Dashboard() {
                         return (
                           <DropdownMenuItem
                             key={mode.value}
-                            onClick={() => setViewMode(mode.value)}
+                            onClick={() => {
+                              startTransition(() => {
+                                setViewMode(mode.value);
+                              });
+                            }}
                             className={`gap-3 ${viewMode === mode.value ? 'bg-blue-50' : ''}`}
                           >
                             <Icon className="w-4 h-4" />
@@ -635,7 +643,9 @@ export default function Dashboard() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            setFocusedCard(focusedCard === cardId ? null : cardId);
+                            startTransition(() => {
+                              setFocusedCard(focusedCard === cardId ? null : cardId);
+                            });
                           }}
                           className="p-1 hover:bg-slate-200 rounded transition-colors"
                           title={focusedCard === cardId ? "צא ממצב פוקוס" : "מצב פוקוס"}
@@ -677,7 +687,9 @@ export default function Dashboard() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            setFocusedCard(focusedCard === cardId ? null : cardId);
+                            startTransition(() => {
+                              setFocusedCard(focusedCard === cardId ? null : cardId);
+                            });
                           }}
                           className="p-1 hover:bg-slate-200 rounded transition-colors"
                           title={focusedCard === cardId ? "צא ממצב פוקוס" : "מצב פוקוס"}
@@ -720,7 +732,9 @@ export default function Dashboard() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            setFocusedCard(focusedCard === cardId ? null : cardId);
+                            startTransition(() => {
+                              setFocusedCard(focusedCard === cardId ? null : cardId);
+                            });
                           }}
                           className="p-1 hover:bg-slate-200 rounded transition-colors"
                           title={focusedCard === cardId ? "צא ממצב פוקוס" : "מצב פוקוס"}
@@ -763,7 +777,9 @@ export default function Dashboard() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            setFocusedCard(focusedCard === cardId ? null : cardId);
+                            startTransition(() => {
+                              setFocusedCard(focusedCard === cardId ? null : cardId);
+                            });
                           }}
                           className="p-1 hover:bg-slate-200 rounded transition-colors"
                           title={focusedCard === cardId ? "צא ממצב פוקוס" : "מצב פוקוס"}
@@ -806,7 +822,9 @@ export default function Dashboard() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            setFocusedCard(focusedCard === cardId ? null : cardId);
+                            startTransition(() => {
+                              setFocusedCard(focusedCard === cardId ? null : cardId);
+                            });
                           }}
                           className="p-1 hover:bg-slate-200 rounded transition-colors"
                           title={focusedCard === cardId ? "צא ממצב פוקוס" : "מצב פוקוס"}
@@ -849,7 +867,9 @@ export default function Dashboard() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            setFocusedCard(focusedCard === cardId ? null : cardId);
+                            startTransition(() => {
+                              setFocusedCard(focusedCard === cardId ? null : cardId);
+                            });
                           }}
                           className="p-1 hover:bg-slate-200 rounded transition-colors"
                           title={focusedCard === cardId ? "צא ממצב פוקוס" : "מצב פוקוס"}
