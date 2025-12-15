@@ -44,7 +44,7 @@ const statusColors = {
   "לא פעיל": "bg-red-100 text-red-800 border-red-200"
 };
 
-const STAGE_OPTIONS = [
+const DEFAULT_STAGE_OPTIONS = [
   { value: 'ברור_תכן', label: 'ברור תכן', color: '#3b82f6' },
   { value: 'תיק_מידע', label: 'תיק מידע', color: '#8b5cf6' },
   { value: 'היתרים', label: 'היתרים', color: '#f59e0b' },
@@ -60,6 +60,7 @@ export default function ClientDetails({ client, onBack, onEdit }) {
   const [invoices, setInvoices] = useState([]);
   const [timeLogs, setTimeLogs] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [stageOptions, setStageOptions] = useState(DEFAULT_STAGE_OPTIONS);
   const [activeTab, setActiveTab] = useState(() => {
     // Check URL params ONLY - this is the source of truth
     const urlParams = new URLSearchParams(window.location.search);
@@ -121,6 +122,34 @@ export default function ClientDetails({ client, onBack, onEdit }) {
   useEffect(() => {
     loadClientData();
   }, [loadClientData]);
+
+  // Load stage options from UserPreferences
+  useEffect(() => {
+    const loadStageOptions = async () => {
+      try {
+        const user = await base44.auth.me();
+        const userPrefs = await base44.entities.UserPreferences.filter({ user_email: user.email });
+        
+        if (userPrefs.length > 0 && userPrefs[0].spreadsheet_columns?.clients?.stageOptions) {
+          setStageOptions(userPrefs[0].spreadsheet_columns.clients.stageOptions);
+        }
+      } catch (e) {
+        console.warn('Failed to load stage options, using defaults');
+      }
+    };
+    
+    loadStageOptions();
+    
+    // Listen for stage options updates
+    const handleStageOptionsUpdate = () => {
+      loadStageOptions();
+    };
+    
+    window.addEventListener('stage:options:updated', handleStageOptionsUpdate);
+    return () => {
+      window.removeEventListener('stage:options:updated', handleStageOptionsUpdate);
+    };
+  }, []);
 
   useEffect(() => {
     const handleClientUpdate = (event) => {
@@ -227,7 +256,7 @@ export default function ClientDetails({ client, onBack, onEdit }) {
               <div>
                 <CardTitle className="text-3xl font-bold text-slate-900 mb-3 flex items-center gap-3">
                   {currentClient.stage && (() => {
-                    const currentStage = STAGE_OPTIONS.find(s => s.value === currentClient.stage);
+                    const currentStage = stageOptions.find(s => s.value === currentClient.stage);
                     if (currentStage) {
                       return (
                         <Circle 
@@ -248,12 +277,12 @@ export default function ClientDetails({ client, onBack, onEdit }) {
                     disabled={isUpdatingStage}
                   >
                     <SelectTrigger className="w-[200px] h-8" style={{ 
-                      borderColor: currentClient.stage ? STAGE_OPTIONS.find(s => s.value === currentClient.stage)?.color : undefined,
-                      color: currentClient.stage ? STAGE_OPTIONS.find(s => s.value === currentClient.stage)?.color : undefined
+                      borderColor: currentClient.stage ? stageOptions.find(s => s.value === currentClient.stage)?.color : undefined,
+                      color: currentClient.stage ? stageOptions.find(s => s.value === currentClient.stage)?.color : undefined
                     }}>
                       <SelectValue placeholder="בחר שלב">
                         {currentClient.stage && (() => {
-                          const currentStage = STAGE_OPTIONS.find(s => s.value === currentClient.stage);
+                          const currentStage = stageOptions.find(s => s.value === currentClient.stage);
                           return currentStage ? (
                             <div className="flex items-center gap-2">
                               <Circle 
@@ -267,7 +296,7 @@ export default function ClientDetails({ client, onBack, onEdit }) {
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      {STAGE_OPTIONS.map(stage => (
+                      {stageOptions.map(stage => (
                         <SelectItem key={stage.value} value={stage.value}>
                           <div className="flex items-center gap-2">
                             <Circle 

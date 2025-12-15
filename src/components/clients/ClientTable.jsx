@@ -26,8 +26,8 @@ import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
 import { createPageUrl } from "@/utils";
 
-// Stage options
-const STAGE_OPTIONS = [
+// Default stage options
+const DEFAULT_STAGE_OPTIONS = [
   { value: 'ברור_תכן', label: 'ברור תכן', color: '#3b82f6' },
   { value: 'תיק_מידע', label: 'תיק מידע', color: '#8b5cf6' },
   { value: 'היתרים', label: 'היתרים', color: '#f59e0b' },
@@ -66,10 +66,40 @@ export default function ClientTable({
   onDelete,
   onRefresh
 }) {
+  const [stageOptions, setStageOptions] = useState(DEFAULT_STAGE_OPTIONS);
+  
   console.log('[ClientTable] Props received:', { 
     hasOnEdit: typeof onEdit === 'function',
     hasOnView: typeof onView === 'function'
   });
+
+  // Load stage options from UserPreferences
+  useEffect(() => {
+    const loadStageOptions = async () => {
+      try {
+        const user = await base44.auth.me();
+        const userPrefs = await base44.entities.UserPreferences.filter({ user_email: user.email });
+        
+        if (userPrefs.length > 0 && userPrefs[0].spreadsheet_columns?.clients?.stageOptions) {
+          setStageOptions(userPrefs[0].spreadsheet_columns.clients.stageOptions);
+        }
+      } catch (e) {
+        console.warn('Failed to load stage options');
+      }
+    };
+    
+    loadStageOptions();
+    
+    // Listen for stage options updates
+    const handleStageOptionsUpdate = () => {
+      loadStageOptions();
+    };
+    
+    window.addEventListener('stage:options:updated', handleStageOptionsUpdate);
+    return () => {
+      window.removeEventListener('stage:options:updated', handleStageOptionsUpdate);
+    };
+  }, []);
 
   // האזן לעדכוני לקוחות
   useEffect(() => {
@@ -143,7 +173,7 @@ export default function ClientTable({
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
                       {client.stage && (() => {
-                        const currentStage = STAGE_OPTIONS.find(s => s.value === client.stage);
+                        const currentStage = stageOptions.find(s => s.value === client.stage);
                         if (currentStage) {
                           return (
                             <Circle 
@@ -162,7 +192,7 @@ export default function ClientTable({
                   </TableCell>
                   <TableCell>
                     {client.stage && (() => {
-                      const currentStage = STAGE_OPTIONS.find(s => s.value === client.stage);
+                      const currentStage = stageOptions.find(s => s.value === client.stage);
                       if (currentStage) {
                         return (
                           <Badge variant="outline" style={{ color: currentStage.color, borderColor: currentStage.color }}>

@@ -11,8 +11,10 @@ import {
 import { Phone, Mail, MapPin, Building, MoreVertical, Edit, Eye, Copy, Trash2, GripVertical, CheckSquare, Square, Circle } from "lucide-react";
 import { createPageUrl } from "@/utils";
 
+import { base44 } from "@/api/base44Client";
+
 // Default stage options
-const STAGE_OPTIONS = [
+const DEFAULT_STAGE_OPTIONS = [
   { value: 'ברור_תכן', label: 'ברור תכן', color: '#3b82f6' },
   { value: 'תיק_מידע', label: 'תיק מידע', color: '#8b5cf6' },
   { value: 'היתרים', label: 'היתרים', color: '#f59e0b' },
@@ -39,11 +41,41 @@ export default function ClientCard({
   isDraggable = false,
   dragHandleProps = {}
   }) {
+  const [stageOptions, setStageOptions] = React.useState(DEFAULT_STAGE_OPTIONS);
+  
+  // Load stage options from UserPreferences
+  useEffect(() => {
+    const loadStageOptions = async () => {
+      try {
+        const user = await base44.auth.me();
+        const userPrefs = await base44.entities.UserPreferences.filter({ user_email: user.email });
+        
+        if (userPrefs.length > 0 && userPrefs[0].spreadsheet_columns?.clients?.stageOptions) {
+          setStageOptions(userPrefs[0].spreadsheet_columns.clients.stageOptions);
+        }
+      } catch (e) {
+        console.warn('Failed to load stage options');
+      }
+    };
+    
+    loadStageOptions();
+    
+    // Listen for stage options updates
+    const handleStageOptionsUpdate = () => {
+      loadStageOptions();
+    };
+    
+    window.addEventListener('stage:options:updated', handleStageOptionsUpdate);
+    return () => {
+      window.removeEventListener('stage:options:updated', handleStageOptionsUpdate);
+    };
+  }, []);
+  
   console.log('🎴 [CLIENT CARD] Rendering:', { 
     clientId: client?.id,
     clientName: client?.name,
     clientStage: client?.stage,
-    stageColor: client?.stage ? STAGE_OPTIONS.find(s => s.value === client.stage)?.color : null,
+    stageColor: client?.stage ? stageOptions.find(s => s.value === client.stage)?.color : null,
     hasOnEdit: typeof onEdit === 'function',
     hasOnView: typeof onView === 'function'
   });
@@ -146,7 +178,7 @@ export default function ClientCard({
           <div className="flex-1 min-w-0">
             <CardTitle className="text-lg font-bold text-slate-900 truncate flex items-center gap-2 mb-2">
               {client.stage && (() => {
-                const currentStage = STAGE_OPTIONS.find(s => s.value === client.stage);
+                const currentStage = stageOptions.find(s => s.value === client.stage);
                 if (currentStage) {
                   return (
                     <Circle 
