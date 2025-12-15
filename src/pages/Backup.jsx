@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { Download, Upload, ShieldCheck, Database, RefreshCw, Settings, CalendarClock, CheckCircle2, AlertTriangle, FileText } from "lucide-react";
+import { Download, Upload, ShieldCheck, Database, RefreshCw, Settings, CalendarClock, CheckCircle2, AlertTriangle, FileText, X } from "lucide-react";
 import { exportEntities } from "@/functions/exportEntities";
 import { importBackupJson } from "@/functions/importBackupJson";
 import EntityImporter from "@/components/backup/EntityImporter";
@@ -14,9 +14,38 @@ import { exportAllData } from "@/functions/exportAllData";
 import { importBackupData } from "@/functions/importBackupData";
 import { base44 } from "@/api/base44Client";
 
-const ALL_CATEGORIES = [
-  "Client","Project","Task","TimeLog","Quote","Invoice","Decision","ClientApproval","ClientFeedback","CommunicationMessage","Document","TeamMember","AccessControl","ClientFile","QuoteFile","Meeting","UserPreferences","Notification","WorkflowAutomation","InternalChat","InternalMessage","ChatConversation","CustomSpreadsheet","DailyReportSchedule","SubTask","MessageTemplate","AIInsight","AutomationRule"
-];
+const CATEGORY_INFO = {
+  "Client": { label: "לקוחות", icon: "👥", color: "blue", description: "כל נתוני הלקוחות ופרטי הקשר" },
+  "Project": { label: "פרויקטים", icon: "🏗️", color: "purple", description: "פרויקטים, תקציבים ולוחות זמנים" },
+  "Task": { label: "משימות", icon: "✅", color: "green", description: "משימות, מטלות ופעולות" },
+  "TimeLog": { label: "שעות עבודה", icon: "⏱️", color: "orange", description: "תיעוד שעות עבודה" },
+  "Quote": { label: "הצעות מחיר", icon: "💰", color: "yellow", description: "הצעות מחיר ללקוחות" },
+  "Invoice": { label: "חשבוניות", icon: "🧾", color: "red", description: "חשבוניות וחיובים" },
+  "Decision": { label: "החלטות", icon: "🎯", color: "indigo", description: "החלטות פרויקטליות" },
+  "ClientApproval": { label: "אישורי לקוח", icon: "✔️", color: "teal", description: "אישורים מלקוחות" },
+  "ClientFeedback": { label: "משוב לקוחות", icon: "💬", color: "pink", description: "פידבקים והערות" },
+  "CommunicationMessage": { label: "הודעות", icon: "📧", color: "cyan", description: "תקשורת עם לקוחות" },
+  "Document": { label: "מסמכים", icon: "📄", color: "slate", description: "קבצים ומסמכים" },
+  "TeamMember": { label: "חברי צוות", icon: "👤", color: "violet", description: "נתוני צוות" },
+  "AccessControl": { label: "הרשאות", icon: "🔐", color: "red", description: "ניהול הרשאות גישה" },
+  "ClientFile": { label: "קבצי לקוחות", icon: "📁", color: "blue", description: "קבצים של לקוחות" },
+  "QuoteFile": { label: "קבצי הצעות", icon: "📎", color: "yellow", description: "קבצים מצורפים להצעות" },
+  "Meeting": { label: "פגישות", icon: "📅", color: "blue", description: "פגישות ואירועים" },
+  "UserPreferences": { label: "העדפות משתמש", icon: "⚙️", color: "gray", description: "הגדרות אישיות" },
+  "Notification": { label: "התראות", icon: "🔔", color: "orange", description: "התראות ועדכונים" },
+  "WorkflowAutomation": { label: "אוטומציות", icon: "🤖", color: "purple", description: "תהליכים אוטומטיים" },
+  "InternalChat": { label: "צ'אט פנימי", icon: "💭", color: "blue", description: "שיחות צוות פנימיות" },
+  "InternalMessage": { label: "הודעות פנימיות", icon: "✉️", color: "cyan", description: "הודעות בין חברי צוות" },
+  "ChatConversation": { label: "שיחות AI", icon: "🤖", color: "indigo", description: "שיחות עם AI" },
+  "CustomSpreadsheet": { label: "טבלאות מותאמות", icon: "📊", color: "green", description: "טבלאות אקסל מותאמות" },
+  "DailyReportSchedule": { label: "דוחות יומיים", icon: "📈", color: "blue", description: "תזמון דוחות" },
+  "SubTask": { label: "תת-משימות", icon: "📝", color: "green", description: "משימות משנה" },
+  "MessageTemplate": { label: "תבניות הודעות", icon: "📋", color: "purple", description: "תבניות למסרים" },
+  "AIInsight": { label: "תובנות AI", icon: "🧠", color: "violet", description: "תובנות ממערכת AI" },
+  "AutomationRule": { label: "כללי אוטומציה", icon: "⚡", color: "yellow", description: "חוקי אוטומציה" }
+};
+
+const ALL_CATEGORIES = Object.keys(CATEGORY_INFO);
 
 export default function BackupPage() {
   const [selected, setSelected] = useState(new Set(["Client","Task","TimeLog"]));
@@ -235,175 +264,351 @@ export default function BackupPage() {
     });
   };
 
+  const totalSelectedRecords = useMemo(() => {
+    return Array.from(selected).reduce((sum, cat) => {
+      const count = categoryCounts[cat];
+      return sum + (typeof count === 'number' ? count : 0);
+    }, 0);
+  }, [selected, categoryCounts]);
+
   return (
-    <div className="p-6 lg:p-8 bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen pl-24 lg:pl-12" dir="rtl">
+    <div className="p-6 lg:p-8 bg-gradient-to-br from-indigo-50 via-blue-50 to-slate-50 min-h-screen pl-24 lg:pl-12" dir="rtl">
       <div className="max-w-7xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
+        {/* Header with stats */}
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900">גיבוי וייבוא נתונים</h1>
-            <p className="text-slate-600">ייצוא/ייבוא לפי קטגוריות או הכל יחד + גיבוי אוטומטי</p>
+            <h1 className="text-4xl font-black text-slate-900 mb-2 flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-lg">
+                <Database className="w-7 h-7 text-white" />
+              </div>
+              גיבוי וייבוא נתונים
+            </h1>
+            <p className="text-slate-600 text-lg">מערכת גיבוי משוכללת עם ייצוא בפורמטים מרובים</p>
           </div>
-          <Badge variant="outline" className="bg-white">בטא</Badge>
+          <div className="flex items-center gap-3">
+            <div className="bg-white rounded-xl px-6 py-3 shadow-md border border-blue-100">
+              <div className="text-2xl font-bold text-blue-600">{totalSelectedRecords.toLocaleString()}</div>
+              <div className="text-xs text-slate-500">רשומות נבחרות</div>
+            </div>
+            <div className="bg-white rounded-xl px-6 py-3 shadow-md border border-green-100">
+              <div className="text-2xl font-bold text-green-600">{selected.size}</div>
+              <div className="text-xs text-slate-500">קטגוריות</div>
+            </div>
+          </div>
         </div>
 
-        {/* בחירת קטגוריות */}
-        <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 justify-end"><Database className="w-5 h-5" /> קטגוריות לגיבוי</CardTitle>
-          </CardHeader>
-          <CardContent className="grid md:grid-cols-3 gap-4">
-            {ALL_CATEGORIES.map((name) => {
-              const count = categoryCounts[name];
-              const isLoading = loadingCounts && count === undefined; // Check if still loading AND count hasn't been set yet
-              
-              return (
-                <label key={name} className="flex flex-col gap-2 p-3 border rounded-lg bg-white hover:bg-slate-50 transition-colors cursor-pointer">
-                  <div className="flex items-center gap-3">
-                    <Checkbox checked={selected.has(name)} onCheckedChange={() => toggleCategory(name)} />
-                    <span className="font-medium">{name}</span>
-                  </div>
-                  <div className="mr-7 text-xs text-slate-500">
-                    {isLoading ? (
-                      <span className="flex items-center gap-1">
-                        <RefreshCw className="w-3 h-3 animate-spin" />
-                        טוען...
-                      </span>
-                    ) : (
-                      <span>{count !== undefined && count !== '?' ? `${count} רשומות` : 'לא זמין'}</span>
-                    )}
-                  </div>
-                </label>
-              );
-            })}
-            <div className="md:col-span-3 flex items-center gap-3">
-              <Button variant="outline" onClick={() => setSelected(new Set(ALL_CATEGORIES))}>בחר הכל</Button>
-              <Button variant="outline" onClick={() => setSelected(new Set())}>נקה הכל</Button>
+        {/* Automatic Backup Status */}
+        <Card className="shadow-xl border-0 bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-l-green-500">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg">
+                  <CalendarClock className="w-8 h-8 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-slate-900 mb-1">גיבוי אוטומטי שבועי</h3>
+                  <p className="text-sm text-slate-600">הגיבוי רץ אוטומטית כל יום ראשון בשעה 02:00 ונשלח למייל המנהלים</p>
+                  {lastRun && (
+                    <p className="text-xs text-slate-500 mt-1">גיבוי אחרון: {new Date(lastRun).toLocaleString('he-IL')}</p>
+                  )}
+                </div>
+              </div>
+              <CheckCircle2 className="w-12 h-12 text-green-500" />
             </div>
           </CardContent>
         </Card>
 
-        {/* פעולות מהירות */}
-        <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 justify-end"><Settings className="w-5 h-5" /> פעולות</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6"> {/* Added space-y-6 for separation between sections */}
-            {/* ייצוא נתונים */}
-            <div className="space-y-4">
-              <h3 className="font-semibold text-slate-800 flex items-center gap-2">
-                <Download className="w-4 h-4" /> ייצוא נתונים
-              </h3>
-              
-              <div className="flex items-center gap-3">
-                <Label className="text-sm font-semibold">פורמט ייצוא:</Label>
-                <Select value={exportFormat} onValueChange={setExportFormat} disabled={busy}>
-                  <SelectTrigger className="w-48">
-                    <SelectValue placeholder="בחר פורמט" />
-                  </SelectTrigger>
-                  <SelectContent align="end">
-                    <SelectItem value="json">JSON (גיבוי מלא)</SelectItem>
-                    <SelectItem value="excel">Excel (.xlsx)</SelectItem>
-                    <SelectItem value="csv">CSV (פסיקים)</SelectItem>
-                    <SelectItem value="xml">XML</SelectItem>
-                  </SelectContent>
-                </Select>
+        {/* בחירת קטגוריות */}
+        <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm">
+          <CardHeader className="border-b bg-gradient-to-l from-slate-50 to-white pb-4">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-3 text-2xl">
+                <Database className="w-6 h-6 text-blue-600" />
+                בחר קטגוריות לגיבוי
+              </CardTitle>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => setSelected(new Set(ALL_CATEGORIES))} className="gap-2">
+                  <CheckCircle2 className="w-4 h-4" />
+                  בחר הכל ({ALL_CATEGORIES.length})
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setSelected(new Set())} className="gap-2">
+                  <AlertTriangle className="w-4 h-4" />
+                  נקה הכל
+                </Button>
               </div>
+            </div>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+              {ALL_CATEGORIES.map((name) => {
+                const info = CATEGORY_INFO[name];
+                const count = categoryCounts[name];
+                const isLoading = loadingCounts && count === undefined;
+                const isSelected = selected.has(name);
+                
+                return (
+                  <label 
+                    key={name} 
+                    className={`
+                      relative overflow-hidden flex flex-col gap-2 p-4 rounded-xl border-2 
+                      transition-all cursor-pointer group
+                      ${isSelected 
+                        ? 'border-blue-400 bg-gradient-to-br from-blue-50 to-indigo-50 shadow-lg scale-105' 
+                        : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-md'
+                      }
+                    `}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <Checkbox 
+                          checked={isSelected} 
+                          onCheckedChange={() => toggleCategory(name)}
+                          className="mt-0.5"
+                        />
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xl">{info.icon}</span>
+                            <span className="font-bold text-slate-900">{info.label}</span>
+                          </div>
+                          <p className="text-xs text-slate-500 mt-0.5">{info.description}</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className={`
+                      mt-2 pt-2 border-t flex items-center justify-between
+                      ${isSelected ? 'border-blue-200' : 'border-slate-100'}
+                    `}>
+                      <span className="text-xs text-slate-400 font-mono">{name}</span>
+                      <div className={`
+                        px-2 py-1 rounded-lg text-xs font-bold
+                        ${isSelected ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'}
+                      `}>
+                        {isLoading ? (
+                          <span className="flex items-center gap-1">
+                            <RefreshCw className="w-3 h-3 animate-spin" />
+                            ...
+                          </span>
+                        ) : (
+                          <span>{count !== undefined && count !== '?' ? count.toLocaleString() : '?'}</span>
+                        )}
+                      </div>
+                    </div>
+                    {isSelected && (
+                      <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-blue-500 to-indigo-600"></div>
+                    )}
+                  </label>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
 
-              <div className="flex flex-wrap gap-3 items-center">
-                <Button className="gap-2" onClick={() => handleExport()} disabled={busy || selected.size === 0}>
-                  <Download className="w-4 h-4" /> 
-                  {busy ? "מייצא..." : `ייצא ${exportFormat.toUpperCase()} (נבחר)`}
-                </Button>
+        {/* ייצוא נתונים */}
+        <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm">
+          <CardHeader className="border-b bg-gradient-to-l from-blue-50 to-white pb-4">
+            <CardTitle className="flex items-center gap-3 text-2xl">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg">
+                <Download className="w-6 h-6 text-white" />
+              </div>
+              ייצוא נתונים
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-6 space-y-6">
+            {/* פורמט ייצוא */}
+            <div className="flex items-center gap-4">
+              <Label className="text-base font-bold text-slate-700 min-w-[120px]">בחר פורמט:</Label>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 flex-1">
+                {[
+                  { value: 'json', label: 'JSON', icon: '📋', desc: 'גיבוי מלא כולל מטא-דאטה' },
+                  { value: 'excel', label: 'Excel', icon: '📊', desc: 'קובץ .xlsx לעריכה' },
+                  { value: 'csv', label: 'CSV', icon: '📄', desc: 'פסיקים - תואם לכל תוכנה' },
+                  { value: 'xml', label: 'XML', icon: '🔖', desc: 'פורמט סטנדרטי' }
+                ].map((fmt) => (
+                  <button
+                    key={fmt.value}
+                    onClick={() => setExportFormat(fmt.value)}
+                    disabled={busy}
+                    className={`
+                      p-4 rounded-xl border-2 transition-all text-right
+                      ${exportFormat === fmt.value
+                        ? 'border-blue-500 bg-gradient-to-br from-blue-50 to-indigo-50 shadow-lg scale-105'
+                        : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-md'
+                      }
+                    `}
+                  >
+                    <div className="text-2xl mb-1">{fmt.icon}</div>
+                    <div className="font-bold text-slate-900 mb-1">{fmt.label}</div>
+                    <div className="text-xs text-slate-500">{fmt.desc}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
 
-                <Button variant="outline" className="gap-2" onClick={() => handleExport('json')} disabled={busy}>
-                  JSON מהיר
+            {/* כפתורי ייצוא */}
+            <div className="flex flex-wrap gap-3">
+              <Button 
+                onClick={() => handleExport()} 
+                disabled={busy || selected.size === 0}
+                className="gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg px-8 py-6 text-lg h-auto"
+              >
+                <Download className="w-5 h-5" /> 
+                {busy ? (
+                  <>
+                    <RefreshCw className="w-5 h-5 animate-spin" />
+                    מייצא {totalSelectedRecords.toLocaleString()} רשומות...
+                  </>
+                ) : (
+                  `ייצא ${exportFormat.toUpperCase()} (${selected.size} קטגוריות)`
+                )}
+              </Button>
+
+              <div className="flex gap-2">
+                <Button variant="outline" className="gap-2 h-auto py-3" onClick={() => handleExport('json')} disabled={busy}>
+                  📋 JSON מהיר
                 </Button>
-                <Button variant="outline" className="gap-2" onClick={() => handleExport('excel')} disabled={busy}>
-                  Excel מהיר
+                <Button variant="outline" className="gap-2 h-auto py-3" onClick={() => handleExport('excel')} disabled={busy}>
+                  📊 Excel מהיר
+                </Button>
+                <Button variant="outline" className="gap-2 h-auto py-3" onClick={() => handleExport('csv')} disabled={busy}>
+                  📄 CSV מהיר
                 </Button>
               </div>
             </div>
 
-            {/* מפריד */}
-            <div className="border-t"></div>
-
-            {/* ייבוא נתונים */}
-            <div className="space-y-4">
-              <h3 className="font-semibold text-slate-800 flex items-center gap-2">
-                <Upload className="w-4 h-4" /> ייבוא נתונים
-              </h3>
-
-              <div className="flex items-center gap-3">
-                <Label className="text-sm font-semibold">אופן ייבוא:</Label>
-                <Select value={importMode} onValueChange={setImportMode} disabled={busy}>
-                  <SelectTrigger className="w-48">
-                    <SelectValue placeholder="בחר אופן ייבוא" />
-                  </SelectTrigger>
-                  <SelectContent align="end">
-                    <SelectItem value="create">צור רשומות חדשות בלבד</SelectItem>
-                    <SelectItem value="update">עדכן קיימות או צור חדשות</SelectItem>
-                  </SelectContent>
-                </Select>
+            {selected.size === 0 && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-center gap-3">
+                <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0" />
+                <span className="text-sm text-amber-800">יש לבחור לפחות קטגוריה אחת לייצוא</span>
               </div>
+            )}
+          </CardContent>
+        </Card>
 
-              {/* אזור גרירה לייבוא */}
-              <div
-                className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
-                  dragActive ? 'border-blue-400 bg-blue-50' : 'border-slate-300 hover:border-slate-400'
-                }`}
-                onDragEnter={handleDragEvents}
-                onDragLeave={handleDragEvents}
-                onDragOver={handleDragEvents}
-                onDrop={handleDrop}
+        {/* ייבוא נתונים */}
+        <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm">
+          <CardHeader className="border-b bg-gradient-to-l from-green-50 to-white pb-4">
+            <CardTitle className="flex items-center gap-3 text-2xl">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg">
+                <Upload className="w-6 h-6 text-white" />
+              </div>
+              ייבוא נתונים
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-6 space-y-6">
+            {/* אופן ייבוא */}
+            <div className="flex items-center gap-4">
+              <Label className="text-base font-bold text-slate-700 min-w-[120px]">אופן ייבוא:</Label>
+              <div className="grid grid-cols-2 gap-3 flex-1 max-w-2xl">
+                {[
+                  { value: 'create', label: 'צור חדשות', icon: '➕', desc: 'רק רשומות חדשות' },
+                  { value: 'update', label: 'עדכן וצור', icon: '🔄', desc: 'עדכן קיימות + צור חדשות' }
+                ].map((mode) => (
+                  <button
+                    key={mode.value}
+                    onClick={() => setImportMode(mode.value)}
+                    disabled={busy}
+                    className={`
+                      p-4 rounded-xl border-2 transition-all text-right
+                      ${importMode === mode.value
+                        ? 'border-green-500 bg-gradient-to-br from-green-50 to-emerald-50 shadow-lg scale-105'
+                        : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-md'
+                      }
+                    `}
+                  >
+                    <div className="text-2xl mb-1">{mode.icon}</div>
+                    <div className="font-bold text-slate-900 mb-1">{mode.label}</div>
+                    <div className="text-xs text-slate-500">{mode.desc}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* אזור גרירה */}
+            <div
+              className={`
+                relative border-2 border-dashed rounded-2xl p-12 text-center transition-all
+                ${dragActive 
+                  ? 'border-green-500 bg-gradient-to-br from-green-50 to-emerald-50 scale-105 shadow-xl' 
+                  : 'border-slate-300 bg-slate-50 hover:border-green-400 hover:bg-green-50/50'
+                }
+              `}
+              onDragEnter={handleDragEvents}
+              onDragLeave={handleDragEvents}
+              onDragOver={handleDragEvents}
+              onDrop={handleDrop}
+            >
+              <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-green-100 to-emerald-100 flex items-center justify-center">
+                <Upload className="w-10 h-10 text-green-600" />
+              </div>
+              <p className="font-bold text-slate-900 text-lg mb-2">
+                גרור קובץ לכאן
+              </p>
+              <p className="text-slate-500 mb-6">
+                או לחץ לבחירת קובץ ידנית
+              </p>
+              
+              <input
+                type="file"
+                accept=".json,.xlsx,.xls,.csv"
+                onChange={handleFileSelect}
+                className="hidden"
+                id="import-file"
+                disabled={busy}
+              />
+              <Button
+                size="lg"
+                onClick={() => document.getElementById('import-file')?.click()}
+                disabled={busy}
+                className="gap-2 bg-white hover:bg-slate-50 text-slate-900 border-2 border-slate-200 px-8"
               >
-                <Upload className="w-8 h-8 text-slate-400 mx-auto mb-3" />
-                <p className="font-medium text-slate-700 mb-2">
-                  גרור קובץ לכאן או לחץ לבחירה
-                </p>
-                <p className="text-sm text-slate-500 mb-4">
-                  תומך ב-JSON, Excel (.xlsx), CSV
-                </p>
-                
-                <input
-                  type="file"
-                  accept=".json,.xlsx,.xls,.csv"
-                  onChange={handleFileSelect}
-                  className="hidden"
-                  id="import-file"
-                  disabled={busy}
-                />
-                <Button
-                  variant="outline"
-                  onClick={() => document.getElementById('import-file')?.click()}
-                  disabled={busy}
-                >
-                  <Upload className="w-4 h-4 ml-2" />
-                  בחר קובץ
-                </Button>
-              </div>
+                <Upload className="w-5 h-5" />
+                בחר קובץ
+              </Button>
 
-              {/* קובץ נבחר */}
-              {importFile && (
-                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-slate-500" />
-                    <span className="text-sm font-medium">{importFile.name}</span>
-                    <span className="text-xs text-slate-500">
-                      ({(importFile.size / 1024).toFixed(1)} KB)
-                    </span>
+              <div className="mt-6 flex items-center justify-center gap-6 text-sm text-slate-500">
+                <span className="flex items-center gap-1">📋 JSON</span>
+                <span className="flex items-center gap-1">📊 Excel</span>
+                <span className="flex items-center gap-1">📄 CSV</span>
+              </div>
+            </div>
+
+            {/* קובץ נבחר */}
+            {importFile && (
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-4 shadow-lg">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center">
+                      <FileText className="w-6 h-6 text-blue-600" />
+                    </div>
+                    <div>
+                      <div className="font-bold text-slate-900">{importFile.name}</div>
+                      <div className="text-sm text-slate-600">
+                        {(importFile.size / 1024).toFixed(1)} KB • {importMode === 'create' ? 'יצירת חדשות בלבד' : 'עדכון + יצירה'}
+                      </div>
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <Button 
-                      size="sm"
+                      size="lg"
                       onClick={() => handleImportFile(importFile)}
                       disabled={busy}
+                      className="gap-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 shadow-lg"
                     >
-                      {busy ? <RefreshCw className="w-4 h-4 animate-spin ml-1" /> : null}
-                      {busy ? "מייבא..." : "התחל ייבוא"}
+                      {busy ? (
+                        <>
+                          <RefreshCw className="w-5 h-5 animate-spin" />
+                          מייבא...
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle2 className="w-5 h-5" />
+                          התחל ייבוא
+                        </>
+                      )}
                     </Button>
                     <Button 
                       variant="ghost" 
-                      size="sm" 
+                      size="lg"
                       onClick={() => setImportFile(null)}
                       disabled={busy}
                     >
@@ -411,64 +616,155 @@ export default function BackupPage() {
                     </Button>
                   </div>
                 </div>
-              )}
-            </div>
-
-            {/* ייבוא לפי קטגוריה עם אשף כמו לקוחות (Old method for specific entity import) */}
-            <div className="border-t"></div> {/* Separator for the next section */}
-            <div className="flex flex-wrap gap-3 items-center">
-              <Select onValueChange={(v) => setImporterEntity(v)} disabled={busy}>
-                <SelectTrigger className="w-56">
-                  <SelectValue placeholder="ייבוא לפי קטגוריה (בחר ישות)" />
-                </SelectTrigger>
-                <SelectContent align="end">
-                  {ALL_CATEGORIES.map((name) => (
-                    <SelectItem key={name} value={name}>{name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {/* גיבוי אוטומטי */}
-              <div className="ml-auto flex flex-col gap-2">
-                <div className="flex items-center gap-3">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <Checkbox checked={autoEnabled} onCheckedChange={setAutoEnabled} disabled={busy} />
-                    גיבוי אוטומטי בעת כניסה
-                  </label>
-                  <Select value={autoFreq} onValueChange={setAutoFreq} disabled={busy || !autoEnabled}>
-                    <SelectTrigger className="w-32">
-                      <SelectValue placeholder="תדירות" />
-                    </SelectTrigger>
-                    <SelectContent align="end">
-                      <SelectItem value="daily">יומי</SelectItem>
-                      <SelectItem value="weekly">שבועי</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Button variant="outline" onClick={saveAutoSettings} disabled={busy}>שמור הגדרות</Button>
-                  {lastRun && <span className="text-xs text-slate-500">גיבוי אחרון: {new Date(lastRun).toLocaleString()}</span>}
-                </div>
-                <div className="flex items-center gap-2 text-xs text-slate-600 bg-blue-50 border border-blue-200 rounded-lg p-2">
-                  <CalendarClock className="w-4 h-4 text-blue-600" />
-                  <span>✅ גיבוי אוטומטי פעיל - רץ כל יום ראשון בשעה 02:00 ונשלח למייל המנהלים</span>
-                </div>
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
 
-        {/* Debug info */}
-        <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-          <CardHeader>
-            <CardTitle>מידע דיבאג</CardTitle>
+        {/* הגדרות גיבוי אוטומטי בכניסה */}
+        <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm">
+          <CardHeader className="border-b bg-gradient-to-l from-purple-50 to-white pb-4">
+            <CardTitle className="flex items-center gap-3 text-2xl">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center shadow-lg">
+                <Settings className="w-6 h-6 text-white" />
+              </div>
+              גיבוי אוטומטי בעת כניסה
+            </CardTitle>
           </CardHeader>
-          <CardContent className="text-xs font-mono">
-            <div>קטגוריות נבחרות: {Array.from(selected).join(', ')}</div>
-            <div>פורמט ייצוא נוכחי: {exportFormat}</div>
-            <div>קובץ ייבוא נבחר: {importFile ? importFile.name : "אין"}</div>
-            <div>אופן ייבוא: {importMode}</div>
-            <div>סטטוס: {busy ? "עסוק" : "מוכן"}</div>
-            <div className="mt-2 text-slate-600">
-              לבדיקת לוגי הדיבאג, פתח את Developer Tools (F12) ועבור ל-Console
+          <CardContent className="p-6 space-y-4">
+            <div className="flex items-center gap-4 flex-wrap">
+              <label className="flex items-center gap-3 cursor-pointer px-4 py-3 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors">
+                <Checkbox checked={autoEnabled} onCheckedChange={setAutoEnabled} disabled={busy} />
+                <span className="font-semibold text-slate-900">הפעל גיבוי בכניסה לעמוד</span>
+              </label>
+              <Select value={autoFreq} onValueChange={setAutoFreq} disabled={busy || !autoEnabled}>
+                <SelectTrigger className="w-40 h-12">
+                  <SelectValue placeholder="תדירות" />
+                </SelectTrigger>
+                <SelectContent align="end">
+                  <SelectItem value="daily">פעם ביום</SelectItem>
+                  <SelectItem value="weekly">פעם בשבוע</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button 
+                onClick={saveAutoSettings} 
+                disabled={busy}
+                className="gap-2 bg-purple-600 hover:bg-purple-700 h-12"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                שמור הגדרות
+              </Button>
+            </div>
+            {lastRun && (
+              <div className="text-sm text-slate-600 bg-slate-50 rounded-lg p-3">
+                📅 גיבוי אחרון: {new Date(lastRun).toLocaleString('he-IL', { dateStyle: 'full', timeStyle: 'short' })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* ייבוא לפי קטגוריה */}
+        <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm">
+          <CardHeader className="border-b bg-gradient-to-l from-orange-50 to-white pb-4">
+            <CardTitle className="flex items-center gap-3 text-2xl">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-lg">
+                <FileText className="w-6 h-6 text-white" />
+              </div>
+              ייבוא ממוקד לפי קטגוריה
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-3">
+              <Label className="text-base font-bold text-slate-700">בחר קטגוריה:</Label>
+              <Select onValueChange={(v) => setImporterEntity(v)} disabled={busy}>
+                <SelectTrigger className="flex-1 max-w-md h-12">
+                  <SelectValue placeholder="בחר קטגוריה לייבוא ממוקד" />
+                </SelectTrigger>
+                <SelectContent align="end">
+                  {ALL_CATEGORIES.map((name) => {
+                    const info = CATEGORY_INFO[name];
+                    return (
+                      <SelectItem key={name} value={name}>
+                        <div className="flex items-center gap-2">
+                          <span>{info.icon}</span>
+                          <span className="font-semibold">{info.label}</span>
+                          <span className="text-xs text-slate-400">({name})</span>
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+            <p className="text-sm text-slate-500 mt-3">
+              ייבוא ממוקד מאפשר לייבא קובץ אקסל/CSV ספציפי לקטגוריה אחת בלבד
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* סיכום וסטטוס */}
+        <Card className="shadow-xl border-0 bg-gradient-to-r from-slate-900 to-slate-800 text-white">
+          <CardHeader className="border-b border-slate-700 pb-4">
+            <CardTitle className="flex items-center gap-3 text-2xl text-white">
+              <ShieldCheck className="w-8 h-8" />
+              סיכום ומידע טכני
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-6 space-y-4">
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="space-y-3">
+                <h4 className="font-bold text-white/90 text-sm mb-3">📊 מצב נוכחי</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between items-center bg-white/10 rounded-lg p-2">
+                    <span className="text-white/70">קטגוריות נבחרות:</span>
+                    <Badge className="bg-blue-500">{selected.size} / {ALL_CATEGORIES.length}</Badge>
+                  </div>
+                  <div className="flex justify-between items-center bg-white/10 rounded-lg p-2">
+                    <span className="text-white/70">סה"כ רשומות לייצוא:</span>
+                    <Badge className="bg-green-500">{totalSelectedRecords.toLocaleString()}</Badge>
+                  </div>
+                  <div className="flex justify-between items-center bg-white/10 rounded-lg p-2">
+                    <span className="text-white/70">פורמט ייצוא:</span>
+                    <Badge className="bg-purple-500">{exportFormat.toUpperCase()}</Badge>
+                  </div>
+                  <div className="flex justify-between items-center bg-white/10 rounded-lg p-2">
+                    <span className="text-white/70">אופן ייבוא:</span>
+                    <Badge className="bg-orange-500">{importMode === 'create' ? 'יצירה' : 'עדכון'}</Badge>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <h4 className="font-bold text-white/90 text-sm mb-3">🔧 הגדרות</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between items-center bg-white/10 rounded-lg p-2">
+                    <span className="text-white/70">סטטוס מערכת:</span>
+                    <Badge className={busy ? "bg-yellow-500 animate-pulse" : "bg-green-500"}>
+                      {busy ? "עסוק 🔄" : "מוכן ✅"}
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between items-center bg-white/10 rounded-lg p-2">
+                    <span className="text-white/70">גיבוי בכניסה:</span>
+                    <Badge className={autoEnabled ? "bg-green-500" : "bg-slate-500"}>
+                      {autoEnabled ? "פעיל ✓" : "כבוי ✗"}
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between items-center bg-white/10 rounded-lg p-2">
+                    <span className="text-white/70">גיבוי שבועי:</span>
+                    <Badge className="bg-green-500 animate-pulse">פעיל 🕐 02:00</Badge>
+                  </div>
+                  {importFile && (
+                    <div className="flex justify-between items-center bg-white/10 rounded-lg p-2">
+                      <span className="text-white/70">קובץ נבחר:</span>
+                      <Badge className="bg-blue-500">{importFile.name.substring(0, 20)}...</Badge>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 pt-4 border-t border-white/20 text-xs text-white/60">
+              💡 לבדיקת לוגים מפורטים: F12 → Console
             </div>
           </CardContent>
         </Card>
