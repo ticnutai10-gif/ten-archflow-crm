@@ -1,4 +1,3 @@
-
 import React, { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -430,22 +429,28 @@ export default function BackupPage() {
               </Select>
 
               {/* גיבוי אוטומטי */}
-              <div className="ml-auto flex items-center gap-3">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <Checkbox checked={autoEnabled} onCheckedChange={setAutoEnabled} disabled={busy} />
-                  גיבוי אוטומטי
-                </label>
-                <Select value={autoFreq} onValueChange={setAutoFreq} disabled={busy || !autoEnabled}>
-                  <SelectTrigger className="w-32">
-                    <SelectValue placeholder="תדירות" />
-                  </SelectTrigger>
-                  <SelectContent align="end">
-                    <SelectItem value="daily">יומי</SelectItem>
-                    <SelectItem value="weekly">שבועי</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button variant="outline" onClick={saveAutoSettings} disabled={busy}>שמור הגדרות</Button>
-                {lastRun && <span className="text-xs text-slate-500">גיבוי אחרון: {new Date(lastRun).toLocaleString()}</span>}
+              <div className="ml-auto flex flex-col gap-2">
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <Checkbox checked={autoEnabled} onCheckedChange={setAutoEnabled} disabled={busy} />
+                    גיבוי אוטומטי בעת כניסה
+                  </label>
+                  <Select value={autoFreq} onValueChange={setAutoFreq} disabled={busy || !autoEnabled}>
+                    <SelectTrigger className="w-32">
+                      <SelectValue placeholder="תדירות" />
+                    </SelectTrigger>
+                    <SelectContent align="end">
+                      <SelectItem value="daily">יומי</SelectItem>
+                      <SelectItem value="weekly">שבועי</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button variant="outline" onClick={saveAutoSettings} disabled={busy}>שמור הגדרות</Button>
+                  {lastRun && <span className="text-xs text-slate-500">גיבוי אחרון: {new Date(lastRun).toLocaleString()}</span>}
+                </div>
+                <div className="flex items-center gap-2 text-xs text-slate-600 bg-blue-50 border border-blue-200 rounded-lg p-2">
+                  <CalendarClock className="w-4 h-4 text-blue-600" />
+                  <span>✅ גיבוי אוטומטי פעיל - רץ כל יום ראשון בשעה 02:00 ונשלח למייל המנהלים</span>
+                </div>
               </div>
             </div>
           </CardContent>
