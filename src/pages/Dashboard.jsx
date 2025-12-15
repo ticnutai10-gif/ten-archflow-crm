@@ -241,7 +241,9 @@ export default function Dashboard() {
   useEffect(() => {
     const handleEscape = (e) => {
       if (e.key === 'Escape' && focusedCard) {
-        setFocusedCard(null);
+        startTransition(() => {
+          setFocusedCard(null);
+        });
       }
     };
     
@@ -379,7 +381,11 @@ export default function Dashboard() {
                       {savedLayouts.map((layout) => (
                         <div key={layout.id} className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 rounded-sm">
                           <button
-                            onClick={() => loadLayout(layout)}
+                            onClick={() => {
+                              startTransition(() => {
+                                loadLayout(layout);
+                              });
+                            }}
                             className="flex-1 text-right text-sm hover:text-blue-600 transition-colors"
                           >
                             {layout.name}
@@ -605,7 +611,9 @@ export default function Dashboard() {
           dir="rtl"
           onClick={(e) => {
             if (focusedCard && e.target === e.currentTarget) {
-              setFocusedCard(null);
+              startTransition(() => {
+                setFocusedCard(null);
+              });
             }
           }}
         >
@@ -911,8 +919,10 @@ export default function Dashboard() {
           visibleCards={visibleCards}
           cardOrder={cardOrder}
           onSave={({ visibleCards: newVisible, cardOrder: newOrder }) => {
-            setVisibleCards(newVisible);
-            setCardOrder(newOrder);
+            startTransition(() => {
+              setVisibleCards(newVisible);
+              setCardOrder(newOrder);
+            });
           }}
         />
       )}
