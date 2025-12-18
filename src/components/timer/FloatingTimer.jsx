@@ -834,7 +834,17 @@ ${context}
       <div className="rounded-full bg-white/90 backdrop-blur-sm shadow-xl border border-white/30 p-3 min-w-[72px] min-h-[72px] flex items-center justify-center ring-1 ring-slate-200/60">
         <SafeGuard>
           <div className="flex items-center gap-3">
-            <Popover open={popoverOpen} onOpenChange={(open) => {setPopoverOpen(open);if (!open) {setDetailsOpen(false);setAiSuggested(false);}}}>
+            <Popover open={popoverOpen} onOpenChange={(open) => {
+              setPopoverOpen(open);
+              if (open) {
+                // סנכרון נתוני לקוחות בעת פתיחת הטיימר
+                loadData(true);
+              }
+              if (!open) {
+                setDetailsOpen(false);
+                setAiSuggested(false);
+              }
+            }}>
               <PopoverTrigger asChild>
                 {(() => {
                   const sz = getSizeClasses(prefs.timerIconSize || "md");
