@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, startTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -76,9 +76,11 @@ export default function RecentProjects({ projects = [], isLoading, onUpdate }) {
   }, [projects]);
 
   const toggleSelect = (id) => {
-    setSelectedIds(prev => 
-      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-    );
+    startTransition(() => {
+      setSelectedIds(prev => 
+        prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+      );
+    });
   };
 
   const handleBulkDelete = async () => {
@@ -218,7 +220,7 @@ function ProjectsTab({
       )}
 
       <div className="p-4 space-y-3 max-h-96 overflow-y-auto">
-        {projects.length === 0 ? null : validProjects.map((project, index) => {
+        {projects.length === 0 ? null : projects.map((project, index) => {
           if (!project || typeof project !== 'object') {
             console.error(`❌ [RecentProjects] Skipping invalid project at index ${index}:`, project);
             return null;

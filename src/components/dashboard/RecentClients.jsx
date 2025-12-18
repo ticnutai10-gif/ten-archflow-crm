@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, startTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar, Eye, Briefcase, Users } from "lucide-react";
@@ -23,6 +23,18 @@ export default function RecentClients({ isLoading, className = '' }) {
   const [allProjects, setAllProjects] = useState([]);
   const [clientsLimit, setClientsLimit] = useState('10');
   const [clientsFilter, setClientsFilter] = useState('all');
+
+  const handleLimitChange = (value) => {
+    startTransition(() => {
+      setClientsLimit(value);
+    });
+  };
+
+  const handleFilterChange = (value) => {
+    startTransition(() => {
+      setClientsFilter(value);
+    });
+  };
 
   useEffect(() => {
     const loadData = async () => {
@@ -97,7 +109,7 @@ export default function RecentClients({ isLoading, className = '' }) {
         <div className="p-4 border-b bg-slate-50 flex gap-3 items-center flex-wrap">
         <div className="flex items-center gap-2">
           <span className="text-sm text-slate-600">הצג:</span>
-          <Select value={clientsLimit} onValueChange={setClientsLimit}>
+          <Select value={clientsLimit} onValueChange={handleLimitChange}>
             <SelectTrigger className="w-24">
               <SelectValue />
             </SelectTrigger>
@@ -111,7 +123,7 @@ export default function RecentClients({ isLoading, className = '' }) {
 
         <div className="flex items-center gap-2">
           <span className="text-sm text-slate-600">סינון:</span>
-          <Select value={clientsFilter} onValueChange={setClientsFilter}>
+          <Select value={clientsFilter} onValueChange={handleFilterChange}>
             <SelectTrigger className="w-40">
               <SelectValue />
             </SelectTrigger>
