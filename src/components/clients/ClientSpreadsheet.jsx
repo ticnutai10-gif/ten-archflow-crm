@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,16 +24,23 @@ import { base44 } from "@/api/base44Client";
 import { createPageUrl } from "@/utils";
 import { StageDisplay } from "@/components/spreadsheets/GenericSpreadsheet";
 import StageOptionsManager from "@/components/spreadsheets/StageOptionsManager";
+import StatusOptionsManager from "@/components/spreadsheets/StatusOptionsManager";
 import UserPreferencesDialog from "@/components/spreadsheets/UserPreferencesDialog";
 
 const ICON_COLOR = "#2C3A50";
 
 const STAGE_OPTIONS = [
-  { value: 'ברור_תכן', label: 'ברור תכן', color: '#3b82f6' },
-  { value: 'תיק_מידע', label: 'תיק מידע', color: '#8b5cf6' },
-  { value: 'היתרים', label: 'היתרים', color: '#f59e0b' },
-  { value: 'ביצוע', label: 'ביצוע', color: '#10b981' },
-  { value: 'סיום', label: 'סיום', color: '#6b7280' }
+  { value: 'ברור_תכן', label: 'ברור תכן', color: '#3b82f6', glow: 'rgba(59, 130, 246, 0.4)' },
+  { value: 'תיק_מידע', label: 'תיק מידע', color: '#8b5cf6', glow: 'rgba(139, 92, 246, 0.4)' },
+  { value: 'היתרים', label: 'היתרים', color: '#f59e0b', glow: 'rgba(245, 158, 11, 0.4)' },
+  { value: 'ביצוע', label: 'ביצוע', color: '#10b981', glow: 'rgba(16, 185, 129, 0.4)' },
+  { value: 'סיום', label: 'סיום', color: '#6b7280', glow: 'rgba(107, 114, 128, 0.4)' }
+];
+
+const STATUS_OPTIONS = [
+  { value: 'פוטנציאלי', label: 'פוטנציאלי', color: '#f59e0b', glow: 'rgba(245, 158, 11, 0.4)' },
+  { value: 'פעיל', label: 'פעיל', color: '#22c55e', glow: 'rgba(34, 197, 94, 0.4)' },
+  { value: 'לא_פעיל', label: 'לא פעיל', color: '#ef4444', glow: 'rgba(239, 68, 68, 0.4)' }
 ];
 
 const statusColors = {
@@ -115,7 +121,7 @@ const loadUserSettings = async (tableName = 'clients') => {
 };
 
 // Save settings to database (per user)
-const saveUserSettings = async (tableName, columns, cellStyles, showSubHeaders, subHeaders, stageOptions) => {
+const saveUserSettings = async (tableName, columns, cellStyles, showSubHeaders, subHeaders, stageOptions, statusOptions) => {
   try {
     const user = await base44.auth.me();
     const existingPrefs = await base44.entities.UserPreferences.filter({ user_email: user.email });
@@ -139,7 +145,8 @@ const saveUserSettings = async (tableName, columns, cellStyles, showSubHeaders, 
       cellStyles: cellStyles || {},
       showSubHeaders: showSubHeaders,
       subHeaders: subHeaders || {},
-      stageOptions: stageOptions || STAGE_OPTIONS
+      stageOptions: stageOptions || STAGE_OPTIONS,
+      statusOptions: statusOptions || STATUS_OPTIONS
     };
     
     if (existingPrefs.length > 0) {
@@ -302,6 +309,9 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
   const [showSubHeaders, setShowSubHeaders] = useState(false);
 
   const [subHeaders, setSubHeaders] = useState({});
+  
+  const [statusOptions, setStatusOptions] = useState(STATUS_OPTIONS);
+  const [showStatusManager, setShowStatusManager] = useState(false);
 
   const [editingSubHeader, setEditingSubHeader] = useState(null);
   const [tempSubHeaderValue, setTempSubHeaderValue] = useState('');
@@ -334,9 +344,12 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
       try {
         const userSettings = await loadUserSettings('clients');
         
-        // Load stage options first
+        // Load stage and status options first
         if (userSettings?.stageOptions) {
           setStageOptions(userSettings.stageOptions);
+        }
+        if (userSettings?.statusOptions) {
+          setStatusOptions(userSettings.statusOptions);
         }
         
         if (userSettings && userSettings.order) {
@@ -521,7 +534,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
       
       saveTimeoutRef.current = setTimeout(() => {
-        saveUserSettings('clients', columns, cellStyles, showSubHeaders, subHeaders, stageOptions);
+        saveUserSettings('clients', columns, cellStyles, showSubHeaders, subHeaders, stageOptions, statusOptions);
       }, 1000);
     }
     
@@ -1601,8 +1614,18 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                 onClick={() => setShowStageManager(true)}
                 className="gap-2">
 
-                <Circle className="w-4 h-4" />
-                ניהול שלבים
+                <Circle className="w-4 h-4" style={{ color: '#8b5cf6' }} />
+                שלבים
+              </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowStatusManager(true)}
+                className="gap-2">
+
+                <Circle className="w-4 h-4" style={{ color: '#22c55e' }} />
+                סטטוסים
               </Button>
 
               <DropdownMenu open={isDropdownSettingsOpen} onOpenChange={setIsDropdownSettingsOpen}>
@@ -2909,10 +2932,39 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                                         {String(cellValue)}
                                       </span>
                                     </div>
-                                  ) : column.type === 'status' ?
-                                <Badge variant="outline" className={statusColors[cellValue] || 'bg-slate-100 text-slate-800'}>
-                                      {cellValue}
-                                    </Badge> :
+                                  ) : column.type === 'status' || column.key === 'client_status' ? (
+                                   <div className="flex items-center justify-center gap-2">
+                                     {cellValue && (() => {
+                                       const currentStatus = statusOptions.find(s => s.value === cellValue || s.label === cellValue);
+                                       if (currentStatus) {
+                                         return (
+                                           <div className="flex items-center gap-2">
+                                             <div 
+                                               className="w-3 h-3 rounded-full flex-shrink-0 animate-pulse"
+                                               style={{ 
+                                                 backgroundColor: currentStatus.color,
+                                                 boxShadow: `0 0 8px ${currentStatus.glow}, 0 0 12px ${currentStatus.glow}`,
+                                                 border: '1px solid white'
+                                               }}
+                                               title={currentStatus.label}
+                                             />
+                                             <span 
+                                               className="text-sm font-medium px-2 py-0.5 rounded"
+                                               style={{ 
+                                                 backgroundColor: `${currentStatus.color}15`,
+                                                 color: currentStatus.color,
+                                                 border: `1px solid ${currentStatus.color}40`
+                                               }}
+                                             >
+                                               {currentStatus.label}
+                                             </span>
+                                           </div>
+                                         );
+                                       }
+                                       return <span className="text-sm text-slate-600">{cellValue}</span>;
+                                     })()}
+                                   </div>
+                                  ) :
                                 column.type === 'phone' || column.key === 'phone_secondary' || column.key === 'whatsapp' ?
                                 cellValue ?
                                 <a
@@ -3101,6 +3153,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                         <SelectItem value="email">אימייל</SelectItem>
                         <SelectItem value="date">תאריך</SelectItem>
                         <SelectItem value="stage">🔵 שלבים (מואר)</SelectItem>
+                        <SelectItem value="client_status">🟢 סטטוסים (מואר)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -3314,11 +3367,14 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
         open={showStageManager}
         onClose={() => setShowStageManager(false)}
         stageOptions={stageOptions}
-        onSave={(newStageOptions) => {
-          setStageOptions(newStageOptions);
-          saveUserSettings('clients', columns, cellStyles, showSubHeaders, subHeaders, newStageOptions);
-          toast.success('הגדרות השלבים עודכנו');
-        }}
+        onSave={handleSaveStageOptions}
+      />
+
+      <StatusOptionsManager
+        open={showStatusManager}
+        onClose={() => setShowStatusManager(false)}
+        statusOptions={statusOptions}
+        onSave={handleSaveStatusOptions}
       />
 
       <UserPreferencesDialog

@@ -13,11 +13,17 @@ import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
 
 const STAGE_OPTIONS = [
-  { value: 'ברור_תכן', label: 'ברור תכן', color: '#3b82f6' },
-  { value: 'תיק_מידע', label: 'תיק מידע', color: '#8b5cf6' },
-  { value: 'היתרים', label: 'היתרים', color: '#f59e0b' },
-  { value: 'ביצוע', label: 'ביצוע', color: '#10b981' },
-  { value: 'סיום', label: 'סיום', color: '#6b7280' }
+  { value: 'ברור_תכן', label: 'ברור תכן', color: '#3b82f6', glow: 'rgba(59, 130, 246, 0.4)' },
+  { value: 'תיק_מידע', label: 'תיק מידע', color: '#8b5cf6', glow: 'rgba(139, 92, 246, 0.4)' },
+  { value: 'היתרים', label: 'היתרים', color: '#f59e0b', glow: 'rgba(245, 158, 11, 0.4)' },
+  { value: 'ביצוע', label: 'ביצוע', color: '#10b981', glow: 'rgba(16, 185, 129, 0.4)' },
+  { value: 'סיום', label: 'סיום', color: '#6b7280', glow: 'rgba(107, 114, 128, 0.4)' }
+];
+
+const STATUS_OPTIONS = [
+  { value: 'פוטנציאלי', label: 'פוטנציאלי', color: '#f59e0b', glow: 'rgba(245, 158, 11, 0.4)' },
+  { value: 'פעיל', label: 'פעיל', color: '#22c55e', glow: 'rgba(34, 197, 94, 0.4)' },
+  { value: 'לא_פעיל', label: 'לא פעיל', color: '#ef4444', glow: 'rgba(239, 68, 68, 0.4)' }
 ];
 
 // פונקציה לבדוק אם מספר טלפון תקין
@@ -292,6 +298,7 @@ export default function FloatingTimer() {
   const { getAllowedClientsForTimer, loading: accessLoading } = useAccessControl();
   const [currentUser, setCurrentUser] = useState(null);
   const [userLoading, setUserLoading] = useState(true);
+  const [statusOptions, setStatusOptions] = useState(STATUS_OPTIONS);
 
   // בדיקת משתמש מחובר
   useEffect(() => {
@@ -415,6 +422,20 @@ export default function FloatingTimer() {
   useEffect(() => {
     if (!accessLoading) {
       loadData();
+      
+      // Load status options
+      const loadStatusOptions = async () => {
+        try {
+          const user = await base44.auth.me();
+          const userPrefs = await base44.entities.UserPreferences.filter({ user_email: user.email });
+          if (userPrefs.length > 0 && userPrefs[0].spreadsheet_columns?.clients?.statusOptions) {
+            setStatusOptions(userPrefs[0].spreadsheet_columns.clients.statusOptions);
+          }
+        } catch (e) {
+          console.warn('Failed to load status options');
+        }
+      };
+      loadStatusOptions();
     }
   }, [accessLoading]);
 
@@ -957,6 +978,8 @@ ${context}
                         filtered.map((c) => {
                           const isRecent = !query && (prefs.recentClients || []).some((r) => r.id === c.id);
                           const currentStage = c.stage ? STAGE_OPTIONS.find(s => s.value === c.stage) : null;
+                          const statusValue = c.client_status || c.status;
+                          const currentStatus = statusValue ? statusOptions.find(s => s.value === statusValue || s.label === statusValue) : null;
                           
                           return (
                             <button
@@ -974,10 +997,25 @@ ${context}
                                   <div className="flex items-center justify-between w-full">
                                     <div className="flex items-center gap-2">
                                       {currentStage && (
-                                        <Circle 
-                                          className="w-3 h-3 flex-shrink-0 fill-current"
-                                          style={{ color: currentStage.color }}
+                                        <div 
+                                          className="w-3 h-3 rounded-full flex-shrink-0 animate-pulse"
+                                          style={{ 
+                                            backgroundColor: currentStage.color,
+                                            boxShadow: `0 0 6px ${currentStage.glow}, 0 0 10px ${currentStage.glow}`,
+                                            border: '1px solid white'
+                                          }}
                                           title={currentStage.label}
+                                        />
+                                      )}
+                                      {currentStatus && statusValue === 'פעיל' && (
+                                        <div 
+                                          className="w-2.5 h-2.5 rounded-full flex-shrink-0 animate-pulse"
+                                          style={{ 
+                                            backgroundColor: currentStatus.color,
+                                            boxShadow: `0 0 6px ${currentStatus.glow}, 0 0 10px ${currentStatus.glow}`,
+                                            border: '1px solid white'
+                                          }}
+                                          title={currentStatus.label}
                                         />
                                       )}
                                       <span className="text-sm text-slate-900 truncate font-semibold">{c.name || "ללא שם"}</span>

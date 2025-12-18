@@ -18,11 +18,18 @@ const DEFAULT_STAGE_OPTIONS = [
   { value: 'סיום', label: 'סיום', color: '#6b7280', glow: 'rgba(107, 114, 128, 0.4)' }
 ];
 
+const DEFAULT_STATUS_OPTIONS = [
+  { value: 'פוטנציאלי', label: 'פוטנציאלי', color: '#f59e0b', glow: 'rgba(245, 158, 11, 0.4)' },
+  { value: 'פעיל', label: 'פעיל', color: '#22c55e', glow: 'rgba(34, 197, 94, 0.4)' },
+  { value: 'לא_פעיל', label: 'לא פעיל', color: '#ef4444', glow: 'rgba(239, 68, 68, 0.4)' }
+];
+
 export default function RecentClients({ isLoading, className = '' }) {
   const [clients, setClients] = useState([]);
   const [allProjects, setAllProjects] = useState([]);
   const [clientsLimit, setClientsLimit] = useState('10');
   const [clientsFilter, setClientsFilter] = useState('all');
+  const [statusOptions, setStatusOptions] = useState(DEFAULT_STATUS_OPTIONS);
 
   const handleLimitChange = (value) => {
     startTransition(() => {
@@ -49,6 +56,17 @@ export default function RecentClients({ isLoading, className = '' }) {
         
         setClients(validClients);
         setAllProjects(validProjects);
+
+        // Load status options
+        try {
+          const user = await base44.auth.me();
+          const userPrefs = await base44.entities.UserPreferences.filter({ user_email: user.email });
+          if (userPrefs.length > 0 && userPrefs[0].spreadsheet_columns?.clients?.statusOptions) {
+            setStatusOptions(userPrefs[0].spreadsheet_columns.clients.statusOptions);
+          }
+        } catch (e) {
+          console.warn('Failed to load status options');
+        }
       } catch (error) {
         console.error('Error loading clients:', error);
         setClients([]);
@@ -193,11 +211,35 @@ export default function RecentClients({ isLoading, className = '' }) {
                             {client.name || 'לקוח ללא שם'}
                           </h4>
                         </div>
-                        {client.status === 'פעיל' && (
-                          <Badge className={`${statusColors['פעיל']} text-xs flex-shrink-0 ml-2`}>
-                            פעיל
-                          </Badge>
-                        )}
+                        {(client.client_status || client.status) === 'פעיל' && (() => {
+                          const currentStatus = statusOptions.find(s => s.value === 'פעיל' || s.label === 'פעיל');
+                          if (currentStatus) {
+                            return (
+                              <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
+                                <div 
+                                  className="w-2.5 h-2.5 rounded-full flex-shrink-0 animate-pulse"
+                                  style={{ 
+                                    backgroundColor: currentStatus.color,
+                                    boxShadow: `0 0 6px ${currentStatus.glow}, 0 0 10px ${currentStatus.glow}`,
+                                    border: '1px solid white'
+                                  }}
+                                  title={currentStatus.label}
+                                />
+                                <Badge 
+                                  className="text-xs"
+                                  style={{ 
+                                    backgroundColor: `${currentStatus.color}15`,
+                                    color: currentStatus.color,
+                                    borderColor: `${currentStatus.color}60`
+                                  }}
+                                >
+                                  {currentStatus.label}
+                                </Badge>
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
                       </div>
                       
                       <div className="text-sm text-slate-600 space-y-1">

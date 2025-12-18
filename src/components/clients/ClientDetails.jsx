@@ -52,6 +52,12 @@ const DEFAULT_STAGE_OPTIONS = [
   { value: 'סיום', label: 'סיום', color: '#6b7280' }
 ];
 
+const DEFAULT_STATUS_OPTIONS = [
+  { value: 'פוטנציאלי', label: 'פוטנציאלי', color: '#f59e0b', glow: 'rgba(245, 158, 11, 0.4)' },
+  { value: 'פעיל', label: 'פעיל', color: '#22c55e', glow: 'rgba(34, 197, 94, 0.4)' },
+  { value: 'לא_פעיל', label: 'לא פעיל', color: '#ef4444', glow: 'rgba(239, 68, 68, 0.4)' }
+];
+
 const iconColor = "#2C3A50";
 
 export default function ClientDetails({ client, onBack, onEdit }) {
@@ -61,6 +67,7 @@ export default function ClientDetails({ client, onBack, onEdit }) {
   const [timeLogs, setTimeLogs] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [stageOptions, setStageOptions] = useState(DEFAULT_STAGE_OPTIONS);
+  const [statusOptions, setStatusOptions] = useState(DEFAULT_STATUS_OPTIONS);
   const [activeTab, setActiveTab] = useState(() => {
     // Check URL params ONLY - this is the source of truth
     const urlParams = new URLSearchParams(window.location.search);
@@ -123,9 +130,9 @@ export default function ClientDetails({ client, onBack, onEdit }) {
     loadClientData();
   }, [loadClientData]);
 
-  // Load stage options from UserPreferences
+  // Load stage and status options from UserPreferences
   useEffect(() => {
-    const loadStageOptions = async () => {
+    const loadOptions = async () => {
       try {
         const user = await base44.auth.me();
         const userPrefs = await base44.entities.UserPreferences.filter({ user_email: user.email });
@@ -133,21 +140,30 @@ export default function ClientDetails({ client, onBack, onEdit }) {
         if (userPrefs.length > 0 && userPrefs[0].spreadsheet_columns?.clients?.stageOptions) {
           setStageOptions(userPrefs[0].spreadsheet_columns.clients.stageOptions);
         }
+        if (userPrefs.length > 0 && userPrefs[0].spreadsheet_columns?.clients?.statusOptions) {
+          setStatusOptions(userPrefs[0].spreadsheet_columns.clients.statusOptions);
+        }
       } catch (e) {
-        console.warn('Failed to load stage options, using defaults');
+        console.warn('Failed to load options, using defaults');
       }
     };
     
-    loadStageOptions();
+    loadOptions();
     
-    // Listen for stage options updates
+    // Listen for options updates
     const handleStageOptionsUpdate = () => {
-      loadStageOptions();
+      loadOptions();
+    };
+    
+    const handleStatusOptionsUpdate = () => {
+      loadOptions();
     };
     
     window.addEventListener('stage:options:updated', handleStageOptionsUpdate);
+    window.addEventListener('status:options:updated', handleStatusOptionsUpdate);
     return () => {
       window.removeEventListener('stage:options:updated', handleStageOptionsUpdate);
+      window.removeEventListener('status:options:updated', handleStatusOptionsUpdate);
     };
   }, []);
 
