@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Plus, Edit2, Trash2, Circle, Save, GripVertical, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
+import { base44 } from "@/api/base44Client";
 
 export default function StatusOptionsManager({ open, onClose, statusOptions, onSave }) {
   const [editedOptions, setEditedOptions] = useState(statusOptions || []);
@@ -74,7 +75,7 @@ export default function StatusOptionsManager({ open, onClose, statusOptions, onS
     toast.success('✓ סדר הסטטוסים עודכן');
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     // Validation
     const hasEmpty = editedOptions.some(opt => !opt.label.trim());
     if (hasEmpty) {
@@ -85,6 +86,31 @@ export default function StatusOptionsManager({ open, onClose, statusOptions, onS
     const uniqueLabels = new Set(editedOptions.map(opt => opt.label));
     if (uniqueLabels.size !== editedOptions.length) {
       toast.error('כל הסטטוסים חייבים להיות בעלי שם ייחודי');
+      return;
+    }
+
+    // Save to AppSettings
+    try {
+      const user = await base44.auth.me();
+      const existingSettings = await base44.entities.AppSettings.filter({ setting_key: 'client_status_options' });
+      
+      if (existingSettings.length > 0) {
+        await base44.entities.AppSettings.update(existingSettings[0].id, {
+          value: editedOptions,
+          updated_by: user.email
+        });
+      } else {
+        await base44.entities.AppSettings.create({
+          setting_key: 'client_status_options',
+          value: editedOptions,
+          updated_by: user.email
+        });
+      }
+      
+      toast.success('✓ הסטטוסים נשמרו ויסונכרנו בכל המערכת');
+    } catch (error) {
+      console.error('Error saving to AppSettings:', error);
+      toast.error('שגיאה בשמירת ההגדרות');
       return;
     }
 

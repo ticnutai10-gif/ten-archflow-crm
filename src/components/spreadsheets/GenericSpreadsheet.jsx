@@ -329,6 +329,33 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       setCustomCellTypes(spreadsheet.custom_cell_types || []);
       setMergedCells(spreadsheet.merged_cells || {});
       setMergedHeaders(spreadsheet.merged_headers || {});
+      
+      // Load global options from AppSettings
+      const loadGlobalOptions = async () => {
+        try {
+          const [stageSettings, statusSettings] = await Promise.all([
+            base44.entities.AppSettings.filter({ setting_key: 'client_stage_options' }),
+            base44.entities.AppSettings.filter({ setting_key: 'client_status_options' })
+          ]);
+          
+          const globalStageOptions = stageSettings.length > 0 && stageSettings[0].value 
+            ? stageSettings[0].value 
+            : DEFAULT_STAGE_OPTIONS;
+            
+          const globalStatusOptions = statusSettings.length > 0 && statusSettings[0].value 
+            ? statusSettings[0].value 
+            : DEFAULT_STATUS_OPTIONS;
+          
+          setCustomStageOptions(spreadsheet.custom_stage_options || globalStageOptions);
+          setCustomStatusOptions(spreadsheet.custom_status_options || globalStatusOptions);
+        } catch (e) {
+          console.warn('Failed to load global options:', e);
+          setCustomStageOptions(spreadsheet.custom_stage_options || DEFAULT_STAGE_OPTIONS);
+          setCustomStatusOptions(spreadsheet.custom_status_options || DEFAULT_STATUS_OPTIONS);
+        }
+      };
+      
+      loadGlobalOptions();
 
       const loadedTheme = spreadsheet.theme_settings || {
         palette: "default",
@@ -348,8 +375,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       setSavedViews(spreadsheet.saved_views || []);
       setActiveViewId(spreadsheet.active_view_id || null);
       setCharts(spreadsheet.charts || []);
-      setCustomStageOptions(spreadsheet.custom_stage_options || DEFAULT_STAGE_OPTIONS);
-      setCustomStatusOptions(spreadsheet.custom_status_options || DEFAULT_STATUS_OPTIONS);
 
       setHistory([{ columns: initialColumns, rows: initialRows, styles: initialStyles, notes: initialNotes }]);
       setHistoryIndex(0);
@@ -3136,7 +3161,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         onSave={(newOptions) => {
           setCustomStatusOptions(newOptions);
           setTimeout(() => saveToBackend(), 50);
-          toast.success('✓ אפשרויות סטטוסים עודכנו');
         }}
       />
 
