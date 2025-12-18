@@ -204,38 +204,37 @@ export default function ClientsPage() {
   };
 
   useEffect(() => {
-    let timeoutId;
     const handleClientUpdate = (event) => {
       const updatedClient = event.detail;
-      console.log('👥 [CLIENTS PAGE] Client updated event received:', updatedClient);
+      console.log('👥 [CLIENTS PAGE] Client updated event received:', {
+        id: updatedClient?.id,
+        name: updatedClient?.name,
+        stage: updatedClient?.stage
+      });
       
-      // עדכון מיידי של הלקוח ברשימה המקומית
+      // עדכון מיידי של הלקוח ברשימה המקומית - בלי לטעון מחדש מהשרת!
       if (updatedClient?.id) {
         setClients(prev => {
           const updated = prev.map(c => 
             c.id === updatedClient.id ? { ...c, ...updatedClient } : c
           );
-          console.log('👥 [CLIENTS PAGE] Local clients list updated');
+          console.log('👥 [CLIENTS PAGE] ✅ Local clients list updated with stage:', updatedClient.stage);
           return updated;
         });
       }
       
-      // Debounce reload to prevent multiple rapid reloads
-      if (timeoutId) clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
-        console.log('👥 [CLIENTS PAGE] Reloading all clients from server');
-        loadClients();
-      }, 100);
+      // לא טוענים מחדש מהשרת - סומכים על האירוע!
     };
     
     const handleStageOptionsUpdate = () => {
       loadStageOptions();
     };
     
+    console.log('👂 [CLIENTS PAGE] Setting up client:updated listener');
     window.addEventListener('client:updated', handleClientUpdate);
     window.addEventListener('stage:options:updated', handleStageOptionsUpdate);
     return () => {
-      if (timeoutId) clearTimeout(timeoutId);
+      console.log('🔇 [CLIENTS PAGE] Removing client:updated listener');
       window.removeEventListener('client:updated', handleClientUpdate);
       window.removeEventListener('stage:options:updated', handleStageOptionsUpdate);
     };
