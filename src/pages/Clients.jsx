@@ -205,38 +205,23 @@ export default function ClientsPage() {
   };
 
   useEffect(() => {
-    const handleClientUpdate = (event) => {
-      const updatedClient = event.detail;
-      console.log('👥 [CLIENTS PAGE] Client updated event received:', {
-        id: updatedClient?.id,
-        name: updatedClient?.name,
-        stage: updatedClient?.stage
-      });
-      
-      // עדכון מיידי של הלקוח ברשימה המקומית - בלי לטעון מחדש מהשרת!
+    const handleClientSync = (event) => {
+      const { client: updatedClient } = event.detail || {};
       if (updatedClient?.id) {
-        setClients(prev => {
-          const updated = prev.map(c => 
-            c.id === updatedClient.id ? { ...c, ...updatedClient } : c
-          );
-          console.log('👥 [CLIENTS PAGE] ✅ Local clients list updated with stage:', updatedClient.stage);
-          return updated;
-        });
+        setClients(prev => prev.map(c => 
+          c.id === updatedClient.id ? { ...c, ...updatedClient } : c
+        ));
       }
-      
-      // לא טוענים מחדש מהשרת - סומכים על האירוע!
     };
     
     const handleStageOptionsUpdate = () => {
       loadStageOptions();
     };
     
-    console.log('👂 [CLIENTS PAGE] Setting up client:updated listener');
-    window.addEventListener('client:updated', handleClientUpdate);
+    window.addEventListener('client:sync', handleClientSync);
     window.addEventListener('stage:options:updated', handleStageOptionsUpdate);
     return () => {
-      console.log('🔇 [CLIENTS PAGE] Removing client:updated listener');
-      window.removeEventListener('client:updated', handleClientUpdate);
+      window.removeEventListener('client:sync', handleClientSync);
       window.removeEventListener('stage:options:updated', handleStageOptionsUpdate);
     };
   }, []);
