@@ -17,6 +17,7 @@ import {
   EyeOff
 } from "lucide-react";
 import { toast } from "sonner";
+import { base44 } from "@/api/base44Client";
 
 const COLUMN_TYPES = [
   { value: 'text', label: 'טקסט' },
@@ -24,6 +25,7 @@ const COLUMN_TYPES = [
   { value: 'date', label: 'תאריך' },
   { value: 'client', label: '👤 לקוח (מקושר)' },
   { value: 'stage', label: '🔵 שלבים (מואר)' },
+  { value: 'status', label: '🟢 סטטוסים (מואר)' },
   { value: 'checkmark', label: '✓/✗ סימון' },
   { value: 'mixed_check', label: '✓/✗ + טקסט/מספר' },
   { value: 'boolean', label: 'כן/לא' },
@@ -38,6 +40,12 @@ const DEFAULT_STAGE_OPTIONS = [
   { value: 'סיום', label: 'סיום', color: '#6b7280', glow: 'rgba(107, 114, 128, 0.4)' }
 ];
 
+const DEFAULT_STATUS_OPTIONS = [
+  { value: 'פוטנציאלי', label: 'פוטנציאלי', color: '#f59e0b', glow: 'rgba(245, 158, 11, 0.4)' },
+  { value: 'פעיל', label: 'פעיל', color: '#22c55e', glow: 'rgba(34, 197, 94, 0.4)' },
+  { value: 'לא_פעיל', label: 'לא פעיל', color: '#ef4444', glow: 'rgba(239, 68, 68, 0.4)' }
+];
+
 export default function CreateSpreadsheetDialog({ open, onClose, onSave, spreadsheet }) {
   console.log('🔵 [DIALOG] Rendered with open:', open);
   
@@ -49,7 +57,8 @@ export default function CreateSpreadsheetDialog({ open, onClose, onSave, spreads
     cell_styles: {},
     show_sub_headers: false,
     sub_headers: {},
-    custom_stage_options: DEFAULT_STAGE_OPTIONS
+    custom_stage_options: DEFAULT_STAGE_OPTIONS,
+    custom_status_options: DEFAULT_STATUS_OPTIONS
   });
 
   const [newColumn, setNewColumn] = useState({
@@ -61,29 +70,65 @@ export default function CreateSpreadsheetDialog({ open, onClose, onSave, spreads
     required: false
   });
 
-  useEffect(() => {
-    if (spreadsheet) {
-      setFormData({
-        name: spreadsheet.name || '',
-        description: spreadsheet.description || '',
-        columns: spreadsheet.columns || [],
-        rows_data: spreadsheet.rows_data || [],
-        cell_styles: spreadsheet.cell_styles || {},
-        show_sub_headers: spreadsheet.show_sub_headers || false,
-        sub_headers: spreadsheet.sub_headers || {},
-        custom_stage_options: spreadsheet.custom_stage_options || DEFAULT_STAGE_OPTIONS
-      });
-    } else {
-      setFormData({
-        name: '',
-        description: '',
-        columns: [],
-        rows_data: [],
-        cell_styles: {},
-        show_sub_headers: false,
-        sub_headers: {},
-        custom_stage_options: DEFAULT_STAGE_OPTIONS
-      });
+useEffect(() => {
+    // Load global stage and status options
+    const loadGlobalOptions = async () => {
+      try {
+        const stageSettings = await base44.entities.AppSettings.filter({ setting_key: 'client_stage_options' });
+        const statusSettings = await base44.entities.AppSettings.filter({ setting_key: 'client_status_options' });
+        
+        const globalStageOptions = stageSettings.length > 0 && stageSettings[0].value 
+          ? stageSettings[0].value 
+          : DEFAULT_STAGE_OPTIONS;
+          
+        const globalStatusOptions = statusSettings.length > 0 && statusSettings[0].value 
+          ? statusSettings[0].value 
+          : DEFAULT_STATUS_OPTIONS;
+
+        if (spreadsheet) {
+          setFormData({
+            name: spreadsheet.name || '',
+            description: spreadsheet.description || '',
+            columns: spreadsheet.columns || [],
+            rows_data: spreadsheet.rows_data || [],
+            cell_styles: spreadsheet.cell_styles || {},
+            show_sub_headers: spreadsheet.show_sub_headers || false,
+            sub_headers: spreadsheet.sub_headers || {},
+            custom_stage_options: spreadsheet.custom_stage_options || globalStageOptions,
+            custom_status_options: spreadsheet.custom_status_options || globalStatusOptions
+          });
+        } else {
+          setFormData({
+            name: '',
+            description: '',
+            columns: [],
+            rows_data: [],
+            cell_styles: {},
+            show_sub_headers: false,
+            sub_headers: {},
+            custom_stage_options: globalStageOptions,
+            custom_status_options: globalStatusOptions
+          });
+        }
+      } catch (error) {
+        console.error('Error loading global options:', error);
+        // Fallback to defaults
+        setFormData({
+          name: spreadsheet?.name || '',
+          description: spreadsheet?.description || '',
+          columns: spreadsheet?.columns || [],
+          rows_data: spreadsheet?.rows_data || [],
+          cell_styles: spreadsheet?.cell_styles || {},
+          show_sub_headers: spreadsheet?.show_sub_headers || false,
+          sub_headers: spreadsheet?.sub_headers || {},
+          custom_stage_options: DEFAULT_STAGE_OPTIONS,
+          custom_status_options: DEFAULT_STATUS_OPTIONS
+        });
+      }
+    };
+    
+    if (open) {
+      loadGlobalOptions();
     }
   }, [spreadsheet, open]);
 
