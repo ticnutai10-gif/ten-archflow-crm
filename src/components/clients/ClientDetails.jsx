@@ -276,16 +276,20 @@ export default function ClientDetails({ client, onBack, onEdit }) {
                 </CardTitle>
                 <div className="flex flex-wrap gap-2">
                   <Select 
-                    value={currentClient.stage || ''} 
-                    onValueChange={handleStageChange}
+                    value={currentClient.stage || 'none'} 
+                    onValueChange={(val) => {
+                      if (val !== 'none') {
+                        handleStageChange(val);
+                      }
+                    }}
                     disabled={isUpdatingStage}
                   >
                     <SelectTrigger className="w-[200px] h-8" style={{ 
-                      borderColor: currentClient.stage ? stageOptions.find(s => s.value === currentClient.stage)?.color : undefined,
-                      color: currentClient.stage ? stageOptions.find(s => s.value === currentClient.stage)?.color : undefined
+                      borderColor: currentClient.stage ? stageOptions.find(s => s.value === currentClient.stage)?.color : '#e2e8f0',
+                      color: currentClient.stage ? stageOptions.find(s => s.value === currentClient.stage)?.color : '#64748b'
                     }}>
-                      <SelectValue placeholder="בחר שלב">
-                        {currentClient.stage && (() => {
+                      <SelectValue>
+                        {currentClient.stage ? (() => {
                           const currentStage = stageOptions.find(s => s.value === currentClient.stage);
                           return currentStage ? (
                             <div className="flex items-center gap-2">
@@ -295,11 +299,18 @@ export default function ClientDetails({ client, onBack, onEdit }) {
                               />
                               <span>{currentStage.label}</span>
                             </div>
-                          ) : 'בחר שלב';
-                        })()}
+                          ) : (
+                            <span className="text-slate-500">בחר שלב</span>
+                          );
+                        })() : (
+                          <span className="text-slate-500">בחר שלב</span>
+                        )}
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="none" disabled>
+                        <span className="text-slate-400">בחר שלב...</span>
+                      </SelectItem>
                       {stageOptions.map(stage => (
                         <SelectItem key={stage.value} value={stage.value}>
                           <div className="flex items-center gap-2">
