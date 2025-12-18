@@ -3103,21 +3103,20 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                               <PopoverTrigger asChild>
                                 <div className="text-sm w-full" dir="rtl">
                                   {column.key === 'name' ? (
-                                    <div className="flex items-center gap-2">
-                                      <StageIcon 
-                                        client={client} 
-                                        columns={columns} 
-                                        stageOptions={stageOptions} 
-                                      />
-                                      <span style={{
-                                        color: column.type === 'email' || column.type === 'phone' ? '#000000' : 'inherit',
-                                        fontWeight: column.type === 'email' || column.type === 'phone' ? '500' : 'normal'
-                                      }}>
-                                        {String(cellValue)}
-                                      </span>
-                                    </div>
-
-                                column.type === 'phone' || column.key === 'phone_secondary' || column.key === 'whatsapp' ?
+                                   <div className="flex items-center gap-2">
+                                     <StageIcon 
+                                       client={client} 
+                                       columns={columns} 
+                                       stageOptions={stageOptions} 
+                                     />
+                                     <span style={{
+                                       color: column.type === 'email' || column.type === 'phone' ? '#000000' : 'inherit',
+                                       fontWeight: column.type === 'email' || column.type === 'phone' ? '500' : 'normal'
+                                     }}>
+                                       {String(cellValue)}
+                                     </span>
+                                   </div>
+                                  ) : column.type === 'phone' || column.key === 'phone_secondary' || column.key === 'whatsapp' ?
                                 cellValue ?
                                 <a
                                   href={`tel:${cellValue}`}
