@@ -147,6 +147,12 @@ export default function StatusOptionsManager({ open, onClose, statusOptions, onS
           if (!status.value) {
             status.value = status.label.replace(/\s+/g, '_');
           }
+          if (!status.iconColor) {
+            status.iconColor = status.color;
+          }
+          if (!status.iconSize) {
+            status.iconSize = 'md';
+          }
           return status;
         });
 
