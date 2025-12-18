@@ -423,21 +423,34 @@ export default function FloatingTimer() {
     if (!accessLoading) {
       loadData();
       
-      // Load status options
+      // Load status options from AppSettings (global)
       const loadStatusOptions = async () => {
         try {
-          const user = await base44.auth.me();
-          const userPrefs = await base44.entities.UserPreferences.filter({ user_email: user.email });
-          if (userPrefs.length > 0 && userPrefs[0].spreadsheet_columns?.clients?.statusOptions) {
-            setStatusOptions(userPrefs[0].spreadsheet_columns.clients.statusOptions);
+          const statusSettings = await base44.entities.AppSettings.filter({ setting_key: 'client_status_options' });
+          if (statusSettings.length > 0 && statusSettings[0].value) {
+            const statusValue = statusSettings[0].value;
+            setStatusOptions(Array.isArray(statusValue) ? statusValue : (statusValue.options || STATUS_OPTIONS));
           }
         } catch (e) {
-          console.warn('Failed to load status options');
+          console.warn('Failed to load status options from AppSettings');
         }
       };
       loadStatusOptions();
     }
   }, [accessLoading]);
+  
+  // Listen for status options updates
+  useEffect(() => {
+    const handleStatusUpdate = (event) => {
+      if (event.detail?.statusOptions) {
+        const opts = event.detail.statusOptions;
+        setStatusOptions(Array.isArray(opts) ? opts : (opts.options || STATUS_OPTIONS));
+      }
+    };
+    
+    window.addEventListener('status:options:updated', handleStatusUpdate);
+    return () => window.removeEventListener('status:options:updated', handleStatusUpdate);
+  }, []);
 
   // Listen for client updates - update cache only
   useEffect(() => {
