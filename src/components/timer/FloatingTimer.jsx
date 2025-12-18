@@ -443,14 +443,19 @@ export default function FloatingTimer() {
       ));
       
       // Update selected client name if it's the one being updated
-      if (prefs.selectedClientId === updatedClient.id && updatedClient.name) {
-        savePrefs({ selectedClientName: updatedClient.name });
-      }
+      setPrefs(currentPrefs => {
+        if (currentPrefs.selectedClientId === updatedClient.id && updatedClient.name) {
+          const patch = { selectedClientName: updatedClient.name };
+          writePrefs(patch);
+          return { ...currentPrefs, ...patch };
+        }
+        return currentPrefs;
+      });
     };
     
     window.addEventListener('client:updated', handleClientUpdate);
     return () => window.removeEventListener('client:updated', handleClientUpdate);
-  }, [prefs.selectedClientId, savePrefs]);
+  }, []);
 
   // Removed auto-refresh interval to reduce load
 
