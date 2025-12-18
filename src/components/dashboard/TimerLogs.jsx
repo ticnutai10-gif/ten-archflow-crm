@@ -188,14 +188,19 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
 
   // פונקציה לקבלת שם תצוגה - מעדיף שם מלא, אחרת חלק מהמייל
   const getUserDisplayName = (idOrEmail) => {
+    // אם אין ערך או הערך הוא anonymous
+    if (!idOrEmail || idOrEmail === 'anonymous' || idOrEmail === 'null' || idOrEmail === 'undefined') {
+      return 'משתמש לא ידוע';
+    }
+    
     const fullName = getUserFullName(idOrEmail);
     if (fullName) {
       return fullName;
     }
     
     const email = getUserEmail(idOrEmail);
-    if (!email) {
-      return 'לא ידוע';
+    if (!email || email === 'anonymous') {
+      return 'משתמש לא ידוע';
     }
     if (isEmail(email)) {
       return email.split('@')[0];
