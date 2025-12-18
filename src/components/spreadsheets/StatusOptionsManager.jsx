@@ -14,10 +14,10 @@ const DEFAULT_STATUS_OPTIONS = [
 ];
 
 export default function StatusOptionsManager({ open, onClose, statusOptions, onSave }) {
-  const [editedOptions, setEditedOptions] = useState(statusOptions || []);
+  const [editedOptions, setEditedOptions] = useState([]);
   const [editingIndex, setEditingIndex] = useState(null);
-  const fileInputRef = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const fileInputRef = React.useRef(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Load global options from AppSettings when dialog opens
   React.useEffect(() => {
