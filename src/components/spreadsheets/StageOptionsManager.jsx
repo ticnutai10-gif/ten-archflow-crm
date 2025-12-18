@@ -381,6 +381,8 @@ export default function StageOptionsManager({ open, onClose, stageOptions, onSav
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
               💡 <strong>טיפ:</strong> גרור את האייקון ⋮⋮ כדי לשנות את סדר השלבים. לחץ על עריכה לשינוי שם וצבע
             </div>
+            </>
+            )}
           </div>
         </div>
 
