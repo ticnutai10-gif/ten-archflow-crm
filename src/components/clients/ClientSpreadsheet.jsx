@@ -107,7 +107,11 @@ function StageIcon({ client, columns, stageOptions }) {
 
 // Component to display and edit status
 function StatusDisplay({ value, isEditing, onEdit, editValue, onSave, onCancel, statusOptions, onDirectSave }) {
-  const currentStatus = statusOptions.find(s => s.value === value || s.label === value);
+  // Handle both array and wrapped object format
+  const STATUS_OPTIONS_ARRAY = Array.isArray(statusOptions) 
+    ? statusOptions 
+    : (statusOptions?.options || STATUS_OPTIONS);
+  const currentStatus = STATUS_OPTIONS_ARRAY.find(s => s.value === value || s.label === value);
   
   if (isEditing) {
     return (
@@ -121,7 +125,7 @@ function StatusDisplay({ value, isEditing, onEdit, editValue, onSave, onCancel, 
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          {statusOptions.map(status => (
+          {STATUS_OPTIONS_ARRAY.map(status => (
             <SelectItem key={status.value} value={status.value}>
               <div className="flex items-center gap-2">
                 <div 
@@ -418,12 +422,14 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
         // Load global stage and status options
         const stageSettings = await base44.entities.AppSettings.filter({ setting_key: 'client_stage_options' });
         if (stageSettings.length > 0 && stageSettings[0].value) {
-          setStageOptions(stageSettings[0].value);
+          const stageValue = stageSettings[0].value;
+          setStageOptions(Array.isArray(stageValue) ? stageValue : (stageValue.options || STAGE_OPTIONS));
         }
         
         const statusSettings = await base44.entities.AppSettings.filter({ setting_key: 'client_status_options' });
         if (statusSettings.length > 0 && statusSettings[0].value) {
-          setStatusOptions(statusSettings[0].value);
+          const statusValue = statusSettings[0].value;
+          setStatusOptions(Array.isArray(statusValue) ? statusValue : (statusValue.options || STATUS_OPTIONS));
         }
         
         if (userSettings && userSettings.order) {
@@ -547,13 +553,15 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
     // Listen for global settings updates
     const handleStatusUpdate = (event) => {
       if (event.detail?.statusOptions) {
-        setStatusOptions(event.detail.statusOptions);
+        const opts = event.detail.statusOptions;
+        setStatusOptions(Array.isArray(opts) ? opts : (opts.options || STATUS_OPTIONS));
       }
     };
     
     const handleStageUpdate = (event) => {
       if (event.detail?.stageOptions) {
-        setStageOptions(event.detail.stageOptions);
+        const opts = event.detail.stageOptions;
+        setStageOptions(Array.isArray(opts) ? opts : (opts.options || STAGE_OPTIONS));
       }
     };
 
