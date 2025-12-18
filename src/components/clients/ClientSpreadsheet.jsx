@@ -113,6 +113,10 @@ function StatusDisplay({ value, isEditing, onEdit, editValue, onSave, onCancel, 
     : (statusOptions?.options || STATUS_OPTIONS);
   const currentStatus = STATUS_OPTIONS_ARRAY.find(s => s.value === value || s.label === value);
   
+  // Default color for unknown statuses
+  const defaultColor = '#6b7280';
+  const defaultGlow = 'rgba(107, 114, 128, 0.4)';
+  
   if (isEditing) {
     return (
       <Select value={editValue} onValueChange={(val) => {
@@ -144,7 +148,7 @@ function StatusDisplay({ value, isEditing, onEdit, editValue, onSave, onCancel, 
     );
   }
   
-  if (!value || !currentStatus) {
+  if (!value) {
     return (
       <button
         onClick={() => onEdit('')}
@@ -155,26 +159,31 @@ function StatusDisplay({ value, isEditing, onEdit, editValue, onSave, onCancel, 
     );
   }
   
+  // Display status even if not in the predefined list
+  const displayColor = currentStatus?.color || defaultColor;
+  const displayGlow = currentStatus?.glow || defaultGlow;
+  const displayLabel = currentStatus?.label || value.replace(/_/g, ' ');
+  
   return (
     <div className="flex items-center gap-2 justify-center">
       <div 
         className="w-3 h-3 rounded-full flex-shrink-0 animate-pulse"
         style={{ 
-          backgroundColor: currentStatus.color,
-          boxShadow: `0 0 8px ${currentStatus.glow}, 0 0 12px ${currentStatus.glow}`,
+          backgroundColor: displayColor,
+          boxShadow: `0 0 8px ${displayGlow}, 0 0 12px ${displayGlow}`,
           border: '1px solid white'
         }}
-        title={currentStatus.label}
+        title={displayLabel}
       />
       <span 
         className="text-sm font-medium px-2 py-0.5 rounded"
         style={{ 
-          backgroundColor: `${currentStatus.color}15`,
-          color: currentStatus.color,
-          border: `1px solid ${currentStatus.color}40`
+          backgroundColor: `${displayColor}15`,
+          color: displayColor,
+          border: `1px solid ${displayColor}40`
         }}
       >
-        {currentStatus.label}
+        {displayLabel}
       </span>
     </div>
   );
