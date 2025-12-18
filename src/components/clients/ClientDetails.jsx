@@ -27,6 +27,7 @@ import {
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import { base44 } from "@/api/base44Client";
+import { broadcastClientUpdate, useClientSync } from "@/components/sync/ClientSyncManager";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 

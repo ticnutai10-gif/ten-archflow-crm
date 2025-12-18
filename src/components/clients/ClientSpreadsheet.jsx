@@ -21,6 +21,7 @@ import HelpIcon from "@/components/ui/HelpIcon";
 import { Checkbox } from "@/components/ui/checkbox";
 
 import { base44 } from "@/api/base44Client";
+import { broadcastClientUpdate } from "@/components/sync/ClientSyncManager";
 import { createPageUrl } from "@/utils";
 import { StageDisplay } from "@/components/spreadsheets/GenericSpreadsheet";
 import StageOptionsManager from "@/components/spreadsheets/StageOptionsManager";

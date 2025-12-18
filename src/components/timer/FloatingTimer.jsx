@@ -10,6 +10,7 @@ import { Client, TimeLog } from "@/entities/all";
 import { logInfo, logWarn, logError, logEntry } from "@/components/utils/debugLog";
 import { useAccessControl } from "@/components/access/AccessValidator";
 import { base44 } from "@/api/base44Client";
+import { useClientsSync, broadcastClientUpdate } from "@/components/sync/ClientSyncManager";
 import { toast } from "sonner";
 
 const STAGE_OPTIONS = [
