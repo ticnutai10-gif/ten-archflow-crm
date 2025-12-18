@@ -21,29 +21,36 @@ export default function StatusOptionsManager({ open, onClose, statusOptions, onS
 
   // Load global options from AppSettings when dialog opens
   React.useEffect(() => {
-    if (open) {
-      setIsLoading(true);
-      const loadGlobalOptions = async () => {
-        try {
-          const statusSettings = await base44.entities.AppSettings.filter({ setting_key: 'client_status_options' });
-          
-          let globalStatusOptions = DEFAULT_STATUS_OPTIONS;
-          if (statusSettings.length > 0 && statusSettings[0].value) {
-            // Extract options from wrapped object
-            globalStatusOptions = statusSettings[0].value.options || statusSettings[0].value;
-          }
-          
-          setEditedOptions(globalStatusOptions);
-        } catch (error) {
-          console.error('Error loading global status options:', error);
-          setEditedOptions(statusOptions || DEFAULT_STATUS_OPTIONS);
-        } finally {
-          setIsLoading(false);
-        }
-      };
-      
-      loadGlobalOptions();
+    if (!open) {
+      // Reset state when closing
+      setEditingIndex(null);
+      return;
     }
+    
+    setIsLoading(true);
+    setEditingIndex(null);
+    
+    const loadGlobalOptions = async () => {
+      try {
+        const statusSettings = await base44.entities.AppSettings.filter({ setting_key: 'client_status_options' });
+        
+        let globalStatusOptions = DEFAULT_STATUS_OPTIONS;
+        if (statusSettings.length > 0 && statusSettings[0].value) {
+          // Extract options from wrapped object or array
+          const val = statusSettings[0].value;
+          globalStatusOptions = Array.isArray(val) ? val : (val.options || DEFAULT_STATUS_OPTIONS);
+        }
+        
+        setEditedOptions(globalStatusOptions);
+      } catch (error) {
+        console.error('Error loading global status options:', error);
+        setEditedOptions(statusOptions || DEFAULT_STATUS_OPTIONS);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadGlobalOptions();
   }, [open]);
 
   const handleAddStatus = () => {
