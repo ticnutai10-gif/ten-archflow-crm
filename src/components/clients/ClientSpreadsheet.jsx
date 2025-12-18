@@ -501,39 +501,24 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
     }
   }, [clients, sortConfig]);
 
-  // Listen for client updates - this syncs changes from other components
+  // Listen for client sync events
   useEffect(() => {
-    const handleClientUpdate = (event) => {
-      const updatedClient = event.detail;
+    const handleClientSync = (event) => {
+      const { client: updatedClient } = event.detail || {};
       if (!updatedClient?.id) return;
       
-      console.log('📊 [SPREADSHEET] 🔔 Client updated event received:', {
-        id: updatedClient.id,
-        name: updatedClient.name,
-        stage: updatedClient.stage,
-        source: 'event'
-      });
-      
-      // Update local state immediately
       setLocalClients(prev => {
         const existingIndex = prev.findIndex(c => c.id === updatedClient.id);
-        if (existingIndex === -1) {
-          console.log('📊 [SPREADSHEET] Client not found in localClients, skipping');
-          return prev;
-        }
+        if (existingIndex === -1) return prev;
         
         const newList = [...prev];
         newList[existingIndex] = { ...newList[existingIndex], ...updatedClient };
-        console.log('📊 [SPREADSHEET] ✅ Updated client at index', existingIndex, 'stage:', newList[existingIndex].stage);
         return newList;
       });
     };
     
-    console.log('👂 [SPREADSHEET] Listening for client:updated events');
-    window.addEventListener('client:updated', handleClientUpdate);
-    return () => {
-      window.removeEventListener('client:updated', handleClientUpdate);
-    };
+    window.addEventListener('client:sync', handleClientSync);
+    return () => window.removeEventListener('client:sync', handleClientSync);
   }, []);
 
   // Debounced save to database (per user)
