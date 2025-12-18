@@ -27,9 +27,11 @@ export default function StatusOptionsManager({ open, onClose, statusOptions, onS
         try {
           const statusSettings = await base44.entities.AppSettings.filter({ setting_key: 'client_status_options' });
           
-          const globalStatusOptions = statusSettings.length > 0 && statusSettings[0].value 
-            ? statusSettings[0].value 
-            : DEFAULT_STATUS_OPTIONS;
+          let globalStatusOptions = DEFAULT_STATUS_OPTIONS;
+          if (statusSettings.length > 0 && statusSettings[0].value) {
+            // Extract options from wrapped object
+            globalStatusOptions = statusSettings[0].value.options || statusSettings[0].value;
+          }
           
           setEditedOptions(globalStatusOptions);
         } catch (error) {
@@ -119,15 +121,18 @@ export default function StatusOptionsManager({ open, onClose, statusOptions, onS
       const user = await base44.auth.me();
       const existingSettings = await base44.entities.AppSettings.filter({ setting_key: 'client_status_options' });
       
+      // Wrap array in object for AppSettings
+      const valueToSave = { options: editedOptions };
+      
       if (existingSettings.length > 0) {
         await base44.entities.AppSettings.update(existingSettings[0].id, {
-          value: editedOptions,
+          value: valueToSave,
           updated_by: user.email
         });
       } else {
         await base44.entities.AppSettings.create({
           setting_key: 'client_status_options',
-          value: editedOptions,
+          value: valueToSave,
           updated_by: user.email
         });
       }

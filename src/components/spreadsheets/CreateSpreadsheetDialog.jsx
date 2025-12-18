@@ -71,19 +71,21 @@ export default function CreateSpreadsheetDialog({ open, onClose, onSave, spreads
   });
 
 useEffect(() => {
-    // Load global stage and status options
-    const loadGlobalOptions = async () => {
-      try {
-        const stageSettings = await base44.entities.AppSettings.filter({ setting_key: 'client_stage_options' });
-        const statusSettings = await base44.entities.AppSettings.filter({ setting_key: 'client_status_options' });
-        
-        const globalStageOptions = stageSettings.length > 0 && stageSettings[0].value 
-          ? stageSettings[0].value 
-          : DEFAULT_STAGE_OPTIONS;
-          
-        const globalStatusOptions = statusSettings.length > 0 && statusSettings[0].value 
-          ? statusSettings[0].value 
-          : DEFAULT_STATUS_OPTIONS;
+  // Load global stage and status options
+  const loadGlobalOptions = async () => {
+    try {
+      const stageSettings = await base44.entities.AppSettings.filter({ setting_key: 'client_stage_options' });
+      const statusSettings = await base44.entities.AppSettings.filter({ setting_key: 'client_status_options' });
+
+      let globalStageOptions = DEFAULT_STAGE_OPTIONS;
+      if (stageSettings.length > 0 && stageSettings[0].value) {
+        globalStageOptions = stageSettings[0].value.options || stageSettings[0].value;
+      }
+
+      let globalStatusOptions = DEFAULT_STATUS_OPTIONS;
+      if (statusSettings.length > 0 && statusSettings[0].value) {
+        globalStatusOptions = statusSettings[0].value.options || statusSettings[0].value;
+      }
 
         if (spreadsheet) {
           setFormData({

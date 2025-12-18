@@ -338,13 +338,15 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
             base44.entities.AppSettings.filter({ setting_key: 'client_status_options' })
           ]);
           
-          const globalStageOptions = stageSettings.length > 0 && stageSettings[0].value 
-            ? stageSettings[0].value 
-            : DEFAULT_STAGE_OPTIONS;
+          let globalStageOptions = DEFAULT_STAGE_OPTIONS;
+          if (stageSettings.length > 0 && stageSettings[0].value) {
+            globalStageOptions = stageSettings[0].value.options || stageSettings[0].value;
+          }
             
-          const globalStatusOptions = statusSettings.length > 0 && statusSettings[0].value 
-            ? statusSettings[0].value 
-            : DEFAULT_STATUS_OPTIONS;
+          let globalStatusOptions = DEFAULT_STATUS_OPTIONS;
+          if (statusSettings.length > 0 && statusSettings[0].value) {
+            globalStatusOptions = statusSettings[0].value.options || statusSettings[0].value;
+          }
           
           setCustomStageOptions(spreadsheet.custom_stage_options || globalStageOptions);
           setCustomStatusOptions(spreadsheet.custom_status_options || globalStatusOptions);
