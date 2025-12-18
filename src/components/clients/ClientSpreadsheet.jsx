@@ -471,35 +471,33 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
     return () => window.removeEventListener('user:preferences:updated', handlePrefsUpdate);
   }, []);
 
-  // Update local clients when props change - important for sync!
+  // Initialize localClients from props
   useEffect(() => {
     if (!clients || clients.length === 0) {
       setLocalClients([]);
       return;
     }
     
-    console.log('📊 [SPREADSHEET] Clients prop updated, syncing localClients...');
-    
-    // Apply sorting if active
-    if (sortConfig.key) {
-      const sorted = [...clients].sort((a, b) => {
+    setLocalClients(clients);
+  }, [clients]);
+
+  // Apply sorting whenever sortConfig changes
+  useEffect(() => {
+    if (sortConfig.key && localClients.length > 0) {
+      const sorted = [...localClients].sort((a, b) => {
         const aVal = a[sortConfig.key];
         const bVal = b[sortConfig.key];
         
-        // Handle empty values
         if (!aVal && !bVal) return 0;
         if (!aVal) return sortConfig.direction === 'asc' ? 1 : -1;
         if (!bVal) return sortConfig.direction === 'asc' ? -1 : 1;
         
-        // Compare values
         const comparison = String(aVal).localeCompare(String(bVal), 'he');
         return sortConfig.direction === 'asc' ? comparison : -comparison;
       });
       setLocalClients(sorted);
-    } else {
-      setLocalClients(clients);
     }
-  }, [clients, sortConfig]);
+  }, [sortConfig]);
 
   // Listen for client sync events
   useEffect(() => {
@@ -507,12 +505,18 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
       const { client: updatedClient } = event.detail || {};
       if (!updatedClient?.id) return;
       
+      console.log('📊 [SPREADSHEET] Client sync event received:', updatedClient.id, updatedClient.stage);
+      
       setLocalClients(prev => {
         const existingIndex = prev.findIndex(c => c.id === updatedClient.id);
-        if (existingIndex === -1) return prev;
+        if (existingIndex === -1) {
+          console.log('📊 [SPREADSHEET] Client not in list, skipping');
+          return prev;
+        }
         
         const newList = [...prev];
         newList[existingIndex] = { ...newList[existingIndex], ...updatedClient };
+        console.log('📊 [SPREADSHEET] Updated client in localClients:', newList[existingIndex].stage);
         return newList;
       });
     };
