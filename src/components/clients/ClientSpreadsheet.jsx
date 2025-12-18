@@ -795,10 +795,8 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
         await base44.entities.Client.update(clientId, dataToSave);
         const refreshedClient = await base44.entities.Client.get(clientId);
         
-        console.log('📢 [SPREADSHEET CELL] Dispatching client:updated event:', refreshedClient);
-        window.dispatchEvent(new CustomEvent('client:updated', {
-          detail: refreshedClient
-        }));
+        console.log('📢 [SPREADSHEET CELL] Broadcasting update via sync manager');
+        broadcastClientUpdate(refreshedClient);
         
         toast.success('התא עודכן');
       } catch (error) {
