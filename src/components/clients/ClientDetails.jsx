@@ -153,22 +153,26 @@ export default function ClientDetails({ client, onBack, onEdit }) {
 
   useEffect(() => {
     const handleClientUpdate = (event) => {
-      console.log('📬 [CLIENT DETAILS] Received client:updated event:', event.detail);
-      if (event.detail?.id === client?.id) {
-        console.log('✅ [CLIENT DETAILS] Event matches current client, reloading...');
-        loadClientData();
-      } else {
-        console.log('⏭️ [CLIENT DETAILS] Event for different client, ignoring');
+      const updatedClient = event.detail;
+      console.log('📬 [CLIENT DETAILS] Received client:updated event:', {
+        eventClientId: updatedClient?.id,
+        currentClientId: client?.id,
+        stage: updatedClient?.stage
+      });
+      
+      if (updatedClient?.id === client?.id) {
+        console.log('✅ [CLIENT DETAILS] Event matches current client, updating local state...');
+        // עדכון מיידי בלי לטעון מהשרת
+        setCurrentClient(prev => ({ ...prev, ...updatedClient }));
       }
     };
     
     window.addEventListener('client:updated', handleClientUpdate);
     console.log('👂 [CLIENT DETAILS] Listening for updates on client:', client?.id);
     return () => {
-      console.log('🔇 [CLIENT DETAILS] Stopped listening');
       window.removeEventListener('client:updated', handleClientUpdate);
     };
-  }, [client?.id, loadClientData]);
+  }, [client?.id]);
 
   // Removed - initial state handles tab from URL correctly
 
