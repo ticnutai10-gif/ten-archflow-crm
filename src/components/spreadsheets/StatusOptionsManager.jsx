@@ -7,17 +7,42 @@ import { toast } from "sonner";
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { base44 } from "@/api/base44Client";
 
+const DEFAULT_STATUS_OPTIONS = [
+  { value: 'פוטנציאלי', label: 'פוטנציאלי', color: '#f59e0b', glow: 'rgba(245, 158, 11, 0.4)' },
+  { value: 'פעיל', label: 'פעיל', color: '#22c55e', glow: 'rgba(34, 197, 94, 0.4)' },
+  { value: 'לא_פעיל', label: 'לא פעיל', color: '#ef4444', glow: 'rgba(239, 68, 68, 0.4)' }
+];
+
 export default function StatusOptionsManager({ open, onClose, statusOptions, onSave }) {
   const [editedOptions, setEditedOptions] = useState(statusOptions || []);
   const [editingIndex, setEditingIndex] = useState(null);
   const fileInputRef = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Update editedOptions when statusOptions prop changes
+  // Load global options from AppSettings when dialog opens
   React.useEffect(() => {
-    if (statusOptions) {
-      setEditedOptions(statusOptions);
+    if (open) {
+      setIsLoading(true);
+      const loadGlobalOptions = async () => {
+        try {
+          const statusSettings = await base44.entities.AppSettings.filter({ setting_key: 'client_status_options' });
+          
+          const globalStatusOptions = statusSettings.length > 0 && statusSettings[0].value 
+            ? statusSettings[0].value 
+            : DEFAULT_STATUS_OPTIONS;
+          
+          setEditedOptions(globalStatusOptions);
+        } catch (error) {
+          console.error('Error loading global status options:', error);
+          setEditedOptions(statusOptions || DEFAULT_STATUS_OPTIONS);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      
+      loadGlobalOptions();
     }
-  }, [statusOptions]);
+  }, [open]);
 
   const handleAddStatus = () => {
     const newStatus = {
@@ -218,6 +243,10 @@ export default function StatusOptionsManager({ open, onClose, statusOptions, onS
 
         <div className="flex-1 overflow-y-auto py-4">
           <div className="space-y-4">
+            {isLoading ? (
+              <div className="text-center py-8 text-slate-500">טוען...</div>
+            ) : (
+              <>
             <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-4">
               <div className="flex items-start gap-3">
                 <div className="text-3xl">🟢</div>
@@ -435,6 +464,8 @@ export default function StatusOptionsManager({ open, onClose, statusOptions, onS
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
               💡 <strong>טיפ:</strong> גרור את האייקון ⋮⋮ כדי לשנות את סדר הסטטוסים. לחץ על עריכה לשינוי שם וצבע
             </div>
+            </>
+            )}
           </div>
         </div>
 

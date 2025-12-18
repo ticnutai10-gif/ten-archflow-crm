@@ -538,8 +538,28 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       }));
     };
     
+    const handleStatusOptionsUpdate = async (event) => {
+      console.log('📬 [GENERIC SPREADSHEET] Status options updated globally');
+      if (event.detail?.statusOptions) {
+        setCustomStatusOptions(event.detail.statusOptions);
+      }
+    };
+    
+    const handleStageOptionsUpdate = async (event) => {
+      console.log('📬 [GENERIC SPREADSHEET] Stage options updated globally');
+      if (event.detail?.stageOptions) {
+        setCustomStageOptions(event.detail.stageOptions);
+      }
+    };
+    
     window.addEventListener('client:updated', handleClientUpdate);
-    return () => window.removeEventListener('client:updated', handleClientUpdate);
+    window.addEventListener('status:options:updated', handleStatusOptionsUpdate);
+    window.addEventListener('stage:options:updated', handleStageOptionsUpdate);
+    return () => {
+      window.removeEventListener('client:updated', handleClientUpdate);
+      window.removeEventListener('status:options:updated', handleStatusOptionsUpdate);
+      window.removeEventListener('stage:options:updated', handleStageOptionsUpdate);
+    };
   }, []);
 
   useEffect(() => {
