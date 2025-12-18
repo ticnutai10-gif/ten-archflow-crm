@@ -503,19 +503,32 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
       const updatedClient = event.detail;
       if (!updatedClient?.id) return;
       
-      console.log('📊 [SPREADSHEET] Client updated event received:', updatedClient);
+      console.log('📊 [SPREADSHEET] Client updated event received:', {
+        id: updatedClient.id,
+        name: updatedClient.name,
+        stage: updatedClient.stage
+      });
       
       setLocalClients(prev => {
-        const updated = prev.map(c => 
-          c.id === updatedClient.id ? { ...c, ...updatedClient } : c
-        );
-        console.log('📊 [SPREADSHEET] Local clients updated');
-        return updated;
+        const existingIndex = prev.findIndex(c => c.id === updatedClient.id);
+        if (existingIndex === -1) {
+          console.log('📊 [SPREADSHEET] Client not found in list, skipping');
+          return prev;
+        }
+        
+        const newList = [...prev];
+        newList[existingIndex] = { ...newList[existingIndex], ...updatedClient };
+        console.log('📊 [SPREADSHEET] ✅ Client at index', existingIndex, 'updated to stage:', newList[existingIndex].stage);
+        return newList;
       });
     };
     
+    console.log('👂 [SPREADSHEET] Setting up client:updated listener');
     window.addEventListener('client:updated', handleClientUpdate);
-    return () => window.removeEventListener('client:updated', handleClientUpdate);
+    return () => {
+      console.log('🔇 [SPREADSHEET] Removing client:updated listener');
+      window.removeEventListener('client:updated', handleClientUpdate);
+    };
   }, []);
 
   // Debounced save to database (per user)
