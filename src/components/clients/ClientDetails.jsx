@@ -345,12 +345,51 @@ export default function ClientDetails({ client, onBack, onEdit }) {
                       ))}
                     </SelectContent>
                   </Select>
-                  
-                  {currentClient.status === 'פעיל' && (
-                    <Badge variant="outline" className={statusColors["פעיל"]}>
-                      פעיל
-                    </Badge>
-                  )}
+
+                  <Select 
+                    value={(currentClient.client_status || currentClient.status) || ''} 
+                    onValueChange={handleStatusChange}
+                    disabled={isUpdatingStatus}
+                  >
+                    <SelectTrigger className="w-[200px] h-8">
+                      <SelectValue placeholder="בחר סטטוס">
+                        {(() => {
+                          const statusValue = currentClient.client_status || currentClient.status;
+                          const currentStatus = statusValue ? statusOptions.find(s => s.value === statusValue || s.label === statusValue) : null;
+                          return currentStatus ? (
+                            <div className="flex items-center gap-2">
+                              <div 
+                                className="w-3 h-3 rounded-full flex-shrink-0 animate-pulse"
+                                style={{ 
+                                  backgroundColor: currentStatus.color,
+                                  boxShadow: `0 0 6px ${currentStatus.glow}, 0 0 10px ${currentStatus.glow}`,
+                                  border: '1px solid white'
+                                }}
+                              />
+                              <span>{currentStatus.label}</span>
+                            </div>
+                          ) : 'בחר סטטוס';
+                        })()}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {statusOptions.map(status => (
+                        <SelectItem key={status.value} value={status.value}>
+                          <div className="flex items-center gap-2">
+                            <div 
+                              className="w-3 h-3 rounded-full flex-shrink-0 animate-pulse"
+                              style={{ 
+                                backgroundColor: status.color,
+                                boxShadow: `0 0 6px ${status.glow}, 0 0 10px ${status.glow}`,
+                                border: '1px solid white'
+                              }}
+                            />
+                            <span>{status.label}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   {currentClient.source && (
                     <Badge variant="outline" className="bg-slate-100 text-slate-700">
                       <TrendingUp className="w-3 h-3 ml-1" />

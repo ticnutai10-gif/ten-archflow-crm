@@ -1007,7 +1007,7 @@ ${context}
                                           title={currentStage.label}
                                         />
                                       )}
-                                      {currentStatus && statusValue === 'פעיל' && (
+                                      {currentStatus && (
                                         <div 
                                           className="w-2.5 h-2.5 rounded-full flex-shrink-0 animate-pulse"
                                           style={{ 
