@@ -68,6 +68,7 @@ export default function ClientDetails({ client, onBack, onEdit }) {
   const [isLoading, setIsLoading] = useState(true);
   const [stageOptions, setStageOptions] = useState(DEFAULT_STAGE_OPTIONS);
   const [statusOptions, setStatusOptions] = useState(DEFAULT_STATUS_OPTIONS);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [activeTab, setActiveTab] = useState(() => {
     // Check URL params ONLY - this is the source of truth
     const urlParams = new URLSearchParams(window.location.search);
@@ -202,7 +203,6 @@ export default function ClientDetails({ client, onBack, onEdit }) {
       await base44.entities.Client.update(currentClient.id, { stage: newStage });
       console.log('✅ [CLIENT DETAILS] Update sent successfully');
       
-      // טען מחדש את הלקוח מהשרת כדי לקבל את הגרסה העדכנית
       console.log('🔄 [CLIENT DETAILS] Reloading client from server...');
       const updatedClient = await base44.entities.Client.get(currentClient.id);
       console.log('📥 [CLIENT DETAILS] Client reloaded:', {
@@ -214,7 +214,6 @@ export default function ClientDetails({ client, onBack, onEdit }) {
       setCurrentClient(updatedClient);
       console.log('💾 [CLIENT DETAILS] Local state updated');
       
-      // שלח אירוע עם כל הנתונים של הלקוח
       console.log('📢 [CLIENT DETAILS] Dispatching client:updated event...');
       window.dispatchEvent(new CustomEvent('client:updated', {
         detail: updatedClient
@@ -227,6 +226,27 @@ export default function ClientDetails({ client, onBack, onEdit }) {
       toast.error('שגיאה בעדכון השלב');
     } finally {
       setIsUpdatingStage(false);
+    }
+  };
+
+  const handleStatusChange = async (newStatus) => {
+    setIsUpdatingStatus(true);
+    try {
+      await base44.entities.Client.update(currentClient.id, { client_status: newStatus });
+      const updatedClient = await base44.entities.Client.get(currentClient.id);
+      
+      setCurrentClient(updatedClient);
+      
+      window.dispatchEvent(new CustomEvent('client:updated', {
+        detail: updatedClient
+      }));
+      
+      toast.success('הסטטוס עודכן בהצלחה');
+    } catch (error) {
+      console.error('Error updating status:', error);
+      toast.error('שגיאה בעדכון הסטטוס');
+    } finally {
+      setIsUpdatingStatus(false);
     }
   };
 

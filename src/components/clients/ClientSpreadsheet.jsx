@@ -105,6 +105,77 @@ function StageIcon({ client, columns, stageOptions }) {
   );
 }
 
+// Component to display and edit status
+function StatusDisplay({ value, isEditing, onEdit, editValue, onSave, onCancel, statusOptions, onDirectSave }) {
+  const currentStatus = statusOptions.find(s => s.value === value || s.label === value);
+  
+  if (isEditing) {
+    return (
+      <Select value={editValue} onValueChange={(val) => {
+        onEdit(val);
+        if (onDirectSave) {
+          onDirectSave(val);
+        }
+      }}>
+        <SelectTrigger className="h-8">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {statusOptions.map(status => (
+            <SelectItem key={status.value} value={status.value}>
+              <div className="flex items-center gap-2">
+                <div 
+                  className="w-3 h-3 rounded-full animate-pulse"
+                  style={{ 
+                    backgroundColor: status.color,
+                    boxShadow: `0 0 6px ${status.glow}`
+                  }}
+                />
+                <span>{status.label}</span>
+              </div>
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    );
+  }
+  
+  if (!value || !currentStatus) {
+    return (
+      <button
+        onClick={() => onEdit('')}
+        className="text-slate-400 hover:text-blue-600 transition-colors text-sm"
+      >
+        לחץ לבחירה
+      </button>
+    );
+  }
+  
+  return (
+    <div className="flex items-center gap-2 justify-center">
+      <div 
+        className="w-3 h-3 rounded-full flex-shrink-0 animate-pulse"
+        style={{ 
+          backgroundColor: currentStatus.color,
+          boxShadow: `0 0 8px ${currentStatus.glow}, 0 0 12px ${currentStatus.glow}`,
+          border: '1px solid white'
+        }}
+        title={currentStatus.label}
+      />
+      <span 
+        className="text-sm font-medium px-2 py-0.5 rounded"
+        style={{ 
+          backgroundColor: `${currentStatus.color}15`,
+          color: currentStatus.color,
+          border: `1px solid ${currentStatus.color}40`
+        }}
+      >
+        {currentStatus.label}
+      </span>
+    </div>
+  );
+}
+
 // Load settings from database (per user)
 const loadUserSettings = async (tableName = 'clients') => {
   try {
@@ -2930,7 +3001,6 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                                 }}
                                 stageOptions={stageOptions}
                                 onDirectSave={async (stageValue) => {
-                                  // Update local state immediately
                                   const updatedClient = column.key.startsWith('cf:')
                                     ? {
                                         ...client,
@@ -2945,7 +3015,6 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                                   setEditingCell(null);
                                   setEditValue("");
 
-                                  // Save to backend
                                   const dataToSave = { ...updatedClient };
                                   delete dataToSave.id;
                                   delete dataToSave.created_date;
@@ -2960,6 +3029,51 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                                   }));
 
                                   toast.success('✓ שלב עודכן');
+                                }}
+                              />
+                            </div>
+                          ) : column.type === 'status' || column.key === 'status' || column.key === 'client_status' ? (
+                            <div className="flex items-center justify-center">
+                              <StatusDisplay 
+                                value={cellValue}
+                                isEditing={isEditing}
+                                onEdit={(val) => setEditValue(val)}
+                                editValue={editValue}
+                                onSave={saveEdit}
+                                onCancel={() => {
+                                  setEditingCell(null);
+                                  setEditValue("");
+                                }}
+                                statusOptions={statusOptions}
+                                onDirectSave={async (statusValue) => {
+                                  const updatedClient = column.key.startsWith('cf:')
+                                    ? {
+                                        ...client,
+                                        custom_data: {
+                                          ...(client.custom_data || {}),
+                                          [column.key.slice(3)]: statusValue
+                                        }
+                                      }
+                                    : { ...client, [column.key]: statusValue };
+
+                                  setLocalClients(prev => prev.map(c => c.id === client.id ? updatedClient : c));
+                                  setEditingCell(null);
+                                  setEditValue("");
+
+                                  const dataToSave = { ...updatedClient };
+                                  delete dataToSave.id;
+                                  delete dataToSave.created_date;
+                                  delete dataToSave.updated_date;
+                                  delete dataToSave.created_by;
+
+                                  await base44.entities.Client.update(client.id, dataToSave);
+                                  const refreshedClient = await base44.entities.Client.get(client.id);
+
+                                  window.dispatchEvent(new CustomEvent('client:updated', {
+                                    detail: refreshedClient
+                                  }));
+
+                                  toast.success('✓ סטטוס עודכן');
                                 }}
                               />
                             </div>
