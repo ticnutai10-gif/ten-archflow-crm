@@ -6,17 +6,36 @@ import { Plus, Edit2, Trash2, Circle, Save, GripVertical, Upload } from "lucide-
 import { toast } from "sonner";
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
-export default function StageOptionsManager({ open, onClose, stageOptions, onSave }) {
-  const [editedOptions, setEditedOptions] = useState(stageOptions || []);
-  const [editingIndex, setEditingIndex] = useState(null);
-  const fileInputRef = useState(null);
+const DEFAULT_STAGE_OPTIONS = [
+  { value: 'ברור_תכן', label: 'ברור תכן', color: '#3b82f6', glow: 'rgba(59, 130, 246, 0.4)' },
+  { value: 'תיק_מידע', label: 'תיק מידע', color: '#8b5cf6', glow: 'rgba(139, 92, 246, 0.4)' },
+  { value: 'היתרים', label: 'היתרים', color: '#f59e0b', glow: 'rgba(245, 158, 11, 0.4)' },
+  { value: 'ביצוע', label: 'ביצוע', color: '#10b981', glow: 'rgba(16, 185, 129, 0.4)' },
+  { value: 'סיום', label: 'סיום', color: '#6b7280', glow: 'rgba(107, 114, 128, 0.4)' }
+];
 
-  // Update editedOptions when stageOptions prop changes
+export default function StageOptionsManager({ open, onClose, stageOptions, onSave }) {
+  const [editedOptions, setEditedOptions] = useState([]);
+  const [editingIndex, setEditingIndex] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const fileInputRef = React.useRef(null);
+
+  // Load options when dialog opens
   React.useEffect(() => {
-    if (stageOptions) {
-      setEditedOptions(stageOptions);
+    if (!open) {
+      setEditingIndex(null);
+      return;
     }
-  }, [stageOptions]);
+    
+    setIsLoading(true);
+    setEditingIndex(null);
+    
+    // Handle both array and wrapped object format
+    const opts = stageOptions;
+    const normalizedOpts = Array.isArray(opts) ? opts : (opts?.options || DEFAULT_STAGE_OPTIONS);
+    setEditedOptions(normalizedOpts);
+    setIsLoading(false);
+  }, [open, stageOptions]);
 
   const handleAddStage = () => {
     const newStage = {
