@@ -5,10 +5,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Timer as TimerIcon, Play, Pause, RefreshCcw, Square, Save, Clock, Settings, BookmarkPlus, Trash2, Plus, Loader2, Calendar, Pencil, Circle } from 'lucide-react';
+import { Timer as TimerIcon, Play, Pause, RefreshCcw, Square, Save, Clock, Settings, BookmarkPlus, Trash2, Plus, Loader2, Calendar, Pencil, Circle, AlertCircle } from 'lucide-react';
 import { Client, TimeLog } from "@/entities/all";
 import { logInfo, logWarn, logError, logEntry } from "@/components/utils/debugLog";
 import { useAccessControl } from "@/components/access/AccessValidator";
+import { base44 } from "@/api/base44Client";
+import { toast } from "sonner";
 
 const STAGE_OPTIONS = [
   { value: 'ברור_תכן', label: 'ברור תכן', color: '#3b82f6' },
@@ -288,6 +290,24 @@ export default function FloatingTimer() {
   const [showQuickNotesEditor, setShowQuickNotesEditor] = React.useState(false);
 
   const { getAllowedClientsForTimer, loading: accessLoading } = useAccessControl();
+  const [currentUser, setCurrentUser] = useState(null);
+  const [userLoading, setUserLoading] = useState(true);
+
+  // בדיקת משתמש מחובר
+  useEffect(() => {
+    const checkUser = async () => {
+      try {
+        const user = await base44.auth.me();
+        setCurrentUser(user);
+      } catch (error) {
+        console.warn('⚠️ [TIMER] User not logged in:', error);
+        setCurrentUser(null);
+      } finally {
+        setUserLoading(false);
+      }
+    };
+    checkUser();
+  }, []);
 
   // Detect Ctrl key press/release
   React.useEffect(() => {
@@ -591,9 +611,16 @@ ${context}
   };
 
   const performSave = async () => {
+    // בדיקה שהמשתמש מחובר
+    if (!currentUser || !currentUser.email) {
+      toast.error('עליך להתחבר למערכת כדי לשמור רישום זמן');
+      return;
+    }
+
     const validDate = selectedLogDate && !isNaN(selectedLogDate.getTime()) ? selectedLogDate : new Date();
     const logDate = validDate.toISOString().slice(0, 10);
     const secondsToSave = computeSecondsFromManual();
+    
     await TimeLog.create({
       client_id: prefs.selectedClientId || "",
       client_name: prefs.selectedClientName || "",
@@ -601,7 +628,9 @@ ${context}
       duration_seconds: secondsToSave,
       title: title || "",
       notes: notes || ""
+      // created_by יתווסף אוטומטית על ידי המערכת
     });
+    
     window.dispatchEvent(new CustomEvent('timelog:created', {
       detail: {
         client_name: prefs.selectedClientName,
@@ -613,10 +642,11 @@ ${context}
     state.reset();
     setTitle("");
     setNotes("");
-    setSelectedLogDate(new Date()); // ✅ איפוס התאריך
+    setSelectedLogDate(new Date());
     setDetailsOpen(false);
     setPopoverOpen(false);
-    setAiSuggested(false); // Reset AI suggestion flag on successful save
+    setAiSuggested(false);
+    toast.success('רישום הזמן נשמר בהצלחה');
   };
 
   const handleSaveClick = async () => {
@@ -852,16 +882,30 @@ ${context}
                     <div className="text-sm text-slate-500 mb-3 text-right">בחר לקוח להתחלה</div>
                     }
 
-                    <div className="flex items-center gap-2 justify-end">
+                    {/* הודעה אם המשתמש לא מחובר */}
+                  {!userLoading && !currentUser && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3 flex items-center gap-2">
+                      <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+                      <div className="text-sm text-red-800">
+                        <strong>לא מחובר!</strong> יש להתחבר למערכת כדי להפעיל את הטיימר ולשמור רישומי זמן.
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-2 justify-end">
                       <Button
                         size="icon"
                         onClick={() => {
+                          if (!currentUser) {
+                            toast.error('עליך להתחבר למערכת כדי להפעיל את הטיימר');
+                            return;
+                          }
                           if (!prefs.selectedClientName && !state.running) return;
                           state.toggle();
                         }}
-                        disabled={!prefs.selectedClientName && !state.running}
+                        disabled={!currentUser || (!prefs.selectedClientName && !state.running)}
                         className="rounded-full h-10 w-10 shadow-md hover:shadow-lg transition-all"
-                        title={!prefs.selectedClientName && !state.running ? "בחר לקוח קודם" : state.running ? "השהה" : "התחל"}>
+                        title={!currentUser ? "יש להתחבר למערכת" : !prefs.selectedClientName && !state.running ? "בחר לקוח קודם" : state.running ? "השהה" : "התחל"}>
 
                         {state.running ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
                       </Button>
@@ -876,9 +920,9 @@ ${context}
                         size="icon" 
                         variant="outline" 
                         onClick={handleSaveClick}
-                        disabled={!prefs.selectedClientName}
+                        disabled={!currentUser || !prefs.selectedClientName}
                         className="rounded-full h-10 w-10 bg-green-50 hover:bg-green-100 border-green-300"
-                        title={!prefs.selectedClientName ? "בחר לקוח לפני שמירה" : "שמור"}>
+                        title={!currentUser ? "יש להתחבר למערכת" : !prefs.selectedClientName ? "בחר לקוח לפני שמירה" : "שמור"}>
                         <Save className="w-5 h-5 text-green-600" />
                       </Button>
                     </div>

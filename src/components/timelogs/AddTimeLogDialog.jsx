@@ -152,8 +152,16 @@ export default function AddTimeLogDialog({
 
     setIsSaving(true);
     try {
-      const client = clients.find(c => c.id === formData.client_id);
+      // בדיקה שהמשתמש מחובר
       const currentUser = await base44.auth.me();
+      
+      if (!currentUser || !currentUser.email) {
+        toast.error('עליך להתחבר למערכת כדי לשמור רישום זמן');
+        setIsSaving(false);
+        return;
+      }
+
+      const client = clients.find(c => c.id === formData.client_id);
       
       const logDate = selectedDate && !isNaN(selectedDate.getTime())
         ? format(selectedDate, 'yyyy-MM-dd')
@@ -165,8 +173,8 @@ export default function AddTimeLogDialog({
         log_date: logDate,
         duration_seconds: totalSeconds,
         title: formData.title || '',
-        notes: formData.notes || '',
-        created_by: currentUser?.email || 'unknown'
+        notes: formData.notes || ''
+        // created_by יתווסף אוטומטית על ידי המערכת
       });
 
       toast.success('רישום הזמן נוסף בהצלחה');
@@ -174,7 +182,11 @@ export default function AddTimeLogDialog({
       handleClose();
     } catch (error) {
       console.error('Error saving time log:', error);
-      toast.error('שגיאה בשמירת רישום הזמן');
+      if (error.message?.includes('auth') || error.message?.includes('login')) {
+        toast.error('עליך להתחבר למערכת כדי לשמור רישום זמן');
+      } else {
+        toast.error('שגיאה בשמירת רישום הזמן');
+      }
     } finally {
       setIsSaving(false);
     }
