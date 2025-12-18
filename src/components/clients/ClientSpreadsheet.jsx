@@ -3116,39 +3116,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                                         {String(cellValue)}
                                       </span>
                                     </div>
-                                  ) : column.type === 'status' || column.key === 'client_status' ? (
-                                   <div className="flex items-center justify-center gap-2">
-                                     {cellValue && (() => {
-                                       const currentStatus = statusOptions.find(s => s.value === cellValue || s.label === cellValue);
-                                       if (currentStatus) {
-                                         return (
-                                           <div className="flex items-center gap-2">
-                                             <div 
-                                               className="w-3 h-3 rounded-full flex-shrink-0 animate-pulse"
-                                               style={{ 
-                                                 backgroundColor: currentStatus.color,
-                                                 boxShadow: `0 0 8px ${currentStatus.glow}, 0 0 12px ${currentStatus.glow}`,
-                                                 border: '1px solid white'
-                                               }}
-                                               title={currentStatus.label}
-                                             />
-                                             <span 
-                                               className="text-sm font-medium px-2 py-0.5 rounded"
-                                               style={{ 
-                                                 backgroundColor: `${currentStatus.color}15`,
-                                                 color: currentStatus.color,
-                                                 border: `1px solid ${currentStatus.color}40`
-                                               }}
-                                             >
-                                               {currentStatus.label}
-                                             </span>
-                                           </div>
-                                         );
-                                       }
-                                       return <span className="text-sm text-slate-600">{cellValue}</span>;
-                                     })()}
-                                   </div>
-                                  ) :
+
                                 column.type === 'phone' || column.key === 'phone_secondary' || column.key === 'whatsapp' ?
                                 cellValue ?
                                 <a
