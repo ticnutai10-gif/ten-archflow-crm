@@ -415,12 +415,15 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
       try {
         const userSettings = await loadUserSettings('clients');
         
-        // Load stage and status options first
-        if (userSettings?.stageOptions) {
-          setStageOptions(userSettings.stageOptions);
+        // Load global stage and status options
+        const stageSettings = await base44.entities.AppSettings.filter({ setting_key: 'client_stage_options' });
+        if (stageSettings.length > 0 && stageSettings[0].value) {
+          setStageOptions(stageSettings[0].value);
         }
-        if (userSettings?.statusOptions) {
-          setStatusOptions(userSettings.statusOptions);
+        
+        const statusSettings = await base44.entities.AppSettings.filter({ setting_key: 'client_status_options' });
+        if (statusSettings.length > 0 && statusSettings[0].value) {
+          setStatusOptions(statusSettings[0].value);
         }
         
         if (userSettings && userSettings.order) {
@@ -540,6 +543,27 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
     };
     
     loadUserPrefs();
+
+    // Listen for global settings updates
+    const handleStatusUpdate = (event) => {
+      if (event.detail?.statusOptions) {
+        setStatusOptions(event.detail.statusOptions);
+      }
+    };
+    
+    const handleStageUpdate = (event) => {
+      if (event.detail?.stageOptions) {
+        setStageOptions(event.detail.stageOptions);
+      }
+    };
+
+    window.addEventListener('status:options:updated', handleStatusUpdate);
+    window.addEventListener('stage:options:updated', handleStageUpdate);
+
+    return () => {
+      window.removeEventListener('status:options:updated', handleStatusUpdate);
+      window.removeEventListener('stage:options:updated', handleStageUpdate);
+    };
   }, []);
 
   // Listen for preference updates
@@ -1595,70 +1619,56 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
   const handleSaveStageOptions = async (newOptions) => {
     try {
       const user = await base44.auth.me();
-      const userPrefs = await base44.entities.UserPreferences.filter({ user_email: user.email });
       
-      const currentPrefs = userPrefs.length > 0 ? userPrefs[0] : {
-        user_email: user.email,
-        spreadsheet_columns: {}
-      };
+      // Save to global AppSettings
+      const existing = await base44.entities.AppSettings.filter({ setting_key: 'client_stage_options' });
       
-      const updatedPrefs = {
-        ...currentPrefs,
-        spreadsheet_columns: {
-          ...currentPrefs.spreadsheet_columns,
-          clients: {
-            ...currentPrefs.spreadsheet_columns?.clients,
-            stageOptions: newOptions
-          }
-        }
-      };
-      
-      if (userPrefs.length > 0) {
-        await base44.entities.UserPreferences.update(currentPrefs.id, updatedPrefs);
+      if (existing.length > 0) {
+        await base44.entities.AppSettings.update(existing[0].id, {
+          value: newOptions,
+          updated_by: user.email
+        });
       } else {
-        await base44.entities.UserPreferences.create(updatedPrefs);
+        await base44.entities.AppSettings.create({
+          setting_key: 'client_stage_options',
+          value: newOptions,
+          updated_by: user.email
+        });
       }
       
       setStageOptions(newOptions);
-      toast.success('✓ אופציות השלבים נשמרו');
+      toast.success('✓ השלבים נשמרו ומסונכרנו לכל המשתמשים');
     } catch (error) {
       console.error('Failed to save stage options:', error);
-      toast.error('שגיאה בשמירת אופציות השלבים');
+      toast.error('שגיאה בשמירת השלבים');
     }
   };
 
   const handleSaveStatusOptions = async (newOptions) => {
     try {
       const user = await base44.auth.me();
-      const userPrefs = await base44.entities.UserPreferences.filter({ user_email: user.email });
       
-      const currentPrefs = userPrefs.length > 0 ? userPrefs[0] : {
-        user_email: user.email,
-        spreadsheet_columns: {}
-      };
+      // Save to global AppSettings
+      const existing = await base44.entities.AppSettings.filter({ setting_key: 'client_status_options' });
       
-      const updatedPrefs = {
-        ...currentPrefs,
-        spreadsheet_columns: {
-          ...currentPrefs.spreadsheet_columns,
-          clients: {
-            ...currentPrefs.spreadsheet_columns?.clients,
-            statusOptions: newOptions
-          }
-        }
-      };
-      
-      if (userPrefs.length > 0) {
-        await base44.entities.UserPreferences.update(currentPrefs.id, updatedPrefs);
+      if (existing.length > 0) {
+        await base44.entities.AppSettings.update(existing[0].id, {
+          value: newOptions,
+          updated_by: user.email
+        });
       } else {
-        await base44.entities.UserPreferences.create(updatedPrefs);
+        await base44.entities.AppSettings.create({
+          setting_key: 'client_status_options',
+          value: newOptions,
+          updated_by: user.email
+        });
       }
       
       setStatusOptions(newOptions);
-      toast.success('✓ אופציות הסטטוסים נשמרו');
+      toast.success('✓ הסטטוסים נשמרו ומסונכרנו לכל המשתמשים');
     } catch (error) {
       console.error('Failed to save status options:', error);
-      toast.error('שגיאה בשמירת אופציות הסטטוסים');
+      toast.error('שגיאה בשמירת הסטטוסים');
     }
   };
 
