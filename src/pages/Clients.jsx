@@ -74,6 +74,7 @@ import ClientMerger from "../components/clients/ClientMerger";
 import GoogleSheetsImporter from "../components/clients/GoogleSheetsImporter";
 import { useAccessControl, autoAssignToCreator } from "../components/access/AccessValidator";
 import { toast } from "sonner";
+import { broadcastClientUpdate } from "@/components/sync/ClientSyncManager";
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { useIsMobile } from "../components/utils/useMediaQuery";
 import SwipeableCard from "../components/mobile/SwipeableCard";

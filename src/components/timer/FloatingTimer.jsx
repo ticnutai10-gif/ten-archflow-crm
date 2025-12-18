@@ -419,19 +419,13 @@ export default function FloatingTimer() {
     }
   }, [accessLoading]);
 
-  // Listen for client updates - update cache, state, and selected client
+  // Listen for client sync events
   useEffect(() => {
-    const handleClientUpdate = (event) => {
-      const updatedClient = event.detail;
+    const handleClientSync = (event) => {
+      const { client: updatedClient } = event.detail || {};
       if (!updatedClient?.id) return;
       
-      console.log('⏱️ [TIMER] Received client:updated event:', {
-        id: updatedClient.id,
-        name: updatedClient.name,
-        stage: updatedClient.stage
-      });
-      
-      // Update cache in place
+      // Update cache
       if (clientsCache) {
         clientsCache = clientsCache.map(c => 
           c.id === updatedClient.id ? { ...c, ...updatedClient } : c
@@ -443,7 +437,7 @@ export default function FloatingTimer() {
         c.id === updatedClient.id ? { ...c, ...updatedClient } : c
       ));
       
-      // Update selected client name if it's the one being updated
+      // Update selected client if needed
       setPrefs(currentPrefs => {
         if (currentPrefs.selectedClientId === updatedClient.id && updatedClient.name) {
           const patch = { selectedClientName: updatedClient.name };
@@ -454,8 +448,8 @@ export default function FloatingTimer() {
       });
     };
     
-    window.addEventListener('client:updated', handleClientUpdate);
-    return () => window.removeEventListener('client:updated', handleClientUpdate);
+    window.addEventListener('client:sync', handleClientSync);
+    return () => window.removeEventListener('client:sync', handleClientSync);
   }, []);
 
   // Removed auto-refresh interval to reduce load
