@@ -180,38 +180,29 @@ export default function ClientDetails({ client, onBack, onEdit }) {
       newStage: newStage
     });
     
+    const previousClient = currentClient;
     setIsUpdatingStage(true);
+    
     try {
       // עדכון מיידי של ה-UI המקומי
-      const optimisticClient = { ...currentClient, stage: newStage };
-      setCurrentClient(optimisticClient);
+      const updatedClient = { ...currentClient, stage: newStage };
+      setCurrentClient(updatedClient);
       
       console.log('📤 [CLIENT DETAILS] Sending update to server...');
       await base44.entities.Client.update(currentClient.id, { stage: newStage });
-      console.log('✅ [CLIENT DETAILS] Update sent successfully');
+      console.log('✅ [CLIENT DETAILS] Update saved successfully');
       
-      // טען מחדש את הלקוח מהשרת כדי לקבל את הגרסה העדכנית
-      console.log('🔄 [CLIENT DETAILS] Reloading client from server...');
-      const updatedClient = await base44.entities.Client.get(currentClient.id);
-      console.log('📥 [CLIENT DETAILS] Client reloaded:', {
-        name: updatedClient.name,
-        stage: updatedClient.stage
-      });
-      
-      setCurrentClient(updatedClient);
-      
-      // שלח אירוע עם כל הנתונים של הלקוח לסנכרון כל הקומפוננטות
-      console.log('📢 [CLIENT DETAILS] Dispatching client:updated event...');
+      // שלח אירוע עם הנתון המעודכן לסנכרון כל הקומפוננטות
+      console.log('📢 [CLIENT DETAILS] Broadcasting update to all components...');
       window.dispatchEvent(new CustomEvent('client:updated', {
         detail: updatedClient
       }));
-      console.log('✅ [CLIENT DETAILS] Event dispatched - all components should sync');
       
       toast.success('השלב עודכן בהצלחה');
     } catch (error) {
       console.error('❌ [CLIENT DETAILS] Error updating stage:', error);
       // החזר את המצב הקודם במקרה של שגיאה
-      setCurrentClient(currentClient);
+      setCurrentClient(previousClient);
       toast.error('שגיאה בעדכון השלב');
     } finally {
       setIsUpdatingStage(false);
