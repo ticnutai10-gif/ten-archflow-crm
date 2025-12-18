@@ -310,9 +310,11 @@ export default function ClientDetails({ client, onBack, onEdit }) {
                     </SelectContent>
                   </Select>
                   
-                  <Badge variant="outline" className={statusColors[currentClient.status] || statusColors["פוטנציאלי"]}>
-                    {currentClient.status || 'פוטנציאלי'}
-                  </Badge>
+                  {currentClient.status === 'פעיל' && (
+                    <Badge variant="outline" className={statusColors["פעיל"]}>
+                      פעיל
+                    </Badge>
+                  )}
                   {currentClient.source && (
                     <Badge variant="outline" className="bg-slate-100 text-slate-700">
                       <TrendingUp className="w-3 h-3 ml-1" />
