@@ -1521,6 +1521,76 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
     });
   };
 
+  const handleSaveStageOptions = async (newOptions) => {
+    try {
+      const user = await base44.auth.me();
+      const userPrefs = await base44.entities.UserPreferences.filter({ user_email: user.email });
+      
+      const currentPrefs = userPrefs.length > 0 ? userPrefs[0] : {
+        user_email: user.email,
+        spreadsheet_columns: {}
+      };
+      
+      const updatedPrefs = {
+        ...currentPrefs,
+        spreadsheet_columns: {
+          ...currentPrefs.spreadsheet_columns,
+          clients: {
+            ...currentPrefs.spreadsheet_columns?.clients,
+            stageOptions: newOptions
+          }
+        }
+      };
+      
+      if (userPrefs.length > 0) {
+        await base44.entities.UserPreferences.update(currentPrefs.id, updatedPrefs);
+      } else {
+        await base44.entities.UserPreferences.create(updatedPrefs);
+      }
+      
+      setStageOptions(newOptions);
+      toast.success('✓ אופציות השלבים נשמרו');
+    } catch (error) {
+      console.error('Failed to save stage options:', error);
+      toast.error('שגיאה בשמירת אופציות השלבים');
+    }
+  };
+
+  const handleSaveStatusOptions = async (newOptions) => {
+    try {
+      const user = await base44.auth.me();
+      const userPrefs = await base44.entities.UserPreferences.filter({ user_email: user.email });
+      
+      const currentPrefs = userPrefs.length > 0 ? userPrefs[0] : {
+        user_email: user.email,
+        spreadsheet_columns: {}
+      };
+      
+      const updatedPrefs = {
+        ...currentPrefs,
+        spreadsheet_columns: {
+          ...currentPrefs.spreadsheet_columns,
+          clients: {
+            ...currentPrefs.spreadsheet_columns?.clients,
+            statusOptions: newOptions
+          }
+        }
+      };
+      
+      if (userPrefs.length > 0) {
+        await base44.entities.UserPreferences.update(currentPrefs.id, updatedPrefs);
+      } else {
+        await base44.entities.UserPreferences.create(updatedPrefs);
+      }
+      
+      setStatusOptions(newOptions);
+      toast.success('✓ אופציות הסטטוסים נשמרו');
+    } catch (error) {
+      console.error('Failed to save status options:', error);
+      toast.error('שגיאה בשמירת אופציות הסטטוסים');
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="bg-white p-6 rounded-lg shadow-lg">
