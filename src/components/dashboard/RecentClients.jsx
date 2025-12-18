@@ -193,9 +193,9 @@ export default function RecentClients({ isLoading, className = '' }) {
                             {client.name || 'לקוח ללא שם'}
                           </h4>
                         </div>
-                        {client.status && (
-                          <Badge className={`${statusColors[client.status] || 'bg-slate-100 text-slate-800'} text-xs flex-shrink-0 ml-2`}>
-                            {client.status}
+                        {client.status === 'פעיל' && (
+                          <Badge className={`${statusColors['פעיל']} text-xs flex-shrink-0 ml-2`}>
+                            פעיל
                           </Badge>
                         )}
                       </div>
