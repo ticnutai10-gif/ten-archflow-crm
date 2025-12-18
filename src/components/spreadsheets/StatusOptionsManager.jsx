@@ -2,13 +2,14 @@ import React, { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Edit2, Trash2, Circle, Save, GripVertical } from "lucide-react";
+import { Plus, Edit2, Trash2, Circle, Save, GripVertical, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
 export default function StatusOptionsManager({ open, onClose, statusOptions, onSave }) {
   const [editedOptions, setEditedOptions] = useState(statusOptions || []);
   const [editingIndex, setEditingIndex] = useState(null);
+  const fileInputRef = useState(null);
 
   // Update editedOptions when statusOptions prop changes
   React.useEffect(() => {
@@ -106,6 +107,69 @@ export default function StatusOptionsManager({ open, onClose, statusOptions, onS
       g: parseInt(result[2], 16),
       b: parseInt(result[3], 16)
     } : null;
+  };
+
+  const handleImportFile = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const content = e.target.result;
+        const imported = JSON.parse(content);
+        
+        // Validate structure
+        if (!Array.isArray(imported)) {
+          toast.error('הקובץ חייב להכיל מערך של סטטוסים');
+          return;
+        }
+
+        const validStatuses = imported.filter(status => 
+          status.label && status.color
+        );
+
+        if (validStatuses.length === 0) {
+          toast.error('לא נמצאו סטטוסים תקינים בקובץ');
+          return;
+        }
+
+        // Add glow if missing
+        const normalized = validStatuses.map(status => {
+          if (!status.glow && status.color) {
+            const rgb = hexToRgb(status.color);
+            if (rgb) {
+              status.glow = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.4)`;
+            }
+          }
+          if (!status.value) {
+            status.value = status.label.replace(/\s+/g, '_');
+          }
+          return status;
+        });
+
+        setEditedOptions(normalized);
+        toast.success(`✓ ייובאו ${normalized.length} סטטוסים מהקובץ`);
+      } catch (error) {
+        toast.error('שגיאה בקריאת הקובץ. ודא שזהו קובץ JSON תקין');
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+  };
+
+  const handleExportFile = () => {
+    const dataStr = JSON.stringify(editedOptions, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `statuses-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success('✓ הקובץ יוצא בהצלחה');
   };
 
   return (
@@ -264,14 +328,32 @@ export default function StatusOptionsManager({ open, onClose, statusOptions, onS
               </Droppable>
             </DragDropContext>
 
-            <Button
-              onClick={handleAddStatus}
-              variant="outline"
-              className="w-full border-2 border-dashed border-green-300 hover:border-green-500 hover:bg-green-50 gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              הוסף סטטוס חדש
-            </Button>
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                onClick={handleAddStatus}
+                variant="outline"
+                className="border-2 border-dashed border-green-300 hover:border-green-500 hover:bg-green-50 gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                הוסף סטטוס חדש
+              </Button>
+              
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".json"
+                onChange={handleImportFile}
+                className="hidden"
+              />
+              <Button
+                onClick={() => fileInputRef.current?.click()}
+                variant="outline"
+                className="border-2 border-dashed border-blue-300 hover:border-blue-500 hover:bg-blue-50 gap-2"
+              >
+                <Upload className="w-4 h-4" />
+                ייבא מקובץ JSON
+              </Button>
+            </div>
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
               💡 <strong>טיפ:</strong> גרור את האייקון ⋮⋮ כדי לשנות את סדר הסטטוסים. לחץ על עריכה לשינוי שם וצבע
@@ -280,6 +362,10 @@ export default function StatusOptionsManager({ open, onClose, statusOptions, onS
         </div>
 
         <DialogFooter className="gap-2 border-t pt-4">
+          <Button variant="outline" onClick={handleExportFile}>
+            ייצא JSON
+          </Button>
+          <div className="flex-1" />
           <Button variant="outline" onClick={onClose}>
             ביטול
           </Button>
