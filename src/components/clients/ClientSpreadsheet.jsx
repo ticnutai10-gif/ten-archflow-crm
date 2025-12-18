@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -504,9 +503,15 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
       const updatedClient = event.detail;
       if (!updatedClient?.id) return;
       
-      setLocalClients(prev => prev.map(c => 
-        c.id === updatedClient.id ? { ...c, ...updatedClient } : c
-      ));
+      console.log('📊 [SPREADSHEET] Client updated event received:', updatedClient);
+      
+      setLocalClients(prev => {
+        const updated = prev.map(c => 
+          c.id === updatedClient.id ? { ...c, ...updatedClient } : c
+        );
+        console.log('📊 [SPREADSHEET] Local clients updated');
+        return updated;
+      });
     };
     
     window.addEventListener('client:updated', handleClientUpdate);

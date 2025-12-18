@@ -206,9 +206,24 @@ export default function ClientsPage() {
   useEffect(() => {
     let timeoutId;
     const handleClientUpdate = (event) => {
+      const updatedClient = event.detail;
+      console.log('👥 [CLIENTS PAGE] Client updated event received:', updatedClient);
+      
+      // עדכון מיידי של הלקוח ברשימה המקומית
+      if (updatedClient?.id) {
+        setClients(prev => {
+          const updated = prev.map(c => 
+            c.id === updatedClient.id ? { ...c, ...updatedClient } : c
+          );
+          console.log('👥 [CLIENTS PAGE] Local clients list updated');
+          return updated;
+        });
+      }
+      
       // Debounce reload to prevent multiple rapid reloads
       if (timeoutId) clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
+        console.log('👥 [CLIENTS PAGE] Reloading all clients from server');
         loadClients();
       }, 100);
     };
