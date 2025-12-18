@@ -471,14 +471,31 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
     return () => window.removeEventListener('user:preferences:updated', handlePrefsUpdate);
   }, []);
 
-  // Initialize localClients from props
+  // Initialize localClients from props - MERGE to preserve local changes
   useEffect(() => {
     if (!clients || clients.length === 0) {
       setLocalClients([]);
       return;
     }
     
-    setLocalClients(clients);
+    console.log('📊 [SPREADSHEET] Props changed, merging with localClients');
+    
+    setLocalClients(prev => {
+      // If prev is empty, just use clients
+      if (prev.length === 0) return clients;
+      
+      // Merge: keep local changes (from sync events) but add any new clients from props
+      const merged = clients.map(client => {
+        const existing = prev.find(c => c.id === client.id);
+        if (existing) {
+          // Keep the existing one (it has the latest changes from sync)
+          return existing;
+        }
+        return client;
+      });
+      
+      return merged;
+    });
   }, [clients]);
 
   // Apply sorting whenever sortConfig changes
