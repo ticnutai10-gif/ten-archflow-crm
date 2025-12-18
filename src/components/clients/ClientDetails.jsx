@@ -27,7 +27,6 @@ import {
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import { base44 } from "@/api/base44Client";
-import { broadcastClientUpdate, useClientSync } from "@/components/sync/ClientSyncManager";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 
@@ -153,35 +152,66 @@ export default function ClientDetails({ client, onBack, onEdit }) {
   }, []);
 
   useEffect(() => {
-    const handleClientSync = (event) => {
-      const { client: updatedClient } = event.detail || {};
-      if (updatedClient?.id === client?.id) {
-        setCurrentClient(prev => ({ ...prev, ...updatedClient }));
+    const handleClientUpdate = (event) => {
+      console.log('📬 [CLIENT DETAILS] Received client:updated event:', event.detail);
+      if (event.detail?.id === client?.id) {
+        console.log('✅ [CLIENT DETAILS] Event matches current client, reloading...');
+        loadClientData();
+      } else {
+        console.log('⏭️ [CLIENT DETAILS] Event for different client, ignoring');
       }
     };
     
-    window.addEventListener('client:sync', handleClientSync);
-    return () => window.removeEventListener('client:sync', handleClientSync);
-  }, [client?.id]);
+    window.addEventListener('client:updated', handleClientUpdate);
+    console.log('👂 [CLIENT DETAILS] Listening for updates on client:', client?.id);
+    return () => {
+      console.log('🔇 [CLIENT DETAILS] Stopped listening');
+      window.removeEventListener('client:updated', handleClientUpdate);
+    };
+  }, [client?.id, loadClientData]);
 
   // Removed - initial state handles tab from URL correctly
 
   const handleStageChange = async (newStage) => {
-    const previousClient = currentClient;
-    setIsUpdatingStage(true);
+    console.log('🎯 [CLIENT DETAILS] handleStageChange called:', {
+      clientId: currentClient.id,
+      clientName: currentClient.name,
+      oldStage: currentClient.stage,
+      newStage: newStage
+    });
     
+    setIsUpdatingStage(true);
     try {
-      const updatedClient = { ...currentClient, stage: newStage };
+      // עדכון מיידי של ה-UI המקומי
+      const optimisticClient = { ...currentClient, stage: newStage };
+      setCurrentClient(optimisticClient);
+      
+      console.log('📤 [CLIENT DETAILS] Sending update to server...');
+      await base44.entities.Client.update(currentClient.id, { stage: newStage });
+      console.log('✅ [CLIENT DETAILS] Update sent successfully');
+      
+      // טען מחדש את הלקוח מהשרת כדי לקבל את הגרסה העדכנית
+      console.log('🔄 [CLIENT DETAILS] Reloading client from server...');
+      const updatedClient = await base44.entities.Client.get(currentClient.id);
+      console.log('📥 [CLIENT DETAILS] Client reloaded:', {
+        name: updatedClient.name,
+        stage: updatedClient.stage
+      });
+      
       setCurrentClient(updatedClient);
       
-      await base44.entities.Client.update(currentClient.id, { stage: newStage });
-      
-      // Use centralized sync manager
-      broadcastClientUpdate(updatedClient);
+      // שלח אירוע עם כל הנתונים של הלקוח לסנכרון כל הקומפוננטות
+      console.log('📢 [CLIENT DETAILS] Dispatching client:updated event...');
+      window.dispatchEvent(new CustomEvent('client:updated', {
+        detail: updatedClient
+      }));
+      console.log('✅ [CLIENT DETAILS] Event dispatched - all components should sync');
       
       toast.success('השלב עודכן בהצלחה');
     } catch (error) {
-      setCurrentClient(previousClient);
+      console.error('❌ [CLIENT DETAILS] Error updating stage:', error);
+      // החזר את המצב הקודם במקרה של שגיאה
+      setCurrentClient(currentClient);
       toast.error('שגיאה בעדכון השלב');
     } finally {
       setIsUpdatingStage(false);

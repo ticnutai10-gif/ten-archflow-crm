@@ -21,7 +21,6 @@ import HelpIcon from "@/components/ui/HelpIcon";
 import { Checkbox } from "@/components/ui/checkbox";
 
 import { base44 } from "@/api/base44Client";
-import { broadcastClientUpdate } from "@/components/sync/ClientSyncManager";
 import { createPageUrl } from "@/utils";
 import { StageDisplay } from "@/components/spreadsheets/GenericSpreadsheet";
 import StageOptionsManager from "@/components/spreadsheets/StageOptionsManager";
@@ -471,75 +470,68 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
     return () => window.removeEventListener('user:preferences:updated', handlePrefsUpdate);
   }, []);
 
-  // Initialize localClients from props - MERGE to preserve local changes
+  // Update local clients when props change - important for sync!
   useEffect(() => {
     if (!clients || clients.length === 0) {
       setLocalClients([]);
       return;
     }
     
-    console.log('📊 [SPREADSHEET] Props changed, merging with localClients');
+    console.log('📊 [SPREADSHEET] Clients prop updated, syncing localClients...');
     
-    setLocalClients(prev => {
-      // If prev is empty, just use clients
-      if (prev.length === 0) return clients;
-      
-      // Merge: keep local changes (from sync events) but add any new clients from props
-      const merged = clients.map(client => {
-        const existing = prev.find(c => c.id === client.id);
-        if (existing) {
-          // Keep the existing one (it has the latest changes from sync)
-          return existing;
-        }
-        return client;
-      });
-      
-      return merged;
-    });
-  }, [clients]);
-
-  // Apply sorting whenever sortConfig changes
-  useEffect(() => {
-    if (sortConfig.key && localClients.length > 0) {
-      const sorted = [...localClients].sort((a, b) => {
+    // Apply sorting if active
+    if (sortConfig.key) {
+      const sorted = [...clients].sort((a, b) => {
         const aVal = a[sortConfig.key];
         const bVal = b[sortConfig.key];
         
+        // Handle empty values
         if (!aVal && !bVal) return 0;
         if (!aVal) return sortConfig.direction === 'asc' ? 1 : -1;
         if (!bVal) return sortConfig.direction === 'asc' ? -1 : 1;
         
+        // Compare values
         const comparison = String(aVal).localeCompare(String(bVal), 'he');
         return sortConfig.direction === 'asc' ? comparison : -comparison;
       });
       setLocalClients(sorted);
+    } else {
+      setLocalClients(clients);
     }
-  }, [sortConfig]);
+  }, [clients, sortConfig]);
 
-  // Listen for client sync events
+  // Listen for client updates - optimized
   useEffect(() => {
-    const handleClientSync = (event) => {
-      const { client: updatedClient } = event.detail || {};
+    const handleClientUpdate = (event) => {
+      const updatedClient = event.detail;
       if (!updatedClient?.id) return;
       
-      console.log('📊 [SPREADSHEET] Client sync event received:', updatedClient.id, updatedClient.stage);
+      console.log('📊 [SPREADSHEET] Client updated event received:', {
+        id: updatedClient.id,
+        name: updatedClient.name,
+        stage: updatedClient.stage
+      });
       
       setLocalClients(prev => {
         const existingIndex = prev.findIndex(c => c.id === updatedClient.id);
         if (existingIndex === -1) {
-          console.log('📊 [SPREADSHEET] Client not in list, skipping');
+          console.log('📊 [SPREADSHEET] Client not found in list, skipping');
           return prev;
         }
         
         const newList = [...prev];
         newList[existingIndex] = { ...newList[existingIndex], ...updatedClient };
-        console.log('📊 [SPREADSHEET] Updated client in localClients:', newList[existingIndex].stage);
+        console.log('📊 [SPREADSHEET] ✅ Client at index', existingIndex, 'updated to stage:', newList[existingIndex].stage);
         return newList;
       });
     };
     
-    window.addEventListener('client:sync', handleClientSync);
-    return () => window.removeEventListener('client:sync', handleClientSync);
+    console.log('👂 [SPREADSHEET] Setting up client:updated listener');
+    window.addEventListener('client:updated', handleClientUpdate);
+    return () => {
+      console.log('🔇 [SPREADSHEET] Removing client:updated listener');
+      window.removeEventListener('client:updated', handleClientUpdate);
+    };
   }, []);
 
   // Debounced save to database (per user)
@@ -812,8 +804,10 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
         await base44.entities.Client.update(clientId, dataToSave);
         const refreshedClient = await base44.entities.Client.get(clientId);
         
-        console.log('📢 [SPREADSHEET CELL] Broadcasting update via sync manager');
-        broadcastClientUpdate(refreshedClient);
+        console.log('📢 [SPREADSHEET CELL] Dispatching client:updated event:', refreshedClient);
+        window.dispatchEvent(new CustomEvent('client:updated', {
+          detail: refreshedClient
+        }));
         
         toast.success('התא עודכן');
       } catch (error) {
@@ -2868,23 +2862,49 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                                 }}
                                 stageOptions={stageOptions}
                                 onDirectSave={async (stageValue) => {
-                                  // Build the updated client object
-                                  const updatedClient = { ...client, stage: stageValue };
+                                  console.log('📊 [SPREADSHEET STAGE] Starting stage update:', {
+                                    clientId: client.id,
+                                    clientName: client.name,
+                                    oldStage: client.stage,
+                                    newStage: stageValue
+                                  });
 
                                   // Update local state immediately
+                                  const updatedClient = column.key.startsWith('cf:')
+                                    ? {
+                                        ...client,
+                                        custom_data: {
+                                          ...(client.custom_data || {}),
+                                          [column.key.slice(3)]: stageValue
+                                        }
+                                      }
+                                    : { ...client, [column.key]: stageValue };
+
                                   setLocalClients(prev => prev.map(c => c.id === client.id ? updatedClient : c));
                                   setEditingCell(null);
                                   setEditValue("");
 
-                                  try {
-                                    await base44.entities.Client.update(client.id, { stage: stageValue });
-                                    // Use centralized sync manager
-                                    broadcastClientUpdate(updatedClient);
-                                    toast.success('✓ שלב עודכן');
-                                  } catch (error) {
-                                    setLocalClients(prev => prev.map(c => c.id === client.id ? client : c));
-                                    toast.error('שגיאה בעדכון השלב');
-                                  }
+                                  // Save to backend
+                                  const dataToSave = { ...updatedClient };
+                                  delete dataToSave.id;
+                                  delete dataToSave.created_date;
+                                  delete dataToSave.updated_date;
+                                  delete dataToSave.created_by;
+
+                                  console.log('📊 [SPREADSHEET STAGE] Saving to backend...');
+                                  await base44.entities.Client.update(client.id, dataToSave);
+                                  console.log('✅ [SPREADSHEET STAGE] Backend updated, fetching fresh data...');
+                                  
+                                  const refreshedClient = await base44.entities.Client.get(client.id);
+                                  console.log('📊 [SPREADSHEET STAGE] Fresh client data:', refreshedClient);
+
+                                  console.log('📢 [SPREADSHEET STAGE] Dispatching client:updated event...');
+                                  window.dispatchEvent(new CustomEvent('client:updated', {
+                                    detail: refreshedClient
+                                  }));
+                                  console.log('✅ [SPREADSHEET STAGE] Event dispatched successfully');
+
+                                  toast.success('✓ שלב עודכן');
                                 }}
                               />
                             </div>

@@ -74,7 +74,6 @@ import ClientMerger from "../components/clients/ClientMerger";
 import GoogleSheetsImporter from "../components/clients/GoogleSheetsImporter";
 import { useAccessControl, autoAssignToCreator } from "../components/access/AccessValidator";
 import { toast } from "sonner";
-import { broadcastClientUpdate } from "@/components/sync/ClientSyncManager";
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { useIsMobile } from "../components/utils/useMediaQuery";
 import SwipeableCard from "../components/mobile/SwipeableCard";
@@ -205,23 +204,38 @@ export default function ClientsPage() {
   };
 
   useEffect(() => {
-    const handleClientSync = (event) => {
-      const { client: updatedClient } = event.detail || {};
+    const handleClientUpdate = (event) => {
+      const updatedClient = event.detail;
+      console.log('👥 [CLIENTS PAGE] Client updated event received:', {
+        id: updatedClient?.id,
+        name: updatedClient?.name,
+        stage: updatedClient?.stage
+      });
+      
+      // עדכון מיידי של הלקוח ברשימה המקומית - בלי לטעון מחדש מהשרת!
       if (updatedClient?.id) {
-        setClients(prev => prev.map(c => 
-          c.id === updatedClient.id ? { ...c, ...updatedClient } : c
-        ));
+        setClients(prev => {
+          const updated = prev.map(c => 
+            c.id === updatedClient.id ? { ...c, ...updatedClient } : c
+          );
+          console.log('👥 [CLIENTS PAGE] ✅ Local clients list updated with stage:', updatedClient.stage);
+          return updated;
+        });
       }
+      
+      // לא טוענים מחדש מהשרת - סומכים על האירוע!
     };
     
     const handleStageOptionsUpdate = () => {
       loadStageOptions();
     };
     
-    window.addEventListener('client:sync', handleClientSync);
+    console.log('👂 [CLIENTS PAGE] Setting up client:updated listener');
+    window.addEventListener('client:updated', handleClientUpdate);
     window.addEventListener('stage:options:updated', handleStageOptionsUpdate);
     return () => {
-      window.removeEventListener('client:sync', handleClientSync);
+      console.log('🔇 [CLIENTS PAGE] Removing client:updated listener');
+      window.removeEventListener('client:updated', handleClientUpdate);
       window.removeEventListener('stage:options:updated', handleStageOptionsUpdate);
     };
   }, []);

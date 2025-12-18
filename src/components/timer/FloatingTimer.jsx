@@ -10,7 +10,6 @@ import { Client, TimeLog } from "@/entities/all";
 import { logInfo, logWarn, logError, logEntry } from "@/components/utils/debugLog";
 import { useAccessControl } from "@/components/access/AccessValidator";
 import { base44 } from "@/api/base44Client";
-import { useClientsSync, broadcastClientUpdate } from "@/components/sync/ClientSyncManager";
 import { toast } from "sonner";
 
 const STAGE_OPTIONS = [
@@ -419,37 +418,38 @@ export default function FloatingTimer() {
     }
   }, [accessLoading]);
 
-  // Listen for client sync events
+  // Listen for client updates - update cache and state
   useEffect(() => {
-    const handleClientSync = (event) => {
-      const { client: updatedClient } = event.detail || {};
+    const handleClientUpdate = (event) => {
+      const updatedClient = event.detail;
       if (!updatedClient?.id) return;
       
-      // Update cache
+      console.log('⏱️ [TIMER] Received client:updated event:', {
+        id: updatedClient.id,
+        name: updatedClient.name,
+        stage: updatedClient.stage
+      });
+      
+      // Update cache in place instead of full reload
       if (clientsCache) {
         clientsCache = clientsCache.map(c => 
           c.id === updatedClient.id ? { ...c, ...updatedClient } : c
         );
+        console.log('⏱️ [TIMER] Cache updated');
       }
       
       // Update local state
-      setClients(prev => prev.map(c => 
-        c.id === updatedClient.id ? { ...c, ...updatedClient } : c
-      ));
-      
-      // Update selected client if needed
-      setPrefs(currentPrefs => {
-        if (currentPrefs.selectedClientId === updatedClient.id && updatedClient.name) {
-          const patch = { selectedClientName: updatedClient.name };
-          writePrefs(patch);
-          return { ...currentPrefs, ...patch };
-        }
-        return currentPrefs;
+      setClients(prev => {
+        const updated = prev.map(c => 
+          c.id === updatedClient.id ? { ...c, ...updatedClient } : c
+        );
+        console.log('⏱️ [TIMER] Local state updated');
+        return updated;
       });
     };
     
-    window.addEventListener('client:sync', handleClientSync);
-    return () => window.removeEventListener('client:sync', handleClientSync);
+    window.addEventListener('client:updated', handleClientUpdate);
+    return () => window.removeEventListener('client:updated', handleClientUpdate);
   }, []);
 
   // Removed auto-refresh interval to reduce load
@@ -834,17 +834,7 @@ ${context}
       <div className="rounded-full bg-white/90 backdrop-blur-sm shadow-xl border border-white/30 p-3 min-w-[72px] min-h-[72px] flex items-center justify-center ring-1 ring-slate-200/60">
         <SafeGuard>
           <div className="flex items-center gap-3">
-            <Popover open={popoverOpen} onOpenChange={(open) => {
-              setPopoverOpen(open);
-              if (open) {
-                // סנכרון נתוני לקוחות בעת פתיחת הטיימר
-                loadData(true);
-              }
-              if (!open) {
-                setDetailsOpen(false);
-                setAiSuggested(false);
-              }
-            }}>
+            <Popover open={popoverOpen} onOpenChange={(open) => {setPopoverOpen(open);if (!open) {setDetailsOpen(false);setAiSuggested(false);}}}>
               <PopoverTrigger asChild>
                 {(() => {
                   const sz = getSizeClasses(prefs.timerIconSize || "md");
