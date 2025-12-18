@@ -418,34 +418,23 @@ export default function FloatingTimer() {
     }
   }, [accessLoading]);
 
-  // Listen for client updates - update cache and state
+  // Listen for client updates - update cache only
   useEffect(() => {
     const handleClientUpdate = (event) => {
       const updatedClient = event.detail;
       if (!updatedClient?.id) return;
-      
-      console.log('⏱️ [TIMER] Received client:updated event:', {
-        id: updatedClient.id,
-        name: updatedClient.name,
-        stage: updatedClient.stage
-      });
       
       // Update cache in place instead of full reload
       if (clientsCache) {
         clientsCache = clientsCache.map(c => 
           c.id === updatedClient.id ? { ...c, ...updatedClient } : c
         );
-        console.log('⏱️ [TIMER] Cache updated');
       }
       
       // Update local state
-      setClients(prev => {
-        const updated = prev.map(c => 
-          c.id === updatedClient.id ? { ...c, ...updatedClient } : c
-        );
-        console.log('⏱️ [TIMER] Local state updated');
-        return updated;
-      });
+      setClients(prev => prev.map(c => 
+        c.id === updatedClient.id ? { ...c, ...updatedClient } : c
+      ));
     };
     
     window.addEventListener('client:updated', handleClientUpdate);

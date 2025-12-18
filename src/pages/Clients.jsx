@@ -204,37 +204,23 @@ export default function ClientsPage() {
   };
 
   useEffect(() => {
+    let timeoutId;
     const handleClientUpdate = (event) => {
-      const updatedClient = event.detail;
-      console.log('👥 [CLIENTS PAGE] Client updated event received:', {
-        id: updatedClient?.id,
-        name: updatedClient?.name,
-        stage: updatedClient?.stage
-      });
-      
-      // עדכון מיידי של הלקוח ברשימה המקומית - בלי לטעון מחדש מהשרת!
-      if (updatedClient?.id) {
-        setClients(prev => {
-          const updated = prev.map(c => 
-            c.id === updatedClient.id ? { ...c, ...updatedClient } : c
-          );
-          console.log('👥 [CLIENTS PAGE] ✅ Local clients list updated with stage:', updatedClient.stage);
-          return updated;
-        });
-      }
-      
-      // לא טוענים מחדש מהשרת - סומכים על האירוע!
+      // Debounce reload to prevent multiple rapid reloads
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        loadClients();
+      }, 100);
     };
     
     const handleStageOptionsUpdate = () => {
       loadStageOptions();
     };
     
-    console.log('👂 [CLIENTS PAGE] Setting up client:updated listener');
     window.addEventListener('client:updated', handleClientUpdate);
     window.addEventListener('stage:options:updated', handleStageOptionsUpdate);
     return () => {
-      console.log('🔇 [CLIENTS PAGE] Removing client:updated listener');
+      if (timeoutId) clearTimeout(timeoutId);
       window.removeEventListener('client:updated', handleClientUpdate);
       window.removeEventListener('stage:options:updated', handleStageOptionsUpdate);
     };

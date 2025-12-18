@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -470,14 +471,11 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
     return () => window.removeEventListener('user:preferences:updated', handlePrefsUpdate);
   }, []);
 
-  // Update local clients when props change - important for sync!
   useEffect(() => {
     if (!clients || clients.length === 0) {
       setLocalClients([]);
       return;
     }
-    
-    console.log('📊 [SPREADSHEET] Clients prop updated, syncing localClients...');
     
     // Apply sorting if active
     if (sortConfig.key) {
@@ -506,32 +504,13 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
       const updatedClient = event.detail;
       if (!updatedClient?.id) return;
       
-      console.log('📊 [SPREADSHEET] Client updated event received:', {
-        id: updatedClient.id,
-        name: updatedClient.name,
-        stage: updatedClient.stage
-      });
-      
-      setLocalClients(prev => {
-        const existingIndex = prev.findIndex(c => c.id === updatedClient.id);
-        if (existingIndex === -1) {
-          console.log('📊 [SPREADSHEET] Client not found in list, skipping');
-          return prev;
-        }
-        
-        const newList = [...prev];
-        newList[existingIndex] = { ...newList[existingIndex], ...updatedClient };
-        console.log('📊 [SPREADSHEET] ✅ Client at index', existingIndex, 'updated to stage:', newList[existingIndex].stage);
-        return newList;
-      });
+      setLocalClients(prev => prev.map(c => 
+        c.id === updatedClient.id ? { ...c, ...updatedClient } : c
+      ));
     };
     
-    console.log('👂 [SPREADSHEET] Setting up client:updated listener');
     window.addEventListener('client:updated', handleClientUpdate);
-    return () => {
-      console.log('🔇 [SPREADSHEET] Removing client:updated listener');
-      window.removeEventListener('client:updated', handleClientUpdate);
-    };
+    return () => window.removeEventListener('client:updated', handleClientUpdate);
   }, []);
 
   // Debounced save to database (per user)
@@ -800,18 +779,14 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
         delete dataToSave.updated_date;
         delete dataToSave.created_by;
 
-        console.log('📊 [SPREADSHEET CELL] Saving cell update:', { clientId, columnKey, value: editValue });
         await base44.entities.Client.update(clientId, dataToSave);
         const refreshedClient = await base44.entities.Client.get(clientId);
-        
-        console.log('📢 [SPREADSHEET CELL] Dispatching client:updated event:', refreshedClient);
         window.dispatchEvent(new CustomEvent('client:updated', {
           detail: refreshedClient
         }));
         
         toast.success('התא עודכן');
       } catch (error) {
-        console.error('❌ [SPREADSHEET CELL] Error saving:', error);
         toast.error('שגיאה בשמירת התא');
       }
     } else {
@@ -2862,13 +2837,6 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                                 }}
                                 stageOptions={stageOptions}
                                 onDirectSave={async (stageValue) => {
-                                  console.log('📊 [SPREADSHEET STAGE] Starting stage update:', {
-                                    clientId: client.id,
-                                    clientName: client.name,
-                                    oldStage: client.stage,
-                                    newStage: stageValue
-                                  });
-
                                   // Update local state immediately
                                   const updatedClient = column.key.startsWith('cf:')
                                     ? {
@@ -2891,18 +2859,12 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                                   delete dataToSave.updated_date;
                                   delete dataToSave.created_by;
 
-                                  console.log('📊 [SPREADSHEET STAGE] Saving to backend...');
                                   await base44.entities.Client.update(client.id, dataToSave);
-                                  console.log('✅ [SPREADSHEET STAGE] Backend updated, fetching fresh data...');
-                                  
                                   const refreshedClient = await base44.entities.Client.get(client.id);
-                                  console.log('📊 [SPREADSHEET STAGE] Fresh client data:', refreshedClient);
 
-                                  console.log('📢 [SPREADSHEET STAGE] Dispatching client:updated event...');
                                   window.dispatchEvent(new CustomEvent('client:updated', {
                                     detail: refreshedClient
                                   }));
-                                  console.log('✅ [SPREADSHEET STAGE] Event dispatched successfully');
 
                                   toast.success('✓ שלב עודכן');
                                 }}
