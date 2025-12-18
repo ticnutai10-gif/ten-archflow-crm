@@ -203,6 +203,10 @@ export default function StageOptionsManager({ open, onClose, stageOptions, onSav
 
         <div className="flex-1 overflow-y-auto py-4">
           <div className="space-y-4">
+            {isLoading ? (
+              <div className="text-center py-8 text-slate-500">טוען...</div>
+            ) : (
+            <>
             <div className="bg-gradient-to-r from-purple-50 to-blue-50 border-2 border-purple-200 rounded-xl p-4">
               <div className="flex items-start gap-3">
                 <div className="text-3xl">🔵</div>
