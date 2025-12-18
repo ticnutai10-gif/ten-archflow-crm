@@ -23,7 +23,9 @@ export default function StatusOptionsManager({ open, onClose, statusOptions, onS
       value: `סטטוס_${Date.now()}`,
       label: 'סטטוס חדש',
       color: '#22c55e',
-      glow: 'rgba(34, 197, 94, 0.4)'
+      glow: 'rgba(34, 197, 94, 0.4)',
+      iconColor: '#22c55e',
+      iconSize: 'md'
     };
     setEditedOptions([...editedOptions, newStatus]);
   };
@@ -231,7 +233,7 @@ export default function StatusOptionsManager({ open, onClose, statusOptions, onS
                         </div>
                         <div>
                           <label className="text-xs font-semibold text-slate-600 mb-1 block">
-                            צבע
+                            צבע רקע
                           </label>
                           <div className="flex gap-2">
                             <Input
@@ -249,6 +251,43 @@ export default function StatusOptionsManager({ open, onClose, statusOptions, onS
                               dir="ltr"
                             />
                           </div>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-xs font-semibold text-slate-600 mb-1 block">
+                            צבע אייקון
+                          </label>
+                          <div className="flex gap-2">
+                            <Input
+                              type="color"
+                              value={status.iconColor || status.color}
+                              onChange={(e) => handleEditStatus(index, 'iconColor', e.target.value)}
+                              className="w-16 h-10 cursor-pointer"
+                            />
+                            <Input
+                              type="text"
+                              value={status.iconColor || status.color}
+                              onChange={(e) => handleEditStatus(index, 'iconColor', e.target.value)}
+                              placeholder="#22c55e"
+                              className="font-mono text-sm"
+                              dir="ltr"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-slate-600 mb-1 block">
+                            גודל אייקון
+                          </label>
+                          <select
+                            value={status.iconSize || 'md'}
+                            onChange={(e) => handleEditStatus(index, 'iconSize', e.target.value)}
+                            className="w-full h-10 px-3 border border-slate-300 rounded-md text-sm"
+                          >
+                            <option value="sm">קטן (12px)</option>
+                            <option value="md">בינוני (16px)</option>
+                            <option value="lg">גדול (20px)</option>
+                          </select>
                         </div>
                       </div>
                       <div className="flex justify-end gap-2">
@@ -280,9 +319,12 @@ export default function StatusOptionsManager({ open, onClose, statusOptions, onS
                           <GripVertical className="w-4 h-4 text-slate-400" />
                         </div>
                         <div 
-                          className="w-4 h-4 rounded-full transition-all animate-pulse"
+                          className={`rounded-full transition-all animate-pulse ${
+                            status.iconSize === 'sm' ? 'w-3 h-3' : 
+                            status.iconSize === 'lg' ? 'w-5 h-5' : 'w-4 h-4'
+                          }`}
                           style={{ 
-                            backgroundColor: status.color,
+                            backgroundColor: status.iconColor || status.color,
                             boxShadow: `0 0 8px ${status.glow}, 0 0 12px ${status.glow}`
                           }}
                         />
@@ -297,6 +339,9 @@ export default function StatusOptionsManager({ open, onClose, statusOptions, onS
                           {status.label}
                         </span>
                         <span className="text-xs text-slate-500 font-mono">{status.color}</span>
+                        {status.iconColor && status.iconColor !== status.color && (
+                          <span className="text-xs text-slate-400 font-mono">אייקון: {status.iconColor}</span>
+                        )}
                       </div>
                       <div className="flex gap-1">
                         <Button
