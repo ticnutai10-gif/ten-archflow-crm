@@ -784,14 +784,18 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
         delete dataToSave.updated_date;
         delete dataToSave.created_by;
 
+        console.log('📊 [SPREADSHEET CELL] Saving cell update:', { clientId, columnKey, value: editValue });
         await base44.entities.Client.update(clientId, dataToSave);
         const refreshedClient = await base44.entities.Client.get(clientId);
+        
+        console.log('📢 [SPREADSHEET CELL] Dispatching client:updated event:', refreshedClient);
         window.dispatchEvent(new CustomEvent('client:updated', {
           detail: refreshedClient
         }));
         
         toast.success('התא עודכן');
       } catch (error) {
+        console.error('❌ [SPREADSHEET CELL] Error saving:', error);
         toast.error('שגיאה בשמירת התא');
       }
     } else {
@@ -2842,6 +2846,13 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                                 }}
                                 stageOptions={stageOptions}
                                 onDirectSave={async (stageValue) => {
+                                  console.log('📊 [SPREADSHEET STAGE] Starting stage update:', {
+                                    clientId: client.id,
+                                    clientName: client.name,
+                                    oldStage: client.stage,
+                                    newStage: stageValue
+                                  });
+
                                   // Update local state immediately
                                   const updatedClient = column.key.startsWith('cf:')
                                     ? {
@@ -2864,12 +2875,18 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                                   delete dataToSave.updated_date;
                                   delete dataToSave.created_by;
 
+                                  console.log('📊 [SPREADSHEET STAGE] Saving to backend...');
                                   await base44.entities.Client.update(client.id, dataToSave);
+                                  console.log('✅ [SPREADSHEET STAGE] Backend updated, fetching fresh data...');
+                                  
                                   const refreshedClient = await base44.entities.Client.get(client.id);
+                                  console.log('📊 [SPREADSHEET STAGE] Fresh client data:', refreshedClient);
 
+                                  console.log('📢 [SPREADSHEET STAGE] Dispatching client:updated event...');
                                   window.dispatchEvent(new CustomEvent('client:updated', {
                                     detail: refreshedClient
                                   }));
+                                  console.log('✅ [SPREADSHEET STAGE] Event dispatched successfully');
 
                                   toast.success('✓ שלב עודכן');
                                 }}
