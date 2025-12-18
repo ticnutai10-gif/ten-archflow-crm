@@ -2959,6 +2959,9 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                       if (column.key.startsWith('cf:')) {
                         const slug = column.key.slice(3);
                         cellValue = client.custom_data?.[slug] || '';
+                      } else if (column.key === 'status' || column.type === 'status') {
+                        // Always use client_status for status columns
+                        cellValue = client.client_status || client.status || '';
                       } else {
                         cellValue = client[column.key] || '';
                       }
