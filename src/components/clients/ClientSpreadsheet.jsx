@@ -470,11 +470,14 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
     return () => window.removeEventListener('user:preferences:updated', handlePrefsUpdate);
   }, []);
 
+  // Update local clients when props change - important for sync!
   useEffect(() => {
     if (!clients || clients.length === 0) {
       setLocalClients([]);
       return;
     }
+    
+    console.log('📊 [SPREADSHEET] Clients prop updated, syncing localClients...');
     
     // Apply sorting if active
     if (sortConfig.key) {
