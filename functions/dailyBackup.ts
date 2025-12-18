@@ -115,6 +115,39 @@ async function performDailyBackup() {
         status: 'failed',
         entities_count: { error: error.message }
       });
+
+      // Send failure notification to admins
+      const users = await base44.asServiceRole.entities.User.list();
+      const adminEmails = users
+        .filter(u => u.role === 'admin')
+        .map(u => u.email)
+        .filter(Boolean);
+
+      for (const email of adminEmails) {
+        try {
+          await base44.asServiceRole.integrations.Core.SendEmail({
+            to: email,
+            subject: '⚠️ כישלון בגיבוי יומי אוטומטי',
+            body: `
+שלום,
+
+⚠️ הגיבוי היומי האוטומטי נכשל.
+
+❌ שגיאה: ${error.message}
+
+⏰ זמן: ${new Date().toLocaleString('he-IL')}
+
+אנא בדוק את המערכת ונסה שוב ידנית דרך דף הגיבוי.
+
+בברכה,
+מערכת ArchFlow CRM
+            `,
+            from_name: 'ArchFlow - התראת גיבוי'
+          });
+        } catch (e) {
+          console.error(`[DailyBackup] Failed to send failure email to ${email}:`, e.message);
+        }
+      }
     } catch (e) {
       console.error('[DailyBackup] Failed to save error record:', e.message);
     }
