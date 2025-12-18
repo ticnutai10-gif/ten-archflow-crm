@@ -2864,45 +2864,20 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                                 }}
                                 stageOptions={stageOptions}
                                 onDirectSave={async (stageValue) => {
-                                  console.log('📊 [SPREADSHEET STAGE] 🚀 Starting stage update:', {
-                                    clientId: client.id,
-                                    clientName: client.name,
-                                    oldStage: client.stage,
-                                    newStage: stageValue
-                                  });
-
                                   // Build the updated client object
-                                  const updatedClient = column.key.startsWith('cf:')
-                                    ? {
-                                        ...client,
-                                        custom_data: {
-                                          ...(client.custom_data || {}),
-                                          [column.key.slice(3)]: stageValue
-                                        }
-                                      }
-                                    : { ...client, stage: stageValue };
+                                  const updatedClient = { ...client, stage: stageValue };
 
-                                  // Update local state immediately for instant feedback
+                                  // Update local state immediately
                                   setLocalClients(prev => prev.map(c => c.id === client.id ? updatedClient : c));
                                   setEditingCell(null);
                                   setEditValue("");
 
                                   try {
-                                    // Save only the stage field to backend
-                                    console.log('📊 [SPREADSHEET STAGE] Saving stage to backend...');
                                     await base44.entities.Client.update(client.id, { stage: stageValue });
-                                    console.log('✅ [SPREADSHEET STAGE] Backend saved successfully');
-
-                                    // Dispatch event with the updated client data
-                                    console.log('📢 [SPREADSHEET STAGE] Broadcasting update to all components...');
-                                    window.dispatchEvent(new CustomEvent('client:updated', {
-                                      detail: updatedClient
-                                    }));
-
+                                    // Use centralized sync manager
+                                    broadcastClientUpdate(updatedClient);
                                     toast.success('✓ שלב עודכן');
                                   } catch (error) {
-                                    console.error('❌ [SPREADSHEET STAGE] Error saving:', error);
-                                    // Revert on error
                                     setLocalClients(prev => prev.map(c => c.id === client.id ? client : c));
                                     toast.error('שגיאה בעדכון השלב');
                                   }

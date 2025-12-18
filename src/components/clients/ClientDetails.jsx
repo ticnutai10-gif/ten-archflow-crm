@@ -153,60 +153,34 @@ export default function ClientDetails({ client, onBack, onEdit }) {
   }, []);
 
   useEffect(() => {
-    const handleClientUpdate = (event) => {
-      const updatedClient = event.detail;
-      console.log('📬 [CLIENT DETAILS] Received client:updated event:', {
-        eventClientId: updatedClient?.id,
-        currentClientId: client?.id,
-        stage: updatedClient?.stage
-      });
-      
+    const handleClientSync = (event) => {
+      const { client: updatedClient } = event.detail || {};
       if (updatedClient?.id === client?.id) {
-        console.log('✅ [CLIENT DETAILS] Event matches current client, updating local state...');
-        // עדכון מיידי בלי לטעון מהשרת
         setCurrentClient(prev => ({ ...prev, ...updatedClient }));
       }
     };
     
-    window.addEventListener('client:updated', handleClientUpdate);
-    console.log('👂 [CLIENT DETAILS] Listening for updates on client:', client?.id);
-    return () => {
-      window.removeEventListener('client:updated', handleClientUpdate);
-    };
+    window.addEventListener('client:sync', handleClientSync);
+    return () => window.removeEventListener('client:sync', handleClientSync);
   }, [client?.id]);
 
   // Removed - initial state handles tab from URL correctly
 
   const handleStageChange = async (newStage) => {
-    console.log('🎯 [CLIENT DETAILS] handleStageChange called:', {
-      clientId: currentClient.id,
-      clientName: currentClient.name,
-      oldStage: currentClient.stage,
-      newStage: newStage
-    });
-    
     const previousClient = currentClient;
     setIsUpdatingStage(true);
     
     try {
-      // עדכון מיידי של ה-UI המקומי
       const updatedClient = { ...currentClient, stage: newStage };
       setCurrentClient(updatedClient);
       
-      console.log('📤 [CLIENT DETAILS] Sending update to server...');
       await base44.entities.Client.update(currentClient.id, { stage: newStage });
-      console.log('✅ [CLIENT DETAILS] Update saved successfully');
       
-      // שלח אירוע עם הנתון המעודכן לסנכרון כל הקומפוננטות
-      console.log('📢 [CLIENT DETAILS] Broadcasting update to all components...');
-      window.dispatchEvent(new CustomEvent('client:updated', {
-        detail: updatedClient
-      }));
+      // Use centralized sync manager
+      broadcastClientUpdate(updatedClient);
       
       toast.success('השלב עודכן בהצלחה');
     } catch (error) {
-      console.error('❌ [CLIENT DETAILS] Error updating stage:', error);
-      // החזר את המצב הקודם במקרה של שגיאה
       setCurrentClient(previousClient);
       toast.error('שגיאה בעדכון השלב');
     } finally {
