@@ -3122,19 +3122,11 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                                     columnKey: column.key
                                   });
                                   
-                                  // Determine the correct field name - always use client_status for status type
-                                  const fieldName = column.key === 'status' ? 'client_status' : column.key;
-                                  console.log('🚀 [SPREADSHEET] Using fieldName:', fieldName);
-                                  
-                                  const updatedClient = fieldName.startsWith('cf:')
-                                    ? {
-                                        ...client,
-                                        custom_data: {
-                                          ...(client.custom_data || {}),
-                                          [fieldName.slice(3)]: statusValue
-                                        }
-                                      }
-                                    : { ...client, [fieldName]: statusValue, client_status: statusValue };
+                                  // ALWAYS save to client_status, regardless of column configuration
+                                  const updatedClient = { 
+                                    ...client, 
+                                    client_status: statusValue 
+                                  };
 
                                   console.log('🚀 [SPREADSHEET] Updated client object:', {
                                     id: updatedClient.id,
@@ -3146,8 +3138,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                                   setEditValue("");
 
                                   try {
-                                    console.log('💾 [SPREADSHEET] Saving to database...');
-                                    // Save with client_status field
+                                    console.log('💾 [SPREADSHEET] Saving to database:', { client_status: statusValue });
                                     await base44.entities.Client.update(client.id, { client_status: statusValue });
                                     console.log('💾 [SPREADSHEET] Database update successful');
                                     
