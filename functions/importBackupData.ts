@@ -125,17 +125,45 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const formData = await req.formData();
-    const file = formData.get('file');
-    const importMode = formData.get('mode') || 'create'; // create, update, merge
-    
-    if (!file) {
-      return Response.json({ error: 'No file provided' }, { status: 400 });
+    let filename = 'unknown';
+    let buffer;
+    let importMode = 'create';
+
+    const contentType = req.headers.get('content-type') || '';
+
+    if (contentType.includes('application/json')) {
+      const body = await req.json().catch(() => ({}));
+      if (body.fileBase64 && body.fileName) {
+        try {
+          const binaryString = atob(body.fileBase64);
+          const len = binaryString.length;
+          const bytes = new Uint8Array(len);
+          for (let i = 0; i < len; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
+          buffer = bytes.buffer;
+          filename = body.fileName;
+          importMode = body.mode || 'create';
+        } catch (e) {
+          return Response.json({ error: 'Failed to decode base64 file' }, { status: 400 });
+        }
+      } else {
+        return Response.json({ error: 'Invalid JSON payload. Required: fileBase64, fileName' }, { status: 400 });
+      }
+    } else {
+      const formData = await req.formData();
+      const file = formData.get('file');
+      importMode = formData.get('mode') || 'create';
+      
+      if (!file) {
+        return Response.json({ error: 'No file provided' }, { status: 400 });
+      }
+
+      filename = file.name || 'unknown';
+      buffer = await file.arrayBuffer();
     }
 
-    const filename = file.name || 'unknown';
     const ext = inferExt(filename);
-    const buffer = await file.arrayBuffer();
     
     console.log(`[importBackupData] Processing file: ${filename}, size: ${buffer.byteLength} bytes, extension: ${ext}`);
 

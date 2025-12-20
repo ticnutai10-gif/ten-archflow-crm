@@ -200,12 +200,25 @@ export default function BackupPage() {
     if (!file) return;
     setBusy(true);
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('mode', importMode);
-
       console.log("[Backup] Starting import for file:", file.name, "with mode:", importMode);
-      const response = await importBackupData(formData);
+
+      // Convert file to Base64 to avoid FormData issues
+      const toBase64 = (file) => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = error => reject(error);
+      });
+
+      const fileBase64 = await toBase64(file);
+      
+      const payload = {
+        fileBase64,
+        fileName: file.name,
+        mode: importMode
+      };
+
+      const response = await importBackupData(payload);
       
       if (response.data?.success) {
         const { totals, results } = response.data;
