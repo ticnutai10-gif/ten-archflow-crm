@@ -3094,8 +3094,16 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                                 }}
                                 statusOptions={statusOptions}
                                 onDirectSave={async (statusValue) => {
+                                  console.log('🚀 [SPREADSHEET] onDirectSave called with:', {
+                                    statusValue,
+                                    clientId: client.id,
+                                    clientName: client.name,
+                                    columnKey: column.key
+                                  });
+                                  
                                   // Determine the correct field name - always use client_status for status type
                                   const fieldName = column.key === 'status' ? 'client_status' : column.key;
+                                  console.log('🚀 [SPREADSHEET] Using fieldName:', fieldName);
                                   
                                   const updatedClient = fieldName.startsWith('cf:')
                                     ? {
@@ -3107,28 +3115,36 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                                       }
                                     : { ...client, [fieldName]: statusValue, client_status: statusValue };
 
+                                  console.log('🚀 [SPREADSHEET] Updated client object:', {
+                                    id: updatedClient.id,
+                                    client_status: updatedClient.client_status
+                                  });
+
                                   setLocalClients(prev => prev.map(c => c.id === client.id ? updatedClient : c));
                                   setEditingCell(null);
                                   setEditValue("");
 
                                   try {
+                                    console.log('💾 [SPREADSHEET] Saving to database...');
                                     // Save with client_status field
                                     await base44.entities.Client.update(client.id, { client_status: statusValue });
+                                    console.log('💾 [SPREADSHEET] Database update successful');
+                                    
                                     const refreshedClient = await base44.entities.Client.get(client.id);
-
-                                    console.log('📢 [SPREADSHEET] Dispatching client:updated for status change:', {
-                                      clientId: refreshedClient.id,
-                                      clientName: refreshedClient.name,
-                                      newStatus: refreshedClient.client_status
+                                    console.log('💾 [SPREADSHEET] Refreshed client from DB:', {
+                                      id: refreshedClient.id,
+                                      name: refreshedClient.name,
+                                      client_status: refreshedClient.client_status
                                     });
 
+                                    console.log('📢 [SPREADSHEET] Dispatching client:updated event');
                                     window.dispatchEvent(new CustomEvent('client:updated', {
                                       detail: refreshedClient
                                     }));
 
                                     toast.success('✓ סטטוס עודכן');
                                   } catch (error) {
-                                    console.error('❌ Error updating status:', error);
+                                    console.error('❌ [SPREADSHEET] Error updating status:', error);
                                     toast.error('שגיאה בעדכון סטטוס');
                                   }
                                 }}
