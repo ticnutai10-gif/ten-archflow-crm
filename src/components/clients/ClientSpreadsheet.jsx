@@ -2991,19 +2991,25 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                       }
 
                       let cellValue = '';
+                      
+                      // Debug ALL columns to find the status one
+                      if (column.key === 'status' || column.type === 'status' || column.key === 'client_status') {
+                        console.log('📋 [CELL_RENDER] Status column detected:', {
+                          columnKey: column.key,
+                          columnType: column.type,
+                          clientName: client.name,
+                          client_status: client.client_status,
+                          status: client.status
+                        });
+                      }
+                      
                       if (column.key.startsWith('cf:')) {
                         const slug = column.key.slice(3);
                         cellValue = client.custom_data?.[slug] || '';
                       } else if (column.key === 'status' || column.type === 'status' || column.key === 'client_status') {
                         // Always prioritize client_status over status
                         cellValue = client.client_status || '';
-                        console.log('📋 [CELL_RENDER] Status cell for', client.name, ':', {
-                          columnKey: column.key,
-                          columnType: column.type,
-                          client_status: client.client_status,
-                          status: client.status,
-                          displayValue: cellValue
-                        });
+                        console.log('📋 [CELL_RENDER] Final cellValue for status:', cellValue);
                       } else {
                         cellValue = client[column.key] || '';
                       }
