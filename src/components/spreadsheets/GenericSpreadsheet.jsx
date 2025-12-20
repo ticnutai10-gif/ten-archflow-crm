@@ -37,7 +37,17 @@ const DEFAULT_STAGE_OPTIONS = [
 export function StageDisplay({ value, column, isEditing, onEdit, editValue, onSave, onCancel, stageOptions = DEFAULT_STAGE_OPTIONS, compact = false, onDirectSave }) {
   const [showPicker, setShowPicker] = useState(false);
   
-  const STAGE_OPTIONS = stageOptions;
+  // Flatten parents+children so selection supports both
+  const STAGE_OPTIONS = React.useMemo(() => {
+    const flat = [];
+    (stageOptions || []).forEach(p => {
+      flat.push({ ...p, isParent: true });
+      if (Array.isArray(p.children)) {
+        p.children.forEach(ch => flat.push({ ...ch, parent: p.label, isChild: true }));
+      }
+    });
+    return flat.length ? flat : (stageOptions || []);
+  }, [stageOptions]);
   const currentStage = STAGE_OPTIONS.find(s => s.value === value);
   
   if (isEditing) {
