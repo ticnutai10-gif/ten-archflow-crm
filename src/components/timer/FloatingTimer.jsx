@@ -389,17 +389,37 @@ export default function FloatingTimer() {
       console.log('🔄 [TIMER] Fetching from server...');
       const allowedClients = await getAllowedClientsForTimer();
 
-      // ✅ הגנה על תוצאות
-      const validClients = Array.isArray(allowedClients) ? allowedClients : [];
+       // ✅ הגנה על תוצאות
+       const validClients = Array.isArray(allowedClients) ? allowedClients : [];
 
-      console.log('✅ [TIMER] Received clients from server:', validClients.length);
+       // 🧹 הסרת כפילויות (קודם לפי id, ואם חסר או יש כפילויות - לפי שם+אימייל)
+       const seenIds = new Set();
+       const seenNameEmail = new Set();
+       const uniqueClients = [];
+       for (const c of validClients) {
+         if (!c) continue;
+         const id = c.id;
+         const key = `${(c.name || '').trim().toLowerCase()}|${(c.email || '').trim().toLowerCase()}`;
+         if (id) {
+           if (seenIds.has(id)) continue;
+           seenIds.add(id);
+           // גם אם יש כפילות בשם+מייל, נשמור ע"פ id
+           uniqueClients.push(c);
+         } else {
+           if (key && seenNameEmail.has(key)) continue;
+           if (key) seenNameEmail.add(key);
+           uniqueClients.push(c);
+         }
+       }
 
-      // כבר לא מסננים לפי טלפון - מציגים את כל הלקוחות
-      clientsCache = validClients;
-      clientsCacheTime = now;
+       console.log('✅ [TIMER] Received clients from server:', validClients.length, '→ unique:', uniqueClients.length);
 
-      setClients(validClients);
-      console.log('✅ [TIMER] Loaded and cached all clients:', validClients.length);
+       // שמירה בזיכרון ובמצב
+       clientsCache = uniqueClients;
+       clientsCacheTime = now;
+
+       setClients(uniqueClients);
+       console.log('✅ [TIMER] Loaded and cached all clients:', uniqueClients.length);
     } catch (error) {
       console.error('❌ [TIMER] Error loading clients:', error);
 
