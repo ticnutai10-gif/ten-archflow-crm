@@ -33,6 +33,7 @@ import WorkflowBuilder from './pages/WorkflowBuilder';
 import ChatHistory from './pages/ChatHistory';
 import InternalChat from './pages/InternalChat';
 import ClientAutomations from './pages/ClientAutomations';
+import RemoveDuplicates from './pages/RemoveDuplicates';
 import __Layout from './Layout.jsx';
 
 
@@ -72,6 +73,7 @@ export const PAGES = {
     "ChatHistory": ChatHistory,
     "InternalChat": InternalChat,
     "ClientAutomations": ClientAutomations,
+    "RemoveDuplicates": RemoveDuplicates,
 }
 
 export const pagesConfig = {
