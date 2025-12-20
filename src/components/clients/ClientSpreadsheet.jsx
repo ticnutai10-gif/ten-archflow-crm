@@ -23,6 +23,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { base44 } from "@/api/base44Client";
 import { createPageUrl } from "@/utils";
 import { StageDisplay } from "@/components/spreadsheets/GenericSpreadsheet";
+import StatusDisplay from "@/components/spreadsheets/StatusDisplay";
 import StageOptionsManager from "@/components/spreadsheets/StageOptionsManager";
 import UserPreferencesDialog from "@/components/spreadsheets/UserPreferencesDialog";
 
@@ -315,6 +316,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
   const [showHistory, setShowHistory] = useState(false);
   const [showStageManager, setShowStageManager] = useState(false);
   const [stageOptions, setStageOptions] = useState(STAGE_OPTIONS);
+  const [statusOptions, setStatusOptions] = useState(null); // Will load from AppSettings
 
 
   const [newColumnName, setNewColumnName] = useState("");
@@ -336,6 +338,19 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
         // Load stage options first
         if (userSettings?.stageOptions) {
           setStageOptions(userSettings.stageOptions);
+        }
+
+        // Load Status Options
+        try {
+          const statusSettings = await base44.entities.AppSettings.filter({ setting_key: 'client_status_options' });
+          if (statusSettings.length > 0 && statusSettings[0].value) {
+            const statusValue = statusSettings[0].value;
+            // Handle both array and wrapped object format
+            const opts = Array.isArray(statusValue) ? statusValue : (statusValue.options || null);
+            if (opts) setStatusOptions(opts);
+          }
+        } catch (e) {
+          console.warn('Failed to load status options');
         }
         
         if (userSettings && userSettings.order) {
@@ -2779,7 +2794,11 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                       }
 
                       let cellValue = '';
-                      if (column.key.startsWith('cf:')) {
+                      // Fix: check for status fields properly
+                      if (column.key === 'cf:client_status' || column.key === 'client_status') {
+                        // Prefer root field over custom_data for status
+                        cellValue = client.client_status || client.status || client.custom_data?.client_status || '';
+                      } else if (column.key.startsWith('cf:')) {
                         const slug = column.key.slice(3);
                         cellValue = client.custom_data?.[slug] || '';
                       } else {
@@ -2914,10 +2933,56 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                                         {String(cellValue)}
                                       </span>
                                     </div>
-                                  ) : column.type === 'status' ?
-                                <Badge variant="outline" className={statusColors[cellValue] || 'bg-slate-100 text-slate-800'}>
-                                      {cellValue}
-                                    </Badge> :
+                                  ) : column.type === 'status' || column.key === 'cf:client_status' || column.key === 'client_status' ? (
+                                    <div className="flex items-center justify-center">
+                                      <StatusDisplay
+                                        value={cellValue}
+                                        column={column}
+                                        isEditing={isEditing}
+                                        onEdit={(val) => setEditValue(val)}
+                                        editValue={editValue}
+                                        onSave={saveEdit}
+                                        onCancel={() => {
+                                          setEditingCell(null);
+                                          setEditValue("");
+                                        }}
+                                        statusOptions={statusOptions}
+                                        onDirectSave={async (statusValue) => {
+                                          // Update local state immediately
+                                          // Force update to root field 'client_status'
+                                          const updatedClient = { 
+                                            ...client, 
+                                            client_status: statusValue,
+                                            // Also update custom_data if it exists there to keep sync
+                                            custom_data: {
+                                              ...(client.custom_data || {}),
+                                              client_status: statusValue
+                                            }
+                                          };
+
+                                          setLocalClients(prev => prev.map(c => c.id === client.id ? updatedClient : c));
+                                          setEditingCell(null);
+                                          setEditValue("");
+
+                                          // Save to backend
+                                          const dataToSave = { ...updatedClient };
+                                          delete dataToSave.id;
+                                          delete dataToSave.created_date;
+                                          delete dataToSave.updated_date;
+                                          delete dataToSave.created_by;
+
+                                          await base44.entities.Client.update(client.id, dataToSave);
+                                          const refreshedClient = await base44.entities.Client.get(client.id);
+
+                                          window.dispatchEvent(new CustomEvent('client:updated', {
+                                            detail: refreshedClient
+                                          }));
+
+                                          toast.success('✓ סטטוס עודכן');
+                                        }}
+                                      />
+                                    </div>
+                                  ) :
                                 column.type === 'phone' || column.key === 'phone_secondary' || column.key === 'whatsapp' ?
                                 cellValue ?
                                 <a

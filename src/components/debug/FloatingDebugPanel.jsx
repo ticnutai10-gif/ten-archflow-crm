@@ -31,6 +31,11 @@ export default function FloatingDebugPanel() {
   const [consoleOpen, setConsoleOpen] = useState(false);
   const [logs, setLogs] = useState([]);
   const [accessData, setAccessData] = useState(null);
+  
+  // Dragging state
+  const [position, setPosition] = useState({ x: 24, y: 96 }); // Bottom-left initial position (approx)
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [clientsData, setClientsData] = useState(null);
   const [projectsData, setProjectsData] = useState(null);
   
@@ -178,6 +183,61 @@ export default function FloatingDebugPanel() {
     }
   }, [me, isOpen, loadAccessData]);
 
+  // Handle Dragging
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (!isDragging) return;
+      
+      const newX = e.clientX - dragOffset.x;
+      const newY = e.clientY - dragOffset.y;
+      
+      // Basic bounds checking (optional, but good for UX)
+      const maxX = window.innerWidth - 100;
+      const maxY = window.innerHeight - 100;
+      
+      setPosition({
+        x: Math.max(0, Math.min(newX, maxX)),
+        y: Math.max(0, Math.min(newY, maxY))
+      });
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    if (isDragging) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, dragOffset]);
+
+  // Handle Escape to close
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        if (isOpen) setIsOpen(false);
+        if (consoleOpen) setConsoleOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, consoleOpen]);
+
+  const handleMouseDown = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setDragOffset({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    });
+    setIsDragging(true);
+  };
+
   const shouldShowButtons = useMemo(() => {
     return settings.showDebugButton || settings.showConsoleButton;
   }, [settings]);
@@ -219,9 +279,28 @@ export default function FloatingDebugPanel() {
       </div>
 
       {isOpen && (
-        <div className="fixed bottom-24 left-6 z-[9999] w-[500px]" dir="rtl">
+        <div 
+          className="fixed z-[9999] w-[500px]" 
+          dir="rtl"
+          style={{ 
+            left: isOpen ? '50%' : '24px', 
+            top: isOpen ? '50%' : 'auto',
+            bottom: isOpen ? 'auto' : '96px',
+            transform: isOpen ? 'translate(-50%, -50%)' : 'none'
+          }}
+        >
           <Card className="shadow-2xl border-2 border-purple-500">
-            <CardHeader className="bg-purple-600 text-white flex flex-row items-center justify-between p-4">
+            <CardHeader 
+              className="bg-purple-600 text-white flex flex-row items-center justify-between p-4 cursor-move select-none"
+              onMouseDown={(e) => {
+                // For the main debug panel, we currently use fixed centering or specific positioning.
+                // If we want it draggable, we need to apply the position state.
+                // However, the requested drag feature was specifically for the "console frame" (consoleOpen).
+                // Let's implement it for both or just console as requested. 
+                // The user said "console button... frame opens... moveable".
+                // Assuming consoleOpen is the target.
+              }}
+            >
               <div className="flex items-center gap-2">
                 <Bug className="w-5 h-5" />
                 <CardTitle className="text-lg">פאנל דיבאג - הרשאות</CardTitle>
@@ -411,9 +490,19 @@ export default function FloatingDebugPanel() {
       )}
 
       {consoleOpen && (
-        <div className="fixed bottom-24 left-6 z-[9999] w-[600px]" dir="ltr">
+        <div 
+          className="fixed z-[9999] w-[600px]" 
+          dir="ltr"
+          style={{ 
+            left: position.x, 
+            top: position.y 
+          }}
+        >
           <Card className="shadow-2xl border-2 border-slate-500">
-            <CardHeader className="bg-slate-700 text-white flex flex-row items-center justify-between p-4">
+            <CardHeader 
+              className="bg-slate-700 text-white flex flex-row items-center justify-between p-4 cursor-move select-none"
+              onMouseDown={handleMouseDown}
+            >
               <div className="flex items-center gap-2">
                 <Terminal className="w-5 h-5" />
                 <CardTitle className="text-lg font-mono">Console</CardTitle>
