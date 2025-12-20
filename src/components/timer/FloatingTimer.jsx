@@ -515,16 +515,7 @@ export default function FloatingTimer() {
     if (!clients || clients.length === 0) return [];
 
     let result = clients;
-    if (Array.isArray(result) && result.length > 1) {
-      // סידור ייחודי לפני חיפוש, רק לטובת UI עקבי
-      const byId = new Map();
-      for (const c of result) {
-        if (!c) continue;
-        const id = c.id || `${(c.name||'').toLowerCase()}|${(c.email||'').toLowerCase()}`;
-        if (!byId.has(id)) byId.set(id, c);
-      }
-      result = Array.from(byId.values());
-    }
+    // Clients are already deduplicated by name_clean in loadData - no need for extra dedup here
     if (q) {
       result = clients.filter((c) =>
         c && ( // Added safety check for 'c'
