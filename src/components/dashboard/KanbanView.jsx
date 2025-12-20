@@ -6,6 +6,7 @@ import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { Circle, Clock, User } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
+import { base44 } from "@/api/base44Client";
 
 const STATUSES = [
   { value: 'חדשה', label: 'משימות חדשות', color: '#3b82f6', bg: '#dbeafe' },
