@@ -131,11 +131,16 @@ function StatusDisplay({ value, isEditing, onEdit, editValue, onSave, onCancel, 
   const defaultGlow = 'rgba(107, 114, 128, 0.4)';
   
   if (isEditing) {
+    console.log('🟡 [STATUS_DISPLAY] Editing mode - showing dropdown');
     return (
       <Select value={editValue} onValueChange={(val) => {
+        console.log('🟢 [STATUS_DISPLAY] Status selected from dropdown:', val);
         onEdit(val);
         if (onDirectSave) {
+          console.log('🟢 [STATUS_DISPLAY] Calling onDirectSave with:', val);
           onDirectSave(val);
+        } else {
+          console.log('⚠️ [STATUS_DISPLAY] onDirectSave is not available!');
         }
       }}>
         <SelectTrigger className="h-8">
