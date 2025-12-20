@@ -392,25 +392,34 @@ export default function FloatingTimer() {
        // ✅ הגנה על תוצאות
        const validClients = Array.isArray(allowedClients) ? allowedClients : [];
 
-       // 🧹 הסרת כפילויות (קודם לפי id, ואם חסר או יש כפילויות - לפי שם+אימייל)
-       const seenIds = new Set();
-       const seenNameEmail = new Set();
-       const uniqueClients = [];
+       // 🧹 הסרת כפילויות לפי שם נקי (name_clean) או שם רגיל - שמירה על הרשומה הוותיקה ביותר
+       const uniqueClientsMap = new Map();
        for (const c of validClients) {
          if (!c) continue;
-         const id = c.id;
-         const key = `${(c.name || '').trim().toLowerCase()}|${(c.email || '').trim().toLowerCase()}`;
-         if (id) {
-           if (seenIds.has(id)) continue;
-           seenIds.add(id);
-           // גם אם יש כפילות בשם+מייל, נשמור ע"פ id
-           uniqueClients.push(c);
+         // Use name_clean first, then name as fallback for uniqueness
+         const clientName = c.name || "";
+         const cleanName = (c.name_clean || clientName).trim().toLowerCase();
+
+         if (cleanName) {
+           // If we already have a client with this clean name, keep the older one
+           if (!uniqueClientsMap.has(cleanName)) {
+             uniqueClientsMap.set(cleanName, c);
+           } else {
+             // Keep the older record (smaller created_date)
+             const existing = uniqueClientsMap.get(cleanName);
+             if (c.created_date && existing.created_date && new Date(c.created_date) < new Date(existing.created_date)) {
+               uniqueClientsMap.set(cleanName, c);
+             }
+           }
          } else {
-           if (key && seenNameEmail.has(key)) continue;
-           if (key) seenNameEmail.add(key);
-           uniqueClients.push(c);
+           // Fallback for clients without name
+           const fallbackKey = c.id || `noname_${Math.random()}`;
+           if (!uniqueClientsMap.has(fallbackKey)) {
+             uniqueClientsMap.set(fallbackKey, c);
+           }
          }
        }
+       const uniqueClients = Array.from(uniqueClientsMap.values());
 
        console.log('✅ [TIMER] Received clients from server:', validClients.length, '→ unique:', uniqueClients.length);
 
