@@ -338,6 +338,17 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
         // Load stage options first
         if (userSettings?.stageOptions) {
           setStageOptions(userSettings.stageOptions);
+        } else {
+          // Fallback: try global stage options stored in AppSettings
+          try {
+            const globalStage = await base44.entities.AppSettings.filter({ setting_key: 'client_stage_options' });
+            const globalOpts = globalStage?.[0]?.value;
+            if (Array.isArray(globalOpts) && globalOpts.length) {
+              setStageOptions(globalOpts);
+            }
+          } catch (e) {
+            console.warn('Failed to load global stage options');
+          }
         }
 
         // Load Status Options
