@@ -658,7 +658,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         // For stage columns, search in the label
         if (col.type === 'stage') {
           const stage = STAGE_OPTIONS.find(s => s.value === val);
-          return stage?.label.toLowerCase().includes(searchLower);
+          return stage?.label?.toLowerCase().includes(searchLower) || stage?.parent?.toLowerCase().includes(searchLower);
         }
         return String(val || '').toLowerCase().includes(searchLower);
       }));
