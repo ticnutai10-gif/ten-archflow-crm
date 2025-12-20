@@ -190,6 +190,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const [showBulkColumnsDialog, setShowBulkColumnsDialog] = useState(false);
   const [showStageManager, setShowStageManager] = useState(false);
   const [customStageOptions, setCustomStageOptions] = useState(DEFAULT_STAGE_OPTIONS);
+  // When using categories/children, allow selecting either parent or child
   const [viewMode, setViewMode] = useState('table');
   const [cellContextMenu, setCellContextMenu] = useState(null);
   const [noteDialogCell, setNoteDialogCell] = useState(null);
