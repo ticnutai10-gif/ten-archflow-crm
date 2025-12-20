@@ -55,30 +55,33 @@ export function StageDisplay({ value, column, isEditing, onEdit, editValue, onSa
       <div className="relative" onClick={(e) => e.stopPropagation()}>
         <div className="space-y-2 p-2 bg-white rounded-lg shadow-lg border-2 border-purple-300 min-w-[180px]">
           {STAGE_OPTIONS.map(stage => (
-            <button
-              key={stage.value}
-              onClick={() => {
-                console.log('🟣 [STAGE] Clicked stage:', stage.value);
-                // Use direct save if available, otherwise use the old method
-                if (onDirectSave) {
-                  onDirectSave(stage.value);
-                } else if (typeof onEdit === 'function' && typeof onSave === 'function') {
-                  onEdit(stage.value);
-                  setTimeout(() => onSave(), 100);
-                }
-              }}
-              className="w-full flex items-center gap-3 px-3 py-2 hover:bg-purple-50 rounded-lg transition-all"
-            >
-              <div 
-                className="w-3 h-3 rounded-full animate-pulse"
-                style={{ 
-                  backgroundColor: stage.color,
-                  boxShadow: `0 0 8px ${stage.glow}, 0 0 12px ${stage.glow}`
-                }}
-              />
-              <span className="text-sm font-medium">{stage.label}</span>
-            </button>
-          ))}
+             <button
+               key={stage.value}
+               onClick={() => {
+                 console.log('🟣 [STAGE] Clicked stage:', stage.value);
+                 const chosen = stage.value;
+                 if (onDirectSave) {
+                   onDirectSave(chosen);
+                 } else if (typeof onEdit === 'function' && typeof onSave === 'function') {
+                   onEdit(chosen);
+                   setTimeout(() => onSave(), 100);
+                 }
+               }}
+               className="w-full flex items-center gap-3 px-3 py-2 hover:bg-purple-50 rounded-lg transition-all"
+             >
+               <div 
+                 className="w-3 h-3 rounded-full animate-pulse"
+                 style={{ 
+                   backgroundColor: stage.color,
+                   boxShadow: `0 0 8px ${stage.glow}, 0 0 12px ${stage.glow}`
+                 }}
+               />
+               <div className="flex flex-col items-start">
+                 <span className="text-sm font-medium">{stage.label}</span>
+                 {stage.parent && <span className="text-[10px] text-slate-500">{stage.parent}</span>}
+               </div>
+             </button>
+           ))}
         </div>
       </div>
     );
