@@ -3007,9 +3007,9 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                         const slug = column.key.slice(3);
                         cellValue = client.custom_data?.[slug] || '';
                       } else if (column.key === 'status' || column.type === 'status' || column.key === 'client_status') {
-                        // Always prioritize client_status over status
-                        cellValue = client.client_status || '';
-                        console.log('📋 [CELL_RENDER] Final cellValue for status:', cellValue);
+                        // Prioritize client_status, fallback to status
+                        cellValue = client.client_status || client.status || '';
+                        console.log('📋 [CELL_RENDER] Final cellValue for status:', cellValue, '(client_status:', client.client_status, ', status:', client.status, ')');
                       } else {
                         cellValue = client[column.key] || '';
                       }
