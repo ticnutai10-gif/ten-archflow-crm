@@ -2007,12 +2007,12 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                 </PopoverContent>
               </Popover>
               <Button onClick={() => setShowColumnStats(!showColumnStats)} size="sm" variant="outline" className="gap-2"><BarChart3 className="w-4 h-4" />סטטיסטיקות</Button>
-              <Button onClick={() => setShowThemeSelector(true)} size="sm" variant="outline" className="gap-2"><Palette className="w-4 h-4" />עיצוב</Button>
-              <Button onClick={() => setShowViewManager(true)} size="sm" variant="outline" className="gap-2">
+              <Button onClick={() => React.startTransition(() => setShowThemeSelector(true))} size="sm" variant="outline" className="gap-2"><Palette className="w-4 h-4" />עיצוב</Button>
+              <Button onClick={() => React.startTransition(() => setShowViewManager(true))} size="sm" variant="outline" className="gap-2">
                 <Layers className="w-4 h-4" />תצוגות
                 {savedViews.length > 0 && <Badge variant="outline" className="mr-1 h-5 px-1.5 text-xs">{savedViews.length}</Badge>}
               </Button>
-              <Button onClick={() => { setEditingChart(null); setShowChartBuilder(true); }} size="sm" variant="outline" className="gap-2 hover:bg-green-50">
+              <Button onClick={() => React.startTransition(() => { setEditingChart(null); setShowChartBuilder(true); })} size="sm" variant="outline" className="gap-2 hover:bg-green-50">
                 <BarChart3 className="w-4 h-4" />גרפים
                 {charts.length > 0 && <Badge variant="outline" className="mr-1 h-5 px-1.5 text-xs bg-green-50 text-green-700">{charts.length}</Badge>}
               </Button>
@@ -2025,7 +2025,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                     <Button variant="outline" size="sm" className="w-full justify-start gap-2" onClick={addNewRow}>
                       <Plus className="w-4 h-4" />שורה ריקה
                     </Button>
-                    <Button variant="outline" size="sm" className="w-full justify-start gap-2 bg-blue-50 hover:bg-blue-100 border-blue-300" onClick={() => setShowAddFromClientDialog(true)}>
+                    <Button variant="outline" size="sm" className="w-full justify-start gap-2 bg-blue-50 hover:bg-blue-100 border-blue-300" onClick={() => React.startTransition(() => setShowAddFromClientDialog(true))}>
                       <Users className="w-4 h-4 text-blue-600" />
                       <span className="text-blue-900">מלקוח קיים</span>
                     </Button>
@@ -2041,18 +2041,18 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                     <Button variant="outline" size="sm" className="w-full justify-start gap-2" onClick={addColumn}>
                       <Plus className="w-4 h-4" />עמודה בודדת
                     </Button>
-                    <Button variant="outline" size="sm" className="w-full justify-start gap-2 bg-orange-50 hover:bg-orange-100 border-orange-300" onClick={() => setShowBulkColumnsDialog(true)}>
+                    <Button variant="outline" size="sm" className="w-full justify-start gap-2 bg-orange-50 hover:bg-orange-100 border-orange-300" onClick={() => React.startTransition(() => setShowBulkColumnsDialog(true))}>
                       <Zap className="w-4 h-4 text-orange-600" />
                       <span className="text-orange-900">יצירה מהירה</span>
                     </Button>
                   </div>
                 </PopoverContent>
               </Popover>
-              <Button onClick={() => setShowColumnsManager(true)} size="sm" variant="outline" className="gap-2 hover:bg-orange-50">
+              <Button onClick={() => React.startTransition(() => setShowColumnsManager(true))} size="sm" variant="outline" className="gap-2 hover:bg-orange-50">
                 <Settings className="w-4 h-4" />
                 ניהול עמודות + צבעים
               </Button>
-              <Button onClick={() => setShowStageManager(true)} size="sm" variant="outline" className="gap-2 hover:bg-purple-50">
+              <Button onClick={() => React.startTransition(() => setShowStageManager(true))} size="sm" variant="outline" className="gap-2 hover:bg-purple-50">
                 <Circle className="w-4 h-4 text-purple-600" />
                 ניהול שלבים
               </Button>

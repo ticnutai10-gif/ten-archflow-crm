@@ -1598,7 +1598,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setShowUserPreferences(true)}
+                onClick={() => React.startTransition(() => setShowUserPreferences(true))}
                 className="gap-2">
 
                 <User className="w-4 h-4" />
@@ -1608,7 +1608,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setShowShortcuts(!showShortcuts)}
+                onClick={() => React.startTransition(() => setShowShortcuts(!showShortcuts))}
                 className="gap-2">
 
                 <Info className="w-4 h-4" />
@@ -1618,7 +1618,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setShowStageManager(true)}
+                onClick={() => React.startTransition(() => setShowStageManager(true))}
                 className="gap-2">
 
                 <Circle className="w-4 h-4" />
@@ -1679,7 +1679,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
 
                     <h3 className="font-semibold text-sm mb-2">כללי</h3>
 
-                    <DropdownMenuItem onClick={() => {setIsSheetOpen(true);setIsDropdownSettingsOpen(false);}} className="flex items-center justify-between">
+                    <DropdownMenuItem onClick={() => React.startTransition(() => { setIsSheetOpen(true); setIsDropdownSettingsOpen(false); })} className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                           <Edit2 className="w-4 h-4" />
                           <span>ניהול עמודות</span>
@@ -1740,7 +1740,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
               <Button onClick={addQuickColumn} size="sm" variant="outline" className="gap-2 bg-white">
                 <Plus className="w-4 h-4" /> עמודה חדשה
               </Button>
-              <Button onClick={() => setShowHistory(true)} size="sm" variant="outline" className="gap-2 bg-white">
+              <Button onClick={() => React.startTransition(() => setShowHistory(true))} size="sm" variant="outline" className="gap-2 bg-white">
                 <Clock className="w-4 h-4" /> היסטוריית שינויים
               </Button>
               <Button onClick={clearSelection} size="sm" variant="destructive" className="gap-2">
