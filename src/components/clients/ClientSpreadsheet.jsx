@@ -3395,10 +3395,24 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
         open={showStageManager}
         onClose={() => setShowStageManager(false)}
         stageOptions={stageOptions}
-        onSave={(newStageOptions) => {
+        onSave={async (newStageOptions) => {
           setStageOptions(newStageOptions);
+          // Persist per-user
           saveUserSettings('clients', columns, cellStyles, showSubHeaders, subHeaders, newStageOptions);
-          toast.success('הגדרות השלבים עודכנו');
+
+          // Also persist globally so זה לא ייעלם בין משתמשים/שחזורים
+          try {
+            const existing = await base44.entities.AppSettings.filter({ setting_key: 'client_stage_options' });
+            if (existing && existing[0]) {
+              await base44.entities.AppSettings.update(existing[0].id, { value: newStageOptions });
+            } else {
+              await base44.entities.AppSettings.create({ setting_key: 'client_stage_options', value: newStageOptions });
+            }
+          } catch (e) {
+            console.warn('Failed to persist global stage options:', e);
+          }
+
+          toast.success('הגדרות השלבים נשמרו');
         }}
       />
 
