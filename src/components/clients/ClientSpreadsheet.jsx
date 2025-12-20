@@ -24,23 +24,16 @@ import { base44 } from "@/api/base44Client";
 import { createPageUrl } from "@/utils";
 import { StageDisplay } from "@/components/spreadsheets/GenericSpreadsheet";
 import StageOptionsManager from "@/components/spreadsheets/StageOptionsManager";
-import StatusOptionsManager from "@/components/spreadsheets/StatusOptionsManager";
 import UserPreferencesDialog from "@/components/spreadsheets/UserPreferencesDialog";
 
 const ICON_COLOR = "#2C3A50";
 
 const STAGE_OPTIONS = [
-  { value: 'ברור_תכן', label: 'ברור תכן', color: '#3b82f6', glow: 'rgba(59, 130, 246, 0.4)' },
-  { value: 'תיק_מידע', label: 'תיק מידע', color: '#8b5cf6', glow: 'rgba(139, 92, 246, 0.4)' },
-  { value: 'היתרים', label: 'היתרים', color: '#f59e0b', glow: 'rgba(245, 158, 11, 0.4)' },
-  { value: 'ביצוע', label: 'ביצוע', color: '#10b981', glow: 'rgba(16, 185, 129, 0.4)' },
-  { value: 'סיום', label: 'סיום', color: '#6b7280', glow: 'rgba(107, 114, 128, 0.4)' }
-];
-
-const STATUS_OPTIONS = [
-  { value: 'פוטנציאלי', label: 'פוטנציאלי', color: '#f59e0b', glow: 'rgba(245, 158, 11, 0.4)' },
-  { value: 'פעיל', label: 'פעיל', color: '#22c55e', glow: 'rgba(34, 197, 94, 0.4)' },
-  { value: 'לא_פעיל', label: 'לא פעיל', color: '#ef4444', glow: 'rgba(239, 68, 68, 0.4)' }
+  { value: 'ברור_תכן', label: 'ברור תכן', color: '#3b82f6' },
+  { value: 'תיק_מידע', label: 'תיק מידע', color: '#8b5cf6' },
+  { value: 'היתרים', label: 'היתרים', color: '#f59e0b' },
+  { value: 'ביצוע', label: 'ביצוע', color: '#10b981' },
+  { value: 'סיום', label: 'סיום', color: '#6b7280' }
 ];
 
 const statusColors = {
@@ -105,108 +98,6 @@ function StageIcon({ client, columns, stageOptions }) {
   );
 }
 
-// Component to display and edit status
-function StatusDisplay({ value, isEditing, onEdit, editValue, onSave, onCancel, statusOptions, onDirectSave }) {
-  console.log('🔵 [STATUS_DISPLAY] Rendering:', { 
-    value, 
-    isEditing, 
-    editValue,
-    statusOptionsType: typeof statusOptions,
-    statusOptionsIsArray: Array.isArray(statusOptions),
-    hasOnDirectSave: typeof onDirectSave === 'function'
-  });
-  
-  // Handle both array and wrapped object format
-  const STATUS_OPTIONS_ARRAY = Array.isArray(statusOptions) 
-    ? statusOptions 
-    : (statusOptions?.options || STATUS_OPTIONS);
-  
-  console.log('🔵 [STATUS_DISPLAY] Available options:', STATUS_OPTIONS_ARRAY.map(s => s.value));
-  
-  const currentStatus = STATUS_OPTIONS_ARRAY.find(s => s.value === value || s.label === value);
-  console.log('🔵 [STATUS_DISPLAY] Current status found:', currentStatus ? currentStatus.label : 'NOT FOUND');
-  
-  // Default color for unknown statuses
-  const defaultColor = '#6b7280';
-  const defaultGlow = 'rgba(107, 114, 128, 0.4)';
-  
-  if (isEditing) {
-    console.log('🟡 [STATUS_DISPLAY] Editing mode - showing dropdown');
-    return (
-      <Select value={editValue} onValueChange={(val) => {
-        console.log('🟢 [STATUS_DISPLAY] Status selected from dropdown:', val);
-        onEdit(val);
-        if (onDirectSave) {
-          console.log('🟢 [STATUS_DISPLAY] Calling onDirectSave with:', val);
-          onDirectSave(val);
-        } else {
-          console.log('⚠️ [STATUS_DISPLAY] onDirectSave is not available!');
-        }
-      }}>
-        <SelectTrigger className="h-8">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {STATUS_OPTIONS_ARRAY.map(status => (
-            <SelectItem key={status.value} value={status.value}>
-              <div className="flex items-center gap-2">
-                <div 
-                  className="w-3 h-3 rounded-full animate-pulse"
-                  style={{ 
-                    backgroundColor: status.color,
-                    boxShadow: `0 0 6px ${status.glow}`
-                  }}
-                />
-                <span>{status.label}</span>
-              </div>
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    );
-  }
-  
-  if (!value) {
-    return (
-      <button
-        onClick={() => onEdit('')}
-        className="text-slate-400 hover:text-blue-600 transition-colors text-sm"
-      >
-        לחץ לבחירה
-      </button>
-    );
-  }
-  
-  // Display status even if not in the predefined list
-  const displayColor = currentStatus?.color || defaultColor;
-  const displayGlow = currentStatus?.glow || defaultGlow;
-  const displayLabel = currentStatus?.label || value.replace(/_/g, ' ');
-  
-  return (
-    <div className="flex items-center gap-2 justify-center">
-      <div 
-        className="w-3 h-3 rounded-full flex-shrink-0 animate-pulse"
-        style={{ 
-          backgroundColor: displayColor,
-          boxShadow: `0 0 8px ${displayGlow}, 0 0 12px ${displayGlow}`,
-          border: '1px solid white'
-        }}
-        title={displayLabel}
-      />
-      <span 
-        className="text-sm font-medium px-2 py-0.5 rounded"
-        style={{ 
-          backgroundColor: `${displayColor}15`,
-          color: displayColor,
-          border: `1px solid ${displayColor}40`
-        }}
-      >
-        {displayLabel}
-      </span>
-    </div>
-  );
-}
-
 // Load settings from database (per user)
 const loadUserSettings = async (tableName = 'clients') => {
   try {
@@ -223,7 +114,7 @@ const loadUserSettings = async (tableName = 'clients') => {
 };
 
 // Save settings to database (per user)
-const saveUserSettings = async (tableName, columns, cellStyles, showSubHeaders, subHeaders, stageOptions, statusOptions) => {
+const saveUserSettings = async (tableName, columns, cellStyles, showSubHeaders, subHeaders, stageOptions) => {
   try {
     const user = await base44.auth.me();
     const existingPrefs = await base44.entities.UserPreferences.filter({ user_email: user.email });
@@ -247,8 +138,7 @@ const saveUserSettings = async (tableName, columns, cellStyles, showSubHeaders, 
       cellStyles: cellStyles || {},
       showSubHeaders: showSubHeaders,
       subHeaders: subHeaders || {},
-      stageOptions: stageOptions || STAGE_OPTIONS,
-      statusOptions: statusOptions || STATUS_OPTIONS
+      stageOptions: stageOptions || STAGE_OPTIONS
     };
     
     if (existingPrefs.length > 0) {
@@ -411,9 +301,6 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
   const [showSubHeaders, setShowSubHeaders] = useState(false);
 
   const [subHeaders, setSubHeaders] = useState({});
-  
-  const [statusOptions, setStatusOptions] = useState(STATUS_OPTIONS);
-  const [showStatusManager, setShowStatusManager] = useState(false);
 
   const [editingSubHeader, setEditingSubHeader] = useState(null);
   const [tempSubHeaderValue, setTempSubHeaderValue] = useState('');
@@ -444,27 +331,11 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
   useEffect(() => {
     const loadUserPrefs = async () => {
       try {
-        console.log('⏳ [INIT] Loading user preferences...');
         const userSettings = await loadUserSettings('clients');
         
-        // Load global stage and status options
-        const stageSettings = await base44.entities.AppSettings.filter({ setting_key: 'client_stage_options' });
-        if (stageSettings.length > 0 && stageSettings[0].value) {
-          const stageValue = stageSettings[0].value;
-          const parsedStages = Array.isArray(stageValue) ? stageValue : (stageValue.options || STAGE_OPTIONS);
-          console.log('✅ [INIT] Loaded stage options:', parsedStages.map(s => s.value));
-          setStageOptions(parsedStages);
-        }
-        
-        const statusSettings = await base44.entities.AppSettings.filter({ setting_key: 'client_status_options' });
-        console.log('📊 [INIT] Raw status settings from DB:', statusSettings);
-        if (statusSettings.length > 0 && statusSettings[0].value) {
-          const statusValue = statusSettings[0].value;
-          const parsedStatuses = Array.isArray(statusValue) ? statusValue : (statusValue.options || STATUS_OPTIONS);
-          console.log('✅ [INIT] Loaded status options:', parsedStatuses.map(s => ({ value: s.value, label: s.label, color: s.color })));
-          setStatusOptions(parsedStatuses);
-        } else {
-          console.log('⚠️ [INIT] No status options found in DB, using defaults');
+        // Load stage options first
+        if (userSettings?.stageOptions) {
+          setStageOptions(userSettings.stageOptions);
         }
         
         if (userSettings && userSettings.order) {
@@ -584,29 +455,6 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
     };
     
     loadUserPrefs();
-
-    // Listen for global settings updates
-    const handleStatusUpdate = (event) => {
-      if (event.detail?.statusOptions) {
-        const opts = event.detail.statusOptions;
-        setStatusOptions(Array.isArray(opts) ? opts : (opts.options || STATUS_OPTIONS));
-      }
-    };
-    
-    const handleStageUpdate = (event) => {
-      if (event.detail?.stageOptions) {
-        const opts = event.detail.stageOptions;
-        setStageOptions(Array.isArray(opts) ? opts : (opts.options || STAGE_OPTIONS));
-      }
-    };
-
-    window.addEventListener('status:options:updated', handleStatusUpdate);
-    window.addEventListener('stage:options:updated', handleStageUpdate);
-
-    return () => {
-      window.removeEventListener('status:options:updated', handleStatusUpdate);
-      window.removeEventListener('stage:options:updated', handleStageUpdate);
-    };
   }, []);
 
   // Listen for preference updates
@@ -655,9 +503,15 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
       const updatedClient = event.detail;
       if (!updatedClient?.id) return;
       
-      setLocalClients(prev => prev.map(c => 
-        c.id === updatedClient.id ? { ...c, ...updatedClient } : c
-      ));
+      console.log('📊 [SPREADSHEET] Client updated event received:', updatedClient);
+      
+      setLocalClients(prev => {
+        const updated = prev.map(c => 
+          c.id === updatedClient.id ? { ...c, ...updatedClient } : c
+        );
+        console.log('📊 [SPREADSHEET] Local clients updated');
+        return updated;
+      });
     };
     
     window.addEventListener('client:updated', handleClientUpdate);
@@ -672,7 +526,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
       
       saveTimeoutRef.current = setTimeout(() => {
-        saveUserSettings('clients', columns, cellStyles, showSubHeaders, subHeaders, stageOptions, statusOptions);
+        saveUserSettings('clients', columns, cellStyles, showSubHeaders, subHeaders, stageOptions);
       }, 1000);
     }
     
@@ -1659,62 +1513,6 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
     });
   };
 
-  const handleSaveStageOptions = async (newOptions) => {
-    try {
-      const user = await base44.auth.me();
-      
-      // Save to global AppSettings
-      const existing = await base44.entities.AppSettings.filter({ setting_key: 'client_stage_options' });
-      
-      if (existing.length > 0) {
-        await base44.entities.AppSettings.update(existing[0].id, {
-          value: newOptions,
-          updated_by: user.email
-        });
-      } else {
-        await base44.entities.AppSettings.create({
-          setting_key: 'client_stage_options',
-          value: newOptions,
-          updated_by: user.email
-        });
-      }
-      
-      setStageOptions(newOptions);
-      toast.success('✓ השלבים נשמרו ומסונכרנו לכל המשתמשים');
-    } catch (error) {
-      console.error('Failed to save stage options:', error);
-      toast.error('שגיאה בשמירת השלבים');
-    }
-  };
-
-  const handleSaveStatusOptions = async (newOptions) => {
-    try {
-      const user = await base44.auth.me();
-      
-      // Save to global AppSettings
-      const existing = await base44.entities.AppSettings.filter({ setting_key: 'client_status_options' });
-      
-      if (existing.length > 0) {
-        await base44.entities.AppSettings.update(existing[0].id, {
-          value: newOptions,
-          updated_by: user.email
-        });
-      } else {
-        await base44.entities.AppSettings.create({
-          setting_key: 'client_status_options',
-          value: newOptions,
-          updated_by: user.email
-        });
-      }
-      
-      setStatusOptions(newOptions);
-      toast.success('✓ הסטטוסים נשמרו ומסונכרנו לכל המשתמשים');
-    } catch (error) {
-      console.error('Failed to save status options:', error);
-      toast.error('שגיאה בשמירת הסטטוסים');
-    }
-  };
-
   if (isLoading) {
     return (
       <div className="bg-white p-6 rounded-lg shadow-lg">
@@ -1808,18 +1606,8 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                 onClick={() => setShowStageManager(true)}
                 className="gap-2">
 
-                <Circle className="w-4 h-4" style={{ color: '#8b5cf6' }} />
-                שלבים
-              </Button>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowStatusManager(true)}
-                className="gap-2">
-
-                <Circle className="w-4 h-4" style={{ color: '#22c55e' }} />
-                סטטוסים
+                <Circle className="w-4 h-4" />
+                ניהול שלבים
               </Button>
 
               <DropdownMenu open={isDropdownSettingsOpen} onOpenChange={setIsDropdownSettingsOpen}>
@@ -2991,25 +2779,9 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                       }
 
                       let cellValue = '';
-                      
-                      // Debug ALL columns to find the status one
-                      if (column.key === 'status' || column.type === 'status' || column.key === 'client_status') {
-                        console.log('📋 [CELL_RENDER] Status column detected:', {
-                          columnKey: column.key,
-                          columnType: column.type,
-                          clientName: client.name,
-                          client_status: client.client_status,
-                          status: client.status
-                        });
-                      }
-                      
                       if (column.key.startsWith('cf:')) {
                         const slug = column.key.slice(3);
                         cellValue = client.custom_data?.[slug] || '';
-                      } else if (column.key === 'status' || column.type === 'status' || column.key === 'client_status') {
-                        // Prioritize client_status, fallback to status
-                        cellValue = client.client_status || client.status || '';
-                        console.log('📋 [CELL_RENDER] Final cellValue for status:', cellValue, '(client_status:', client.client_status, ', status:', client.status, ')');
                       } else {
                         cellValue = client[column.key] || '';
                       }
@@ -3070,6 +2842,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                                 }}
                                 stageOptions={stageOptions}
                                 onDirectSave={async (stageValue) => {
+                                  // Update local state immediately
                                   const updatedClient = column.key.startsWith('cf:')
                                     ? {
                                         ...client,
@@ -3084,6 +2857,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                                   setEditingCell(null);
                                   setEditValue("");
 
+                                  // Save to backend
                                   const dataToSave = { ...updatedClient };
                                   delete dataToSave.id;
                                   delete dataToSave.created_date;
@@ -3098,67 +2872,6 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                                   }));
 
                                   toast.success('✓ שלב עודכן');
-                                }}
-                              />
-                            </div>
-                          ) : column.type === 'status' || column.key === 'status' || column.key === 'client_status' ? (
-                            <div className="flex items-center justify-center">
-                              <StatusDisplay 
-                                value={cellValue}
-                                isEditing={isEditing}
-                                onEdit={(val) => setEditValue(val)}
-                                editValue={editValue}
-                                onSave={saveEdit}
-                                onCancel={() => {
-                                  setEditingCell(null);
-                                  setEditValue("");
-                                }}
-                                statusOptions={statusOptions}
-                                onDirectSave={async (statusValue) => {
-                                  console.log('🚀 [SPREADSHEET] onDirectSave called with:', {
-                                    statusValue,
-                                    clientId: client.id,
-                                    clientName: client.name,
-                                    columnKey: column.key
-                                  });
-                                  
-                                  // ALWAYS save to client_status, regardless of column configuration
-                                  const updatedClient = { 
-                                    ...client, 
-                                    client_status: statusValue 
-                                  };
-
-                                  console.log('🚀 [SPREADSHEET] Updated client object:', {
-                                    id: updatedClient.id,
-                                    client_status: updatedClient.client_status
-                                  });
-
-                                  setLocalClients(prev => prev.map(c => c.id === client.id ? updatedClient : c));
-                                  setEditingCell(null);
-                                  setEditValue("");
-
-                                  try {
-                                    console.log('💾 [SPREADSHEET] Saving to database:', { client_status: statusValue });
-                                    await base44.entities.Client.update(client.id, { client_status: statusValue });
-                                    console.log('💾 [SPREADSHEET] Database update successful');
-                                    
-                                    const refreshedClient = await base44.entities.Client.get(client.id);
-                                    console.log('💾 [SPREADSHEET] Refreshed client from DB:', {
-                                      id: refreshedClient.id,
-                                      name: refreshedClient.name,
-                                      client_status: refreshedClient.client_status
-                                    });
-
-                                    console.log('📢 [SPREADSHEET] Dispatching client:updated event');
-                                    window.dispatchEvent(new CustomEvent('client:updated', {
-                                      detail: refreshedClient
-                                    }));
-
-                                    toast.success('✓ סטטוס עודכן');
-                                  } catch (error) {
-                                    console.error('❌ [SPREADSHEET] Error updating status:', error);
-                                    toast.error('שגיאה בעדכון סטטוס');
-                                  }
                                 }}
                               />
                             </div>
@@ -3188,20 +2901,24 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                               <PopoverTrigger asChild>
                                 <div className="text-sm w-full" dir="rtl">
                                   {column.key === 'name' ? (
-                                   <div className="flex items-center gap-2">
-                                     <StageIcon 
-                                       client={client} 
-                                       columns={columns} 
-                                       stageOptions={stageOptions} 
-                                     />
-                                     <span style={{
-                                       color: column.type === 'email' || column.type === 'phone' ? '#000000' : 'inherit',
-                                       fontWeight: column.type === 'email' || column.type === 'phone' ? '500' : 'normal'
-                                     }}>
-                                       {String(cellValue)}
-                                     </span>
-                                   </div>
-                                  ) : column.type === 'phone' || column.key === 'phone_secondary' || column.key === 'whatsapp' ?
+                                    <div className="flex items-center gap-2">
+                                      <StageIcon 
+                                        client={client} 
+                                        columns={columns} 
+                                        stageOptions={stageOptions} 
+                                      />
+                                      <span style={{
+                                        color: column.type === 'email' || column.type === 'phone' ? '#000000' : 'inherit',
+                                        fontWeight: column.type === 'email' || column.type === 'phone' ? '500' : 'normal'
+                                      }}>
+                                        {String(cellValue)}
+                                      </span>
+                                    </div>
+                                  ) : column.type === 'status' ?
+                                <Badge variant="outline" className={statusColors[cellValue] || 'bg-slate-100 text-slate-800'}>
+                                      {cellValue}
+                                    </Badge> :
+                                column.type === 'phone' || column.key === 'phone_secondary' || column.key === 'whatsapp' ?
                                 cellValue ?
                                 <a
                                   href={`tel:${cellValue}`}
@@ -3389,7 +3106,6 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                         <SelectItem value="email">אימייל</SelectItem>
                         <SelectItem value="date">תאריך</SelectItem>
                         <SelectItem value="stage">🔵 שלבים (מואר)</SelectItem>
-                        <SelectItem value="client_status">🟢 סטטוסים (מואר)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -3603,14 +3319,11 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
         open={showStageManager}
         onClose={() => setShowStageManager(false)}
         stageOptions={stageOptions}
-        onSave={handleSaveStageOptions}
-      />
-
-      <StatusOptionsManager
-        open={showStatusManager}
-        onClose={() => setShowStatusManager(false)}
-        statusOptions={statusOptions}
-        onSave={handleSaveStatusOptions}
+        onSave={(newStageOptions) => {
+          setStageOptions(newStageOptions);
+          saveUserSettings('clients', columns, cellStyles, showSubHeaders, subHeaders, newStageOptions);
+          toast.success('הגדרות השלבים עודכנו');
+        }}
       />
 
       <UserPreferencesDialog

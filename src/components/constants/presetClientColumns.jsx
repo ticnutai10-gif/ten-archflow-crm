@@ -2,7 +2,6 @@ export const PRESET_CLIENT_COLUMNS = [
   // בסיס (קיימים כבר בישות) - לא מוסיף ברירת מחדל, רק כעוגן UI
   { slug: "name", label: "שם לקוח", type: "text", group: "פרטי לקוח", builtin: true },
   { slug: "stage", label: "שלבים", type: "stage", group: "פרטי לקוח", builtin: true },
-  { slug: "client_status", label: "סטטוס", type: "status", group: "פרטי לקוח", builtin: true },
   { slug: "phone", label: "טלפון", type: "text", group: "פרטי לקוח", builtin: true },
   { slug: "email", label: "מייל", type: "text", group: "פרטי לקוח", builtin: true },
 

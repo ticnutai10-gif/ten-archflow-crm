@@ -23,8 +23,6 @@ import { useAccessControl } from "@/components/access/AccessValidator";
 import ColumnsManagerDialog from "./ColumnsManagerDialog";
 import BulkColumnsDialog from "./BulkColumnsDialog";
 import StageOptionsManager from "./StageOptionsManager";
-import StatusOptionsManager from "./StatusOptionsManager";
-import StatusDisplay from "./StatusDisplay";
 
 // Default stage options with colors - MUST BE OUTSIDE COMPONENT
 const DEFAULT_STAGE_OPTIONS = [
@@ -33,12 +31,6 @@ const DEFAULT_STAGE_OPTIONS = [
   { value: 'היתרים', label: 'היתרים', color: '#f59e0b', glow: 'rgba(245, 158, 11, 0.4)' },
   { value: 'ביצוע', label: 'ביצוע', color: '#10b981', glow: 'rgba(16, 185, 129, 0.4)' },
   { value: 'סיום', label: 'סיום', color: '#6b7280', glow: 'rgba(107, 114, 128, 0.4)' }
-];
-
-const DEFAULT_STATUS_OPTIONS = [
-  { value: 'פוטנציאלי', label: 'פוטנציאלי', color: '#f59e0b', glow: 'rgba(245, 158, 11, 0.4)' },
-  { value: 'פעיל', label: 'פעיל', color: '#22c55e', glow: 'rgba(34, 197, 94, 0.4)' },
-  { value: 'לא_פעיל', label: 'לא פעיל', color: '#ef4444', glow: 'rgba(239, 68, 68, 0.4)' }
 ];
 
 // Export StageDisplay for use in other components
@@ -198,8 +190,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const [showBulkColumnsDialog, setShowBulkColumnsDialog] = useState(false);
   const [showStageManager, setShowStageManager] = useState(false);
   const [customStageOptions, setCustomStageOptions] = useState(DEFAULT_STAGE_OPTIONS);
-  const [showStatusManager, setShowStatusManager] = useState(false);
-  const [customStatusOptions, setCustomStatusOptions] = useState(DEFAULT_STATUS_OPTIONS);
   const [viewMode, setViewMode] = useState('table');
   const [cellContextMenu, setCellContextMenu] = useState(null);
   const [noteDialogCell, setNoteDialogCell] = useState(null);
@@ -233,11 +223,9 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const activeViewIdRef = useRef(activeViewId);
   const chartsRef = useRef(charts);
   const customStageOptionsRef = useRef(customStageOptions);
-  const customStatusOptionsRef = useRef(customStatusOptions);
 
   useEffect(() => { columnsRef.current = columns; }, [columns]);
   useEffect(() => { customStageOptionsRef.current = customStageOptions; }, [customStageOptions]);
-  useEffect(() => { customStatusOptionsRef.current = customStatusOptions; }, [customStatusOptions]);
   useEffect(() => { rowsDataRef.current = rowsData; }, [rowsData]);
   useEffect(() => { cellStylesRef.current = cellStyles; }, [cellStyles]);
   useEffect(() => { cellNotesRef.current = cellNotes; }, [cellNotes]);
@@ -329,35 +317,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       setCustomCellTypes(spreadsheet.custom_cell_types || []);
       setMergedCells(spreadsheet.merged_cells || {});
       setMergedHeaders(spreadsheet.merged_headers || {});
-      
-      // Load global options from AppSettings
-      const loadGlobalOptions = async () => {
-        try {
-          const [stageSettings, statusSettings] = await Promise.all([
-            base44.entities.AppSettings.filter({ setting_key: 'client_stage_options' }),
-            base44.entities.AppSettings.filter({ setting_key: 'client_status_options' })
-          ]);
-          
-          let globalStageOptions = DEFAULT_STAGE_OPTIONS;
-          if (stageSettings.length > 0 && stageSettings[0].value) {
-            globalStageOptions = stageSettings[0].value.options || stageSettings[0].value;
-          }
-            
-          let globalStatusOptions = DEFAULT_STATUS_OPTIONS;
-          if (statusSettings.length > 0 && statusSettings[0].value) {
-            globalStatusOptions = statusSettings[0].value.options || statusSettings[0].value;
-          }
-          
-          setCustomStageOptions(spreadsheet.custom_stage_options || globalStageOptions);
-          setCustomStatusOptions(spreadsheet.custom_status_options || globalStatusOptions);
-        } catch (e) {
-          console.warn('Failed to load global options:', e);
-          setCustomStageOptions(spreadsheet.custom_stage_options || DEFAULT_STAGE_OPTIONS);
-          setCustomStatusOptions(spreadsheet.custom_status_options || DEFAULT_STATUS_OPTIONS);
-        }
-      };
-      
-      loadGlobalOptions();
 
       const loadedTheme = spreadsheet.theme_settings || {
         palette: "default",
@@ -377,6 +336,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       setSavedViews(spreadsheet.saved_views || []);
       setActiveViewId(spreadsheet.active_view_id || null);
       setCharts(spreadsheet.charts || []);
+      setCustomStageOptions(spreadsheet.custom_stage_options || DEFAULT_STAGE_OPTIONS);
 
       setHistory([{ columns: initialColumns, rows: initialRows, styles: initialStyles, notes: initialNotes }]);
       setHistoryIndex(0);
@@ -470,7 +430,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         active_view_id: activeViewIdRef.current,
         charts: chartsRef.current,
         custom_stage_options: customStageOptionsRef.current,
-        custom_status_options: customStatusOptionsRef.current,
         client_id: detectedClientId,
         client_name: detectedClientName
       };
@@ -540,28 +499,8 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       }));
     };
     
-    const handleStatusOptionsUpdate = async (event) => {
-      console.log('📬 [GENERIC SPREADSHEET] Status options updated globally');
-      if (event.detail?.statusOptions) {
-        setCustomStatusOptions(event.detail.statusOptions);
-      }
-    };
-    
-    const handleStageOptionsUpdate = async (event) => {
-      console.log('📬 [GENERIC SPREADSHEET] Stage options updated globally');
-      if (event.detail?.stageOptions) {
-        setCustomStageOptions(event.detail.stageOptions);
-      }
-    };
-    
     window.addEventListener('client:updated', handleClientUpdate);
-    window.addEventListener('status:options:updated', handleStatusOptionsUpdate);
-    window.addEventListener('stage:options:updated', handleStageOptionsUpdate);
-    return () => {
-      window.removeEventListener('client:updated', handleClientUpdate);
-      window.removeEventListener('status:options:updated', handleStatusOptionsUpdate);
-      window.removeEventListener('stage:options:updated', handleStageOptionsUpdate);
-    };
+    return () => window.removeEventListener('client:updated', handleClientUpdate);
   }, []);
 
   useEffect(() => {
@@ -2117,10 +2056,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                 <Circle className="w-4 h-4 text-purple-600" />
                 ניהול שלבים
               </Button>
-              <Button onClick={() => setShowStatusManager(true)} size="sm" variant="outline" className="gap-2 hover:bg-green-50">
-                <Circle className="w-4 h-4 text-green-600" />
-                ניהול סטטוסים
-              </Button>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button size="sm" variant="outline" className="gap-2">
@@ -2587,35 +2522,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                               )}
                                             </div>
                                           )
-                                        ) : column.type === 'status' ? (
-                                          <div className="flex items-center justify-center">
-                                            <StatusDisplay 
-                                              value={cellValue} 
-                                              column={column} 
-                                              isEditing={isEditing} 
-                                              onEdit={(val) => setEditValue(val)} 
-                                              editValue={editValue} 
-                                              onSave={saveEdit} 
-                                              onCancel={() => { setEditingCell(null); setEditValue(""); }} 
-                                              statusOptions={customStatusOptions}
-                                              onDirectSave={async (statusValue) => {
-                                                console.log('🟢 [STATUS SAVE] Direct save called with:', statusValue);
-                                                const updatedRows = rowsData.map(r => 
-                                                  r.id === row.id ? { ...r, [column.key]: statusValue } : r
-                                                );
-                                                setRowsData(updatedRows);
-                                                setEditingCell(null);
-                                                setEditValue("");
-                                                rowsDataRef.current = updatedRows;
-
-                                                setTimeout(() => {
-                                                  saveToHistory(columnsRef.current, updatedRows, cellStylesRef.current, cellNotesRef.current);
-                                                  saveToBackend();
-                                                }, 50);
-                                                toast.success('✓ סטטוס עודכן');
-                                              }}
-                                            />
-                                          </div>
                                         ) : column.type === 'stage' ? (
                                           <div className="flex items-center justify-center">
                                             <StageDisplay 
@@ -3173,16 +3079,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
           setCustomStageOptions(newOptions);
           setTimeout(() => saveToBackend(), 50);
           toast.success('✓ אפשרויות שלבים עודכנו');
-        }}
-      />
-
-      <StatusOptionsManager
-        open={showStatusManager}
-        onClose={() => setShowStatusManager(false)}
-        statusOptions={customStatusOptions}
-        onSave={(newOptions) => {
-          setCustomStatusOptions(newOptions);
-          setTimeout(() => saveToBackend(), 50);
         }}
       />
 

@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { Download, Upload, ShieldCheck, Database, RefreshCw, Settings, CalendarClock, CheckCircle2, AlertTriangle, FileText, X, Clock, Trash2, Save } from "lucide-react";
+import { Download, Upload, ShieldCheck, Database, RefreshCw, Settings, CalendarClock, CheckCircle2, AlertTriangle, FileText, X } from "lucide-react";
 import { exportEntities } from "@/functions/exportEntities";
 import { importBackupJson } from "@/functions/importBackupJson";
 import EntityImporter from "@/components/backup/EntityImporter";
@@ -13,10 +13,6 @@ import { User } from "@/entities/User";
 import { exportAllData } from "@/functions/exportAllData";
 import { importBackupData } from "@/functions/importBackupData";
 import { base44 } from "@/api/base44Client";
-import { manualBackup } from "@/functions/manualBackup";
-import { restoreBackup } from "@/functions/restoreBackup";
-import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 const CATEGORY_INFO = {
   "Client": { label: "לקוחות", icon: "👥", color: "blue", description: "כל נתוני הלקוחות ופרטי הקשר" },
@@ -66,15 +62,6 @@ export default function BackupPage() {
   // NEW: State for record counts per category
   const [categoryCounts, setCategoryCounts] = useState({});
   const [loadingCounts, setLoadingCounts] = useState(true);
-  
-  // NEW: Backup history and settings
-  const [backupHistory, setBackupHistory] = useState([]);
-  const [loadingHistory, setLoadingHistory] = useState(true);
-  const [showSettings, setShowSettings] = useState(false);
-  const [backupSettings, setBackupSettings] = useState(null);
-  const [isCreatingBackup, setIsCreatingBackup] = useState(false);
-  const [showRestoreDialog, setShowRestoreDialog] = useState(false);
-  const [selectedBackupForRestore, setSelectedBackupForRestore] = useState(null);
 
   useEffect(() => {
     // load user backup prefs
@@ -121,39 +108,6 @@ export default function BackupPage() {
 
     loadCounts();
   }, []); // Run once on component mount
-
-  // Load backup history
-  useEffect(() => {
-    const loadHistory = async () => {
-      try {
-        const backups = await base44.entities.Backup.list('-backup_date', 100);
-        setBackupHistory(backups || []);
-      } catch (error) {
-        console.error('Error loading backup history:', error);
-        setBackupHistory([]);
-      } finally {
-        setLoadingHistory(false);
-      }
-    };
-    
-    loadHistory();
-  }, []);
-
-  // Load backup settings
-  useEffect(() => {
-    const loadSettings = async () => {
-      try {
-        const settings = await base44.entities.BackupSettings.list();
-        if (settings.length > 0) {
-          setBackupSettings(settings[0]);
-        }
-      } catch (error) {
-        console.error('Error loading backup settings:', error);
-      }
-    };
-    
-    loadSettings();
-  }, []);
 
   useEffect(() => {
     // auto backup on page open if needed
@@ -308,77 +262,6 @@ export default function BackupPage() {
       backup_auto_frequency: autoFreq,
       backup_selected_categories: Array.from(selected)
     });
-  };
-
-  const handleManualBackup = async () => {
-    setIsCreatingBackup(true);
-    try {
-      const response = await manualBackup({});
-      if (response.data?.success) {
-        alert(`✅ גיבוי ידני הושלם!\n\n📊 סה"כ רשומות: ${response.data.total_records.toLocaleString()}\n📁 הקובץ נשמר בהצלחה`);
-        
-        // Reload history
-        const backups = await base44.entities.Backup.list('-backup_date', 100);
-        setBackupHistory(backups || []);
-      } else {
-        alert('שגיאה ביצירת גיבוי: ' + (response.data?.error || 'שגיאה לא ידועה'));
-      }
-    } catch (error) {
-      console.error('Manual backup error:', error);
-      alert('שגיאה ביצירת גיבוי ידני: ' + error.message);
-    } finally {
-      setIsCreatingBackup(false);
-    }
-  };
-
-  const handleRestoreBackup = async () => {
-    if (!selectedBackupForRestore) return;
-    
-    if (!confirm(`⚠️ האם אתה בטוח שברצונך לשחזר מגיבוי זה?\n\nפעולה זו תעדכן/תוסיף רשומות מהגיבוי למערכת.\nהפעולה עלולה לקחת מספר דקות.`)) {
-      return;
-    }
-
-    setBusy(true);
-    try {
-      const response = await restoreBackup({ backup_id: selectedBackupForRestore.id });
-      if (response.data?.success) {
-        const results = response.data.results;
-        let message = '✅ שחזור הושלם בהצלחה!\n\n';
-        message += `✓ הצלחה: ${results.success.length} entities\n`;
-        if (results.failed.length > 0) {
-          message += `❌ נכשל: ${results.failed.length} entities\n`;
-        }
-        if (results.skipped.length > 0) {
-          message += `⏭️ דולג: ${results.skipped.length} entities\n`;
-        }
-        
-        alert(message);
-        setShowRestoreDialog(false);
-        setSelectedBackupForRestore(null);
-      } else {
-        alert('שגיאה בשחזור: ' + (response.data?.error || 'שגיאה לא ידועה'));
-      }
-    } catch (error) {
-      console.error('Restore error:', error);
-      alert('שגיאה בשחזור גיבוי: ' + error.message);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleSaveSettings = async (newSettings) => {
-    try {
-      if (backupSettings?.id) {
-        await base44.entities.BackupSettings.update(backupSettings.id, newSettings);
-      } else {
-        const created = await base44.entities.BackupSettings.create(newSettings);
-        setBackupSettings(created);
-      }
-      alert('✅ ההגדרות נשמרו בהצלחה');
-      setShowSettings(false);
-    } catch (error) {
-      alert('שגיאה בשמירת הגדרות: ' + error.message);
-    }
   };
 
   const totalSelectedRecords = useMemo(() => {
@@ -819,169 +702,6 @@ export default function BackupPage() {
           </CardContent>
         </Card>
 
-        {/* Backup History */}
-        <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm">
-          <CardHeader className="border-b bg-gradient-to-l from-indigo-50 to-white pb-4">
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-3 text-2xl">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shadow-lg">
-                  <Clock className="w-6 h-6 text-white" />
-                </div>
-                היסטוריית גיבויים
-              </CardTitle>
-              <div className="flex gap-2">
-                <Button
-                  onClick={handleManualBackup}
-                  disabled={isCreatingBackup || busy}
-                  className="gap-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 shadow-lg"
-                >
-                  {isCreatingBackup ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                      יוצר גיבוי...
-                    </>
-                  ) : (
-                    <>
-                      <Download className="w-4 h-4" />
-                      צור גיבוי ידני
-                    </>
-                  )}
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => setShowSettings(true)}
-                  className="gap-2"
-                >
-                  <Settings className="w-4 h-4" />
-                  הגדרות גיבוי
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="p-6">
-            {loadingHistory ? (
-              <div className="text-center py-8">
-                <RefreshCw className="w-8 h-8 animate-spin mx-auto text-slate-400" />
-                <p className="text-slate-500 mt-2">טוען היסטוריית גיבויים...</p>
-              </div>
-            ) : backupHistory.length === 0 ? (
-              <div className="text-center py-12 text-slate-500">
-                <Database className="w-16 h-16 mx-auto mb-4 text-slate-300" />
-                <p className="text-lg font-semibold">אין גיבויים קיימים</p>
-                <p className="text-sm mt-1">צור גיבוי ידני או המתן לגיבוי אוטומטי</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {backupHistory.map((backup) => (
-                  <div
-                    key={backup.id}
-                    className={`p-4 rounded-xl border-2 transition-all ${
-                      backup.status === 'failed'
-                        ? 'border-red-200 bg-red-50'
-                        : 'border-slate-200 bg-white hover:border-blue-300 hover:shadow-md'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                          backup.backup_type === 'daily' ? 'bg-blue-100' :
-                          backup.backup_type === 'weekly' ? 'bg-purple-100' :
-                          'bg-green-100'
-                        }`}>
-                          {backup.backup_type === 'daily' && <CalendarClock className="w-6 h-6 text-blue-600" />}
-                          {backup.backup_type === 'weekly' && <Database className="w-6 h-6 text-purple-600" />}
-                          {backup.backup_type === 'manual' && <Download className="w-6 h-6 text-green-600" />}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-slate-900">
-                              {backup.backup_type === 'daily' ? 'גיבוי יומי' :
-                               backup.backup_type === 'weekly' ? 'גיבוי שבועי' :
-                               'גיבוי ידני'}
-                            </span>
-                            <Badge className={
-                              backup.backup_type === 'daily' ? 'bg-blue-500' :
-                              backup.backup_type === 'weekly' ? 'bg-purple-500' :
-                              'bg-green-500'
-                            }>
-                              {backup.backup_type}
-                            </Badge>
-                            {backup.status === 'failed' && (
-                              <Badge className="bg-red-500">
-                                <AlertTriangle className="w-3 h-3 ml-1" />
-                                נכשל
-                              </Badge>
-                            )}
-                          </div>
-                          <div className="text-sm text-slate-600 mt-1">
-                            {new Date(backup.backup_date).toLocaleString('he-IL', {
-                              dateStyle: 'full',
-                              timeStyle: 'short'
-                            })}
-                          </div>
-                          <div className="text-xs text-slate-500 mt-1 flex items-center gap-3">
-                            {backup.file_size && (
-                              <span>📦 {(backup.file_size / 1024 / 1024).toFixed(2)} MB</span>
-                            )}
-                            {backup.entities_count && typeof backup.entities_count === 'object' && (
-                              <span>📊 {Object.values(backup.entities_count).reduce((a, b) => a + (typeof b === 'number' ? b : 0), 0).toLocaleString()} רשומות</span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {backup.status === 'completed' && (
-                          <>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedBackupForRestore(backup);
-                                setShowRestoreDialog(true);
-                              }}
-                              className="gap-2"
-                            >
-                              <RefreshCw className="w-4 h-4" />
-                              שחזר
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => window.open(backup.file_url, '_blank')}
-                              className="gap-2"
-                            >
-                              <Download className="w-4 h-4" />
-                              הורד
-                            </Button>
-                          </>
-                        )}
-                        {backup.backup_type === 'daily' && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={async () => {
-                              if (!confirm('למחוק גיבוי זה?')) return;
-                              try {
-                                await base44.entities.Backup.delete(backup.id);
-                                const updated = await base44.entities.Backup.list('-backup_date', 100);
-                                setBackupHistory(updated || []);
-                              } catch (error) {
-                                alert('שגיאה במחיקת גיבוי: ' + error.message);
-                              }
-                            }}
-                          >
-                            <Trash2 className="w-4 h-4 text-red-600" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
         {/* סיכום וסטטוס */}
         <Card className="shadow-xl border-0 bg-gradient-to-r from-slate-900 to-slate-800 text-white">
           <CardHeader className="border-b border-slate-700 pb-4">
@@ -1058,174 +778,6 @@ export default function BackupPage() {
             onDone={() => setImporterEntity(null)}
           />
         )}
-
-        {/* Restore Dialog */}
-        <Dialog open={showRestoreDialog} onOpenChange={setShowRestoreDialog}>
-          <DialogContent className="sm:max-w-lg" dir="rtl">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-xl">
-                <RefreshCw className="w-6 h-6 text-blue-600" />
-                שחזור מגיבוי
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              {selectedBackupForRestore && (
-                <>
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <div className="font-bold text-slate-900 mb-2">
-                      {selectedBackupForRestore.backup_type === 'daily' ? '📅 גיבוי יומי' :
-                       selectedBackupForRestore.backup_type === 'weekly' ? '📆 גיבוי שבועי' :
-                       '💾 גיבוי ידני'}
-                    </div>
-                    <div className="text-sm text-slate-600">
-                      {new Date(selectedBackupForRestore.backup_date).toLocaleString('he-IL', {
-                        dateStyle: 'full',
-                        timeStyle: 'short'
-                      })}
-                    </div>
-                    {selectedBackupForRestore.entities_count && (
-                      <div className="text-xs text-slate-500 mt-2">
-                        📊 {Object.values(selectedBackupForRestore.entities_count).reduce((a, b) => a + (typeof b === 'number' ? b : 0), 0).toLocaleString()} רשומות
-                      </div>
-                    )}
-                  </div>
-                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                    <div className="flex items-start gap-2">
-                      <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                      <div className="text-sm text-amber-900">
-                        <p className="font-semibold mb-1">⚠️ שים לב:</p>
-                        <p>• הפעולה תעדכן רשומות קיימות ותוסיף חדשות</p>
-                        <p>• הפעולה עלולה לקחת מספר דקות</p>
-                        <p>• מומלץ ליצור גיבוי נוסף לפני השחזור</p>
-                      </div>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShowRestoreDialog(false)} disabled={busy}>
-                ביטול
-              </Button>
-              <Button
-                onClick={handleRestoreBackup}
-                disabled={busy}
-                className="bg-blue-600 hover:bg-blue-700 gap-2"
-              >
-                {busy ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    משחזר...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="w-4 h-4" />
-                    שחזר עכשיו
-                  </>
-                )}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Backup Settings Dialog */}
-        <Dialog open={showSettings} onOpenChange={setShowSettings}>
-          <DialogContent className="sm:max-w-2xl" dir="rtl">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-xl">
-                <Settings className="w-6 h-6 text-purple-600" />
-                הגדרות גיבוי מתקדמות
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-6 py-4">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
-                  <div>
-                    <div className="font-semibold text-slate-900">גיבוי יומי אוטומטי</div>
-                    <div className="text-sm text-slate-600">הפעל/כבה גיבוי יומי אוטומטי</div>
-                  </div>
-                  <Checkbox
-                    checked={backupSettings?.daily_backup_enabled !== false}
-                    onCheckedChange={(checked) => setBackupSettings({
-                      ...backupSettings,
-                      daily_backup_enabled: checked
-                    })}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="font-semibold text-slate-900">תדירות גיבוי יומי (שעות):</Label>
-                  <Input
-                    type="number"
-                    min="1"
-                    max="168"
-                    value={backupSettings?.daily_backup_interval_hours || 24}
-                    onChange={(e) => setBackupSettings({
-                      ...backupSettings,
-                      daily_backup_interval_hours: parseInt(e.target.value) || 24
-                    })}
-                    className="max-w-xs"
-                  />
-                  <p className="text-xs text-slate-500">כל כמה שעות לבצע גיבוי (1-168 שעות)</p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="font-semibold text-slate-900">מקסימום גיבויים יומיים:</Label>
-                  <Input
-                    type="number"
-                    min="5"
-                    max="100"
-                    value={backupSettings?.max_daily_backups || 10}
-                    onChange={(e) => setBackupSettings({
-                      ...backupSettings,
-                      max_daily_backups: parseInt(e.target.value) || 10
-                    })}
-                    className="max-w-xs"
-                  />
-                  <p className="text-xs text-slate-500">גיבויים ישנים יותר יימחקו אוטומטית (5-100)</p>
-                </div>
-
-                <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
-                  <div>
-                    <div className="font-semibold text-slate-900">התראות על כישלון</div>
-                    <div className="text-sm text-slate-600">שלח אימייל במקרה של כישלון בגיבוי</div>
-                  </div>
-                  <Checkbox
-                    checked={backupSettings?.notify_on_failure !== false}
-                    onCheckedChange={(checked) => setBackupSettings({
-                      ...backupSettings,
-                      notify_on_failure: checked
-                    })}
-                  />
-                </div>
-              </div>
-
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-start gap-2">
-                  <CheckCircle2 className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                  <div className="text-sm text-blue-900">
-                    <p className="font-semibold mb-1">💡 מידע חשוב:</p>
-                    <p>• גיבויים יומיים ישמרו עד ל-{backupSettings?.max_daily_backups || 10} האחרונים</p>
-                    <p>• גיבויים שבועיים נשמרים תמיד ולא נמחקים אוטומטית</p>
-                    <p>• גיבויים ידניים נשמרים עד שתמחק אותם ידנית</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShowSettings(false)}>
-                ביטול
-              </Button>
-              <Button
-                onClick={() => handleSaveSettings(backupSettings)}
-                className="bg-purple-600 hover:bg-purple-700 gap-2"
-              >
-                <Save className="w-4 h-4" />
-                שמור הגדרות
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
       </div>
     </div>
   );

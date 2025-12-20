@@ -115,28 +115,22 @@ ${errors.length > 0 ? `\n⚠️ שגיאות:\n${errors.map(e => `  • ${e}`).j
       }
     }
 
-    // Upload backup file
-    const jsonStr = JSON.stringify(backupData, null, 2);
-    const blob = new Blob([jsonStr], { type: 'application/json' });
-    const file = new File([blob], `weekly-backup-${dateStr}.json`, { type: 'application/json' });
-    
-    const { file_url } = await base44.asServiceRole.integrations.Core.UploadFile({
-      file: file
-    });
-
-    // Save backup record to Backup entity
+    // Save backup record
     try {
-      await base44.asServiceRole.entities.Backup.create({
-        backup_type: 'weekly',
-        backup_date: now.toISOString(),
-        file_url: file_url,
-        file_size: blob.size,
-        entities_count: backupData.summary,
-        status: 'completed'
+      await base44.asServiceRole.entities.Document.create({
+        name: `גיבוי אוטומטי - ${dateStr}`,
+        type: 'גיבוי',
+        content: JSON.stringify(backupData, null, 2),
+        metadata: {
+          backup_date: dateStr,
+          total_records: totalRecords,
+          categories_count: categories.length,
+          errors_count: errors.length
+        }
       });
-      console.log('[WeeklyBackup] 💾 Backup saved to Backup entity');
+      console.log('[WeeklyBackup] 💾 Backup saved to Documents');
     } catch (e) {
-      console.error('[WeeklyBackup] ⚠️ Failed to save backup record:', e.message);
+      console.error('[WeeklyBackup] ⚠️ Failed to save backup document:', e.message);
     }
 
     console.log('[WeeklyBackup] ✅ Completed successfully');

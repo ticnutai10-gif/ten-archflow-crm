@@ -52,12 +52,6 @@ const DEFAULT_STAGE_OPTIONS = [
   { value: 'סיום', label: 'סיום', color: '#6b7280' }
 ];
 
-const DEFAULT_STATUS_OPTIONS = [
-  { value: 'פוטנציאלי', label: 'פוטנציאלי', color: '#f59e0b', glow: 'rgba(245, 158, 11, 0.4)' },
-  { value: 'פעיל', label: 'פעיל', color: '#22c55e', glow: 'rgba(34, 197, 94, 0.4)' },
-  { value: 'לא_פעיל', label: 'לא פעיל', color: '#ef4444', glow: 'rgba(239, 68, 68, 0.4)' }
-];
-
 const iconColor = "#2C3A50";
 
 export default function ClientDetails({ client, onBack, onEdit }) {
@@ -67,8 +61,6 @@ export default function ClientDetails({ client, onBack, onEdit }) {
   const [timeLogs, setTimeLogs] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [stageOptions, setStageOptions] = useState(DEFAULT_STAGE_OPTIONS);
-  const [statusOptions, setStatusOptions] = useState(DEFAULT_STATUS_OPTIONS);
-  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [activeTab, setActiveTab] = useState(() => {
     // Check URL params ONLY - this is the source of truth
     const urlParams = new URLSearchParams(window.location.search);
@@ -131,64 +123,31 @@ export default function ClientDetails({ client, onBack, onEdit }) {
     loadClientData();
   }, [loadClientData]);
 
-  // Load stage and status options from AppSettings (global) first, then UserPreferences as fallback
+  // Load stage options from UserPreferences
   useEffect(() => {
-    const loadOptions = async () => {
+    const loadStageOptions = async () => {
       try {
-        // Load from global AppSettings first
-        const stageSettings = await base44.entities.AppSettings.filter({ setting_key: 'client_stage_options' });
-        if (stageSettings.length > 0 && stageSettings[0].value) {
-          const stageValue = stageSettings[0].value;
-          setStageOptions(Array.isArray(stageValue) ? stageValue : (stageValue.options || DEFAULT_STAGE_OPTIONS));
-        }
+        const user = await base44.auth.me();
+        const userPrefs = await base44.entities.UserPreferences.filter({ user_email: user.email });
         
-        const statusSettings = await base44.entities.AppSettings.filter({ setting_key: 'client_status_options' });
-        if (statusSettings.length > 0 && statusSettings[0].value) {
-          const statusValue = statusSettings[0].value;
-          setStatusOptions(Array.isArray(statusValue) ? statusValue : (statusValue.options || DEFAULT_STATUS_OPTIONS));
+        if (userPrefs.length > 0 && userPrefs[0].spreadsheet_columns?.clients?.stageOptions) {
+          setStageOptions(userPrefs[0].spreadsheet_columns.clients.stageOptions);
         }
       } catch (e) {
-        console.warn('Failed to load options from AppSettings, trying UserPreferences');
-        
-        // Fallback to UserPreferences
-        try {
-          const user = await base44.auth.me();
-          const userPrefs = await base44.entities.UserPreferences.filter({ user_email: user.email });
-          
-          if (userPrefs.length > 0 && userPrefs[0].spreadsheet_columns?.clients?.stageOptions) {
-            setStageOptions(userPrefs[0].spreadsheet_columns.clients.stageOptions);
-          }
-          if (userPrefs.length > 0 && userPrefs[0].spreadsheet_columns?.clients?.statusOptions) {
-            setStatusOptions(userPrefs[0].spreadsheet_columns.clients.statusOptions);
-          }
-        } catch (e2) {
-          console.warn('Failed to load options, using defaults');
-        }
+        console.warn('Failed to load stage options, using defaults');
       }
     };
     
-    loadOptions();
+    loadStageOptions();
     
-    // Listen for options updates
-    const handleStageOptionsUpdate = (event) => {
-      if (event.detail?.stageOptions) {
-        const opts = event.detail.stageOptions;
-        setStageOptions(Array.isArray(opts) ? opts : (opts.options || DEFAULT_STAGE_OPTIONS));
-      }
-    };
-    
-    const handleStatusOptionsUpdate = (event) => {
-      if (event.detail?.statusOptions) {
-        const opts = event.detail.statusOptions;
-        setStatusOptions(Array.isArray(opts) ? opts : (opts.options || DEFAULT_STATUS_OPTIONS));
-      }
+    // Listen for stage options updates
+    const handleStageOptionsUpdate = () => {
+      loadStageOptions();
     };
     
     window.addEventListener('stage:options:updated', handleStageOptionsUpdate);
-    window.addEventListener('status:options:updated', handleStatusOptionsUpdate);
     return () => {
       window.removeEventListener('stage:options:updated', handleStageOptionsUpdate);
-      window.removeEventListener('status:options:updated', handleStatusOptionsUpdate);
     };
   }, []);
 
@@ -223,54 +182,39 @@ export default function ClientDetails({ client, onBack, onEdit }) {
     
     setIsUpdatingStage(true);
     try {
+      // עדכון מיידי של ה-UI המקומי
+      const optimisticClient = { ...currentClient, stage: newStage };
+      setCurrentClient(optimisticClient);
+      
       console.log('📤 [CLIENT DETAILS] Sending update to server...');
       await base44.entities.Client.update(currentClient.id, { stage: newStage });
       console.log('✅ [CLIENT DETAILS] Update sent successfully');
       
+      // טען מחדש את הלקוח מהשרת כדי לקבל את הגרסה העדכנית
       console.log('🔄 [CLIENT DETAILS] Reloading client from server...');
       const updatedClient = await base44.entities.Client.get(currentClient.id);
       console.log('📥 [CLIENT DETAILS] Client reloaded:', {
         name: updatedClient.name,
-        stage: updatedClient.stage,
-        fullData: updatedClient
+        stage: updatedClient.stage
       });
       
       setCurrentClient(updatedClient);
-      console.log('💾 [CLIENT DETAILS] Local state updated');
       
+      // שלח אירוע עם כל הנתונים של הלקוח לסנכרון כל הקומפוננטות
       console.log('📢 [CLIENT DETAILS] Dispatching client:updated event...');
       window.dispatchEvent(new CustomEvent('client:updated', {
         detail: updatedClient
       }));
-      console.log('✅ [CLIENT DETAILS] Event dispatched successfully');
+      console.log('✅ [CLIENT DETAILS] Event dispatched - all components should sync');
       
       toast.success('השלב עודכן בהצלחה');
     } catch (error) {
       console.error('❌ [CLIENT DETAILS] Error updating stage:', error);
+      // החזר את המצב הקודם במקרה של שגיאה
+      setCurrentClient(currentClient);
       toast.error('שגיאה בעדכון השלב');
     } finally {
       setIsUpdatingStage(false);
-    }
-  };
-
-  const handleStatusChange = async (newStatus) => {
-    setIsUpdatingStatus(true);
-    try {
-      await base44.entities.Client.update(currentClient.id, { client_status: newStatus });
-      const updatedClient = await base44.entities.Client.get(currentClient.id);
-      
-      setCurrentClient(updatedClient);
-      
-      window.dispatchEvent(new CustomEvent('client:updated', {
-        detail: updatedClient
-      }));
-      
-      toast.success('הסטטוס עודכן בהצלחה');
-    } catch (error) {
-      console.error('Error updating status:', error);
-      toast.error('שגיאה בעדכון הסטטוס');
-    } finally {
-      setIsUpdatingStatus(false);
     }
   };
 
@@ -369,51 +313,12 @@ export default function ClientDetails({ client, onBack, onEdit }) {
                       ))}
                     </SelectContent>
                   </Select>
-
-                  <Select 
-                    value={(currentClient.client_status || currentClient.status) || ''} 
-                    onValueChange={handleStatusChange}
-                    disabled={isUpdatingStatus}
-                  >
-                    <SelectTrigger className="w-[200px] h-8">
-                      <SelectValue placeholder="בחר סטטוס">
-                        {(() => {
-                          const statusValue = currentClient.client_status || currentClient.status;
-                          const currentStatus = statusValue ? statusOptions.find(s => s.value === statusValue || s.label === statusValue) : null;
-                          return currentStatus ? (
-                            <div className="flex items-center gap-2">
-                              <div 
-                                className="w-3 h-3 rounded-full flex-shrink-0 animate-pulse"
-                                style={{ 
-                                  backgroundColor: currentStatus.color,
-                                  boxShadow: `0 0 6px ${currentStatus.glow}, 0 0 10px ${currentStatus.glow}`,
-                                  border: '1px solid white'
-                                }}
-                              />
-                              <span>{currentStatus.label}</span>
-                            </div>
-                          ) : 'בחר סטטוס';
-                        })()}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {statusOptions.map(status => (
-                        <SelectItem key={status.value} value={status.value}>
-                          <div className="flex items-center gap-2">
-                            <div 
-                              className="w-3 h-3 rounded-full flex-shrink-0 animate-pulse"
-                              style={{ 
-                                backgroundColor: status.color,
-                                boxShadow: `0 0 6px ${status.glow}, 0 0 10px ${status.glow}`,
-                                border: '1px solid white'
-                              }}
-                            />
-                            <span>{status.label}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  
+                  {currentClient.status === 'פעיל' && (
+                    <Badge variant="outline" className={statusColors["פעיל"]}>
+                      פעיל
+                    </Badge>
+                  )}
                   {currentClient.source && (
                     <Badge variant="outline" className="bg-slate-100 text-slate-700">
                       <TrendingUp className="w-3 h-3 ml-1" />
