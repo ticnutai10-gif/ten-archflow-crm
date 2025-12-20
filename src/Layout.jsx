@@ -91,6 +91,24 @@ export default function Layout({ children, currentPageName }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const loadedRef = useRef(false);
 
+  const [showPerformanceMonitor, setShowPerformanceMonitor] = useState(() => {
+    try {
+      const saved = localStorage.getItem('debug-settings');
+      return saved ? JSON.parse(saved).showPerformanceMonitor !== false : true;
+    } catch {
+      return true;
+    }
+  });
+
+  useEffect(() => {
+    const handleDebugSettingsChange = (e) => {
+      setShowPerformanceMonitor(e.detail.showPerformanceMonitor !== false);
+    };
+
+    window.addEventListener('debug-settings-changed', handleDebugSettingsChange);
+    return () => window.removeEventListener('debug-settings-changed', handleDebugSettingsChange);
+  }, []);
+
   // Save pinned state
   useEffect(() => {
     try {
@@ -722,7 +740,7 @@ export default function Layout({ children, currentPageName }) {
         <ReminderPopup />
         {!isMobile && <FloatingDebugPanel />}
         <FloatingAIButton />
-        <PerformanceMonitor />
+        {showPerformanceMonitor && <PerformanceMonitor />}
 
         {/* Mobile Bottom Navigation */}
         {isMobile && <MobileBottomNav />}

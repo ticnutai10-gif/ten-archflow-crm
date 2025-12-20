@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
-import { Settings, Bug, Bell, Palette, Terminal, AlertCircle, CheckCircle, XCircle, Shield, Play, LayoutDashboard, MessageCircle, Languages } from "lucide-react";
+import { Settings, Bug, Bell, Palette, Terminal, AlertCircle, CheckCircle, XCircle, Shield, Play, LayoutDashboard, MessageCircle, Languages, Activity } from "lucide-react";
 import AppSettings from "@/components/settings/AppSettings";
 import RingtoneManager from "@/components/settings/RingtoneManager";
 import ThemeManager from "@/components/settings/ThemeManager";
@@ -25,12 +25,14 @@ export default function SettingsPage() {
       const saved = localStorage.getItem('debug-settings');
       return saved ? JSON.parse(saved) : {
         showDebugButton: true,
-        showConsoleButton: true
+        showConsoleButton: true,
+        showPerformanceMonitor: true
       };
     } catch {
       return {
         showDebugButton: true,
-        showConsoleButton: true
+        showConsoleButton: true,
+        showPerformanceMonitor: true
       };
     }
   });
@@ -473,6 +475,29 @@ export default function SettingsPage() {
                       />
                     </div>
 
+                    {/* כפתור ניטור ביצועים */}
+                    <div className="flex items-center justify-between p-4 bg-orange-50 rounded-lg border border-orange-200">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 bg-orange-100 rounded-lg">
+                          <Activity className="w-5 h-5 text-orange-600" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-slate-900 mb-1">
+                            כפתור ניטור ביצועים
+                          </h3>
+                          <p className="text-sm text-slate-600">
+                            הצג כפתור כתום למעקב אחר ביצועי המערכת (FPS, זיכרון, זמני רינדור)
+                          </p>
+                        </div>
+                      </div>
+                      <Switch
+                        checked={debugSettings.showPerformanceMonitor}
+                        onCheckedChange={(checked) => 
+                          saveDebugSettings({ ...debugSettings, showPerformanceMonitor: checked })
+                        }
+                      />
+                    </div>
+
                     {/* הסבר */}
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                       <div className="flex items-start gap-3">
@@ -502,8 +527,13 @@ export default function SettingsPage() {
                               <Terminal className="w-6 h-6 text-white" />
                             </div>
                           )}
+                          {debugSettings.showPerformanceMonitor && (
+                            <div className="w-14 h-14 rounded-full bg-purple-600 shadow-lg flex items-center justify-center">
+                              <Activity className="w-6 h-6 text-white" />
+                            </div>
+                          )}
                         </div>
-                        {(!debugSettings.showDebugButton && !debugSettings.showConsoleButton) && (
+                        {(!debugSettings.showDebugButton && !debugSettings.showConsoleButton && !debugSettings.showPerformanceMonitor) && (
                           <div className="absolute inset-0 flex items-center justify-center">
                             <p className="text-slate-500 text-sm">אין כפתורים מוצגים</p>
                           </div>
