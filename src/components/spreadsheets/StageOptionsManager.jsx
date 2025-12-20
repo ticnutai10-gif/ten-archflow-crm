@@ -9,6 +9,7 @@ import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 export default function StageOptionsManager({ open, onClose, stageOptions, onSave }) {
   const [editedOptions, setEditedOptions] = useState(stageOptions || []);
   const [editingIndex, setEditingIndex] = useState(null);
+  // Optional children editing is inline when a parent is in edit mode
 
   // Update editedOptions when stageOptions prop changes
   React.useEffect(() => {
@@ -72,25 +73,36 @@ export default function StageOptionsManager({ open, onClose, stageOptions, onSav
   };
 
   const handleSave = () => {
-    // Validation
-    const hasEmpty = editedOptions.some(opt => !opt.label.trim());
-    if (hasEmpty) {
-      toast.error('כל השלבים חייבים להכיל שם');
+    // Validation (parents + children)
+    const hasEmptyParent = editedOptions.some(opt => !String(opt.label || '').trim());
+    const hasEmptyChild = editedOptions.some(opt => (opt.children || []).some(ch => !String(ch.label || '').trim()));
+    if (hasEmptyParent || hasEmptyChild) {
+      toast.error('כל השלבים ותתי-השלבים חייבים להכיל שם');
       return;
     }
 
-    const uniqueLabels = new Set(editedOptions.map(opt => opt.label));
-    if (uniqueLabels.size !== editedOptions.length) {
-      toast.error('כל השלבים חייבים להיות בעלי שם ייחודי');
-      return;
-    }
+    // Ensure glow exists based on color for all
+    const normalize = (opts) => opts.map(opt => {
+      const hex = opt.color || '#6366f1';
+      const rgb = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      const glow = rgb ? `rgba(${parseInt(rgb[1],16)}, ${parseInt(rgb[2],16)}, ${parseInt(rgb[3],16)}, 0.4)` : (opt.glow || 'rgba(99,102,241,0.4)');
+      const children = Array.isArray(opt.children) ? opt.children.map(ch => {
+        const chHex = ch.color || '#22c55e';
+        const chRgb = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(chHex);
+        const chGlow = chRgb ? `rgba(${parseInt(chRgb[1],16)}, ${parseInt(chRgb[2],16)}, ${parseInt(chRgb[3],16)}, 0.4)` : (ch.glow || 'rgba(34,197,94,0.4)');
+        return { ...ch, glow: chGlow };
+      }) : undefined;
+      return { ...opt, glow, children };
+    });
 
-    onSave(editedOptions);
+    const normalized = normalize(editedOptions);
+
+    onSave(normalized);
     
     // Dispatch event to notify other components
     try {
       window.dispatchEvent(new CustomEvent('stage:options:updated', {
-        detail: { stageOptions: editedOptions }
+        detail: { stageOptions: normalized }
       }));
     } catch (e) {
       console.warn('Failed to dispatch stage options update event');
@@ -187,6 +199,92 @@ export default function StageOptionsManager({ open, onClose, stageOptions, onSav
                           </div>
                         </div>
                       </div>
+
+                      {/* Children editor */}
+                      <div className="space-y-2 border-t pt-3 mt-2">
+                        <div className="text-xs font-semibold text-slate-600">תתי-שלבים (אופציונלי)</div>
+                        {(stage.children && stage.children.length > 0) ? stage.children.map((child, cIdx) => (
+                          <div key={cIdx} className="grid grid-cols-2 gap-3 items-end bg-slate-50 p-2 rounded-lg">
+                            <div>
+                              <label className="text-xs font-semibold text-slate-600 mb-1 block">שם תת-שלב</label>
+                              <Input
+                                value={child.label || ''}
+                                onChange={(e) => {
+                                  const updated = [...editedOptions];
+                                  const kids = Array.isArray(updated[index].children) ? [...updated[index].children] : [];
+                                  kids[cIdx] = { ...kids[cIdx], label: e.target.value, value: `${(updated[index].label || '').replace(/\s+/g,'_')}_${e.target.value.replace(/\s+/g,'_')}` };
+                                  updated[index] = { ...updated[index], children: kids };
+                                  setEditedOptions(updated);
+                                }}
+                                placeholder="שם התת-שלב"
+                                dir="rtl"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-xs font-semibold text-slate-600 mb-1 block">צבע</label>
+                              <div className="flex gap-2">
+                                <Input
+                                  type="color"
+                                  value={child.color || '#22c55e'}
+                                  onChange={(e) => {
+                                    const updated = [...editedOptions];
+                                    const kids = Array.isArray(updated[index].children) ? [...updated[index].children] : [];
+                                    const val = e.target.value;
+                                    const rgb = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(val);
+                                    const glow = rgb ? `rgba(${parseInt(rgb[1],16)}, ${parseInt(rgb[2],16)}, ${parseInt(rgb[3],16)}, 0.4)` : 'rgba(34,197,94,0.4)';
+                                    kids[cIdx] = { ...kids[cIdx], color: val, glow };
+                                    updated[index] = { ...updated[index], children: kids };
+                                    setEditedOptions(updated);
+                                  }}
+                                  className="w-16 h-10 cursor-pointer"
+                                />
+                                <Input
+                                  type="text"
+                                  value={child.color || ''}
+                                  onChange={(e) => {
+                                    const updated = [...editedOptions];
+                                    const kids = Array.isArray(updated[index].children) ? [...updated[index].children] : [];
+                                    const val = e.target.value;
+                                    const rgb = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(val);
+                                    const glow = rgb ? `rgba(${parseInt(rgb[1],16)}, ${parseInt(rgb[2],16)}, ${parseInt(rgb[3],16)}, 0.4)` : kids[cIdx]?.glow;
+                                    kids[cIdx] = { ...kids[cIdx], color: val, glow };
+                                    updated[index] = { ...updated[index], children: kids };
+                                    setEditedOptions(updated);
+                                  }}
+                                  placeholder="#10b981"
+                                  className="font-mono text-sm"
+                                  dir="ltr"
+                                />
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-9 w-9 hover:bg-red-50"
+                                  onClick={() => {
+                                    const updated = [...editedOptions];
+                                    const kids = (updated[index].children || []).filter((_,i) => i !== cIdx);
+                                    updated[index] = { ...updated[index], children: kids };
+                                    setEditedOptions(updated);
+                                  }}
+                                >
+                                  <Trash2 className="w-4 h-4 text-red-600" />
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        )) : (
+                          <div className="text-xs text-slate-500">אין תתי-שלבים</div>
+                        )}
+                        <Button size="sm" variant="outline" className="gap-2" onClick={() => {
+                          const updated = [...editedOptions];
+                          const kids = Array.isArray(updated[index].children) ? [...updated[index].children] : [];
+                          kids.push({ label: 'תת-שלב חדש', value: `${(updated[index].label || 'קטגוריה').replace(/\s+/g,'_')}_${Date.now()}`, color: '#22c55e', glow: 'rgba(34,197,94,0.4)' });
+                          updated[index] = { ...updated[index], children: kids };
+                          setEditedOptions(updated);
+                        }}>
+                          <Plus className="w-4 h-4" /> הוסף תת-שלב
+                        </Button>
+                      </div>
+
                       <div className="flex justify-end gap-2">
                         <Button
                           size="sm"
@@ -271,6 +369,43 @@ export default function StageOptionsManager({ open, onClose, stageOptions, onSav
             >
               <Plus className="w-4 h-4" />
               הוסף שלב חדש
+            </Button>
+
+            <Button
+              onClick={() => {
+                // Add a ready-made category template as requested
+                const template = [
+                  {
+                    label: 'מידע/אגרות',
+                    value: 'מידע_אגרות',
+                    color: '#8b5cf6',
+                    glow: 'rgba(139, 92, 246, 0.4)',
+                    children: [
+                      { label: 'תיק מידע', value: 'מידע_תיק_מידע', color: '#8b5cf6' },
+                      { label: 'פקיד היערות', value: 'מידע_פקיד_היערות', color: '#f59e0b' },
+                      { label: 'מפת מדידה בתוקף', value: 'מידע_מפת_מדידה_בתוקף', color: '#3b82f6' },
+                      { label: 'תשלום אגרות', value: 'מידע_תשלום_אגרות', color: '#10b981' },
+                      { label: 'היטל השבחה', value: 'מידע_היטל_השבחה', color: '#ef4444' }
+                    ]
+                  },
+                  {
+                    label: 'תכנון/ביצוע',
+                    value: 'תכנון_ביצוע',
+                    color: '#3b82f6',
+                    glow: 'rgba(59, 130, 246, 0.4)',
+                    children: [
+                      { label: 'תוכניות עבודה', value: 'תכנון_תוכניות_עבודה', color: '#3b82f6' }
+                    ]
+                  }
+                ];
+                setEditedOptions(template);
+                toast.success('תבנית קטגוריות נטענה');
+              }}
+              variant="outline"
+              className="w-full mt-2 gap-2 bg-blue-50 border-blue-300 hover:bg-blue-100"
+            >
+              <Plus className="w-4 h-4" />
+              טען תבנית קטגוריות לדוגמה
             </Button>
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
