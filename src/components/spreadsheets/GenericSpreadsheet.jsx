@@ -1000,6 +1000,21 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     return Array.from(values).sort();
   };
 
+  const getStageLabel = useCallback((val) => {
+    if (!val) return '';
+    // search parent first
+    const parent = (customStageOptions || []).find(s => s.value === val);
+    if (parent) return parent.label || val;
+    // search children
+    for (const p of (customStageOptions || [])) {
+      if (Array.isArray(p.children)) {
+        const ch = p.children.find(c => c.value === val);
+        if (ch) return p.label ? `${p.label} › ${ch.label}` : (ch.label || val);
+      }
+    }
+    return val;
+  }, [customStageOptions]);
+
   const mergeCells = () => {
     if (selectedCells.size < 2) { 
       toast.error('בחר לפחות 2 תאים למיזוג'); 
@@ -2181,7 +2196,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                 value === '✓' ? <span className="text-green-600 text-lg">✓</span> : 
                                 value === '✗' ? <span className="text-red-600 text-lg">✗</span> : value
                               ) : col.type === 'stage' ? (
-                                customStageOptions.find(s => s.value === value)?.label || value
+                                getStageLabel(value)
                               ) : String(value)}
                             </span>
                           </div>
@@ -2212,7 +2227,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                               {col.type === 'checkmark' || col.type === 'mixed_check' ? (
                                 value === '✓' ? '✓' : value === '✗' ? '✗' : '-'
                               ) : col.type === 'stage' ? (
-                                customStageOptions.find(s => s.value === value)?.label || value || '-'
+                                getStageLabel(value) || '-'
                               ) : value || '-'}
                             </span>
                           </div>
