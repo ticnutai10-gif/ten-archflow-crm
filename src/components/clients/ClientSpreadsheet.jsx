@@ -107,11 +107,24 @@ function StageIcon({ client, columns, stageOptions }) {
 
 // Component to display and edit status
 function StatusDisplay({ value, isEditing, onEdit, editValue, onSave, onCancel, statusOptions, onDirectSave }) {
+  console.log('🔵 [STATUS_DISPLAY] Rendering:', { 
+    value, 
+    isEditing, 
+    editValue,
+    statusOptionsType: typeof statusOptions,
+    statusOptionsIsArray: Array.isArray(statusOptions),
+    hasOnDirectSave: typeof onDirectSave === 'function'
+  });
+  
   // Handle both array and wrapped object format
   const STATUS_OPTIONS_ARRAY = Array.isArray(statusOptions) 
     ? statusOptions 
     : (statusOptions?.options || STATUS_OPTIONS);
+  
+  console.log('🔵 [STATUS_DISPLAY] Available options:', STATUS_OPTIONS_ARRAY.map(s => s.value));
+  
   const currentStatus = STATUS_OPTIONS_ARRAY.find(s => s.value === value || s.label === value);
+  console.log('🔵 [STATUS_DISPLAY] Current status found:', currentStatus ? currentStatus.label : 'NOT FOUND');
   
   // Default color for unknown statuses
   const defaultColor = '#6b7280';
