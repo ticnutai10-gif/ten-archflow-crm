@@ -444,19 +444,27 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
   useEffect(() => {
     const loadUserPrefs = async () => {
       try {
+        console.log('⏳ [INIT] Loading user preferences...');
         const userSettings = await loadUserSettings('clients');
         
         // Load global stage and status options
         const stageSettings = await base44.entities.AppSettings.filter({ setting_key: 'client_stage_options' });
         if (stageSettings.length > 0 && stageSettings[0].value) {
           const stageValue = stageSettings[0].value;
-          setStageOptions(Array.isArray(stageValue) ? stageValue : (stageValue.options || STAGE_OPTIONS));
+          const parsedStages = Array.isArray(stageValue) ? stageValue : (stageValue.options || STAGE_OPTIONS);
+          console.log('✅ [INIT] Loaded stage options:', parsedStages.map(s => s.value));
+          setStageOptions(parsedStages);
         }
         
         const statusSettings = await base44.entities.AppSettings.filter({ setting_key: 'client_status_options' });
+        console.log('📊 [INIT] Raw status settings from DB:', statusSettings);
         if (statusSettings.length > 0 && statusSettings[0].value) {
           const statusValue = statusSettings[0].value;
-          setStatusOptions(Array.isArray(statusValue) ? statusValue : (statusValue.options || STATUS_OPTIONS));
+          const parsedStatuses = Array.isArray(statusValue) ? statusValue : (statusValue.options || STATUS_OPTIONS);
+          console.log('✅ [INIT] Loaded status options:', parsedStatuses.map(s => ({ value: s.value, label: s.label, color: s.color })));
+          setStatusOptions(parsedStatuses);
+        } else {
+          console.log('⚠️ [INIT] No status options found in DB, using defaults');
         }
         
         if (userSettings && userSettings.order) {
