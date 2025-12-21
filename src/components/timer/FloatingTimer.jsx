@@ -309,16 +309,19 @@ export default function FloatingTimer() {
     checkUser();
   }, []);
 
-  // Detect Ctrl key press/release
+  // Detect Ctrl+Shift key press/release for drag mode
   React.useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === 'Control') {
+      if (e.key === 'Control' && e.shiftKey) {
+        setIsCtrlPressed(true);
+      }
+      if (e.key === 'Shift' && e.ctrlKey) {
         setIsCtrlPressed(true);
       }
     };
 
     const handleKeyUp = (e) => {
-      if (e.key === 'Control') {
+      if (e.key === 'Control' || e.key === 'Shift') {
         setIsCtrlPressed(false);
       }
     };
