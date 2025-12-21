@@ -357,12 +357,14 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     }
   }, [spreadsheet]);
 
-  const saveToHistory = useCallback((cols, rows, styles, notes) => {
+  const saveToHistory = useCallback((cols, rows, styles, notes, subH, mergedH, hStyles) => {
     console.log('📜 [HISTORY] saveToHistory called:', { 
       isUndoRedoAction, 
       currentHistoryIndex: historyIndex,
       rowsCount: rows?.length,
-      colsCount: cols?.length
+      colsCount: cols?.length,
+      subHeadersCount: subH ? Object.keys(subH).length : 0,
+      mergedHeadersCount: mergedH ? Object.keys(mergedH).length : 0
     });
     
     if (isUndoRedoAction) {
@@ -372,7 +374,15 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     
     setHistory(prev => {
       const newHistory = prev.slice(0, historyIndex + 1);
-      newHistory.push({ columns: cols, rows: rows, styles: styles, notes: notes });
+      newHistory.push({ 
+        columns: cols, 
+        rows: rows, 
+        styles: styles, 
+        notes: notes,
+        subHeaders: subH || {},
+        mergedHeaders: mergedH || {},
+        headerStyles: hStyles || {}
+      });
       if (newHistory.length > 50) newHistory.shift();
       console.log('📜 [HISTORY] New history length:', newHistory.length);
       return newHistory;
