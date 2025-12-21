@@ -2522,28 +2522,24 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                         {provided.placeholder}
                         <th className="p-3" style={{ width: '120px', backgroundColor: palette.headerBg, color: palette.headerText, fontFamily: headerFont.value, fontSize: headerFontSize, borderWidth: isSeparateBorders ? '0' : borderStyle.width, borderStyle: borderStyle.style, borderColor: palette.border, borderRadius: isSeparateBorders ? tableBorderRadius : '0' }}>פעולות</th>
                       </tr>
-                      {showSubHeaders && subHeaderPosition === 'below' && (Object.keys(mergedHeaders).length > 0 || Object.keys(subHeaders).length > 0) && (
+                      {showSubHeaders && Object.values(subHeaders).some(sh => (typeof sh === 'object' ? sh.position : 'above') === 'below') && (
                         <tr>
                           <th className="p-3 w-12 sticky right-0 shadow-[2px_0_5px_rgba(0,0,0,0.1)]" style={{ zIndex: 35, backgroundColor: palette.headerBg, borderWidth: isSeparateBorders ? '0' : borderStyle.width, borderStyle: borderStyle.style, borderColor: palette.border }}></th>
                           {visibleColumns.map((col) => {
-                            const headerMerge = getHeaderMergeInfo(col.key);
-                            const subHeaderTitle = subHeaders[col.key];
+                            const subHeaderTitle = getSubHeaderTitle(col.key);
+                            const subHeaderPos = getSubHeaderPosition(col.key);
                             
-                            if (headerMerge && !headerMerge.isMaster) {
-                              return null;
-                            }
-                            
-                            const headerKeyForStyle = headerMerge ? headerMerge.mergeKey : col.key;
+                            const headerKeyForStyle = col.key;
                             const currentHeaderStyle = headerStyles[headerKeyForStyle] || {};
 
-                            if (!headerMerge && !subHeaderTitle) {
+                            // Only show sub headers with position 'below' in this row
+                            if (!subHeaderTitle || subHeaderPos !== 'below') {
                               return <th key={`sub_below_empty_${col.key}`} className="text-center font-bold p-2" style={{ backgroundColor: palette.headerBg, borderWidth: isSeparateBorders ? '0' : borderStyle.width, borderStyle: borderStyle.style, borderColor: palette.border }}></th>;
                             }
                             
                             return (
                               <th
-                                key={`merged_header_below_${col.key}`}
-                                colSpan={headerMerge?.colspan || 1}
+                                key={`sub_header_below_${col.key}`}
                                 className="text-center font-bold p-2 cursor-pointer group relative"
                                 style={{
                                   backgroundColor: currentHeaderStyle.backgroundColor || palette.headerBg,
@@ -2557,22 +2553,11 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                 }}
                                 onClick={(e) => {
                                   e.preventDefault();
-                                  if (headerMerge) {
-                                    const newTitle = prompt('ערוך כותרת עליונה:', headerMerge.title);
-                                    if (newTitle !== null && newTitle.trim()) {
-                                      setMergedHeaders(prev => ({
-                                        ...prev,
-                                        [headerMerge.mergeKey]: { ...headerMerge, title: newTitle.trim() }
-                                      }));
-                                      setTimeout(() => saveToBackend(), 50);
-                                    }
-                                  } else if (subHeaderTitle) {
-                                    addOrEditSubHeader(col.key);
-                                  }
+                                  addOrEditSubHeader(col.key);
                                 }}
                               >
                                 <div className="flex items-center justify-center gap-2">
-                                  {headerMerge?.title || subHeaderTitle}
+                                  {subHeaderTitle}
                                   <div className="opacity-0 group-hover:opacity-100 flex gap-1 absolute left-1 top-1">
                                     <Button
                                       size="icon"
@@ -2585,19 +2570,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                     >
                                       <Palette className="w-3 h-3 text-purple-600" />
                                     </Button>
-                                    {headerMerge && (
-                                      <Button
-                                        size="icon"
-                                        variant="ghost"
-                                        className="h-5 w-5 bg-white/90 hover:bg-white"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          unmergeHeaders(col.key);
-                                        }}
-                                      >
-                                        <Scissors className="w-3 h-3 text-orange-600" />
-                                      </Button>
-                                    )}
                                   </div>
                                 </div>
                               </th>
