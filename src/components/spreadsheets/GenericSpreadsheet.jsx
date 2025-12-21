@@ -597,8 +597,8 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         toast.success(`✓ נמחקו ${selectedCells.size} תאים`);
       }
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
   }, [handleUndo, handleRedo, selectedCells, copiedCells, rowsData, columns, cellStyles, editingCell, saveToHistory, saveToBackend]);
 
   const handleDragEnd = (result) => {
