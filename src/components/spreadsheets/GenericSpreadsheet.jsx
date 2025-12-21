@@ -519,19 +519,29 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-      // Undo: Ctrl+Z
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { 
+      // Skip if user is typing in an input/textarea
+      const target = e.target;
+      const isTypingInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+      
+      // Undo: Ctrl+Z (but NOT Ctrl+Shift which is for timer drag)
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) { 
         e.preventDefault(); 
         e.stopPropagation();
-        handleUndo(); 
-        return;
+        e.stopImmediatePropagation();
+        if (!isTypingInput) {
+          handleUndo(); 
+        }
+        return false;
       }
       // Redo: Ctrl+Y or Ctrl+Shift+Z
-      if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { 
+      if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'y' || (e.key.toLowerCase() === 'z' && e.shiftKey))) { 
         e.preventDefault(); 
         e.stopPropagation();
-        handleRedo(); 
-        return;
+        e.stopImmediatePropagation();
+        if (!isTypingInput) {
+          handleRedo(); 
+        }
+        return false;
       }
 
       if ((e.ctrlKey || e.metaKey) && e.key === 'c' && selectedCells.size > 0) {
@@ -597,6 +607,8 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         toast.success(`✓ נמחקו ${selectedCells.size} תאים`);
       }
     };
+    
+    // Use capture phase (true) to intercept before other handlers
     window.addEventListener('keydown', handleKeyDown, true);
     return () => window.removeEventListener('keydown', handleKeyDown, true);
   }, [handleUndo, handleRedo, selectedCells, copiedCells, rowsData, columns, cellStyles, editingCell, saveToHistory, saveToBackend]);
