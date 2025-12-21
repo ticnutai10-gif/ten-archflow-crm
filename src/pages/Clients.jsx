@@ -934,10 +934,10 @@ export default function ClientsPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">כל השלבים</SelectItem>
-                    {STAGE_OPTIONS.map(stage => (
-                      <SelectItem key={stage.value} value={stage.value}>
-                        {stage.label}
-                      </SelectItem>
+                    {stageOptions.map(stage => (
+                     <SelectItem key={stage.value} value={stage.value}>
+                       {stage.label}
+                     </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -1517,7 +1517,7 @@ export default function ClientsPage() {
             
             try {
               await base44.entities.Client.update(clientId, { stage: destStage });
-              toast.success(`${client.name} עודכן לשלב ${STAGE_OPTIONS.find(s => s.value === destStage)?.label}`);
+              toast.success(`${client.name} עודכן לשלב ${stageOptions.find(s => s.value === destStage)?.label}`);
               
               // Trigger automation for stage change
               try {
@@ -1543,9 +1543,9 @@ export default function ClientsPage() {
               toast.error('שגיאה בעדכון שלב הלקוח');
             }
           }}>
-            <div className="h-[calc(100vh-380px)] overflow-x-auto">
-              <div className="flex gap-4 min-w-max pb-4">
-                {STAGE_OPTIONS.map((stageOption) => {
+           <div className="h-[calc(100vh-380px)] overflow-x-auto">
+             <div className="flex gap-4 min-w-max pb-4">
+               {stageOptions.map((stageOption) => {
                   const stageClients = filteredAndSortedClients.filter(c => c.stage === stageOption.value);
                   const totalValue = stageClients.reduce((sum, c) => {
                     if (!c.budget_range) return sum;
