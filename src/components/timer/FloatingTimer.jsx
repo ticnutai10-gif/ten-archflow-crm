@@ -12,12 +12,13 @@ import { useAccessControl } from "@/components/access/AccessValidator";
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
 
-const STAGE_OPTIONS = [
-  { value: 'ברור_תכן', label: 'ברור תכן', color: '#3b82f6' },
-  { value: 'תיק_מידע', label: 'תיק מידע', color: '#8b5cf6' },
-  { value: 'היתרים', label: 'היתרים', color: '#f59e0b' },
-  { value: 'ביצוע', label: 'ביצוע', color: '#10b981' },
-  { value: 'סיום', label: 'סיום', color: '#6b7280' }
+const DEFAULT_STAGE_OPTIONS = [
+  { value: 'ללא', label: 'ללא', color: '#cbd5e1', glow: 'rgba(203, 213, 225, 0.4)' },
+  { value: 'ברור_תכן', label: 'ברור תכן', color: '#3b82f6', glow: 'rgba(59, 130, 246, 0.4)' },
+  { value: 'תיק_מידע', label: 'תיק מידע', color: '#8b5cf6', glow: 'rgba(139, 92, 246, 0.4)' },
+  { value: 'היתרים', label: 'היתרים', color: '#f59e0b', glow: 'rgba(245, 158, 11, 0.4)' },
+  { value: 'ביצוע', label: 'ביצוע', color: '#10b981', glow: 'rgba(16, 185, 129, 0.4)' },
+  { value: 'סיום', label: 'סיום', color: '#6b7280', glow: 'rgba(107, 114, 128, 0.4)' }
 ];
 
 // פונקציה לבדוק אם מספר טלפון תקין
@@ -259,6 +260,8 @@ let clientsCacheTime = 0;
 const CACHE_DURATION = 5 * 60 * 1000;
 
 export default function FloatingTimer() {
+  console.log('⏱️⏱️⏱️ [TIMER] Component mounting/rendering');
+  
   const [prefs, setPrefs] = React.useState(readPrefs());
   const [clients, setClients] = React.useState([]);
   const [query, setQuery] = React.useState("");
@@ -267,6 +270,7 @@ export default function FloatingTimer() {
   const [isDragging, setIsDragging] = React.useState(false);
   const [dragStart, setDragStart] = React.useState({ x: 0, y: 0 });
   const [isCtrlPressed, setIsCtrlPressed] = React.useState(false);
+  const [stageOptions, setStageOptions] = React.useState(DEFAULT_STAGE_OPTIONS);
 
   const [detailsOpen, setDetailsOpen] = React.useState(false);
   const [manualH, setManualH] = React.useState("00");
@@ -378,18 +382,78 @@ export default function FloatingTimer() {
     return () => window.removeEventListener("keydown", onKey);
   }, [toggleDebug]);
 
+  // Load stage options from UserPreferences
+  useEffect(() => {
+    const loadStageOptions = async () => {
+      console.log('⏱️⏱️⏱️ [TIMER] Starting to load stage options...');
+      console.log('⏱️⏱️⏱️ [TIMER] DEFAULT_STAGE_OPTIONS:', JSON.stringify(DEFAULT_STAGE_OPTIONS, null, 2));
+      
+      try {
+        const user = await base44.auth.me();
+        console.log('⏱️⏱️⏱️ [TIMER] User loaded:', user?.email);
+        
+        const userPrefs = await base44.entities.UserPreferences.filter({ user_email: user.email });
+        console.log('⏱️⏱️⏱️ [TIMER] UserPreferences found:', userPrefs.length);
+        
+        if (userPrefs.length > 0) {
+          console.log('⏱️⏱️⏱️ [TIMER] UserPrefs[0].spreadsheet_columns:', JSON.stringify(userPrefs[0].spreadsheet_columns, null, 2));
+          console.log('⏱️⏱️⏱️ [TIMER] UserPrefs stageOptions:', JSON.stringify(userPrefs[0].spreadsheet_columns?.clients?.stageOptions, null, 2));
+        }
+        
+        if (userPrefs.length > 0 && userPrefs[0].spreadsheet_columns?.clients?.stageOptions) {
+          let loadedOptions = userPrefs[0].spreadsheet_columns.clients.stageOptions;
+          console.log('⏱️⏱️⏱️ [TIMER] Loaded options BEFORE ensuring ללא:', JSON.stringify(loadedOptions, null, 2));
+          
+          // Always ensure "ללא" option exists at the beginning
+          const hasLelo = loadedOptions.some(opt => opt.value === 'ללא');
+          console.log('⏱️⏱️⏱️ [TIMER] Has ללא option?', hasLelo);
+          
+          if (!hasLelo) {
+            console.log('⏱️⏱️⏱️ [TIMER] Adding ללא option to the beginning');
+            loadedOptions = [
+              { value: 'ללא', label: 'ללא', color: '#cbd5e1', glow: 'rgba(203, 213, 225, 0.4)' },
+              ...loadedOptions
+            ];
+          }
+          
+          console.log('⏱️⏱️⏱️ [TIMER] Final options to set:', JSON.stringify(loadedOptions, null, 2));
+          setStageOptions(loadedOptions);
+        } else {
+          console.log('⏱️⏱️⏱️ [TIMER] No user prefs found, using DEFAULT_STAGE_OPTIONS');
+          setStageOptions(DEFAULT_STAGE_OPTIONS);
+        }
+      } catch (e) {
+        console.warn('⏱️⏱️⏱️ [TIMER] Failed to load stage options, using defaults:', e);
+        setStageOptions(DEFAULT_STAGE_OPTIONS);
+      }
+    };
+    
+    loadStageOptions();
+    
+    // Listen for stage options updates
+    const handleStageOptionsUpdate = () => {
+      console.log('⏱️⏱️⏱️ [TIMER] Received stage:options:updated event, reloading...');
+      loadStageOptions();
+    };
+    
+    window.addEventListener('stage:options:updated', handleStageOptionsUpdate);
+    return () => {
+      window.removeEventListener('stage:options:updated', handleStageOptionsUpdate);
+    };
+  }, []);
+
   const loadData = async (forceRefresh = false) => {
     try {
-      console.log('⏱️ [TIMER] Loading clients...');
+      console.log('⏱️⏱️⏱️ [TIMER] Loading clients...');
 
       const now = Date.now();
       if (!forceRefresh && clientsCache && now - clientsCacheTime < CACHE_DURATION) {
-        console.log('✅ [TIMER] Using cached clients:', clientsCache.length);
+        console.log('⏱️⏱️⏱️ [TIMER] Using cached clients:', clientsCache.length);
         setClients(clientsCache);
         return;
       }
 
-      console.log('🔄 [TIMER] Fetching from server...');
+      console.log('⏱️⏱️⏱️ [TIMER] Fetching from server...');
       const allowedClients = await getAllowedClientsForTimer();
 
        // ✅ הגנה על תוצאות
@@ -1000,13 +1064,28 @@ ${context}
 
                         filtered.map((c) => {
                           const isRecent = !query && (prefs.recentClients || []).some((r) => r.id === c.id);
-                          const currentStage = c.stage ? STAGE_OPTIONS.find(s => s.value === c.stage) : null;
+                          
+                          console.log('⏱️⏱️⏱️ [TIMER] Rendering client in list:', {
+                            id: c.id,
+                            name: c.name,
+                            stage: c.stage,
+                            stageOptionsLength: stageOptions.length,
+                            stageOptions: JSON.stringify(stageOptions, null, 2)
+                          });
+                          
+                          const currentStage = c.stage ? stageOptions.find(s => s.value === c.stage) : null;
+                          
+                          console.log('⏱️⏱️⏱️ [TIMER] Found stage for client:', {
+                            clientStage: c.stage,
+                            foundStage: currentStage ? { value: currentStage.value, label: currentStage.label, color: currentStage.color } : null
+                          });
                           
                           return (
                             <button
                               key={c.id}
                               className={`w-full text-right px-4 py-3 hover:bg-blue-50 transition flex flex-col border-b border-slate-100 last:border-b-0 ${isRecent ? 'bg-blue-50/50' : ''}`}
                               onClick={() => {
+                                console.log('⏱️⏱️⏱️ [TIMER] Client clicked:', c.name);
                                 savePrefs({ selectedClientId: c.id, selectedClientName: c.name || "" });
                                 saveRecentClient(c.id, c.name || "");
                                 if (!state.running) {
@@ -1017,12 +1096,19 @@ ${context}
 
                                   <div className="flex items-center justify-between w-full">
                                     <div className="flex items-center gap-2">
-                                      {currentStage && (
-                                        <Circle 
-                                          className="w-3 h-3 flex-shrink-0 fill-current"
-                                          style={{ color: currentStage.color }}
-                                          title={currentStage.label}
-                                        />
+                                      {currentStage ? (
+                                        <>
+                                          <Circle 
+                                            className="w-3 h-3 flex-shrink-0 fill-current"
+                                            style={{ color: currentStage.color }}
+                                            title={currentStage.label}
+                                          />
+                                          {console.log('⏱️⏱️⏱️ [TIMER] Rendered stage icon with color:', currentStage.color)}
+                                        </>
+                                      ) : (
+                                        <>
+                                          {console.log('⏱️⏱️⏱️ [TIMER] No stage icon - currentStage is null')}
+                                        </>
                                       )}
                                       <span className="text-sm text-slate-900 truncate font-semibold">{c.name || "ללא שם"}</span>
                                     </div>
