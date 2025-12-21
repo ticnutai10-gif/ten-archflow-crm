@@ -21,11 +21,13 @@ Deno.serve(async (req) => {
         
         console.log(`📊 Total clients found: ${allClients.length}`);
 
-        // Group by name (normalized)
+        // Group by name_clean (normalized) - this is better for matching
         const clientsByName = new Map();
         
         for (const client of allClients) {
-            const name = (client.name || '').trim().toLowerCase();
+            // Use name_clean if available, otherwise normalize name
+            const rawName = client.name_clean || client.name || '';
+            const name = rawName.trim().toLowerCase().replace(/\s+/g, ' ');
             if (!name) continue;
             
             if (!clientsByName.has(name)) {
@@ -45,45 +47,80 @@ Deno.serve(async (req) => {
                 
                 // Keep the first one (oldest), delete the rest
                 const kept = clients[0];
-                keptClients.push({ name: kept.name, id: kept.id, created_date: kept.created_date });
+                keptClients.push({ name: kept.name, id: kept.id, created_date: kept.created_date, stage: kept.stage });
                 
                 for (let i = 1; i < clients.length; i++) {
                     duplicatesToDelete.push({
                         id: clients[i].id,
                         name: clients[i].name,
-                        created_date: clients[i].created_date
+                        created_date: clients[i].created_date,
+                        stage: clients[i].stage
                     });
                 }
             }
         }
 
         console.log(`🔍 Found ${duplicatesToDelete.length} duplicate clients to delete`);
-        console.log('📋 Duplicates:', duplicatesToDelete.map(d => d.name));
+        console.log('📋 Duplicates:', JSON.stringify(duplicatesToDelete.map(d => ({ name: d.name, id: d.id, stage: d.stage }))));
 
-        // Delete duplicates
+        // Delete duplicates - try multiple methods
         let deleted = 0;
         const errors = [];
+        const deletedList = [];
         
         for (const dup of duplicatesToDelete) {
             try {
+                console.log(`🗑️ Attempting to delete: ${dup.name} (${dup.id})`);
+                
+                // Try direct delete
                 await base44.asServiceRole.entities.Client.delete(dup.id);
                 deleted++;
+                deletedList.push({ name: dup.name, id: dup.id, stage: dup.stage });
                 console.log(`✅ Deleted: ${dup.name} (${dup.id})`);
             } catch (error) {
-                console.error(`❌ Failed to delete ${dup.name}:`, error.message);
-                errors.push({ name: dup.name, id: dup.id, error: error.message });
+                console.error(`❌ Failed to delete ${dup.name} (${dup.id}):`, error.message);
+                errors.push({ name: dup.name, id: dup.id, stage: dup.stage, error: error.message });
+            }
+        }
+
+        // Verify deletion by re-fetching
+        const remainingClients = await base44.asServiceRole.entities.Client.filter({}, 'created_date', 1000);
+        const stillDuplicates = [];
+        
+        const verifyMap = new Map();
+        for (const client of remainingClients) {
+            const rawName = client.name_clean || client.name || '';
+            const name = rawName.trim().toLowerCase().replace(/\s+/g, ' ');
+            if (!name) continue;
+            
+            if (!verifyMap.has(name)) {
+                verifyMap.set(name, []);
+            }
+            verifyMap.get(name).push(client);
+        }
+        
+        for (const [name, clients] of verifyMap) {
+            if (clients.length > 1) {
+                stillDuplicates.push({
+                    name: clients[0].name,
+                    count: clients.length,
+                    ids: clients.map(c => c.id)
+                });
             }
         }
 
         return Response.json({
             success: true,
-            totalClients: allClients.length,
+            totalClientsBefore: allClients.length,
+            totalClientsAfter: remainingClients.length,
             uniqueNames: clientsByName.size,
             duplicatesFound: duplicatesToDelete.length,
             deleted,
+            deletedList: deletedList.slice(0, 30),
             errors: errors.length > 0 ? errors : undefined,
-            keptClients: keptClients.slice(0, 20), // Show first 20 kept
-            deletedClients: duplicatesToDelete.slice(0, 20) // Show first 20 deleted
+            keptClients: keptClients.slice(0, 30),
+            stillDuplicates: stillDuplicates.length > 0 ? stillDuplicates : undefined,
+            verificationPassed: stillDuplicates.length === 0
         });
 
     } catch (error) {
