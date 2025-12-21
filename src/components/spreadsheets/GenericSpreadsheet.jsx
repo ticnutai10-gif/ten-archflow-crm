@@ -1985,35 +1985,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                         setTimeout(() => saveToBackend(), 50);
                       }} />
                     </div>
-                    {showSubHeaders && (
-                      <div className="space-y-2">
-                        <span className="text-sm font-medium text-slate-700">מיקום כותרת משנה:</span>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant={subHeaderPosition === 'above' ? 'default' : 'outline'}
-                            className="flex-1"
-                            onClick={() => {
-                              setSubHeaderPosition('above');
-                              setTimeout(() => saveToBackend(), 50);
-                            }}
-                          >
-                            מעל
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant={subHeaderPosition === 'below' ? 'default' : 'outline'}
-                            className="flex-1"
-                            onClick={() => {
-                              setSubHeaderPosition('below');
-                              setTimeout(() => saveToBackend(), 50);
-                            }}
-                          >
-                            מתחת
-                          </Button>
-                        </div>
-                      </div>
-                    )}
                     <Separator />
                     <div className="text-xs text-slate-600 bg-blue-50 p-2 rounded">
                       💡 לחץ על כותרת עמודה כדי להוסיף כותרת משנה
@@ -2022,7 +1993,8 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                       <div className="space-y-1 max-h-48 overflow-y-auto">
                         {visibleColumns.map(col => {
                           const mergedHeader = getHeaderMergeInfo(col.key);
-                          const subHeader = subHeaders[col.key];
+                          const subHeaderTitle = getSubHeaderTitle(col.key);
+                          const subHeaderPos = getSubHeaderPosition(col.key);
 
                           if (mergedHeader && !mergedHeader.isMaster) {
                             return null;
@@ -2064,7 +2036,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                 </div>
                               </div>
                             );
-                          } else if (subHeader) {
+                          } else if (subHeaderTitle) {
                             return (
                               <div key={col.key} className="flex items-center justify-between p-2 bg-slate-50 rounded text-xs">
                                 <div className="flex items-center gap-2 flex-1">
@@ -2087,10 +2059,26 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                   />
                                   <div>
                                     <div className="font-semibold">{col.title}</div>
-                                    <div className="text-slate-500">{subHeader}</div>
+                                    <div className="text-slate-500">{subHeaderTitle}</div>
                                   </div>
                                 </div>
-                                <div className="flex gap-1">
+                                <div className="flex gap-1 items-center">
+                                  <div className="flex gap-0.5 bg-white rounded border border-slate-200">
+                                    <button
+                                      className={`px-1.5 py-0.5 text-[10px] rounded-r ${subHeaderPos === 'above' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+                                      onClick={() => changeSubHeaderPosition(col.key, 'above')}
+                                      title="מעל הכותרת"
+                                    >
+                                      מעל
+                                    </button>
+                                    <button
+                                      className={`px-1.5 py-0.5 text-[10px] rounded-l ${subHeaderPos === 'below' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+                                      onClick={() => changeSubHeaderPosition(col.key, 'below')}
+                                      title="מתחת לכותרת"
+                                    >
+                                      מתחת
+                                    </button>
+                                  </div>
                                   <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => addOrEditSubHeader(col.key)}>
                                     <Edit2 className="w-3 h-3" />
                                   </Button>
