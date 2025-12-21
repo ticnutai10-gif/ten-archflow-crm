@@ -323,7 +323,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       setCellNotes(initialNotes);
       setSubHeaders(spreadsheet.sub_headers || {});
       setShowSubHeaders(spreadsheet.show_sub_headers || false);
-      setSubHeaderPosition(spreadsheet.sub_header_position || 'above');
       setHeaderStyles(spreadsheet.header_styles || {});
       setRowHeights(spreadsheet.row_heights || {});
       setValidationRules(spreadsheet.validation_rules || []);
