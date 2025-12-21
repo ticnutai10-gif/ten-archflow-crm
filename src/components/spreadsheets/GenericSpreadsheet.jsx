@@ -1642,7 +1642,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     setNoteText("");
     
     setTimeout(() => {
-      saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current, newNotes);
+      saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current, newNotes, subHeadersRef.current, mergedHeadersRef.current, headerStylesRef.current);
       saveToBackend();
     }, 50);
   };
