@@ -1266,7 +1266,10 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     delete newHeaderStyles[mergeKeyToDelete];
     setHeaderStyles(newHeaderStyles);
 
-    setTimeout(() => saveToBackend(), 50);
+    setTimeout(() => {
+      saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current, cellNotesRef.current);
+      saveToBackend();
+    }, 50);
     toast.success('✓ מיזוג כותרות בוטל');
   };
 
