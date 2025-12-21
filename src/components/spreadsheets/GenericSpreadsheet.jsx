@@ -26,6 +26,7 @@ import StageOptionsManager from "./StageOptionsManager";
 
 // Default stage options with colors - MUST BE OUTSIDE COMPONENT
 const DEFAULT_STAGE_OPTIONS = [
+  { value: 'ללא', label: 'ללא', color: '#cbd5e1', glow: 'rgba(203, 213, 225, 0.4)' },
   { value: 'ברור_תכן', label: 'ברור תכן', color: '#3b82f6', glow: 'rgba(59, 130, 246, 0.4)' },
   { value: 'תיק_מידע', label: 'תיק מידע', color: '#8b5cf6', glow: 'rgba(139, 92, 246, 0.4)' },
   { value: 'היתרים', label: 'היתרים', color: '#f59e0b', glow: 'rgba(245, 158, 11, 0.4)' },
