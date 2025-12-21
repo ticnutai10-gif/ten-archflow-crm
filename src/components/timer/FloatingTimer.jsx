@@ -1568,7 +1568,7 @@ ${context}
               <div>
                 <h3 className="text-sm font-semibold mb-3">מיקום הטיימר</h3>
                 <div className="text-xs text-blue-800 bg-blue-50 p-3 rounded border border-blue-200">
-                  <p className="font-semibold mb-1">כדי לשנות מיקום: לחץ והחזק את מקש <kbd>Ctrl</kbd> במקלדת,</p>
+                  <p className="font-semibold mb-1">כדי לשנות מיקום: לחץ והחזק <kbd>Ctrl+Shift</kbd> במקלדת,</p>
                   <p>ולאחר מכן גרור את אייקון הטיימר למיקום הרצוי עם העכבר.</p>
                   <p className="mt-1 text-blue-600">המיקום ישמר אוטומטית לעמוד הנוכחי: <span className="font-bold">{currentPage}</span></p>
                 </div>
