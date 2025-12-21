@@ -2575,12 +2575,14 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                           // Check if this column is first or last in a merged header
                           let isFirstInMerge = false;
                           let isLastInMerge = false;
+                          let isPartOfMerge = false;
                           Object.values(mergedHeaders).forEach(merge => {
                             if (merge.columns && merge.columns.length > 0) {
                               const firstCol = merge.columns[0];
                               const lastCol = merge.columns[merge.columns.length - 1];
                               if (col.key === firstCol) isFirstInMerge = true;
                               if (col.key === lastCol) isLastInMerge = true;
+                              if (merge.columns.includes(col.key)) isPartOfMerge = true;
                             }
                           });
                           
@@ -2602,6 +2604,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                   borderStyle: borderStyle.style,
                                   borderColor: palette.border,
                                   borderRadius: isSeparateBorders ? tableBorderRadius : '0',
+                                  borderTopWidth: (isPartOfMerge && showSubHeaders && Object.keys(mergedHeaders).length > 0 && !isSeparateBorders) ? '0' : undefined,
                                   borderRightWidth: isFirstInMerge && !isSeparateBorders ? '3px' : undefined,
                                   borderRightColor: isFirstInMerge ? palette.border : undefined,
                                   borderLeftWidth: isLastInMerge && !isSeparateBorders ? '3px' : undefined,
