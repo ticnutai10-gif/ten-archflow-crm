@@ -1123,22 +1123,34 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     
     const cellsArray = Array.from(selectedCells);
     
+    // Parse cell keys to get row and column info
     const cellsInfo = cellsArray.map(cellKey => {
-      const match = cellKey.match(/^(.+?)_(col.*)$/);
-      if (!match) return null;
-      const rowId = match[1];
-      const colKey = match[2];
+      const lastColIndex = cellKey.lastIndexOf('_col');
+      if (lastColIndex === -1) return null;
+      const rowId = cellKey.substring(0, lastColIndex);
+      const colKey = cellKey.substring(lastColIndex + 1);
       const rowIndex = filteredAndSortedData.findIndex(r => r.id === rowId);
       const colIndex = visibleColumns.findIndex(c => c.key === colKey);
       return { cellKey, rowId, colKey, rowIndex, colIndex };
     }).filter(Boolean);
     
-    if (cellsInfo.length === 0) return;
+    if (cellsInfo.length === 0) {
+      toast.error('לא ניתן למזג תאים אלה');
+      return;
+    }
     
+    // Calculate merge area
     const minRow = Math.min(...cellsInfo.map(c => c.rowIndex));
     const maxRow = Math.max(...cellsInfo.map(c => c.rowIndex));
     const minCol = Math.min(...cellsInfo.map(c => c.colIndex));
     const maxCol = Math.max(...cellsInfo.map(c => c.colIndex));
+    
+    // Verify it's a rectangular selection
+    const expectedCells = (maxRow - minRow + 1) * (maxCol - minCol + 1);
+    if (cellsInfo.length !== expectedCells) {
+      toast.error('יש לבחור אזור רצף (מלבן) של תאים');
+      return;
+    }
     
     const rowspan = maxRow - minRow + 1;
     const colspan = maxCol - minCol + 1;
@@ -1156,9 +1168,13 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       }
     }));
     
-    toast.success(`✓ ${cellsArray.length} תאים אוחדו (${rowspan}×${colspan})`);
+    toast.success(`✓ ${cellsArray.length} תאים אוחדו (${rowspan} שורות × ${colspan} עמודות)`);
     setSelectedCells(new Set());
-    setTimeout(() => saveToBackend(), 50);
+    
+    setTimeout(() => {
+      saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current, cellNotesRef.current, subHeadersRef.current, mergedHeadersRef.current, headerStylesRef.current);
+      saveToBackend();
+    }, 50);
   };
 
   const unmergeCells = (cellKey) => {
@@ -1171,13 +1187,18 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       return;
     }
 
+    const mergeData = mergedCells[mergeKeyToDelete];
     const newMerged = { ...mergedCells };
     delete newMerged[mergeKeyToDelete];
     setMergedCells(newMerged);
     setCellContextMenu(null);
     
-    setTimeout(() => saveToBackend(), 50);
-    toast.success('✓ מיזוג בוטל');
+    setTimeout(() => {
+      saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current, cellNotesRef.current, subHeadersRef.current, mergedHeadersRef.current, headerStylesRef.current);
+      saveToBackend();
+    }, 50);
+    
+    toast.success(`✓ מיזוג בוטל (${mergeData.cells?.length || 0} תאים שוחררו)`);
   };
 
   const getMergeInfo = (cellKey) => {
@@ -1836,12 +1857,12 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     if (!col) return;
 
     const delimiter = prompt(`פיצול עמודה "${col.title}"\n\nהזן תו מפריד (לדוגמה: , או ; או רווח):`, ',');
-    if (!delimiter) return;
+    if (!delimiter && delimiter !== '') return;
 
-    const numParts = prompt('לכמה חלקים לפצל? (מקסימום 5)', '2');
+    const numParts = prompt('לכמה חלקים לפצל? (מקסימום 10)', '2');
     const parts = parseInt(numParts);
-    if (isNaN(parts) || parts < 2 || parts > 5) {
-      toast.error('מספר חלקים לא תקין (2-5)');
+    if (isNaN(parts) || parts < 2 || parts > 10) {
+      toast.error('מספר חלקים לא תקין (2-10)');
       return;
     }
 
@@ -1885,7 +1906,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       saveToBackend();
     }, 50);
 
-    toast.success(`✓ עמודה פוצלה ל-${parts} חלקים`);
+    toast.success(`✓ עמודה פוצלה ל-${parts} חלקים לפי "${delimiter}"`);
   };
 
   const applyHeaderColor = (columnKey, style) => {
@@ -2305,7 +2326,45 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                       <ColorPicker onApply={applyStyleToSelection} />
                     </PopoverContent>
                   </Popover>
-                  {selectedCells.size >= 2 && <Button size="sm" variant="outline" onClick={mergeCells} className="gap-2 hover:bg-green-50"><Grid className="w-4 h-4 text-green-600" />מזג תאים</Button>}
+                  {selectedCells.size >= 2 && (
+                    <>
+                      <Button size="sm" variant="outline" onClick={mergeCells} className="gap-2 hover:bg-green-50">
+                        <Grid className="w-4 h-4 text-green-600" />
+                        מזג תאים
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => {
+                        // Unmerge all selected cells
+                        const cellsArray = Array.from(selectedCells);
+                        let unmergedCount = 0;
+                        
+                        cellsArray.forEach(cellKey => {
+                          const mergeKeyToDelete = Object.keys(mergedCells).find(key => 
+                            mergedCells[key].cells?.includes(cellKey)
+                          );
+                          if (mergeKeyToDelete) {
+                            const newMerged = { ...mergedCells };
+                            delete newMerged[mergeKeyToDelete];
+                            setMergedCells(newMerged);
+                            unmergedCount++;
+                          }
+                        });
+                        
+                        if (unmergedCount > 0) {
+                          setTimeout(() => {
+                            saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current, cellNotesRef.current, subHeadersRef.current, mergedHeadersRef.current, headerStylesRef.current);
+                            saveToBackend();
+                          }, 50);
+                          toast.success(`✓ ${unmergedCount} מיזוגים בוטלו`);
+                        } else {
+                          toast.error('אף תא נבחר אינו חלק ממיזוג');
+                        }
+                        setSelectedCells(new Set());
+                      }} className="gap-2 hover:bg-orange-50">
+                        <Scissors className="w-4 h-4 text-orange-600" />
+                        בטל מיזוג
+                      </Button>
+                    </>
+                  )}
                   <Button size="sm" variant="ghost" onClick={() => setSelectedCells(new Set())} className="gap-2"><X className="w-4 h-4" /></Button>
                 </>
               )}
@@ -3126,7 +3185,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
               <Bold className="w-4 h-4 text-blue-600" />
               {cellStyles[cellContextMenu]?.fontWeight === 'bold' ? 'בטל הדגשה' : 'הדגש'}
             </Button>
-            {getMergeInfo(cellContextMenu) && (
+            {getMergeInfo(cellContextMenu) ? (
               <>
                 <Separator />
                 <Button 
@@ -3139,7 +3198,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                   בטל מיזוג תאים
                 </Button>
               </>
-            )}
+            ) : null}
             <Separator />
             <Button 
               variant="ghost" 
