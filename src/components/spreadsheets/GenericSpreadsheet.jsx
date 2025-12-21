@@ -563,8 +563,12 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       const target = e.target;
       const isTypingInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
       
+      // Use e.code for language-independent key detection (KeyZ, KeyY work regardless of keyboard layout)
+      const isZKey = e.code === 'KeyZ' || e.key.toLowerCase() === 'z' || e.key === 'ז';
+      const isYKey = e.code === 'KeyY' || e.key.toLowerCase() === 'y' || e.key === 'ט';
+      
       // Undo: Ctrl+Z (but NOT Ctrl+Shift which is for timer drag)
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) { 
+      if ((e.ctrlKey || e.metaKey) && isZKey && !e.shiftKey) { 
         console.log('🔵 [UNDO] Ctrl+Z detected!', { isTypingInput, historyIndex, historyLength: history.length });
         e.preventDefault(); 
         e.stopPropagation();
@@ -578,7 +582,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         return false;
       }
       // Redo: Ctrl+Y or Ctrl+Shift+Z
-      if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'y' || (e.key.toLowerCase() === 'z' && e.shiftKey))) { 
+      if ((e.ctrlKey || e.metaKey) && (isYKey || (isZKey && e.shiftKey))) { 
         console.log('🟢 [REDO] Ctrl+Y or Ctrl+Shift+Z detected!', { isTypingInput, historyIndex, historyLength: history.length });
         e.preventDefault(); 
         e.stopPropagation();
