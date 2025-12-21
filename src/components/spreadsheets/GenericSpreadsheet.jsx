@@ -162,7 +162,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const [cellNotes, setCellNotes] = useState({});
   const [subHeaders, setSubHeaders] = useState({});
   const [showSubHeaders, setShowSubHeaders] = useState(false);
-  const [subHeaderPosition, setSubHeaderPosition] = useState('above');
   const [headerStyles, setHeaderStyles] = useState({});
   const [popoverOpen, setPopoverOpen] = useState(null);
   const [editingColumnKey, setEditingColumnKey] = useState(null);
