@@ -1311,7 +1311,10 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       toast.success('✓ כותרת משנה הוסרה');
     }
     
-    setTimeout(() => saveToBackend(), 50);
+    setTimeout(() => {
+      saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current, cellNotesRef.current);
+      saveToBackend();
+    }, 50);
   };
 
   const changeSubHeaderPosition = (columnKey, newPosition) => {
