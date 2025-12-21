@@ -2364,12 +2364,13 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                 <Droppable droppableId="columns" direction="horizontal" type="column">
                   {(provided) => (
                     <thead style={{ position: 'sticky', top: 0, zIndex: 25 }} ref={provided.innerRef} {...provided.droppableProps}>
-                      {showSubHeaders && subHeaderPosition === 'above' && (Object.keys(mergedHeaders).length > 0 || Object.keys(subHeaders).length > 0) && (
+                      {showSubHeaders && (Object.keys(mergedHeaders).length > 0 || Object.keys(subHeaders).length > 0) && (
                         <tr>
                           <th className="p-3 w-12 sticky right-0 shadow-[2px_0_5px_rgba(0,0,0,0.1)]" style={{ zIndex: 35, backgroundColor: palette.headerBg, borderWidth: isSeparateBorders ? '0' : borderStyle.width, borderStyle: borderStyle.style, borderColor: palette.border }}></th>
                           {visibleColumns.map((col) => {
                             const headerMerge = getHeaderMergeInfo(col.key);
-                            const subHeaderTitle = subHeaders[col.key];
+                            const subHeaderTitle = getSubHeaderTitle(col.key);
+                            const subHeaderPos = getSubHeaderPosition(col.key);
                             
                             if (headerMerge && !headerMerge.isMaster) {
                               return null;
@@ -2378,7 +2379,8 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                             const headerKeyForStyle = headerMerge ? headerMerge.mergeKey : col.key;
                             const currentHeaderStyle = headerStyles[headerKeyForStyle] || {};
 
-                            if (!headerMerge && !subHeaderTitle) {
+                            // Only show sub headers with position 'above' in this row
+                            if (!headerMerge && (!subHeaderTitle || subHeaderPos !== 'above')) {
                               return <th key={`sub_empty_${col.key}`} className="text-center font-bold p-2" style={{ backgroundColor: palette.headerBg, borderWidth: isSeparateBorders ? '0' : borderStyle.width, borderStyle: borderStyle.style, borderColor: palette.border }}></th>;
                             }
                             
