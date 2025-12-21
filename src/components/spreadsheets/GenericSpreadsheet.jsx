@@ -162,6 +162,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const [cellNotes, setCellNotes] = useState({});
   const [subHeaders, setSubHeaders] = useState({});
   const [showSubHeaders, setShowSubHeaders] = useState(false);
+  const [subHeaderPosition, setSubHeaderPosition] = useState('above');
   const [headerStyles, setHeaderStyles] = useState({});
   const [popoverOpen, setPopoverOpen] = useState(null);
   const [editingColumnKey, setEditingColumnKey] = useState(null);
@@ -323,6 +324,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       setCellNotes(initialNotes);
       setSubHeaders(spreadsheet.sub_headers || {});
       setShowSubHeaders(spreadsheet.show_sub_headers || false);
+      setSubHeaderPosition(spreadsheet.sub_header_position || 'above');
       setHeaderStyles(spreadsheet.header_styles || {});
       setRowHeights(spreadsheet.row_heights || {});
       setValidationRules(spreadsheet.validation_rules || []);
@@ -431,6 +433,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         cell_notes: cellNotesRef.current,
         sub_headers: subHeadersRef.current,
         show_sub_headers: showSubHeaders,
+        sub_header_position: subHeaderPosition,
         header_styles: headerStylesRef.current,
         row_heights: rowHeightsRef.current,
         validation_rules: validationRulesRef.current,
@@ -457,7 +460,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       console.error('❌ [SAVE] Error:', error);
       toast.error('שגיאה בשמירה: ' + (error.message || 'לא ידוע'));
     }
-  }, [spreadsheet?.id, spreadsheet?.client_id, spreadsheet?.client_name, onUpdate, showSubHeaders]);
+  }, [spreadsheet?.id, spreadsheet?.client_id, spreadsheet?.client_name, onUpdate, showSubHeaders, subHeaderPosition]);
 
   const handleUndo = useCallback(() => {
     if (historyIndex <= 0) { toast.error('אין מה לבטל'); return; }
@@ -1944,6 +1947,35 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                         setTimeout(() => saveToBackend(), 50);
                       }} />
                     </div>
+                    {showSubHeaders && (
+                      <div className="space-y-2">
+                        <span className="text-sm font-medium text-slate-700">מיקום כותרת משנה:</span>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant={subHeaderPosition === 'above' ? 'default' : 'outline'}
+                            className="flex-1"
+                            onClick={() => {
+                              setSubHeaderPosition('above');
+                              setTimeout(() => saveToBackend(), 50);
+                            }}
+                          >
+                            מעל
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant={subHeaderPosition === 'below' ? 'default' : 'outline'}
+                            className="flex-1"
+                            onClick={() => {
+                              setSubHeaderPosition('below');
+                              setTimeout(() => saveToBackend(), 50);
+                            }}
+                          >
+                            מתחת
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                     <Separator />
                     <div className="text-xs text-slate-600 bg-blue-50 p-2 rounded">
                       💡 לחץ על כותרת עמודה כדי להוסיף כותרת משנה
