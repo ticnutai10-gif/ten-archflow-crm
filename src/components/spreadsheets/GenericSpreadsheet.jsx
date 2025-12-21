@@ -2443,7 +2443,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                           const isEditing = editingColumnKey === col.key;
                           const isSorted = sortColumn === col.key;
                           const isHeaderSelected = selectedHeaders.has(col.key);
-                          const hasSubHeader = subHeaders[col.key];
+                          const hasSubHeader = getSubHeaderTitle(col.key);
                           const headerStyle = headerStyles[col.key] || {};
                           return (
                             <Draggable key={col.key} draggableId={col.key} index={colIndex} type="column">
