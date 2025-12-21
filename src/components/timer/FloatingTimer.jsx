@@ -563,77 +563,38 @@ export default function FloatingTimer() {
     savePrefs({ recentClients: updated });
   }, [prefs.recentClients, savePrefs]);
 
-  // ✅ הגנה על filtered clients
+  // ✅ סינון לקוחות
   const filtered = React.useMemo(() => {
     const q = query.trim().toLowerCase();
-    
-    console.log('⏱️⏱️⏱️ [TIMER] ========== FILTERING CLIENTS ==========');
-    console.log('⏱️⏱️⏱️ [TIMER] Total clients before filter:', clients?.length);
-    
-    // ✅ בדיקה שclients הוא array
-    if (!Array.isArray(clients)) {
-      console.error('❌ [TIMER] clients is not an array!', clients);
-      return [];
-    }
-    
-    if (!clients || clients.length === 0) return [];
 
-    // 🔍 בדיקת כפילויות לפי שם
-    const nameCount = {};
-    clients.forEach(c => {
-      const name = c?.name || 'unknown';
-      nameCount[name] = (nameCount[name] || 0) + 1;
-    });
-    
-    const duplicates = Object.entries(nameCount).filter(([name, count]) => count > 1);
-    if (duplicates.length > 0) {
-      console.log('⏱️⏱️⏱️ [TIMER] ⚠️⚠️⚠️ DUPLICATE NAMES FOUND:');
-      duplicates.forEach(([name, count]) => {
-        console.log(`⏱️⏱️⏱️ [TIMER]   "${name}" appears ${count} times`);
-        // הצג את כל הרשומות עם השם הזה
-        const records = clients.filter(c => c?.name === name);
-        records.forEach((r, i) => {
-          console.log(`⏱️⏱️⏱️ [TIMER]     [${i+1}] id: ${r.id}, stage: ${r.stage}, created: ${r.created_date}`);
-        });
-      });
-    } else {
-      console.log('⏱️⏱️⏱️ [TIMER] ✅ No duplicate names found');
-    }
+    if (!Array.isArray(clients) || clients.length === 0) return [];
 
     let result = clients;
-    // Clients are already deduplicated by name_clean in loadData - no need for extra dedup here
     if (q) {
       result = clients.filter((c) =>
-        c && ( // Added safety check for 'c'
+        c && (
           (c.name || "").toLowerCase().includes(q) ||
           (c.company || "").toLowerCase().includes(q) ||
           (c.email || "").toLowerCase().includes(q)
         )
       );
-      console.log('⏱️⏱️⏱️ [TIMER] After search filter:', result.length, 'clients');
     }
 
     // מיון לפי שימוש אחרון
-    const recentIds = (prefs.recentClients || []).map((r) => r?.id).filter(Boolean); // Added ?.id and filter(Boolean)
+    const recentIds = (prefs.recentClients || []).map((r) => r?.id).filter(Boolean);
     const sorted = [...result].sort((a, b) => {
-      if (!a || !b) return 0; // Added safety check for 'a' and 'b'
-      
+      if (!a || !b) return 0;
+
       const aIndex = recentIds.indexOf(a.id);
       const bIndex = recentIds.indexOf(b.id);
 
-      // אם שניהם לא בשימוש אחרון - לפי שם
       if (aIndex === -1 && bIndex === -1) {
         return (a.name || "").localeCompare(b.name || "");
       }
-      // אם רק אחד בשימוש אחרון - הוא קודם
       if (aIndex === -1) return 1;
       if (bIndex === -1) return -1;
-      // שניהם בשימוש אחרון - לפי סדר השימוש
       return aIndex - bIndex;
     });
-
-    console.log('⏱️⏱️⏱️ [TIMER] Final filtered count:', sorted.length);
-    console.log('⏱️⏱️⏱️ [TIMER] ========== END FILTERING ==========');
 
     return sorted;
   }, [clients, query, prefs.recentClients]);
