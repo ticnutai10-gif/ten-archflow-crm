@@ -2505,10 +2505,10 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                   borderWidth: isSeparateBorders ? '0' : borderStyle.width,
                                   borderStyle: borderStyle.style,
                                   borderColor: palette.border,
-                                  borderRightWidth: isFirstInMerge && !isSeparateBorders ? '3px' : undefined,
-                                  borderRightColor: isFirstInMerge ? palette.border : undefined,
-                                  borderLeftWidth: isLastInMerge && !isSeparateBorders ? '3px' : undefined,
-                                  borderLeftColor: isLastInMerge ? palette.border : undefined
+                                  borderRightWidth: (isFirstInMerge || headerMerge) && !isSeparateBorders ? '3px' : undefined,
+                                  borderRightColor: (isFirstInMerge || headerMerge) ? palette.border : undefined,
+                                  borderLeftWidth: (isLastInMerge || headerMerge) && !isSeparateBorders ? '3px' : undefined,
+                                  borderLeftColor: (isLastInMerge || headerMerge) ? palette.border : undefined
                                 }}
                                 onClick={(e) => {
                                   e.preventDefault();
