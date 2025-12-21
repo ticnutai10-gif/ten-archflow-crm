@@ -519,27 +519,47 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
 
   useEffect(() => {
     const handleKeyDown = (e) => {
+      // DEBUG: Log all keyboard events
+      console.log('🎹 [KEYBOARD] Key pressed:', {
+        key: e.key,
+        code: e.code,
+        ctrl: e.ctrlKey,
+        meta: e.metaKey,
+        shift: e.shiftKey,
+        alt: e.altKey,
+        target: e.target.tagName,
+        defaultPrevented: e.defaultPrevented
+      });
+      
       // Skip if user is typing in an input/textarea
       const target = e.target;
       const isTypingInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
       
       // Undo: Ctrl+Z (but NOT Ctrl+Shift which is for timer drag)
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) { 
+        console.log('🔵 [UNDO] Ctrl+Z detected!', { isTypingInput, historyIndex, historyLength: history.length });
         e.preventDefault(); 
         e.stopPropagation();
         e.stopImmediatePropagation();
         if (!isTypingInput) {
+          console.log('🔵 [UNDO] Calling handleUndo...');
           handleUndo(); 
+        } else {
+          console.log('🔵 [UNDO] Skipped - user is typing in input');
         }
         return false;
       }
       // Redo: Ctrl+Y or Ctrl+Shift+Z
       if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'y' || (e.key.toLowerCase() === 'z' && e.shiftKey))) { 
+        console.log('🟢 [REDO] Ctrl+Y or Ctrl+Shift+Z detected!', { isTypingInput, historyIndex, historyLength: history.length });
         e.preventDefault(); 
         e.stopPropagation();
         e.stopImmediatePropagation();
         if (!isTypingInput) {
+          console.log('🟢 [REDO] Calling handleRedo...');
           handleRedo(); 
+        } else {
+          console.log('🟢 [REDO] Skipped - user is typing in input');
         }
         return false;
       }
