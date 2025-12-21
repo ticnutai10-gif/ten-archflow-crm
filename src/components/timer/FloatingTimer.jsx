@@ -1065,25 +1065,18 @@ ${context}
                               }}>
 
                                   <div className="flex items-center justify-between w-full">
-                                    <div className="flex items-center gap-2">
-                                      {currentStage && c.stage && c.stage !== 'ללא' ? (
-                                        <>
-                                          <Circle 
-                                            className="w-3 h-3 flex-shrink-0 fill-current"
-                                            style={{ color: currentStage.color }}
-                                            title={currentStage.label}
-                                          />
-                                          {console.log('⏱️⏱️⏱️ [TIMER] ✅ Rendered stage icon with color:', currentStage.color, 'for stage:', c.stage)}
-                                        </>
-                                      ) : (
-                                        <>
-                                          {console.log('⏱️⏱️⏱️ [TIMER] ❌ No stage icon rendered. Reason:', !c.stage ? 'No stage on client' : c.stage === 'ללא' ? 'Stage is ללא (hidden)' : 'Stage not found in options')}
-                                        </>
-                                      )}
-                                      <span className="text-sm text-slate-900 truncate font-semibold">{c.name || "ללא שם"}</span>
-                                    </div>
-                                    {isRecent && <span className="text-[10px] text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full mr-2 font-medium">אחרון</span>}
-                                  </div>
+                                        <div className="flex items-center gap-2">
+                                          {currentStage && (
+                                            <Circle 
+                                              className="w-3 h-3 flex-shrink-0 fill-current"
+                                              style={{ color: currentStage.color }}
+                                              title={currentStage.label}
+                                            />
+                                          )}
+                                          <span className="text-sm text-slate-900 truncate font-semibold">{c.name || "ללא שם"}</span>
+                                        </div>
+                                        {isRecent && <span className="text-[10px] text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full mr-2 font-medium">אחרון</span>}
+                                      </div>
                                   {(c.company || c.email || c.phone) &&
                               <span className="text-xs text-slate-500 truncate mt-1">
                                       {(c.company || c.email || c.phone || "").toString()}
