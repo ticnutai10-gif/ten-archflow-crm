@@ -2473,7 +2473,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                       <div className="flex items-center gap-2">
                                         <div {...provided.dragHandleProps} className="opacity-0 group-hover:opacity-100 cursor-grab p-1 hover:bg-blue-100 rounded transition-opacity"><GripVertical className="w-4 h-4 text-slate-400" /></div>
                                         <span>{col.title}</span>
-                                        {hasSubHeader && <Type className="w-3 h-3 text-blue-500" title={subHeaders[col.key]} />}
+                                        {hasSubHeader && <Type className="w-3 h-3 text-blue-500" title={hasSubHeader} />}
                                       </div>
                                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); handleSort(col.key); }}>{isSorted ? (sortDirection === 'asc' ? <ArrowUp className="w-4 h-4 text-blue-600" /> : <ArrowDown className="w-4 h-4 text-blue-600" />) : <ArrowUpDown className="w-4 h-4 text-slate-400" />}</Button>
