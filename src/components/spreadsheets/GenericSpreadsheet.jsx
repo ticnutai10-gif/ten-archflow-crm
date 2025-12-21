@@ -457,7 +457,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       console.error('❌ [SAVE] Error:', error);
       toast.error('שגיאה בשמירה: ' + (error.message || 'לא ידוע'));
     }
-  }, [spreadsheet?.id, spreadsheet?.client_id, spreadsheet?.client_name, onUpdate, showSubHeaders, subHeaderPosition]);
+  }, [spreadsheet?.id, spreadsheet?.client_id, spreadsheet?.client_name, onUpdate, showSubHeaders]);
 
   const handleUndo = useCallback(() => {
     if (historyIndex <= 0) { toast.error('אין מה לבטל'); return; }
