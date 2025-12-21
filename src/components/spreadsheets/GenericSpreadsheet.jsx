@@ -1255,7 +1255,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     toast.success(`✓ ${headersArray.length} כותרות אוחדו`);
     setSelectedHeaders(new Set());
     setTimeout(() => {
-      saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current, cellNotesRef.current);
+      saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current, cellNotesRef.current, subHeadersRef.current, mergedHeadersRef.current, headerStylesRef.current);
       saveToBackend();
     }, 50);
   };
@@ -1342,7 +1342,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     }
     
     setTimeout(() => {
-      saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current, cellNotesRef.current);
+      saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current, cellNotesRef.current, subHeadersRef.current, mergedHeadersRef.current, headerStylesRef.current);
       saveToBackend();
     }, 50);
   };
@@ -1439,7 +1439,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     const updatedRows = rowsData.map(r => r.id === rowId ? { ...r, [columnKey]: nextValue } : r);
     setRowsData(updatedRows);
     setTimeout(() => {
-      saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current, cellNotesRef.current);
+      saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current, cellNotesRef.current, subHeadersRef.current, mergedHeadersRef.current, headerStylesRef.current);
       saveToBackend();
     }, 50);
   };
