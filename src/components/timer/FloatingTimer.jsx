@@ -1047,58 +1047,11 @@ ${context}
                             </div> :
 
                         filtered.map((c) => {
-                          const isRecent = !query && (prefs.recentClients || []).some((r) => r.id === c.id);
-                          
-                          console.log('⏱️⏱️⏱️ [TIMER] ========== CLIENT RENDER START ==========');
-                          console.log('⏱️⏱️⏱️ [TIMER] Client details:', {
-                            id: c.id,
-                            name: c.name,
-                            stage: c.stage,
-                            allClientFields: Object.keys(c)
-                          });
-                          console.log('⏱️⏱️⏱️ [TIMER] Current stageOptions array length:', stageOptions.length);
-                          console.log('⏱️⏱️⏱️ [TIMER] Full stageOptions:', JSON.stringify(stageOptions, null, 2));
-                          
-                          // Check if client has a stage
-                          if (!c.stage) {
-                            console.log('⏱️⏱️⏱️ [TIMER] ❌ Client has NO stage field');
-                          } else {
-                            console.log('⏱️⏱️⏱️ [TIMER] ✅ Client HAS stage:', c.stage);
-                          }
-                          
-                          // Try to find the stage
-                          const currentStage = c.stage ? stageOptions.find(s => s.value === c.stage) : null;
-                          
-                          console.log('⏱️⏱️⏱️ [TIMER] Stage search result:', {
-                            searchingFor: c.stage,
-                            foundStage: currentStage,
-                            foundStageDetails: currentStage ? {
-                              value: currentStage.value,
-                              label: currentStage.label,
-                              color: currentStage.color,
-                              glow: currentStage.glow
-                            } : 'NULL - NOT FOUND'
-                          });
-                          
-                          // Check if value matches
-                          if (c.stage && !currentStage) {
-                            console.log('⏱️⏱️⏱️ [TIMER] ⚠️⚠️⚠️ STAGE NOT FOUND IN OPTIONS!');
-                            console.log('⏱️⏱️⏱️ [TIMER] Looking for:', c.stage);
-                            console.log('⏱️⏱️⏱️ [TIMER] Available values:', stageOptions.map(s => s.value));
-                            
-                            // Try exact match
-                            const exactMatch = stageOptions.find(s => s.value === c.stage);
-                            console.log('⏱️⏱️⏱️ [TIMER] Exact match attempt:', exactMatch);
-                            
-                            // Try case insensitive
-                            const caseInsensitive = stageOptions.find(s => s.value?.toLowerCase() === c.stage?.toLowerCase());
-                            console.log('⏱️⏱️⏱️ [TIMER] Case insensitive match:', caseInsensitive);
-                          }
-                          
-                          console.log('⏱️⏱️⏱️ [TIMER] ========== CLIENT RENDER END ==========');
-                          
-                          return (
-                            <button
+                            const isRecent = !query && (prefs.recentClients || []).some((r) => r.id === c.id);
+                            const currentStage = c.stage && c.stage !== 'ללא' ? stageOptions.find(s => s.value === c.stage) : null;
+
+                            return (
+                              <button
                               key={c.id}
                               className={`w-full text-right px-4 py-3 hover:bg-blue-50 transition flex flex-col border-b border-slate-100 last:border-b-0 ${isRecent ? 'bg-blue-50/50' : ''}`}
                               onClick={() => {
