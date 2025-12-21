@@ -507,6 +507,9 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     setRowsData(prevState.rows);
     setCellStyles(prevState.styles);
     setCellNotes(prevState.notes || {});
+    setSubHeaders(prevState.subHeaders || {});
+    setMergedHeaders(prevState.mergedHeaders || {});
+    setHeaderStyles(prevState.headerStyles || {});
     setHistoryIndex(prev => prev - 1);
     setTimeout(() => {
       saveToBackend();
