@@ -460,7 +460,13 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   }, [spreadsheet?.id, spreadsheet?.client_id, spreadsheet?.client_name, onUpdate, showSubHeaders]);
 
   const handleUndo = useCallback(() => {
-    if (historyIndex <= 0) { toast.error('אין מה לבטל'); return; }
+    console.log('⏪ [handleUndo] Called!', { historyIndex, historyLength: history.length });
+    if (historyIndex <= 0) { 
+      console.log('⏪ [handleUndo] Nothing to undo - historyIndex is 0');
+      toast.error('אין מה לבטל'); 
+      return; 
+    }
+    console.log('⏪ [handleUndo] Undoing to state:', historyIndex - 1);
     setIsUndoRedoAction(true);
     const prevState = history[historyIndex - 1];
     setColumns(prevState.columns);
@@ -476,7 +482,13 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   }, [history, historyIndex, saveToBackend]);
 
   const handleRedo = useCallback(() => {
-    if (historyIndex >= history.length - 1) { toast.error('אין מה לשחזר'); return; }
+    console.log('⏩ [handleRedo] Called!', { historyIndex, historyLength: history.length });
+    if (historyIndex >= history.length - 1) { 
+      console.log('⏩ [handleRedo] Nothing to redo - at end of history');
+      toast.error('אין מה לשחזר'); 
+      return; 
+    }
+    console.log('⏩ [handleRedo] Redoing to state:', historyIndex + 1);
     setIsUndoRedoAction(true);
     const nextState = history[historyIndex + 1];
     setColumns(nextState.columns);
