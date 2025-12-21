@@ -1230,7 +1230,10 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     setShowSubHeaders(true);
     toast.success(`✓ ${headersArray.length} כותרות אוחדו`);
     setSelectedHeaders(new Set());
-    setTimeout(() => saveToBackend(), 50);
+    setTimeout(() => {
+      saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current, cellNotesRef.current);
+      saveToBackend();
+    }, 50);
   };
 
   const unmergeHeaders = (columnKey) => {
