@@ -532,6 +532,9 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     setRowsData(nextState.rows);
     setCellStyles(nextState.styles);
     setCellNotes(nextState.notes || {});
+    setSubHeaders(nextState.subHeaders || {});
+    setMergedHeaders(nextState.mergedHeaders || {});
+    setHeaderStyles(nextState.headerStyles || {});
     setHistoryIndex(prev => prev + 1);
     setTimeout(() => {
       saveToBackend();
