@@ -860,7 +860,7 @@ ${context}
 
       {isCtrlPressed &&
       <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg whitespace-nowrap text-sm font-semibold animate-pulse">
-          ✋ גרור אותי עם העכבר!
+          ✋ גרור אותי עם העכבר! (Ctrl+Shift+לחיצה)
         </div>
       }
       
