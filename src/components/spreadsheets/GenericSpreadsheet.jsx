@@ -697,7 +697,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       reorderedColumns.splice(result.destination.index, 0, movedColumn);
       setColumns(reorderedColumns);
       setTimeout(() => {
-        saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current, cellNotesRef.current);
+        saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current, cellNotesRef.current, subHeadersRef.current, mergedHeadersRef.current, headerStylesRef.current);
         saveToBackend();
       }, 50);
       toast.success('✓ סדר העמודות עודכן');
