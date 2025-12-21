@@ -333,17 +333,21 @@ export default function ClientDetails({ client, onBack, onEdit }) {
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      {stageOptions.map(stage => (
-                        <SelectItem key={stage.value} value={stage.value}>
-                          <div className="flex items-center gap-2">
-                            <Circle 
-                              className="w-3 h-3 flex-shrink-0 fill-current"
-                              style={{ color: stage.color }}
-                            />
-                            <span>{stage.label}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
+                      {console.log('🔍 [STAGE DEBUG] Rendering SelectContent with stageOptions:', stageOptions)}
+                      {stageOptions.map((stage, idx) => {
+                        console.log(`🔍 [STAGE DEBUG] Rendering option ${idx}:`, stage.value, stage.label);
+                        return (
+                          <SelectItem key={stage.value} value={stage.value}>
+                            <div className="flex items-center gap-2">
+                              <Circle 
+                                className="w-3 h-3 flex-shrink-0 fill-current"
+                                style={{ color: stage.color }}
+                              />
+                              <span>{stage.label}</span>
+                            </div>
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                   
