@@ -1203,14 +1203,24 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     return null;
   };
 
-  const addOrEditSubHeader = (columnKey) => {
-    const currentSubHeader = subHeaders[columnKey] || '';
-    const newTitle = prompt('כותרת משנה:', currentSubHeader);
+  const addOrEditSubHeader = (columnKey, position = null) => {
+    // Get current sub header data
+    const currentData = subHeaders[columnKey];
+    const currentTitle = typeof currentData === 'object' ? currentData.title : (currentData || '');
+    const currentPosition = typeof currentData === 'object' ? currentData.position : 'above';
+    
+    const newTitle = prompt('כותרת משנה:', currentTitle);
     
     if (newTitle === null) return;
     
     if (newTitle.trim()) {
-      setSubHeaders(prev => ({ ...prev, [columnKey]: newTitle.trim() }));
+      setSubHeaders(prev => ({ 
+        ...prev, 
+        [columnKey]: { 
+          title: newTitle.trim(), 
+          position: position || currentPosition || 'above' 
+        } 
+      }));
       setShowSubHeaders(true);
       toast.success('✓ כותרת משנה נוספה');
     } else {
@@ -1229,6 +1239,34 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     }
     
     setTimeout(() => saveToBackend(), 50);
+  };
+
+  const changeSubHeaderPosition = (columnKey, newPosition) => {
+    const currentData = subHeaders[columnKey];
+    if (!currentData) return;
+    
+    const title = typeof currentData === 'object' ? currentData.title : currentData;
+    setSubHeaders(prev => ({
+      ...prev,
+      [columnKey]: { title, position: newPosition }
+    }));
+    
+    setTimeout(() => saveToBackend(), 50);
+    toast.success(`✓ מיקום כותרת משנה שונה ל${newPosition === 'above' ? 'מעל' : 'מתחת'}`);
+  };
+
+  // Helper to get sub header title (handles both old string format and new object format)
+  const getSubHeaderTitle = (columnKey) => {
+    const data = subHeaders[columnKey];
+    if (!data) return null;
+    return typeof data === 'object' ? data.title : data;
+  };
+
+  // Helper to get sub header position
+  const getSubHeaderPosition = (columnKey) => {
+    const data = subHeaders[columnKey];
+    if (!data) return 'above';
+    return typeof data === 'object' ? (data.position || 'above') : 'above';
   };
 
   const handleCellMouseDown = (rowId, columnKey, event) => {
