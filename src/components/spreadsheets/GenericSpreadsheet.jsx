@@ -1766,7 +1766,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     rowsDataRef.current = updatedRows;
     
     setTimeout(() => {
-      saveToHistory(columnsRef.current, updatedRows, cellStylesRef.current, cellNotesRef.current);
+      saveToHistory(columnsRef.current, updatedRows, cellStylesRef.current, cellNotesRef.current, subHeadersRef.current, mergedHeadersRef.current, headerStylesRef.current);
       saveToBackend();
     }, 50);
     
