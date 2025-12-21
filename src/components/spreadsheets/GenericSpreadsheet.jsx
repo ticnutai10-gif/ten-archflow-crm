@@ -1671,7 +1671,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     setCellContextMenu(null);
     
     setTimeout(() => {
-      saveToHistory(columnsRef.current, rowsDataRef.current, newStyles, cellNotesRef.current);
+      saveToHistory(columnsRef.current, rowsDataRef.current, newStyles, cellNotesRef.current, subHeadersRef.current, mergedHeadersRef.current, headerStylesRef.current);
       saveToBackend();
     }, 50);
     
