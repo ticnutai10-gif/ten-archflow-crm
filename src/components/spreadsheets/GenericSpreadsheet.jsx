@@ -351,7 +351,26 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       setSavedViews(spreadsheet.saved_views || []);
       setActiveViewId(spreadsheet.active_view_id || null);
       setCharts(spreadsheet.charts || []);
-      setCustomStageOptions(spreadsheet.custom_stage_options || DEFAULT_STAGE_OPTIONS);
+      
+      console.log('🔵🔵🔵 [GENERIC SPREADSHEET] Loading spreadsheet custom_stage_options:', JSON.stringify(spreadsheet.custom_stage_options, null, 2));
+      console.log('🔵🔵🔵 [GENERIC SPREADSHEET] DEFAULT_STAGE_OPTIONS:', JSON.stringify(DEFAULT_STAGE_OPTIONS, null, 2));
+      
+      let finalStageOptions = spreadsheet.custom_stage_options || DEFAULT_STAGE_OPTIONS;
+      
+      // Always ensure "ללא" exists
+      const hasLelo = finalStageOptions.some(opt => opt.value === 'ללא');
+      console.log('🔵🔵🔵 [GENERIC SPREADSHEET] Has ללא option?', hasLelo);
+      
+      if (!hasLelo) {
+        console.log('🔵🔵🔵 [GENERIC SPREADSHEET] Adding ללא option to beginning');
+        finalStageOptions = [
+          { value: 'ללא', label: 'ללא', color: '#cbd5e1', glow: 'rgba(203, 213, 225, 0.4)' },
+          ...finalStageOptions
+        ];
+      }
+      
+      console.log('🔵🔵🔵 [GENERIC SPREADSHEET] Final stage options to set:', JSON.stringify(finalStageOptions, null, 2));
+      setCustomStageOptions(finalStageOptions);
 
       setHistory([{ 
         columns: initialColumns, 
@@ -3422,11 +3441,19 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
 
       <StageOptionsManager
         open={showStageManager}
-        onClose={() => setShowStageManager(false)}
+        onClose={() => {
+          console.log('🔵🔵🔵 [GENERIC SPREADSHEET] StageOptionsManager onClose called');
+          setShowStageManager(false);
+        }}
         stageOptions={customStageOptions}
         onSave={(newOptions) => {
+          console.log('🔵🔵🔵 [GENERIC SPREADSHEET] StageOptionsManager onSave called with:', JSON.stringify(newOptions, null, 2));
           setCustomStageOptions(newOptions);
-          setTimeout(() => saveToBackend(), 50);
+          console.log('🔵🔵🔵 [GENERIC SPREADSHEET] customStageOptions state updated');
+          setTimeout(() => {
+            console.log('🔵🔵🔵 [GENERIC SPREADSHEET] Calling saveToBackend...');
+            saveToBackend();
+          }, 50);
           toast.success('✓ אפשרויות שלבים עודכנו');
         }}
       />
