@@ -207,25 +207,15 @@ export default function ClientsPage() {
     let timeoutId;
     const handleClientUpdate = (event) => {
       const updatedClient = event.detail;
-      console.log('👥 [CLIENTS PAGE] Client updated event received:', updatedClient);
       
-      // עדכון מיידי של הלקוח ברשימה המקומית
       if (updatedClient?.id) {
-        setClients(prev => {
-          const updated = prev.map(c => 
-            c.id === updatedClient.id ? { ...c, ...updatedClient } : c
-          );
-          console.log('👥 [CLIENTS PAGE] Local clients list updated');
-          return updated;
-        });
+        setClients(prev => prev.map(c => 
+          c.id === updatedClient.id ? { ...c, ...updatedClient } : c
+        ));
       }
       
-      // Debounce reload to prevent multiple rapid reloads
       if (timeoutId) clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
-        console.log('👥 [CLIENTS PAGE] Reloading all clients from server');
-        loadClients();
-      }, 100);
+      timeoutId = setTimeout(() => loadClients(), 500);
     };
     
     const handleStageOptionsUpdate = () => {
@@ -271,34 +261,27 @@ export default function ClientsPage() {
   const loadClients = async () => {
     setIsLoading(true);
     try {
-      const clientsData = await base44.entities.Client.list('-created_date');
+      const clientsData = await base44.entities.Client.list('-updated_date');
       const filteredData = filterClients(clientsData);
 
-      // Clean and deduplicate clients
-      const cleanedClients = filteredData.map((client) => {
-        const cleanedName = (client.name || '').replace(/[^\p{L}\p{N}\s\-.']/gu, '').trim() || 'לקוח ללא שם';
-        return {
-          ...client,
-          // Remove special characters, trim, and default to 'לקוח ללא שם'
-          name: cleanedName,
-          // Ensure name_clean exists
-          name_clean: client.name_clean || cleanedName
-        };
-      });
-
-      // Remove exact duplicates (same name and phone/email)
-      const uniqueClients = [];
-      const seen = new Set();
-
-      for (const client of cleanedClients) {
-        // Create a unique key using cleaned name, phone, and email
-        const key = `${client.name}_${client.phone || ''}_${client.email || ''}`;
-        if (!seen.has(key)) {
-          seen.add(key);
-          uniqueClients.push(client);
+      // דדופליקציה לפי name_clean - שמירה על הרשומה החדשה ביותר
+      const uniqueMap = new Map();
+      for (const client of filteredData) {
+        if (!client) continue;
+        const cleanName = (client.name_clean || client.name || '').trim().toLowerCase().replace(/\s+/g, ' ');
+        if (!cleanName) continue;
+        
+        if (!uniqueMap.has(cleanName)) {
+          uniqueMap.set(cleanName, client);
+        } else {
+          const existing = uniqueMap.get(cleanName);
+          if (new Date(client.updated_date) > new Date(existing.updated_date)) {
+            uniqueMap.set(cleanName, client);
+          }
         }
       }
 
+      const uniqueClients = Array.from(uniqueMap.values());
       setClients(uniqueClients);
     } catch (error) {
       toast.error('שגיאה בטעינת לקוחות');

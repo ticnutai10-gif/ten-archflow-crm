@@ -19,53 +19,20 @@ export function useAccessControl() {
   useEffect(() => {
     const loadAccess = async () => {
       try {
-        console.log('🔐 [ACCESS] Loading user and rules...');
         setLoading(true);
-        
         const user = await base44.auth.me().catch(() => null);
         
         if (user) {
-          console.log('👤 [ACCESS] User loaded:', {
-            email: user.email,
-            id: user.id,
-            role: user.role,
-            full_name: user.full_name
-          });
           setMe(user);
-
-          // טען כללי גישה
-          const rules = await base44.entities.AccessControl.filter({ active: true }, '-created_date', 100)
-            .catch(() => []);
-          
-          // ✅ הגנה על תוצאות undefined
+          const rules = await base44.entities.AccessControl.filter({ active: true }, '-created_date', 100).catch(() => []);
           const validRules = Array.isArray(rules) ? rules : [];
-          
-          console.log('📋 [ACCESS] Access rules loaded:', validRules.length);
           setAccessRules(validRules);
-
-          // חפש את הכלל של המשתמש הנוכחי
-          const myRule = validRules.find(r => 
-            r?.email?.toLowerCase() === user.email?.toLowerCase()
-          );
-
-          if (myRule) {
-            console.log('✅ [ACCESS] My access rule found:', {
-              role: myRule.role,
-              active: myRule.active,
-              assigned_clients: myRule.assigned_clients?.length || 0,
-              assigned_projects: myRule.assigned_projects?.length || 0
-            });
-          } else {
-            console.log('⚠️ [ACCESS] No specific access rule found for this user in AccessControl.');
-          }
         } else {
-          console.log('⚠️ [ACCESS] No user found (not logged in or session expired).');
           setMe(null);
           setAccessRules([]);
         }
-
       } catch (error) {
-        console.error('❌ [ACCESS] Error loading access data:', error);
+        console.error('[ACCESS] Error:', error);
         setMe(null);
         setAccessRules([]);
       } finally {
@@ -158,118 +125,61 @@ export function useAccessControl() {
     return false;
   }, [me, isAdmin, isManagerPlus, isStaff, isClient, myAccessRule]);
 
-  // ✅ סינון לקוחות עם הגנה מלאה
+  // ✅ סינון לקוחות עם הגנה מלאה + דדופליקציה
   const filterClients = useCallback((allClients) => {
-    console.log('🔍 [ACCESS] filterClients called with:', {
-      allClients,
-      isArray: Array.isArray(allClients),
-      length: allClients?.length,
-      type: typeof allClients
-    });
-
-    // ✅ הגנה: בדוק אם allClients הוא array תקין
-    if (!Array.isArray(allClients)) {
-      console.error('❌ [ACCESS] filterClients: allClients is not an array!', allClients);
-      return [];
-    }
-
-    if (!me) {
-      console.log('⚠️ [ACCESS] filterClients: No user - returning all clients (public access)');
-      return allClients;
-    }
+    if (!Array.isArray(allClients)) return [];
+    if (!me) return allClients;
 
     // Admin/Manager Plus/SuperAdmin רואים הכל
     if (isAdmin || isManagerPlus || isSuperAdmin) {
-      console.log('✅ [ACCESS] Admin/Manager+/SuperAdmin - returning all clients:', allClients.length);
       return allClients;
     }
 
     // Client - רואה רק את עצמו
     if (isClient && myAccessRule?.client_id) {
-      const filtered = allClients.filter(c => c?.id === myAccessRule.client_id);
-      console.log('👤 [ACCESS] Client role - filtered:', filtered.length);
-      return filtered;
+      return allClients.filter(c => c?.id === myAccessRule.client_id);
     }
 
     // Staff - רואה רק לקוחות משוייכים
     if (isStaff) {
       const assignedIds = myAccessRule?.assigned_clients || [];
-      console.log('👷 [ACCESS] Staff role:', {
-        assignedClients: assignedIds.length,
-        assignedIds
-      });
-
-      const filtered = allClients.filter(c => c && assignedIds.includes(c.id));
-      console.log('👷 [ACCESS] Staff filtered:', filtered.length);
-      return filtered;
+      return allClients.filter(c => c && assignedIds.includes(c.id));
     }
 
-    console.log('⛔ [ACCESS] No permissions - returning empty');
     return [];
   }, [me, isAdmin, isManagerPlus, isSuperAdmin, isClient, isStaff, myAccessRule]);
 
   // ✅ סינון פרויקטים עם הגנה מלאה
   const filterProjects = useCallback((allProjects) => {
-    console.log('🔍 [ACCESS] filterProjects called with:', {
-      allProjects,
-      isArray: Array.isArray(allProjects),
-      length: allProjects?.length,
-      type: typeof allProjects
-    });
-
-    // ✅ הגנה: בדוק אם allProjects הוא array תקין
-    if (!Array.isArray(allProjects)) {
-      console.error('❌ [ACCESS] filterProjects: allProjects is not an array!', allProjects);
-      return [];
-    }
-
-    if (!me) {
-      console.log('⚠️ [ACCESS] filterProjects: No user');
-      return [];
-    }
+    if (!Array.isArray(allProjects)) return [];
+    if (!me) return [];
 
     if (isAdmin || isManagerPlus || isSuperAdmin) {
-      console.log('✅ [ACCESS] Admin/Manager+/SuperAdmin - returning all projects');
       return allProjects;
     }
 
     if (isClient && myAccessRule?.client_id) {
-      const filtered = allProjects.filter(p => p?.client_id === myAccessRule.client_id);
-      console.log('👤 [ACCESS] Client role - filtered projects:', filtered.length);
-      return filtered;
+      return allProjects.filter(p => p?.client_id === myAccessRule.client_id);
     }
 
     if (isStaff) {
       const assignedProjectIds = myAccessRule?.assigned_projects || [];
       const assignedClientIds = myAccessRule?.assigned_clients || [];
       
-      console.log('👷 [ACCESS] Staff assignments:', {
-        projects: assignedProjectIds.length,
-        clients: assignedClientIds.length
-      });
-
-      const filtered = allProjects.filter(p => 
+      return allProjects.filter(p => 
         p && (
           assignedProjectIds.includes(p.id) || 
           assignedClientIds.includes(p.client_id)
         )
       );
-      
-      console.log('👷 [ACCESS] Staff filtered projects:', filtered.length);
-      return filtered;
     }
 
-    console.log('⛔ [ACCESS] No permissions - returning empty');
     return [];
   }, [me, isAdmin, isManagerPlus, isSuperAdmin, isClient, isStaff, myAccessRule]);
 
-  // ✅ סינון משימות עם הגנה מלאה
+  // ✅ סינון משימות
   const filterTasks = useCallback((allTasks) => {
-    if (!Array.isArray(allTasks)) {
-      console.error('❌ [ACCESS] filterTasks: allTasks is not an array!', allTasks);
-      return [];
-    }
-
+    if (!Array.isArray(allTasks)) return [];
     if (!me) return [];
     
     if (isAdmin || isManagerPlus || isSuperAdmin) return allTasks;
@@ -294,13 +204,9 @@ export function useAccessControl() {
     return [];
   }, [me, isAdmin, isManagerPlus, isSuperAdmin, isStaff, isClient, myAccessRule]);
 
-  // ✅ סינון לוגי זמן עם הגנה מלאה
+  // ✅ סינון לוגי זמן
   const filterTimeLogs = useCallback((allLogs) => {
-    if (!Array.isArray(allLogs)) {
-      console.error('❌ [ACCESS] filterTimeLogs: allLogs is not an array!', allLogs);
-      return [];
-    }
-
+    if (!Array.isArray(allLogs)) return [];
     if (!me) return [];
     
     if (isAdmin || isManagerPlus || isSuperAdmin) return allLogs;
@@ -338,31 +244,40 @@ export function useAccessControl() {
   const getAllowedClientsForTimer = useCallback(async () => {
     try {
       const now = Date.now();
-      if (clientsCacheRef.current && (now - clientsCacheTimeRef.current) < 2 * 60 * 1000) {
-        console.log('✅ [ACCESS] Using cached clients for timer');
+      if (clientsCacheRef.current && (now - clientsCacheTimeRef.current) < 5 * 60 * 1000) {
         return clientsCacheRef.current;
       }
 
-      console.log('🔄 [ACCESS] Fetching clients for timer...');
       const allClients = await base44.entities.Client.list();
-      
-      // ✅ הגנה על תוצאות undefined
       const validClients = Array.isArray(allClients) ? allClients : [];
-      const filtered = filterClients(validClients);
+      
+      // דדופליקציה מובנית לפי name_clean
+      const uniqueMap = new Map();
+      for (const c of validClients) {
+        if (!c) continue;
+        const cleanName = (c.name_clean || c.name || '').trim().toLowerCase().replace(/\s+/g, ' ');
+        if (!cleanName) continue;
+        
+        if (!uniqueMap.has(cleanName)) {
+          uniqueMap.set(cleanName, c);
+        } else {
+          const existing = uniqueMap.get(cleanName);
+          if (new Date(c.updated_date) > new Date(existing.updated_date)) {
+            uniqueMap.set(cleanName, c);
+          }
+        }
+      }
+      
+      const dedupedClients = Array.from(uniqueMap.values());
+      const filtered = filterClients(dedupedClients);
       
       clientsCacheRef.current = filtered;
       clientsCacheTimeRef.current = now;
       
       return filtered;
     } catch (error) {
-      console.error('Error loading clients for timer:', error);
-      
-      if (clientsCacheRef.current) {
-        console.log('⚠️ [ACCESS] Error loading clients, using old cache');
-        return clientsCacheRef.current;
-      }
-      
-      return [];
+      console.error('[ACCESS] Error loading clients:', error);
+      return clientsCacheRef.current || [];
     }
   }, [filterClients]);
 
@@ -440,13 +355,10 @@ export async function autoAssignToCreator(itemType, itemId) {
       active: true
     });
 
-    // ✅ הגנה על תוצאות undefined
     const validRecords = Array.isArray(accessRecords) ? accessRecords : [];
     const access = validRecords[0];
     
     if (!access || access.role !== 'staff') return;
-
-    console.log('🔗 [AUTO ASSIGN] Assigning', itemType, itemId, 'to', user.email);
 
     if (itemType === 'client') {
       const existingClients = access.assigned_clients || [];
@@ -454,7 +366,6 @@ export async function autoAssignToCreator(itemType, itemId) {
         await base44.entities.AccessControl.update(access.id, {
           assigned_clients: [...existingClients, itemId]
         });
-        console.log('✅ [AUTO ASSIGN] Client assigned successfully');
       }
     } else if (itemType === 'project') {
       const existingProjects = access.assigned_projects || [];
@@ -462,10 +373,9 @@ export async function autoAssignToCreator(itemType, itemId) {
         await base44.entities.AccessControl.update(access.id, {
           assigned_projects: [...existingProjects, itemId]
         });
-        console.log('✅ [AUTO ASSIGN] Project assigned successfully');
       }
     }
   } catch (error) {
-    console.error('❌ [AUTO ASSIGN] Error:', error);
+    console.error('[AUTO ASSIGN] Error:', error);
   }
 }

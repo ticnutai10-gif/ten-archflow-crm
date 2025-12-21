@@ -1,79 +1,81 @@
-import Dashboard from './pages/Dashboard';
-import Clients from './pages/Clients';
-import Quotes from './pages/Quotes';
-import Backup from './pages/Backup';
-import Settings from './pages/Settings';
-import AuthCallback from './pages/AuthCallback';
-import Projects from './pages/Projects';
-import Folders from './pages/Folders';
-import Decisions from './pages/Decisions';
-import ClientPortal from './pages/ClientPortal';
+import AIChat from './pages/AIChat';
 import Access from './pages/Access';
-import Planner from './pages/Planner';
-import Reports from './pages/Reports';
-import Exports from './pages/Exports';
+import AuthCallback from './pages/AuthCallback';
 import Automations from './pages/Automations';
+import Backup from './pages/Backup';
+import ChatHistory from './pages/ChatHistory';
+import ClientAutomations from './pages/ClientAutomations';
+import ClientPortal from './pages/ClientPortal';
+import Clients from './pages/Clients';
+import CommunicationHub from './pages/CommunicationHub';
+import CustomSpreadsheets from './pages/CustomSpreadsheets';
+import DailyReports from './pages/DailyReports';
+import Dashboard from './pages/Dashboard';
+import Decisions from './pages/Decisions';
 import Documents from './pages/Documents';
-import Invoices from './pages/Invoices';
-import TimerShowcase from './pages/TimerShowcase';
+import Exports from './pages/Exports';
+import Folders from './pages/Folders';
 import GreenInvoice from './pages/GreenInvoice';
-import TimeLogs from './pages/TimeLogs';
-import Register from './pages/Register';
-import UserApprovals from './pages/UserApprovals';
+import Home from './pages/Home';
+import Integrations from './pages/Integrations';
+import InternalChat from './pages/InternalChat';
+import Invoices from './pages/Invoices';
 import Meetings from './pages/Meetings';
+import Planner from './pages/Planner';
+import ProjectDetails from './pages/ProjectDetails';
+import Projects from './pages/Projects';
+import Quotes from './pages/Quotes';
+import Register from './pages/Register';
+import RemoveDuplicates from './pages/RemoveDuplicates';
+import Reports from './pages/Reports';
+import Settings from './pages/Settings';
 import SpreadsheetDetails from './pages/SpreadsheetDetails';
 import Tasks from './pages/Tasks';
-import DailyReports from './pages/DailyReports';
-import CustomSpreadsheets from './pages/CustomSpreadsheets';
-import Integrations from './pages/Integrations';
-import ProjectDetails from './pages/ProjectDetails';
-import CommunicationHub from './pages/CommunicationHub';
-import AIChat from './pages/AIChat';
+import TimeLogs from './pages/TimeLogs';
+import TimerShowcase from './pages/TimerShowcase';
+import UserApprovals from './pages/UserApprovals';
 import WorkflowBuilder from './pages/WorkflowBuilder';
-import ChatHistory from './pages/ChatHistory';
-import InternalChat from './pages/InternalChat';
-import ClientAutomations from './pages/ClientAutomations';
-import RemoveDuplicates from './pages/RemoveDuplicates';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
-    "Dashboard": Dashboard,
-    "Clients": Clients,
-    "Quotes": Quotes,
-    "Backup": Backup,
-    "Settings": Settings,
-    "AuthCallback": AuthCallback,
-    "Projects": Projects,
-    "Folders": Folders,
-    "Decisions": Decisions,
-    "ClientPortal": ClientPortal,
+    "AIChat": AIChat,
     "Access": Access,
-    "Planner": Planner,
-    "Reports": Reports,
-    "Exports": Exports,
+    "AuthCallback": AuthCallback,
     "Automations": Automations,
+    "Backup": Backup,
+    "ChatHistory": ChatHistory,
+    "ClientAutomations": ClientAutomations,
+    "ClientPortal": ClientPortal,
+    "Clients": Clients,
+    "CommunicationHub": CommunicationHub,
+    "CustomSpreadsheets": CustomSpreadsheets,
+    "DailyReports": DailyReports,
+    "Dashboard": Dashboard,
+    "Decisions": Decisions,
     "Documents": Documents,
-    "Invoices": Invoices,
-    "TimerShowcase": TimerShowcase,
+    "Exports": Exports,
+    "Folders": Folders,
     "GreenInvoice": GreenInvoice,
-    "TimeLogs": TimeLogs,
-    "Register": Register,
-    "UserApprovals": UserApprovals,
+    "Home": Home,
+    "Integrations": Integrations,
+    "InternalChat": InternalChat,
+    "Invoices": Invoices,
     "Meetings": Meetings,
+    "Planner": Planner,
+    "ProjectDetails": ProjectDetails,
+    "Projects": Projects,
+    "Quotes": Quotes,
+    "Register": Register,
+    "RemoveDuplicates": RemoveDuplicates,
+    "Reports": Reports,
+    "Settings": Settings,
     "SpreadsheetDetails": SpreadsheetDetails,
     "Tasks": Tasks,
-    "DailyReports": DailyReports,
-    "CustomSpreadsheets": CustomSpreadsheets,
-    "Integrations": Integrations,
-    "ProjectDetails": ProjectDetails,
-    "CommunicationHub": CommunicationHub,
-    "AIChat": AIChat,
+    "TimeLogs": TimeLogs,
+    "TimerShowcase": TimerShowcase,
+    "UserApprovals": UserApprovals,
     "WorkflowBuilder": WorkflowBuilder,
-    "ChatHistory": ChatHistory,
-    "InternalChat": InternalChat,
-    "ClientAutomations": ClientAutomations,
-    "RemoveDuplicates": RemoveDuplicates,
 }
 
 export const pagesConfig = {

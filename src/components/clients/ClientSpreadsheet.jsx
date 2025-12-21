@@ -343,62 +343,38 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
   useEffect(() => {
     const loadUserPrefs = async () => {
       try {
-        console.log('🔵🔵🔵 [CLIENT SPREADSHEET] loadUserPrefs started');
         const userSettings = await loadUserSettings('clients');
-        console.log('🔵🔵🔵 [CLIENT SPREADSHEET] userSettings loaded:', JSON.stringify(userSettings, null, 2));
         
         // Load stage options first
         if (userSettings?.stageOptions) {
-          console.log('🔵🔵🔵 [CLIENT SPREADSHEET] Found stageOptions in userSettings:', JSON.stringify(userSettings.stageOptions, null, 2));
-          
           let loadedOptions = userSettings.stageOptions;
-          
-          // Always ensure "ללא" exists
           const hasLelo = loadedOptions.some(opt => opt.value === 'ללא');
-          console.log('🔵🔵🔵 [CLIENT SPREADSHEET] Has ללא option in loaded settings?', hasLelo);
-          
           if (!hasLelo) {
-            console.log('🔵🔵🔵 [CLIENT SPREADSHEET] Adding ללא option to beginning of loaded options');
             loadedOptions = [
               { value: 'ללא', label: 'ללא', color: '#cbd5e1', glow: 'rgba(203, 213, 225, 0.4)' },
               ...loadedOptions
             ];
           }
-          
-          console.log('🔵🔵🔵 [CLIENT SPREADSHEET] Final stageOptions to set:', JSON.stringify(loadedOptions, null, 2));
           setStageOptions(loadedOptions);
         } else {
-          console.log('🔵🔵🔵 [CLIENT SPREADSHEET] No stageOptions in userSettings, trying global...');
-          // Fallback: try global stage options stored in AppSettings
           try {
             const globalStage = await base44.entities.AppSettings.filter({ setting_key: 'client_stage_options' });
-            console.log('🔵🔵🔵 [CLIENT SPREADSHEET] globalStage result:', JSON.stringify(globalStage, null, 2));
             const globalOpts = globalStage?.[0]?.value;
-            console.log('🔵🔵🔵 [CLIENT SPREADSHEET] globalOpts:', JSON.stringify(globalOpts, null, 2));
             
             if (Array.isArray(globalOpts) && globalOpts.length) {
               let loadedGlobalOptions = globalOpts;
-              
-              // Always ensure "ללא" exists
               const hasLelo = loadedGlobalOptions.some(opt => opt.value === 'ללא');
-              console.log('🔵🔵🔵 [CLIENT SPREADSHEET] Has ללא option in global settings?', hasLelo);
-              
               if (!hasLelo) {
-                console.log('🔵🔵🔵 [CLIENT SPREADSHEET] Adding ללא option to beginning of global options');
                 loadedGlobalOptions = [
                   { value: 'ללא', label: 'ללא', color: '#cbd5e1', glow: 'rgba(203, 213, 225, 0.4)' },
                   ...loadedGlobalOptions
                 ];
               }
-              
-              console.log('🔵🔵🔵 [CLIENT SPREADSHEET] Setting stageOptions from global:', JSON.stringify(loadedGlobalOptions, null, 2));
               setStageOptions(loadedGlobalOptions);
             } else {
-              console.log('🔵🔵🔵 [CLIENT SPREADSHEET] No global options, using DEFAULT_WITH_LELO');
               setStageOptions(DEFAULT_WITH_LELO);
             }
           } catch (e) {
-            console.warn('🔵🔵🔵 [CLIENT SPREADSHEET] Failed to load global stage options:', e);
             setStageOptions(DEFAULT_WITH_LELO);
           }
         }
@@ -575,21 +551,15 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
     }
   }, [clients, sortConfig]);
 
-  // Listen for client updates - optimized
+  // Listen for client updates
   useEffect(() => {
     const handleClientUpdate = (event) => {
       const updatedClient = event.detail;
       if (!updatedClient?.id) return;
       
-      console.log('📊 [SPREADSHEET] Client updated event received:', updatedClient);
-      
-      setLocalClients(prev => {
-        const updated = prev.map(c => 
-          c.id === updatedClient.id ? { ...c, ...updatedClient } : c
-        );
-        console.log('📊 [SPREADSHEET] Local clients updated');
-        return updated;
-      });
+      setLocalClients(prev => prev.map(c => 
+        c.id === updatedClient.id ? { ...c, ...updatedClient } : c
+      ));
     };
     
     window.addEventListener('client:updated', handleClientUpdate);
@@ -3445,38 +3415,21 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
 
       <StageOptionsManager
         open={showStageManager}
-        onClose={() => {
-          console.log('🔵🔵🔵 [CLIENT SPREADSHEET] StageOptionsManager onClose called');
-          setShowStageManager(false);
-        }}
+        onClose={() => setShowStageManager(false)}
         stageOptions={stageOptions}
         onSave={async (newStageOptions) => {
-          console.log('🔵🔵🔵 [CLIENT SPREADSHEET] StageOptionsManager onSave called with:', JSON.stringify(newStageOptions, null, 2));
-          
           setStageOptions(newStageOptions);
-          console.log('🔵🔵🔵 [CLIENT SPREADSHEET] stageOptions state updated');
-          
-          // Persist per-user
-          console.log('🔵🔵🔵 [CLIENT SPREADSHEET] Calling saveUserSettings...');
           await saveUserSettings('clients', columns, cellStyles, showSubHeaders, subHeaders, newStageOptions);
-          console.log('🔵🔵🔵 [CLIENT SPREADSHEET] saveUserSettings completed');
 
-          // Also persist globally so זה לא ייעלם בין משתמשים/שחזורים
           try {
-            console.log('🔵🔵🔵 [CLIENT SPREADSHEET] Persisting globally...');
             const existing = await base44.entities.AppSettings.filter({ setting_key: 'client_stage_options' });
-            console.log('🔵🔵🔵 [CLIENT SPREADSHEET] Existing global settings:', existing.length);
-            
             if (existing && existing[0]) {
-              console.log('🔵🔵🔵 [CLIENT SPREADSHEET] Updating existing global setting');
               await base44.entities.AppSettings.update(existing[0].id, { value: newStageOptions });
             } else {
-              console.log('🔵🔵🔵 [CLIENT SPREADSHEET] Creating new global setting');
               await base44.entities.AppSettings.create({ setting_key: 'client_stage_options', value: newStageOptions });
             }
-            console.log('🔵🔵🔵 [CLIENT SPREADSHEET] Global persist completed');
           } catch (e) {
-            console.warn('🔵🔵🔵 [CLIENT SPREADSHEET] Failed to persist global stage options:', e);
+            console.warn('[SPREADSHEET] Failed to persist global stage options:', e);
           }
 
           toast.success('הגדרות השלבים נשמרו');
