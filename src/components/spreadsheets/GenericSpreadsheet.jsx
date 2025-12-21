@@ -2505,6 +2505,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                   borderWidth: isSeparateBorders ? '0' : borderStyle.width,
                                   borderStyle: borderStyle.style,
                                   borderColor: palette.border,
+                                  borderBottomWidth: !isSeparateBorders ? '0' : undefined,
                                   borderRightWidth: (isFirstInMerge || headerMerge) && !isSeparateBorders ? '3px' : undefined,
                                   borderRightColor: (isFirstInMerge || headerMerge) ? palette.border : undefined,
                                   borderLeftWidth: (isLastInMerge || headerMerge) && !isSeparateBorders ? '3px' : undefined,
@@ -2572,17 +2573,17 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                           const hasSubHeader = getSubHeaderTitle(col.key);
                           const headerStyle = headerStyles[col.key] || {};
                           
-                          // Check if this column is first or last in a merged header
+                          // Check if this column is part of a merged header above
                           let isFirstInMerge = false;
                           let isLastInMerge = false;
-                          let isPartOfMerge = false;
+                          let hasParentMerge = false;
                           Object.values(mergedHeaders).forEach(merge => {
-                            if (merge.columns && merge.columns.length > 0) {
+                            if (merge.columns && merge.columns.includes(col.key)) {
+                              hasParentMerge = true;
                               const firstCol = merge.columns[0];
                               const lastCol = merge.columns[merge.columns.length - 1];
                               if (col.key === firstCol) isFirstInMerge = true;
                               if (col.key === lastCol) isLastInMerge = true;
-                              if (merge.columns.includes(col.key)) isPartOfMerge = true;
                             }
                           });
                           
@@ -2604,7 +2605,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                   borderStyle: borderStyle.style,
                                   borderColor: palette.border,
                                   borderRadius: isSeparateBorders ? tableBorderRadius : '0',
-                                  borderTopWidth: (isPartOfMerge && showSubHeaders && Object.keys(mergedHeaders).length > 0 && !isSeparateBorders) ? '0' : undefined,
+                                  borderTopWidth: (hasParentMerge && showSubHeaders && !isSeparateBorders) ? '0' : undefined,
                                   borderRightWidth: isFirstInMerge && !isSeparateBorders ? '3px' : undefined,
                                   borderRightColor: isFirstInMerge ? palette.border : undefined,
                                   borderLeftWidth: isLastInMerge && !isSeparateBorders ? '3px' : undefined,
