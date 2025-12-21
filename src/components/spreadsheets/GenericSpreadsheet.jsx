@@ -2326,7 +2326,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                 <Droppable droppableId="columns" direction="horizontal" type="column">
                   {(provided) => (
                     <thead style={{ position: 'sticky', top: 0, zIndex: 25 }} ref={provided.innerRef} {...provided.droppableProps}>
-                      {showSubHeaders && (Object.keys(mergedHeaders).length > 0 || Object.keys(subHeaders).length > 0) && (
+                      {showSubHeaders && subHeaderPosition === 'above' && (Object.keys(mergedHeaders).length > 0 || Object.keys(subHeaders).length > 0) && (
                         <tr>
                           <th className="p-3 w-12 sticky right-0 shadow-[2px_0_5px_rgba(0,0,0,0.1)]" style={{ zIndex: 35, backgroundColor: palette.headerBg, borderWidth: isSeparateBorders ? '0' : borderStyle.width, borderStyle: borderStyle.style, borderColor: palette.border }}></th>
                           {visibleColumns.map((col) => {
