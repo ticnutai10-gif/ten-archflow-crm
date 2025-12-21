@@ -1065,20 +1065,53 @@ ${context}
                         filtered.map((c) => {
                           const isRecent = !query && (prefs.recentClients || []).some((r) => r.id === c.id);
                           
-                          console.log('⏱️⏱️⏱️ [TIMER] Rendering client in list:', {
+                          console.log('⏱️⏱️⏱️ [TIMER] ========== CLIENT RENDER START ==========');
+                          console.log('⏱️⏱️⏱️ [TIMER] Client details:', {
                             id: c.id,
                             name: c.name,
                             stage: c.stage,
-                            stageOptionsLength: stageOptions.length,
-                            stageOptions: JSON.stringify(stageOptions, null, 2)
+                            allClientFields: Object.keys(c)
                           });
+                          console.log('⏱️⏱️⏱️ [TIMER] Current stageOptions array length:', stageOptions.length);
+                          console.log('⏱️⏱️⏱️ [TIMER] Full stageOptions:', JSON.stringify(stageOptions, null, 2));
                           
+                          // Check if client has a stage
+                          if (!c.stage) {
+                            console.log('⏱️⏱️⏱️ [TIMER] ❌ Client has NO stage field');
+                          } else {
+                            console.log('⏱️⏱️⏱️ [TIMER] ✅ Client HAS stage:', c.stage);
+                          }
+                          
+                          // Try to find the stage
                           const currentStage = c.stage ? stageOptions.find(s => s.value === c.stage) : null;
                           
-                          console.log('⏱️⏱️⏱️ [TIMER] Found stage for client:', {
-                            clientStage: c.stage,
-                            foundStage: currentStage ? { value: currentStage.value, label: currentStage.label, color: currentStage.color } : null
+                          console.log('⏱️⏱️⏱️ [TIMER] Stage search result:', {
+                            searchingFor: c.stage,
+                            foundStage: currentStage,
+                            foundStageDetails: currentStage ? {
+                              value: currentStage.value,
+                              label: currentStage.label,
+                              color: currentStage.color,
+                              glow: currentStage.glow
+                            } : 'NULL - NOT FOUND'
                           });
+                          
+                          // Check if value matches
+                          if (c.stage && !currentStage) {
+                            console.log('⏱️⏱️⏱️ [TIMER] ⚠️⚠️⚠️ STAGE NOT FOUND IN OPTIONS!');
+                            console.log('⏱️⏱️⏱️ [TIMER] Looking for:', c.stage);
+                            console.log('⏱️⏱️⏱️ [TIMER] Available values:', stageOptions.map(s => s.value));
+                            
+                            // Try exact match
+                            const exactMatch = stageOptions.find(s => s.value === c.stage);
+                            console.log('⏱️⏱️⏱️ [TIMER] Exact match attempt:', exactMatch);
+                            
+                            // Try case insensitive
+                            const caseInsensitive = stageOptions.find(s => s.value?.toLowerCase() === c.stage?.toLowerCase());
+                            console.log('⏱️⏱️⏱️ [TIMER] Case insensitive match:', caseInsensitive);
+                          }
+                          
+                          console.log('⏱️⏱️⏱️ [TIMER] ========== CLIENT RENDER END ==========');
                           
                           return (
                             <button
@@ -1096,18 +1129,18 @@ ${context}
 
                                   <div className="flex items-center justify-between w-full">
                                     <div className="flex items-center gap-2">
-                                      {currentStage ? (
+                                      {currentStage && c.stage && c.stage !== 'ללא' ? (
                                         <>
                                           <Circle 
                                             className="w-3 h-3 flex-shrink-0 fill-current"
                                             style={{ color: currentStage.color }}
                                             title={currentStage.label}
                                           />
-                                          {console.log('⏱️⏱️⏱️ [TIMER] Rendered stage icon with color:', currentStage.color)}
+                                          {console.log('⏱️⏱️⏱️ [TIMER] ✅ Rendered stage icon with color:', currentStage.color, 'for stage:', c.stage)}
                                         </>
                                       ) : (
                                         <>
-                                          {console.log('⏱️⏱️⏱️ [TIMER] No stage icon - currentStage is null')}
+                                          {console.log('⏱️⏱️⏱️ [TIMER] ❌ No stage icon rendered. Reason:', !c.stage ? 'No stage on client' : c.stage === 'ללא' ? 'Stage is ללא (hidden)' : 'Stage not found in options')}
                                         </>
                                       )}
                                       <span className="text-sm text-slate-900 truncate font-semibold">{c.name || "ללא שם"}</span>
@@ -1120,6 +1153,9 @@ ${context}
                                     </span>
                               }
                                 </button>);
+
+                        })
+                        }
 
                         })
                         }
