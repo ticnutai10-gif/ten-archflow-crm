@@ -358,14 +358,30 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   }, [spreadsheet]);
 
   const saveToHistory = useCallback((cols, rows, styles, notes) => {
-    if (isUndoRedoAction) return;
+    console.log('📜 [HISTORY] saveToHistory called:', { 
+      isUndoRedoAction, 
+      currentHistoryIndex: historyIndex,
+      rowsCount: rows?.length,
+      colsCount: cols?.length
+    });
+    
+    if (isUndoRedoAction) {
+      console.log('📜 [HISTORY] Skipped - isUndoRedoAction is true');
+      return;
+    }
+    
     setHistory(prev => {
       const newHistory = prev.slice(0, historyIndex + 1);
       newHistory.push({ columns: cols, rows: rows, styles: styles, notes: notes });
       if (newHistory.length > 50) newHistory.shift();
+      console.log('📜 [HISTORY] New history length:', newHistory.length);
       return newHistory;
     });
-    setHistoryIndex(prev => Math.min(prev + 1, 49));
+    setHistoryIndex(prev => {
+      const newIndex = Math.min(prev + 1, 49);
+      console.log('📜 [HISTORY] New historyIndex:', newIndex);
+      return newIndex;
+    });
   }, [historyIndex, isUndoRedoAction]);
 
   const saveToBackend = useCallback(async () => {
