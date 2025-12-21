@@ -352,7 +352,15 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       setCharts(spreadsheet.charts || []);
       setCustomStageOptions(spreadsheet.custom_stage_options || DEFAULT_STAGE_OPTIONS);
 
-      setHistory([{ columns: initialColumns, rows: initialRows, styles: initialStyles, notes: initialNotes }]);
+      setHistory([{ 
+        columns: initialColumns, 
+        rows: initialRows, 
+        styles: initialStyles, 
+        notes: initialNotes,
+        subHeaders: spreadsheet.sub_headers || {},
+        mergedHeaders: spreadsheet.merged_headers || {},
+        headerStyles: spreadsheet.header_styles || {}
+      }]);
       setHistoryIndex(0);
     }
   }, [spreadsheet]);
