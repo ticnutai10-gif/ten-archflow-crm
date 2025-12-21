@@ -1327,7 +1327,10 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       [columnKey]: { title, position: newPosition }
     }));
     
-    setTimeout(() => saveToBackend(), 50);
+    setTimeout(() => {
+      saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current, cellNotesRef.current);
+      saveToBackend();
+    }, 50);
     toast.success(`✓ מיקום כותרת משנה שונה ל${newPosition === 'above' ? 'מעל' : 'מתחת'}`);
   };
 
