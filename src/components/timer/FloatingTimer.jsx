@@ -383,64 +383,40 @@ export default function FloatingTimer() {
   }, [toggleDebug]);
 
   // Load stage options from UserPreferences
-  useEffect(() => {
-    const loadStageOptions = async () => {
-      console.log('⏱️⏱️⏱️ [TIMER] Starting to load stage options...');
-      console.log('⏱️⏱️⏱️ [TIMER] DEFAULT_STAGE_OPTIONS:', JSON.stringify(DEFAULT_STAGE_OPTIONS, null, 2));
-      
-      try {
-        const user = await base44.auth.me();
-        console.log('⏱️⏱️⏱️ [TIMER] User loaded:', user?.email);
-        
-        const userPrefs = await base44.entities.UserPreferences.filter({ user_email: user.email });
-        console.log('⏱️⏱️⏱️ [TIMER] UserPreferences found:', userPrefs.length);
-        
-        if (userPrefs.length > 0) {
-          console.log('⏱️⏱️⏱️ [TIMER] UserPrefs[0].spreadsheet_columns:', JSON.stringify(userPrefs[0].spreadsheet_columns, null, 2));
-          console.log('⏱️⏱️⏱️ [TIMER] UserPrefs stageOptions:', JSON.stringify(userPrefs[0].spreadsheet_columns?.clients?.stageOptions, null, 2));
-        }
-        
-        if (userPrefs.length > 0 && userPrefs[0].spreadsheet_columns?.clients?.stageOptions) {
-          let loadedOptions = userPrefs[0].spreadsheet_columns.clients.stageOptions;
-          console.log('⏱️⏱️⏱️ [TIMER] Loaded options BEFORE ensuring ללא:', JSON.stringify(loadedOptions, null, 2));
-          
-          // Always ensure "ללא" option exists at the beginning
-          const hasLelo = loadedOptions.some(opt => opt.value === 'ללא');
-          console.log('⏱️⏱️⏱️ [TIMER] Has ללא option?', hasLelo);
-          
-          if (!hasLelo) {
-            console.log('⏱️⏱️⏱️ [TIMER] Adding ללא option to the beginning');
-            loadedOptions = [
-              { value: 'ללא', label: 'ללא', color: '#cbd5e1', glow: 'rgba(203, 213, 225, 0.4)' },
-              ...loadedOptions
-            ];
+      useEffect(() => {
+        const loadStageOptions = async () => {
+          try {
+            const user = await base44.auth.me();
+            const userPrefs = await base44.entities.UserPreferences.filter({ user_email: user.email });
+
+            if (userPrefs.length > 0 && userPrefs[0].spreadsheet_columns?.clients?.stageOptions) {
+              let loadedOptions = userPrefs[0].spreadsheet_columns.clients.stageOptions;
+
+              // Always ensure "ללא" option exists at the beginning
+              const hasLelo = loadedOptions.some(opt => opt.value === 'ללא');
+              if (!hasLelo) {
+                loadedOptions = [
+                  { value: 'ללא', label: 'ללא', color: '#cbd5e1', glow: 'rgba(203, 213, 225, 0.4)' },
+                  ...loadedOptions
+                ];
+              }
+
+              setStageOptions(loadedOptions);
+            } else {
+              setStageOptions(DEFAULT_STAGE_OPTIONS);
+            }
+          } catch (e) {
+            console.warn('[TIMER] Failed to load stage options:', e);
+            setStageOptions(DEFAULT_STAGE_OPTIONS);
           }
-          
-          console.log('⏱️⏱️⏱️ [TIMER] Final options to set:', JSON.stringify(loadedOptions, null, 2));
-          setStageOptions(loadedOptions);
-        } else {
-          console.log('⏱️⏱️⏱️ [TIMER] No user prefs found, using DEFAULT_STAGE_OPTIONS');
-          setStageOptions(DEFAULT_STAGE_OPTIONS);
-        }
-      } catch (e) {
-        console.warn('⏱️⏱️⏱️ [TIMER] Failed to load stage options, using defaults:', e);
-        setStageOptions(DEFAULT_STAGE_OPTIONS);
-      }
-    };
-    
-    loadStageOptions();
-    
-    // Listen for stage options updates
-    const handleStageOptionsUpdate = () => {
-      console.log('⏱️⏱️⏱️ [TIMER] Received stage:options:updated event, reloading...');
-      loadStageOptions();
-    };
-    
-    window.addEventListener('stage:options:updated', handleStageOptionsUpdate);
-    return () => {
-      window.removeEventListener('stage:options:updated', handleStageOptionsUpdate);
-    };
-  }, []);
+        };
+
+        loadStageOptions();
+
+        const handleStageOptionsUpdate = () => loadStageOptions();
+        window.addEventListener('stage:options:updated', handleStageOptionsUpdate);
+        return () => window.removeEventListener('stage:options:updated', handleStageOptionsUpdate);
+      }, []);
 
   const loadData = async (forceRefresh = false) => {
     try {
