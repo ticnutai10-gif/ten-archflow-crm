@@ -431,7 +431,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         cell_notes: cellNotesRef.current,
         sub_headers: subHeadersRef.current,
         show_sub_headers: showSubHeaders,
-        sub_header_position: subHeaderPosition,
         header_styles: headerStylesRef.current,
         row_heights: rowHeightsRef.current,
         validation_rules: validationRulesRef.current,
