@@ -519,8 +519,20 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); handleUndo(); }
-      if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); handleRedo(); }
+      // Undo: Ctrl+Z
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { 
+        e.preventDefault(); 
+        e.stopPropagation();
+        handleUndo(); 
+        return;
+      }
+      // Redo: Ctrl+Y or Ctrl+Shift+Z
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { 
+        e.preventDefault(); 
+        e.stopPropagation();
+        handleRedo(); 
+        return;
+      }
 
       if ((e.ctrlKey || e.metaKey) && e.key === 'c' && selectedCells.size > 0) {
         e.preventDefault();
