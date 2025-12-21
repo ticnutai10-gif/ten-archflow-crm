@@ -45,6 +45,7 @@ const statusColors = {
 };
 
 const DEFAULT_STAGE_OPTIONS = [
+  { value: 'ללא', label: 'ללא', color: '#cbd5e1' },
   { value: 'ברור_תכן', label: 'ברור תכן', color: '#3b82f6' },
   { value: 'תיק_מידע', label: 'תיק מידע', color: '#8b5cf6' },
   { value: 'היתרים', label: 'היתרים', color: '#f59e0b' },
