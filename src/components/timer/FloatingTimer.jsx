@@ -573,6 +573,9 @@ export default function FloatingTimer() {
   const filtered = React.useMemo(() => {
     const q = query.trim().toLowerCase();
     
+    console.log('⏱️⏱️⏱️ [TIMER] ========== FILTERING CLIENTS ==========');
+    console.log('⏱️⏱️⏱️ [TIMER] Total clients before filter:', clients?.length);
+    
     // ✅ בדיקה שclients הוא array
     if (!Array.isArray(clients)) {
       console.error('❌ [TIMER] clients is not an array!', clients);
@@ -580,6 +583,28 @@ export default function FloatingTimer() {
     }
     
     if (!clients || clients.length === 0) return [];
+
+    // 🔍 בדיקת כפילויות לפי שם
+    const nameCount = {};
+    clients.forEach(c => {
+      const name = c?.name || 'unknown';
+      nameCount[name] = (nameCount[name] || 0) + 1;
+    });
+    
+    const duplicates = Object.entries(nameCount).filter(([name, count]) => count > 1);
+    if (duplicates.length > 0) {
+      console.log('⏱️⏱️⏱️ [TIMER] ⚠️⚠️⚠️ DUPLICATE NAMES FOUND:');
+      duplicates.forEach(([name, count]) => {
+        console.log(`⏱️⏱️⏱️ [TIMER]   "${name}" appears ${count} times`);
+        // הצג את כל הרשומות עם השם הזה
+        const records = clients.filter(c => c?.name === name);
+        records.forEach((r, i) => {
+          console.log(`⏱️⏱️⏱️ [TIMER]     [${i+1}] id: ${r.id}, stage: ${r.stage}, created: ${r.created_date}`);
+        });
+      });
+    } else {
+      console.log('⏱️⏱️⏱️ [TIMER] ✅ No duplicate names found');
+    }
 
     let result = clients;
     // Clients are already deduplicated by name_clean in loadData - no need for extra dedup here
@@ -591,6 +616,7 @@ export default function FloatingTimer() {
           (c.email || "").toLowerCase().includes(q)
         )
       );
+      console.log('⏱️⏱️⏱️ [TIMER] After search filter:', result.length, 'clients');
     }
 
     // מיון לפי שימוש אחרון
@@ -611,6 +637,9 @@ export default function FloatingTimer() {
       // שניהם בשימוש אחרון - לפי סדר השימוש
       return aIndex - bIndex;
     });
+
+    console.log('⏱️⏱️⏱️ [TIMER] Final filtered count:', sorted.length);
+    console.log('⏱️⏱️⏱️ [TIMER] ========== END FILTERING ==========');
 
     return sorted;
   }, [clients, query, prefs.recentClients]);
