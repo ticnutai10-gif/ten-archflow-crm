@@ -2476,6 +2476,16 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                             const headerKeyForStyle = headerMerge ? headerMerge.mergeKey : col.key;
                             const currentHeaderStyle = headerStyles[headerKeyForStyle] || {};
 
+                            // Check if this column is first or last in a merged header
+                            let isFirstInMerge = false;
+                            let isLastInMerge = false;
+                            if (headerMerge && headerMerge.columns && headerMerge.columns.length > 0) {
+                              const firstCol = headerMerge.columns[0];
+                              const lastCol = headerMerge.columns[headerMerge.columns.length - 1];
+                              if (col.key === firstCol) isFirstInMerge = true;
+                              if (col.key === lastCol) isLastInMerge = true;
+                            }
+
                             // Only show sub headers with position 'above' in this row
                             if (!headerMerge && (!subHeaderTitle || subHeaderPos !== 'above')) {
                               return <th key={`sub_empty_${col.key}`} className="text-center font-bold p-2" style={{ backgroundColor: palette.headerBg, borderWidth: isSeparateBorders ? '0' : borderStyle.width, borderStyle: borderStyle.style, borderColor: palette.border }}></th>;
@@ -2494,7 +2504,11 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                   fontSize: headerFontSize,
                                   borderWidth: isSeparateBorders ? '0' : borderStyle.width,
                                   borderStyle: borderStyle.style,
-                                  borderColor: palette.border
+                                  borderColor: palette.border,
+                                  borderRightWidth: isFirstInMerge && !isSeparateBorders ? '3px' : undefined,
+                                  borderRightColor: isFirstInMerge ? palette.border : undefined,
+                                  borderLeftWidth: isLastInMerge && !isSeparateBorders ? '3px' : undefined,
+                                  borderLeftColor: isLastInMerge ? palette.border : undefined
                                 }}
                                 onClick={(e) => {
                                   e.preventDefault();
@@ -2557,6 +2571,19 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                           const isHeaderSelected = selectedHeaders.has(col.key);
                           const hasSubHeader = getSubHeaderTitle(col.key);
                           const headerStyle = headerStyles[col.key] || {};
+                          
+                          // Check if this column is first or last in a merged header
+                          let isFirstInMerge = false;
+                          let isLastInMerge = false;
+                          Object.values(mergedHeaders).forEach(merge => {
+                            if (merge.columns && merge.columns.length > 0) {
+                              const firstCol = merge.columns[0];
+                              const lastCol = merge.columns[merge.columns.length - 1];
+                              if (col.key === firstCol) isFirstInMerge = true;
+                              if (col.key === lastCol) isLastInMerge = true;
+                            }
+                          });
+                          
                           return (
                             <Draggable key={col.key} draggableId={col.key} index={colIndex} type="column">
                               {(provided, snapshot) => (
@@ -2575,6 +2602,10 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                   borderStyle: borderStyle.style,
                                   borderColor: palette.border,
                                   borderRadius: isSeparateBorders ? tableBorderRadius : '0',
+                                  borderRightWidth: isFirstInMerge && !isSeparateBorders ? '3px' : undefined,
+                                  borderRightColor: isFirstInMerge ? palette.border : undefined,
+                                  borderLeftWidth: isLastInMerge && !isSeparateBorders ? '3px' : undefined,
+                                  borderLeftColor: isLastInMerge ? palette.border : undefined,
                                   zIndex: snapshot.isDragging ? 50 : 10,
                                   ...provided.draggableProps.style
                                 }} onClick={(e) => !snapshot.isDragging && handleHeaderClick(col.key, e)}>
