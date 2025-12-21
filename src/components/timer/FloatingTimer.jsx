@@ -444,58 +444,52 @@ export default function FloatingTimer() {
 
   const loadData = async (forceRefresh = false) => {
     try {
-      console.log('⏱️⏱️⏱️ [TIMER] Loading clients...');
+      console.log('⏱️ [TIMER] Loading clients...');
 
       const now = Date.now();
       if (!forceRefresh && clientsCache && now - clientsCacheTime < CACHE_DURATION) {
-        console.log('⏱️⏱️⏱️ [TIMER] Using cached clients:', clientsCache.length);
+        console.log('⏱️ [TIMER] Using cached clients:', clientsCache.length);
         setClients(clientsCache);
         return;
       }
 
-      console.log('⏱️⏱️⏱️ [TIMER] Fetching from server...');
+      console.log('⏱️ [TIMER] Fetching from server...');
       const allowedClients = await getAllowedClientsForTimer();
 
-       // ✅ הגנה על תוצאות
-       const validClients = Array.isArray(allowedClients) ? allowedClients : [];
+      // ✅ הגנה על תוצאות
+      const validClients = Array.isArray(allowedClients) ? allowedClients : [];
 
-       // 🧹 הסרת כפילויות לפי שם נקי (name_clean) או שם רגיל - שמירה על הרשומה הוותיקה ביותר
-       const uniqueClientsMap = new Map();
-       for (const c of validClients) {
-         if (!c) continue;
-         // Use name_clean first, then name as fallback for uniqueness
-         const clientName = c.name || "";
-         const cleanName = (c.name_clean || clientName).trim().toLowerCase();
+      // 🧹 הסרת כפילויות לפי שם נקי - שמירה על הרשומה החדשה ביותר (עם השלב העדכני)
+      const uniqueClientsMap = new Map();
+      for (const c of validClients) {
+        if (!c) continue;
+        const clientName = c.name || "";
+        const cleanName = (c.name_clean || clientName).trim().toLowerCase().replace(/\s+/g, ' ');
 
-         if (cleanName) {
-           // If we already have a client with this clean name, keep the older one
-           if (!uniqueClientsMap.has(cleanName)) {
-             uniqueClientsMap.set(cleanName, c);
-           } else {
-             // Keep the older record (smaller created_date)
-             const existing = uniqueClientsMap.get(cleanName);
-             if (c.created_date && existing.created_date && new Date(c.created_date) < new Date(existing.created_date)) {
-               uniqueClientsMap.set(cleanName, c);
-             }
-           }
-         } else {
-           // Fallback for clients without name
-           const fallbackKey = c.id || `noname_${Math.random()}`;
-           if (!uniqueClientsMap.has(fallbackKey)) {
-             uniqueClientsMap.set(fallbackKey, c);
-           }
-         }
-       }
-       const uniqueClients = Array.from(uniqueClientsMap.values());
+        if (cleanName) {
+          if (!uniqueClientsMap.has(cleanName)) {
+            uniqueClientsMap.set(cleanName, c);
+          } else {
+            // שמור את הרשומה החדשה יותר (עם ה-stage העדכני)
+            const existing = uniqueClientsMap.get(cleanName);
+            if (c.updated_date && existing.updated_date && new Date(c.updated_date) > new Date(existing.updated_date)) {
+              uniqueClientsMap.set(cleanName, c);
+            }
+          }
+        } else {
+          const fallbackKey = c.id || `noname_${Math.random()}`;
+          if (!uniqueClientsMap.has(fallbackKey)) {
+            uniqueClientsMap.set(fallbackKey, c);
+          }
+        }
+      }
+      const uniqueClients = Array.from(uniqueClientsMap.values());
 
-       console.log('✅ [TIMER] Received clients from server:', validClients.length, '→ unique:', uniqueClients.length);
+      console.log('✅ [TIMER] Clients loaded:', validClients.length, '→ unique:', uniqueClients.length);
 
-       // שמירה בזיכרון ובמצב
-       clientsCache = uniqueClients;
-       clientsCacheTime = now;
-
-       setClients(uniqueClients);
-       console.log('✅ [TIMER] Loaded and cached all clients:', uniqueClients.length);
+      clientsCache = uniqueClients;
+      clientsCacheTime = now;
+      setClients(uniqueClients);
     } catch (error) {
       console.error('❌ [TIMER] Error loading clients:', error);
 
