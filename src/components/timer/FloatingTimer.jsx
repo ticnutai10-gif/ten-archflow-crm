@@ -766,8 +766,8 @@ ${context}
   };
 
   const handleMouseDown = (e) => {
-    // Only allow dragging if Ctrl is pressed
-    if (!e.ctrlKey) return;
+    // Only allow dragging if Ctrl+Shift is pressed
+    if (!e.ctrlKey || !e.shiftKey) return;
 
     e.preventDefault();
     setIsDragging(true);
