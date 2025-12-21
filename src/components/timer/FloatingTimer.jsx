@@ -260,7 +260,6 @@ let clientsCacheTime = 0;
 const CACHE_DURATION = 5 * 60 * 1000;
 
 export default function FloatingTimer() {
-  console.log('⏱️⏱️⏱️ [TIMER] Component mounting/rendering');
   
   const [prefs, setPrefs] = React.useState(readPrefs());
   const [clients, setClients] = React.useState([]);
