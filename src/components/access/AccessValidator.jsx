@@ -30,7 +30,6 @@ export function useAccessControl() {
     // Use cache if fresh
     const now = Date.now();
     if (accessCache && (now - accessCacheTime) < ACCESS_CACHE_DURATION) {
-      console.log('🔐 [ACCESS] Using cached access data');
       setMe(accessCache.me);
       setAccessRules(accessCache.rules);
       setLoading(false);
@@ -38,7 +37,6 @@ export function useAccessControl() {
       return;
     }
     
-    console.log('🔐 [ACCESS] useAccessControl effect starting...');
     const loadAccess = async () => {
       try {
         setLoading(true);
@@ -48,29 +46,24 @@ export function useAccessControl() {
         
         if (user) {
           setMe(user);
-          console.log('🔐 [ACCESS] Loading access rules...');
           const rules = await base44.entities.AccessControl.filter({ active: true }, '-created_date', 100).catch(() => []);
           const validRules = Array.isArray(rules) ? rules : [];
-          console.log('🔐 [ACCESS] Rules loaded:', validRules?.length);
           setAccessRules(validRules);
 
           // Update cache
           accessCache = { me: user, rules: validRules };
           accessCacheTime = Date.now();
         } else {
-          console.log('🔐 [ACCESS] No user, setting empty rules');
           setMe(null);
           setAccessRules([]);
           accessCache = null;
         }
         } catch (error) {
-          console.error('❌ [ACCESS] Error:', error);
-          setMe(null);
-          setAccessRules([]);
+        setMe(null);
+        setAccessRules([]);
         } finally {
-          console.log('✅ [ACCESS] Loading complete');
-          setLoading(false);
-          loadedRef.current = true;
+        setLoading(false);
+        loadedRef.current = true;
         }
         };
 
@@ -276,17 +269,13 @@ export function useAccessControl() {
   const clientsCacheTimeRef = useRef(0);
 
   const getAllowedClientsForTimer = useCallback(async () => {
-    console.log('🔐 [ACCESS] getAllowedClientsForTimer called');
     try {
       const now = Date.now();
       if (clientsCacheRef.current && (now - clientsCacheTimeRef.current) < 5 * 60 * 1000) {
-        console.log('🔐 [ACCESS] Returning cached clients:', clientsCacheRef.current?.length);
         return clientsCacheRef.current;
       }
 
-      console.log('🔐 [ACCESS] Fetching clients from server...');
       const allClients = await base44.entities.Client.list();
-      console.log('🔐 [ACCESS] Raw clients from server:', allClients?.length);
       const validClients = Array.isArray(allClients) ? allClients : [];
       
       // דדופליקציה מובנית לפי name_clean
@@ -307,9 +296,7 @@ export function useAccessControl() {
       }
       
       const dedupedClients = Array.from(uniqueMap.values());
-      console.log('🔐 [ACCESS] Deduped clients:', dedupedClients?.length);
       const filtered = filterClients(dedupedClients);
-      console.log('🔐 [ACCESS] Filtered clients:', filtered?.length);
       
       clientsCacheRef.current = filtered;
       clientsCacheTimeRef.current = now;

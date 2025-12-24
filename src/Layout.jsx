@@ -76,8 +76,7 @@ const MENU_ITEMS = [
   { name: "הגדרות", icon: Settings, path: "Settings" }
 ];
 
-export default function Layout({ children, currentPageName }) {
-  console.log('🏠 [LAYOUT] Layout rendering, page:', currentPageName);
+function LayoutInner({ children, currentPageName }) {
   const isMobile = useIsMobile();
   const [user, setUser] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -132,17 +131,14 @@ export default function Layout({ children, currentPageName }) {
 
   // Initial theme load
   useEffect(() => {
-    console.log('🎨 [LAYOUT] Theme load effect, already loaded:', loadedRef.current);
     if (loadedRef.current) return;
     loadedRef.current = true;
     
     const loadTheme = async () => {
-      console.log('🎨 [LAYOUT] Loading theme...');
       try {
         let userData = {};
         try {
           userData = await base44.auth.me();
-          console.log('🎨 [LAYOUT] User for theme:', userData?.email);
         } catch (error) {
           console.warn('Failed to load user, using defaults:', error);
         }
@@ -165,16 +161,13 @@ export default function Layout({ children, currentPageName }) {
 
   // Load user
   useEffect(() => {
-    console.log('🏠 [LAYOUT] Loading user...');
     let mounted = true;
     
     base44.auth.me()
       .then((u) => {
-        console.log('✅ [LAYOUT] User loaded:', u?.email);
         if (mounted) setUser(u);
       })
-      .catch((e) => {
-        console.warn('⚠️ [LAYOUT] User load failed:', e);
+      .catch(() => {
         if (mounted) setUser(null);
       });
       
@@ -761,3 +754,6 @@ export default function Layout({ children, currentPageName }) {
         </SidebarProvider>
         );
         }
+
+        const Layout = React.memo(LayoutInner);
+        export default Layout;
