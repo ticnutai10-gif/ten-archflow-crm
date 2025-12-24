@@ -176,30 +176,22 @@ export default function ClientsPage() {
     }
   }, [accessLoading]);
 
-  // Load stage options from UserPreferences (check super admin first, then current user)
+  // Load GLOBAL stage options from AppSettings
   const loadStageOptions = async () => {
     try {
-      const user = await base44.auth.me();
-      
-      // Try to load from any super admin first
-      const allPrefs = await base44.entities.UserPreferences.list();
-      const superAdminPrefs = allPrefs.find(pref => 
-        pref.spreadsheet_columns?.clients?.stageOptions && 
-        pref.spreadsheet_columns.clients.stageOptions.length > 0
-      );
-      
-      if (superAdminPrefs?.spreadsheet_columns?.clients?.stageOptions) {
-        setStageOptions(superAdminPrefs.spreadsheet_columns.clients.stageOptions);
-        return;
-      }
-      
-      // Fallback to current user preferences
-      const userPrefs = await base44.entities.UserPreferences.filter({ user_email: user.email });
-      if (userPrefs.length > 0 && userPrefs[0].spreadsheet_columns?.clients?.stageOptions) {
-        setStageOptions(userPrefs[0].spreadsheet_columns.clients.stageOptions);
+      const appSettings = await base44.entities.AppSettings.filter({ setting_key: 'table_settings_clients' });
+      if (appSettings.length > 0 && appSettings[0].value?.stageOptions) {
+        setStageOptions(appSettings[0].value.stageOptions);
+      } else {
+        // Fallback to UserPreferences if global not found
+        const user = await base44.auth.me();
+        const userPrefs = await base44.entities.UserPreferences.filter({ user_email: user.email });
+        if (userPrefs.length > 0 && userPrefs[0].spreadsheet_columns?.clients?.stageOptions) {
+          setStageOptions(userPrefs[0].spreadsheet_columns.clients.stageOptions);
+        }
       }
     } catch (e) {
-      console.warn('Failed to load stage options, using defaults');
+      console.warn('Failed to load stage options:', e);
     }
   };
 
