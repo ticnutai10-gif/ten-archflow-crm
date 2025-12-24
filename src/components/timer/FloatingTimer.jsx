@@ -419,16 +419,11 @@ export default function FloatingTimer() {
 
   const loadData = async (forceRefresh = false) => {
     try {
-      console.log('⏱️ [TIMER] Loading clients...');
-
       const now = Date.now();
       if (!forceRefresh && clientsCache && now - clientsCacheTime < CACHE_DURATION) {
-        console.log('⏱️ [TIMER] Using cached clients:', clientsCache.length);
         setClients(clientsCache);
         return;
       }
-
-      console.log('⏱️ [TIMER] Fetching from server...');
       const allowedClients = await getAllowedClientsForTimer();
 
       // ✅ הגנה על תוצאות
@@ -459,8 +454,6 @@ export default function FloatingTimer() {
         }
       }
       const uniqueClients = Array.from(uniqueClientsMap.values());
-
-      console.log('✅ [TIMER] Clients loaded:', validClients.length, '→ unique:', uniqueClients.length);
 
       clientsCache = uniqueClients;
       clientsCacheTime = now;
