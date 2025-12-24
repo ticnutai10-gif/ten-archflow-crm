@@ -1024,19 +1024,9 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
                                 {getUserDisplayName(getCreatedBy(log)).substring(0, 2).toUpperCase()}
                               </AvatarFallback>
                             </Avatar>
-                            <Link
-                              to={`${createPageUrl("Clients")}?open=details&client_name=${encodeURIComponent(log.client_name || "")}&tab=time`}
-                              className="truncate max-w-[180px] hover:text-blue-600 transition-colors"
-                              onClick={() => {
-                                console.log('🖱️ [TimerLogs] User link clicked (list view):', {
-                                  userName: getUserDisplayName(getCreatedBy(log)),
-                                  clientName: log.client_name,
-                                  targetURL: `${createPageUrl("Clients")}?open=details&client_name=${encodeURIComponent(log.client_name || "")}&tab=time`
-                                });
-                              }}
-                            >
+                            <span className="truncate max-w-[180px] text-slate-600">
                               {getUserDisplayName(getCreatedBy(log))}
-                            </Link>
+                            </span>
                           </div>
                           <div className="flex items-center gap-2">
                             <User className="w-3 h-3" />
