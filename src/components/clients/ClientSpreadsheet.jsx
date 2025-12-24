@@ -73,9 +73,8 @@ function StageIcon({ client, columns, stageOptions }) {
   const stageColumn = columns.find(col => col.type === 'stage' || col.key === 'stage');
   if (!stageColumn) return null;
   
-  const stageValue = stageColumn.key === 'stage' 
-    ? client.stage 
-    : client.custom_data?.[stageColumn.key.slice(3)];
+  const stageValue = client.stage || client.custom_data?.stage || 
+    (stageColumn.key.startsWith('cf:') ? client.custom_data?.[stageColumn.key.slice(3)] : client[stageColumn.key]);
   
   if (!stageValue) return null;
   
@@ -2815,6 +2814,9 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                       if (column.key === 'cf:client_status' || column.key === 'client_status') {
                         // Prefer root field over custom_data for status
                         cellValue = client.client_status || client.status || client.custom_data?.client_status || '';
+                      } else if (column.type === 'stage' || column.key === 'cf:stage' || column.key === 'stage') {
+                        // Prefer root stage for sync
+                        cellValue = client.stage || client.custom_data?.stage || '';
                       } else if (column.key.startsWith('cf:')) {
                         const slug = column.key.slice(3);
                         cellValue = client.custom_data?.[slug] || '';
@@ -2879,15 +2881,24 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                                 stageOptions={stageOptions}
                                 onDirectSave={async (stageValue) => {
                                   // Update local state immediately
-                                  const updatedClient = column.key.startsWith('cf:')
-                                    ? {
-                                        ...client,
-                                        custom_data: {
-                                          ...(client.custom_data || {}),
-                                          [column.key.slice(3)]: stageValue
-                                        }
+                                  let updatedClient = { ...client };
+                                  
+                                  if (column.key.startsWith('cf:')) {
+                                    updatedClient = {
+                                      ...updatedClient,
+                                      custom_data: {
+                                        ...(updatedClient.custom_data || {}),
+                                        [column.key.slice(3)]: stageValue
                                       }
-                                    : { ...client, [column.key]: stageValue };
+                                    };
+                                  } else {
+                                    updatedClient = { ...updatedClient, [column.key]: stageValue };
+                                  }
+
+                                  // Force sync root stage property if this is a stage column
+                                  if (column.type === 'stage' || column.key === 'stage' || column.key === 'cf:stage') {
+                                    updatedClient.stage = stageValue;
+                                  }
 
                                   setLocalClients(prev => prev.map(c => c.id === client.id ? updatedClient : c));
                                   setEditingCell(null);
