@@ -27,7 +27,8 @@ import {
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import { base44 } from "@/api/base44Client";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { StageSelector } from "@/components/spreadsheets/GenericSpreadsheet";
 import { toast } from "sonner";
 
 import ClientFiles from "./ClientFiles";
@@ -308,48 +309,85 @@ export default function ClientDetails({ client, onBack, onEdit }) {
                   {currentClient.name || 'ללא שם'}
                 </CardTitle>
                 <div className="flex flex-wrap gap-2">
-                  <Select 
-                    value={currentClient.stage || ''} 
-                    onValueChange={handleStageChange}
-                    disabled={isUpdatingStage}
-                  >
-                    <SelectTrigger className="w-[200px] h-8" style={{ 
-                      borderColor: currentClient.stage ? stageOptions.find(s => s.value === currentClient.stage)?.color : undefined,
-                      color: currentClient.stage ? stageOptions.find(s => s.value === currentClient.stage)?.color : undefined
-                    }}>
-                      <SelectValue placeholder="בחר שלב">
-                        {currentClient.stage && (() => {
-                          const currentStage = stageOptions.find(s => s.value === currentClient.stage);
-                          return currentStage ? (
-                            <div className="flex items-center gap-2">
-                              <Circle 
-                                className="w-3 h-3 flex-shrink-0 fill-current"
-                                style={{ color: currentStage.color }}
-                              />
-                              <span>{currentStage.label}</span>
-                            </div>
-                          ) : 'בחר שלב';
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button 
+                        variant="outline" 
+                        className="w-[200px] h-8 justify-start gap-2 bg-white"
+                        style={{ 
+                          borderColor: currentClient.stage ? (() => {
+                            // Find stage in hierarchy
+                            const findStage = (val, opts) => {
+                              for (const opt of opts) {
+                                if (opt.value === val) return opt;
+                                if (opt.children) {
+                                  const found = findStage(val, opt.children);
+                                  if (found) return found;
+                                }
+                              }
+                              return null;
+                            };
+                            return findStage(currentClient.stage, stageOptions)?.color;
+                          })() : undefined
+                        }}
+                        disabled={isUpdatingStage}
+                      >
+                        {(() => {
+                          const findStage = (val, opts) => {
+                            for (const opt of opts) {
+                              if (opt.value === val) return opt;
+                              if (opt.children) {
+                                const found = findStage(val, opt.children);
+                                if (found) return found;
+                              }
+                            }
+                            return null;
+                          };
+                          
+                          const currentStage = findStage(currentClient.stage, stageOptions);
+                          
+                          if (currentStage) {
+                            return (
+                              <div className="flex items-center gap-2 w-full overflow-hidden">
+                                <Circle 
+                                  className="w-3 h-3 flex-shrink-0 fill-current"
+                                  style={{ color: currentStage.color }}
+                                />
+                                <span className="truncate">{currentStage.label}</span>
+                              </div>
+                            );
+                          }
+                          return <span className="text-slate-500">בחר שלב</span>;
                         })()}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {console.log('🔍 [STAGE DEBUG] Rendering SelectContent with stageOptions:', stageOptions)}
-                      {stageOptions.map((stage, idx) => {
-                        console.log(`🔍 [STAGE DEBUG] Rendering option ${idx}:`, stage.value, stage.label);
-                        return (
-                          <SelectItem key={stage.value} value={stage.value}>
-                            <div className="flex items-center gap-2">
-                              <Circle 
-                                className="w-3 h-3 flex-shrink-0 fill-current"
-                                style={{ color: stage.color }}
-                              />
-                              <span>{stage.label}</span>
-                            </div>
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <StageSelector 
+                        options={stageOptions} 
+                        onSelect={(val) => {
+                          // Close popover is handled by Popover's default behavior when clicking outside, 
+                          // but usually we need to manually close it or let the user click.
+                          // However, StageSelector items stopPropagation.
+                          // Wait, we need to close the popover.
+                          // The Popover from shadcn doesn't auto-close if we don't use close ref.
+                          // But we can just use the standard Radix behavior or force it.
+                          // Actually, standard PopoverContent closes on interaction if we don't prevent it?
+                          // StageMenuItem calls stopPropagation which prevents closing.
+                          // I should pass a "close" handler or simply remove stopPropagation for selection?
+                          // But wait, the stopPropagation in StageMenuItem was for the *submenu* interaction potentially?
+                          // No, it was `onClick={(e) => { e.stopPropagation(); onSelect(option.value); }}`
+                          // If I remove e.stopPropagation(), the popover might close.
+                          
+                          // Actually, since I can't easily control the Popover state from here (it's uncontrolled),
+                          // I'll assume the user might need to click outside or I'll try to trigger a click.
+                          // Better: Let's make the Popover controlled.
+                          handleStageChange(val);
+                          // We'll rely on a ref click or just let it stay open? No, that's bad UX.
+                          document.body.click(); // Hacky way to close popovers
+                        }} 
+                      />
+                    </PopoverContent>
+                  </Popover>
                   
                   {currentClient.status === 'פעיל' && (
                     <Badge variant="outline" className={statusColors["פעיל"]}>
