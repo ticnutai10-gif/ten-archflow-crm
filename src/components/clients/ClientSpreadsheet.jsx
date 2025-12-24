@@ -93,27 +93,34 @@ function StageIcon({ client, columns, stageOptions }) {
   );
 }
 
-// Load settings from database (per user)
+// Load settings from GLOBAL AppSettings (shared for all admins)
 const loadUserSettings = async (tableName = 'clients') => {
   try {
+    // Try to load global settings first
+    const globalSettings = await base44.entities.AppSettings.filter({ setting_key: `table_settings_${tableName}` });
+    
+    if (globalSettings.length > 0 && globalSettings[0].value) {
+      console.log('📊 Loaded global table settings');
+      return globalSettings[0].value;
+    }
+    
+    // Fallback to user preferences only if global doesn't exist (migration path)
     const user = await base44.auth.me();
     const userPrefs = await base44.entities.UserPreferences.filter({ user_email: user.email });
     
     if (userPrefs.length > 0 && userPrefs[0].spreadsheet_columns?.[tableName]) {
+      console.log('📊 Loaded legacy user settings');
       return userPrefs[0].spreadsheet_columns[tableName];
     }
   } catch (e) {
-    console.error('Error loading user settings:', e);
+    console.error('Error loading table settings:', e);
   }
   return null;
 };
 
-// Save settings to database (per user)
+// Save settings to GLOBAL AppSettings (shared for all admins)
 const saveUserSettings = async (tableName, columns, cellStyles, showSubHeaders, subHeaders, stageOptions) => {
   try {
-    const user = await base44.auth.me();
-    const existingPrefs = await base44.entities.UserPreferences.filter({ user_email: user.email });
-    
     const columnSettings = {
       order: columns.map(c => c.key),
       visibility: columns.reduce((acc, col) => {
@@ -133,29 +140,26 @@ const saveUserSettings = async (tableName, columns, cellStyles, showSubHeaders, 
       cellStyles: cellStyles || {},
       showSubHeaders: showSubHeaders,
       subHeaders: subHeaders || {},
-      stageOptions: stageOptions || STAGE_OPTIONS
+      stageOptions: stageOptions || STAGE_OPTIONS,
+      updated_at: new Date().toISOString()
     };
     
-    if (existingPrefs.length > 0) {
-      const currentSpreadsheetColumns = existingPrefs[0].spreadsheet_columns || {};
-      await base44.entities.UserPreferences.update(existingPrefs[0].id, {
-        spreadsheet_columns: {
-          ...currentSpreadsheetColumns,
-          [tableName]: columnSettings
-        }
+    const existingSettings = await base44.entities.AppSettings.filter({ setting_key: `table_settings_${tableName}` });
+    
+    if (existingSettings.length > 0) {
+      await base44.entities.AppSettings.update(existingSettings[0].id, {
+        value: columnSettings
       });
     } else {
-      await base44.entities.UserPreferences.create({
-        user_email: user.email,
-        spreadsheet_columns: {
-          [tableName]: columnSettings
-        }
+      await base44.entities.AppSettings.create({
+        setting_key: `table_settings_${tableName}`,
+        value: columnSettings
       });
     }
     
-    console.log('User settings saved to database');
+    console.log('Global table settings saved to database');
   } catch (e) {
-    console.error('Error saving user settings:', e);
+    console.error('Error saving global table settings:', e);
   }
 };
 
