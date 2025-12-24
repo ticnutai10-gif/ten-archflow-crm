@@ -83,16 +83,7 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
   const [userFilter, setUserFilter] = useState("all");
   const [userSearchTerm, setUserSearchTerm] = useState("");
   const [showStats, setShowStats] = useState(false);
-  const [viewMode, setViewMode] = useState(() => {
-    try {
-      const saved = localStorage.getItem('timer-logs-view-mode') || 'list';
-      console.log('💾 [TimerLogs] Loaded viewMode from localStorage:', saved);
-      return saved;
-    } catch {
-      console.log('⚠️ [TimerLogs] Failed to load viewMode, using default');
-      return 'list';
-    }
-  });
+  const [viewMode, setViewMode] = useState('list');
   const [summaryMode, setSummaryMode] = useState(false);
   const [summaryGranularity, setSummaryGranularity] = useState("day");
   const [selectionMode, setSelectionMode] = useState(false);
@@ -105,14 +96,7 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [selectedClientForAdd, setSelectedClientForAdd] = useState(null);
 
-  useEffect(() => {
-    console.log('💾 [TimerLogs] Saving viewMode to localStorage:', viewMode);
-    try {
-      localStorage.setItem('timer-logs-view-mode', viewMode);
-    } catch (e) {
-      console.error("❌ [TimerLogs] Failed to save view mode to local storage:", e);
-    }
-  }, [viewMode]);
+
 
   // ✅ הגנה מלאה על timeLogs prop
   const safeTimeLogs = React.useMemo(() => {
@@ -928,19 +912,9 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
                                 {getUserDisplayName(getCreatedBy(log)).substring(0, 2).toUpperCase()}
                               </AvatarFallback>
                             </Avatar>
-                            <Link
-                              to={`${createPageUrl("Clients")}?open=details&client_name=${encodeURIComponent(log.client_name || "")}&tab=time`}
-                              className="text-slate-600 text-sm flex-1 hover:text-blue-600 transition-colors"
-                              onClick={() => {
-                                console.log('🖱️ [TimerLogs] User link clicked:', {
-                                  userName: getUserDisplayName(getCreatedBy(log)),
-                                  clientName: log.client_name,
-                                  targetURL: `${createPageUrl("Clients")}?open=details&client_name=${encodeURIComponent(log.client_name || "")}&tab=time`
-                                });
-                              }}
-                            >
+                            <span className="text-slate-600 text-sm flex-1">
                               {getUserDisplayName(getCreatedBy(log))}
-                            </Link>
+                            </span>
                             <Button
                               size="icon"
                               variant="ghost"
