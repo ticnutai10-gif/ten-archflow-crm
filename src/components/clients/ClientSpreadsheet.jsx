@@ -1618,12 +1618,12 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                 <CardTitle className="bg-clip-text text-sky-950 text-2xl font-bold tracking-tight from-blue-600 to-purple-600">
                   טבלת Excel מתקדמת
                 </CardTitle>
-                <p className="text-sm text-slate-500 mt-1 flex items-center gap-2">
+                <div className="text-sm text-slate-500 mt-1 flex items-center gap-2">
                   עריכה ישירה עם קיצורי מקלדת מהירים
                   <HelpIcon
                     text="טבלת Excel מתקדמת עם יכולות עריכה מלאות. השתמש בקיצורי מקלדת לעבודה מהירה!" />
 
-                </p>
+                </div>
               </div>
             </div>
 
@@ -1809,7 +1809,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
               }}
               className={`gap-2 h-8 ${selectionMode ? 'bg-purple-600 hover:bg-purple-700 text-white' : ''}`}
             >
-              <Checkbox className="w-3 h-3" />
+              <CheckSquare className="w-3 h-3" />
               {selectionMode ? 'סגור בחירה' : 'בחירה מרובה'}
             </Button>
 
