@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
+// Note: useRef is already imported
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
 
@@ -11,12 +12,32 @@ const SUPER_ADMIN_EMAILS = [
 /**
  * Hook לבדיקת הרשאות משתמש
  */
+// Cache for access control to prevent multiple loads
+let accessCache = null;
+let accessCacheTime = 0;
+const ACCESS_CACHE_DURATION = 30 * 1000; // 30 seconds
+
 export function useAccessControl() {
-  const [me, setMe] = useState(null);
-  const [accessRules, setAccessRules] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [me, setMe] = useState(accessCache?.me || null);
+  const [accessRules, setAccessRules] = useState(accessCache?.rules || []);
+  const [loading, setLoading] = useState(!accessCache);
+  const loadedRef = useRef(false);
 
   useEffect(() => {
+    // Skip if already loaded in this component instance
+    if (loadedRef.current) return;
+    
+    // Use cache if fresh
+    const now = Date.now();
+    if (accessCache && (now - accessCacheTime) < ACCESS_CACHE_DURATION) {
+      console.log('🔐 [ACCESS] Using cached access data');
+      setMe(accessCache.me);
+      setAccessRules(accessCache.rules);
+      setLoading(false);
+      loadedRef.current = true;
+      return;
+    }
+    
     console.log('🔐 [ACCESS] useAccessControl effect starting...');
     const loadAccess = async () => {
       try {
@@ -32,23 +53,29 @@ export function useAccessControl() {
           const validRules = Array.isArray(rules) ? rules : [];
           console.log('🔐 [ACCESS] Rules loaded:', validRules?.length);
           setAccessRules(validRules);
+
+          // Update cache
+          accessCache = { me: user, rules: validRules };
+          accessCacheTime = Date.now();
         } else {
           console.log('🔐 [ACCESS] No user, setting empty rules');
           setMe(null);
           setAccessRules([]);
+          accessCache = null;
         }
         } catch (error) {
-        console.error('❌ [ACCESS] Error:', error);
-        setMe(null);
-        setAccessRules([]);
+          console.error('❌ [ACCESS] Error:', error);
+          setMe(null);
+          setAccessRules([]);
         } finally {
-        console.log('✅ [ACCESS] Loading complete');
-        setLoading(false);
+          console.log('✅ [ACCESS] Loading complete');
+          setLoading(false);
+          loadedRef.current = true;
         }
         };
 
-    loadAccess();
-  }, []);
+        loadAccess();
+        }, []);
 
   // בדיקה אם Super Admin
   const isSuperAdmin = useMemo(() => {

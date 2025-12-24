@@ -259,8 +259,10 @@ let clientsCache = null;
 let clientsCacheTime = 0;
 const CACHE_DURATION = 5 * 60 * 1000;
 
-export default function FloatingTimer() {
-  console.log('⏱️ [TIMER] FloatingTimer component mounting...');
+function FloatingTimerInner() {
+  const mountCountRef = React.useRef(0);
+  mountCountRef.current++;
+  console.log('⏱️ [TIMER] FloatingTimer render #' + mountCountRef.current);
   
   const [prefs, setPrefs] = React.useState(readPrefs());
   const [clients, setClients] = React.useState([]);
@@ -1733,3 +1735,7 @@ ${context}
     </div>);
 
 }
+
+// Wrap with React.memo to prevent unnecessary re-renders
+const FloatingTimer = React.memo(FloatingTimerInner);
+export default FloatingTimer;
