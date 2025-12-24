@@ -122,23 +122,11 @@ export function StageDisplay({ value, column, isEditing, onEdit, editValue, onSa
     }
   };
 
-  if (isEditing) {
-    return (
-      <div className="relative z-50" onClick={(e) => e.stopPropagation()}>
-        <StageSelector options={stageOptions} onSelect={handleSelect} />
-      </div>
-    );
-  }
-  
-  if (!currentStage) {
-    return (
-      <div className="text-xs text-slate-400 text-center py-2 hover:bg-purple-50 rounded transition-colors cursor-pointer">
-        לחץ לבחירה
-      </div>
-    );
-  }
-  
-  return (
+  const Badge = !currentStage ? (
+    <div className="text-xs text-slate-400 text-center py-2 hover:bg-purple-50 rounded transition-colors cursor-pointer w-full">
+      לחץ לבחירה
+    </div>
+  ) : (
     <div className="flex items-center justify-center gap-2 group cursor-pointer py-1">
       <div 
         className="w-4 h-4 rounded-full transition-all duration-300 group-hover:scale-125 flex-shrink-0"
@@ -167,6 +155,21 @@ export function StageDisplay({ value, column, isEditing, onEdit, editValue, onSa
       </div>
     </div>
   );
+
+  if (isEditing) {
+    return (
+      <Popover open={true} onOpenChange={(isOpen) => !isOpen && onCancel && onCancel()}>
+        <PopoverTrigger asChild>
+          <div>{Badge}</div>
+        </PopoverTrigger>
+        <PopoverContent className="p-0 w-auto" align="center" side="bottom">
+          <StageSelector options={stageOptions} onSelect={handleSelect} />
+        </PopoverContent>
+      </Popover>
+    );
+  }
+  
+  return Badge;
 }
 
 export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMode = false, filterByClient = null, onBack = null }) {
