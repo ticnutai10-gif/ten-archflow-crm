@@ -90,8 +90,8 @@ const TabsTrigger = React.forwardRef(({ className, children, value, selectedValu
 
 TabsTrigger.displayName = "TabsTrigger";
 
-const TabsContent = React.forwardRef(({ className, children, value, selectedValue, ...props }, ref) => {
-  // תקן את הבעיה - השווה selectedValue שעובר מההורה ל-value של TabsContent
+const TabsContent = React.forwardRef(({ className, children, value, selectedValue, onValueChange, ...props }, ref) => {
+  // Extract onValueChange to prevent it from being passed to DOM element
   const isSelected = selectedValue === value;
 
   if (!isSelected) return null;
