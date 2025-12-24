@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Edit, Eye, X, Trash2, Maximize2, Minimize2, Settings, Bug, Save, Phone as PhoneIcon, Palette, Split, Merge, Edit2, Copy, Table, Info, Sparkles, Clock, FileText, Eraser, Circle, User, ArrowUpDown } from "lucide-react";
+import { Plus, Edit, Eye, X, Trash2, Maximize2, Minimize2, Settings, Bug, Save, Phone as PhoneIcon, Palette, Split, Merge, Edit2, Copy, Table, Info, Sparkles, Clock, FileText, Eraser, Circle, User, ArrowUpDown, CheckSquare } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
