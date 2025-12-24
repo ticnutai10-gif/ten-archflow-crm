@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Edit2, Trash2, Circle, Save, GripVertical } from "lucide-react";
+import { Plus, Edit2, Trash2, Circle, Save, GripVertical, Download, Upload, FileJson, FileSpreadsheet } from "lucide-react";
 import { toast } from "sonner";
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
@@ -158,6 +158,146 @@ export default function StageOptionsManager({ open, onClose, stageOptions, onSav
       g: parseInt(result[2], 16),
       b: parseInt(result[3], 16)
     } : null;
+  };
+
+  const fileInputRef = React.useRef(null);
+
+  const handleExportJSON = () => {
+    const dataStr = JSON.stringify(editedOptions, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'stages_config.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    toast.success('הגדרות יוצאו בהצלחה (JSON)');
+  };
+
+  const handleExportCSV = () => {
+    let csvContent = "\uFEFFParent Label,Parent Value,Parent Color,Child Label,Child Value,Child Color\n";
+    
+    editedOptions.forEach(parent => {
+      if (parent.children && parent.children.length > 0) {
+        parent.children.forEach(child => {
+          const row = [
+            `"${(parent.label || '').replace(/"/g, '""')}"`,
+            `"${(parent.value || '').replace(/"/g, '""')}"`,
+            `"${(parent.color || '').replace(/"/g, '""')}"`,
+            `"${(child.label || '').replace(/"/g, '""')}"`,
+            `"${(child.value || '').replace(/"/g, '""')}"`,
+            `"${(child.color || '').replace(/"/g, '""')}"`
+          ].join(",");
+          csvContent += row + "\n";
+        });
+      } else {
+        const row = [
+          `"${(parent.label || '').replace(/"/g, '""')}"`,
+          `"${(parent.value || '').replace(/"/g, '""')}"`,
+          `"${(parent.color || '').replace(/"/g, '""')}"`,
+          "", "", ""
+        ].join(",");
+        csvContent += row + "\n";
+      }
+    });
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'stages_config.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    toast.success('הגדרות יוצאו בהצלחה (CSV)');
+  };
+
+  const handleImport = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+      try {
+        const content = e.target.result;
+        let newOptions = [];
+
+        if (file.name.endsWith('.json')) {
+          newOptions = JSON.parse(content);
+          if (!Array.isArray(newOptions)) throw new Error('Format invalid');
+        } else if (file.name.endsWith('.csv')) {
+          const lines = content.split('\n').map(line => line.trim()).filter(line => line);
+          const parentsMap = new Map();
+          
+          // Skip header row if present
+          const startIndex = lines[0].includes('Parent Label') ? 1 : 0;
+
+          for (let i = startIndex; i < lines.length; i++) {
+            // Simple CSV parser that handles quotes
+            const matches = lines[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || [];
+            const cols = matches.map(m => m.replace(/^"|"$/g, '').replace(/""/g, '"'));
+            
+            if (cols.length < 1) continue;
+
+            const pLabel = cols[0];
+            const pValue = cols[1] || pLabel.replace(/\s+/g, '_');
+            const pColor = cols[2] || '#6366f1';
+            
+            if (!pLabel) continue;
+
+            if (!parentsMap.has(pValue)) {
+              // Calc glow
+              const hex = pColor;
+              const rgb = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+              const glow = rgb ? `rgba(${parseInt(rgb[1],16)}, ${parseInt(rgb[2],16)}, ${parseInt(rgb[3],16)}, 0.4)` : 'rgba(99,102,241,0.4)';
+              
+              parentsMap.set(pValue, {
+                label: pLabel,
+                value: pValue,
+                color: pColor,
+                glow,
+                children: []
+              });
+            }
+
+            const cLabel = cols[3];
+            if (cLabel) {
+              const cValue = cols[4] || `${pValue}_${cLabel.replace(/\s+/g, '_')}`;
+              const cColor = cols[5] || '#22c55e';
+              
+              const cHex = cColor;
+              const cRgb = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(cHex);
+              const cGlow = cRgb ? `rgba(${parseInt(cRgb[1],16)}, ${parseInt(cRgb[2],16)}, ${parseInt(cRgb[3],16)}, 0.4)` : 'rgba(34,197,94,0.4)';
+
+              const parent = parentsMap.get(pValue);
+              parent.children.push({
+                label: cLabel,
+                value: cValue,
+                color: cColor,
+                glow: cGlow
+              });
+            }
+          }
+          newOptions = Array.from(parentsMap.values());
+        } else {
+          toast.error('פורמט קובץ לא נתמך (רק JSON או CSV)');
+          return;
+        }
+
+        setEditedOptions(newOptions);
+        toast.success(`✓ נטענו ${newOptions.length} קטגוריות`);
+      } catch (error) {
+        console.error('Import error:', error);
+        toast.error('שגיאה בטעינת הקובץ: ' + error.message);
+      }
+      
+      // Reset input
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+
+    reader.readAsText(file);
   };
 
   return (
@@ -448,8 +588,35 @@ export default function StageOptionsManager({ open, onClose, stageOptions, onSav
               טען תבנית קטגוריות לדוגמה
             </Button>
 
+            <div className="grid grid-cols-2 gap-2 mt-4">
+              <Button variant="outline" className="gap-2" onClick={handleExportJSON}>
+                <FileJson className="w-4 h-4 text-orange-600" /> יצא JSON
+              </Button>
+              <Button variant="outline" className="gap-2" onClick={handleExportCSV}>
+                <FileSpreadsheet className="w-4 h-4 text-green-600" /> יצא CSV
+              </Button>
+            </div>
+
+            <div className="relative mt-2">
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                className="hidden" 
+                accept=".json,.csv" 
+                onChange={handleImport} 
+              />
+              <Button 
+                variant="outline" 
+                className="w-full gap-2 border-dashed border-slate-300 hover:bg-slate-50" 
+                onClick={() => fileInputRef.current.click()}
+              >
+                <Upload className="w-4 h-4 text-blue-600" /> 
+                ייבא הגדרות מקובץ (JSON/CSV)
+              </Button>
+            </div>
+
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
-              💡 <strong>טיפ:</strong> גרור את האייקון ⋮⋮ כדי לשנות את סדר השלבים. לחץ על עריכה לשינוי שם וצבע
+              💡 <strong>טיפ:</strong> ניתן לייצא את ההגדרות לגיבוי או לעריכה באקסל, ואז לייבא חזרה.
             </div>
           </div>
         </div>
