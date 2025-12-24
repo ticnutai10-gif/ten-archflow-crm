@@ -364,7 +364,11 @@ export default function Dashboard() {
               </div>
               
               <div className="flex gap-3" dir="rtl">
-                {!isMobile && <ReminderManager />}
+                {!isMobile && (
+                  <Suspense fallback={<div className="w-8 h-8 rounded-full bg-slate-200 animate-pulse" />}>
+                    <ReminderManager />
+                  </Suspense>
+                )}
                 
                 {/* Saved Layouts Selector */}
                 {!isMobile && savedLayouts.length > 0 && (
@@ -924,24 +928,26 @@ export default function Dashboard() {
       </div>
 
       {/* Customizer Dialog */}
-      {showCustomizer && (
-        <DashboardCustomizer
-          open={showCustomizer}
-          onClose={() => {
-            startTransition(() => {
-              setShowCustomizer(false);
-            });
-          }}
-          visibleCards={visibleCards}
-          cardOrder={cardOrder}
-          onSave={({ visibleCards: newVisible, cardOrder: newOrder }) => {
-            startTransition(() => {
-              setVisibleCards(newVisible);
-              setCardOrder(newOrder);
-            });
-          }}
-        />
-      )}
+      <Suspense fallback={null}>
+        {showCustomizer && (
+          <DashboardCustomizer
+            open={showCustomizer}
+            onClose={() => {
+              startTransition(() => {
+                setShowCustomizer(false);
+              });
+            }}
+            visibleCards={visibleCards}
+            cardOrder={cardOrder}
+            onSave={({ visibleCards: newVisible, cardOrder: newOrder }) => {
+              startTransition(() => {
+                setVisibleCards(newVisible);
+                setCardOrder(newOrder);
+              });
+            }}
+          />
+        )}
+      </Suspense>
 
       {/* Save Layout Dialog */}
       <Dialog open={showSaveLayoutDialog} onOpenChange={setShowSaveLayoutDialog}>
