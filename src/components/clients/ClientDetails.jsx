@@ -133,41 +133,44 @@ export default function ClientDetails({ client, onBack, onEdit }) {
       console.log('🔍 [STAGE DEBUG] DEFAULT_STAGE_OPTIONS:', JSON.stringify(DEFAULT_STAGE_OPTIONS, null, 2));
       
       try {
-        const user = await base44.auth.me();
-        console.log('🔍 [STAGE DEBUG] User loaded:', user?.email);
+        // Load GLOBAL stage options from AppSettings
+        const appSettings = await base44.entities.AppSettings.filter({ setting_key: 'table_settings_clients' });
+        console.log('🔍 [STAGE DEBUG] AppSettings found:', appSettings.length);
         
-        const userPrefs = await base44.entities.UserPreferences.filter({ user_email: user.email });
-        console.log('🔍 [STAGE DEBUG] UserPreferences found:', userPrefs.length);
-        
-        if (userPrefs.length > 0) {
-          console.log('🔍 [STAGE DEBUG] UserPrefs[0].spreadsheet_columns:', JSON.stringify(userPrefs[0].spreadsheet_columns, null, 2));
-          console.log('🔍 [STAGE DEBUG] UserPrefs stageOptions:', JSON.stringify(userPrefs[0].spreadsheet_columns?.clients?.stageOptions, null, 2));
-        }
-        
-        if (userPrefs.length > 0 && userPrefs[0].spreadsheet_columns?.clients?.stageOptions) {
-          let loadedOptions = userPrefs[0].spreadsheet_columns.clients.stageOptions;
-          console.log('🔍 [STAGE DEBUG] Loaded options BEFORE ensuring ללא:', JSON.stringify(loadedOptions, null, 2));
+        if (appSettings.length > 0 && appSettings[0].value?.stageOptions) {
+          let loadedOptions = appSettings[0].value.stageOptions;
+          console.log('🔍 [STAGE DEBUG] Loaded options from AppSettings:', JSON.stringify(loadedOptions, null, 2));
           
           // Always ensure "ללא" option exists at the beginning
           const hasLelo = loadedOptions.some(opt => opt.value === 'ללא');
-          console.log('🔍 [STAGE DEBUG] Has ללא option?', hasLelo);
           
           if (!hasLelo) {
-            console.log('🔍 [STAGE DEBUG] Adding ללא option to the beginning');
             loadedOptions = [
               { value: 'ללא', label: 'ללא', color: '#cbd5e1' },
               ...loadedOptions
             ];
           }
           
-          console.log('🔍 [STAGE DEBUG] Final options to set:', JSON.stringify(loadedOptions, null, 2));
           setStageOptions(loadedOptions);
         } else {
-          console.log('🔍 [STAGE DEBUG] No user prefs found, using DEFAULT_STAGE_OPTIONS');
-          setStageOptions(DEFAULT_STAGE_OPTIONS);
+          console.log('🔍 [STAGE DEBUG] No AppSettings found, checking UserPreferences as backup');
+          // Fallback to UserPreferences if AppSettings not found (backward compatibility)
+          const user = await base44.auth.me();
+          const userPrefs = await base44.entities.UserPreferences.filter({ user_email: user.email });
+          
+          if (userPrefs.length > 0 && userPrefs[0].spreadsheet_columns?.clients?.stageOptions) {
+             let loadedOptions = userPrefs[0].spreadsheet_columns.clients.stageOptions;
+             const hasLelo = loadedOptions.some(opt => opt.value === 'ללא');
+             if (!hasLelo) {
+               loadedOptions = [{ value: 'ללא', label: 'ללא', color: '#cbd5e1' }, ...loadedOptions];
+             }
+             setStageOptions(loadedOptions);
+          } else {
+             setStageOptions(DEFAULT_STAGE_OPTIONS);
+          }
         }
       } catch (e) {
-        console.warn('🔍 [STAGE DEBUG] Failed to load stage options, using defaults:', e);
+        console.warn('🔍 [STAGE DEBUG] Failed to load stage options:', e);
         setStageOptions(DEFAULT_STAGE_OPTIONS);
       }
     };
