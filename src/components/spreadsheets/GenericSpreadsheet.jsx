@@ -34,22 +34,20 @@ const DEFAULT_STAGE_OPTIONS = [
   { value: 'סיום', label: 'סיום', color: '#6b7280', glow: 'rgba(107, 114, 128, 0.4)' }
 ];
 
-// Helper component for hierarchical menu items (Accordion Style)
+// Helper component for hierarchical menu items (Hover/Flyout Style)
 function StageMenuItem({ option, onSelect, depth = 0 }) {
-  const [isOpen, setIsOpen] = useState(false);
   const hasChildren = option.children && option.children.length > 0;
 
   return (
-    <div className="w-full select-none">
-      <div className="flex items-center gap-1 w-full hover:bg-purple-50 rounded-lg transition-all pr-1">
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onSelect(option.value);
-          }}
-          className="flex-1 flex items-center gap-3 py-2 text-right cursor-pointer"
-          style={{ paddingRight: (depth * 12 + 4) + 'px' }}
-        >
+    <div className="relative group/item w-full">
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onSelect(option.value);
+        }}
+        className="w-full flex items-center justify-between gap-3 px-3 py-2 hover:bg-purple-50 rounded-lg transition-all text-right"
+      >
+        <div className="flex items-center gap-3 overflow-hidden">
           <div 
             className="w-3 h-3 rounded-full flex-shrink-0"
             style={{ 
@@ -58,36 +56,29 @@ function StageMenuItem({ option, onSelect, depth = 0 }) {
             }}
           />
           <span className="text-sm font-medium text-slate-700 truncate">{option.label}</span>
-        </button>
+        </div>
         
         {hasChildren && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsOpen(!isOpen);
-            }}
-            className="p-2 hover:bg-purple-100 rounded-md transition-colors text-slate-400 hover:text-purple-600"
-          >
-            <ChevronLeft className={`w-4 h-4 transition-transform duration-200 ${isOpen ? '-rotate-90 text-purple-600' : ''}`} />
-          </button>
+          <ChevronLeft className="w-4 h-4 text-slate-400 opacity-50 group-hover/item:opacity-100 transition-opacity" />
         )}
-      </div>
+      </button>
 
-      {hasChildren && isOpen && (
-        <div className="mt-1 space-y-1 relative">
-          {/* Visual guide line */}
-          <div 
-            className="absolute top-0 bottom-2 w-px bg-slate-200" 
-            style={{ right: (depth * 12 + 10) + 'px' }} 
-          />
-          {option.children.map(child => (
-            <StageMenuItem 
-              key={child.value} 
-              option={child} 
-              onSelect={onSelect} 
-              depth={depth + 1} 
-            />
-          ))}
+      {/* Submenu on hover - Positioned to the left (RTL) */}
+      {hasChildren && (
+        <div 
+          className="absolute right-[98%] top-0 hidden group-hover/item:block z-50 pr-2 pt-1"
+          style={{ minWidth: '180px' }}
+        >
+          <div className="bg-white rounded-lg shadow-xl border border-slate-200 p-1">
+            {option.children.map(child => (
+              <StageMenuItem 
+                key={child.value} 
+                option={child} 
+                onSelect={onSelect} 
+                depth={depth + 1} 
+              />
+            ))}
+          </div>
         </div>
       )}
     </div>
