@@ -59,7 +59,7 @@ function StageMenuItem({ option, onSelect, depth = 0 }) {
         </div>
         
         {hasChildren && (
-          <ChevronLeft className="w-4 h-4 text-slate-400 opacity-50 group-hover/item:opacity-100 transition-opacity" />
+          <ChevronLeft className="w-4 h-4 text-slate-500 opacity-100 group-hover/item:text-slate-900 group-hover/item:scale-110 transition-all font-bold" strokeWidth={2.5} />
         )}
       </button>
 
