@@ -68,6 +68,7 @@ const VIEW_MODES = [
 ];
 
 export default function Dashboard() {
+  console.log('🚀 [DASHBOARD] Component mounting...');
   const isMobile = useIsMobile();
   const [loading, setLoading] = useState(true);
   
@@ -139,9 +140,12 @@ export default function Dashboard() {
 
   // Sync with database in background (non-blocking)
   useEffect(() => {
+    console.log('🔄 [DASHBOARD] Starting DB sync effect...');
     const syncWithDB = async () => {
       try {
+        console.log('👤 [DASHBOARD] Fetching user...');
         const user = await base44.auth.me();
+        console.log('✅ [DASHBOARD] User loaded:', user?.email);
         const userPrefs = await base44.entities.UserPreferences.filter({ user_email: user.email });
         
         if (userPrefs.length > 0 && userPrefs[0].dashboard_preferences) {
@@ -158,7 +162,7 @@ export default function Dashboard() {
           }
         }
       } catch (e) {
-        // Silently fail - user is not logged in or no preferences
+        console.warn('⚠️ [DASHBOARD] DB sync failed:', e.message);
       }
     };
     
@@ -256,9 +260,12 @@ export default function Dashboard() {
   }, [focusedCard]);
 
   const loadDashboardData = useCallback(async () => {
+    console.log('📊 [DASHBOARD] loadDashboardData starting...');
     setLoading(true);
     try {
+      console.log('👤 [DASHBOARD] Getting current user for data load...');
       const currentUser = await base44.auth.me();
+      console.log('✅ [DASHBOARD] Current user:', currentUser?.email);
 
       let canSeeAllTimeLogs = currentUser?.role === 'admin';
       if (!canSeeAllTimeLogs && currentUser?.email) {
@@ -287,13 +294,21 @@ export default function Dashboard() {
         }
       });
 
+      console.log('📦 [DASHBOARD] Fetching all entities in parallel...');
       const [clientsData, projectsData, quotesData, tasksData, myTimeLogs] = await Promise.all([
-        base44.entities.Client.list().catch(() => []),
-        base44.entities.Project.list('-created_date').catch(() => []),
-        base44.entities.Quote.list('-created_date').catch(() => []),
-        base44.entities.Task.filter({ status: { $ne: 'הושלמה' } }, '-due_date').catch(() => []),
-        timeLogsPromise.catch(() => [])
+        base44.entities.Client.list().catch((e) => { console.error('❌ Clients error:', e); return []; }),
+        base44.entities.Project.list('-created_date').catch((e) => { console.error('❌ Projects error:', e); return []; }),
+        base44.entities.Quote.list('-created_date').catch((e) => { console.error('❌ Quotes error:', e); return []; }),
+        base44.entities.Task.filter({ status: { $ne: 'הושלמה' } }, '-due_date').catch((e) => { console.error('❌ Tasks error:', e); return []; }),
+        timeLogsPromise.catch((e) => { console.error('❌ TimeLogs error:', e); return []; })
       ]);
+      console.log('✅ [DASHBOARD] All entities loaded:', {
+        clients: clientsData?.length,
+        projects: projectsData?.length,
+        quotes: quotesData?.length,
+        tasks: tasksData?.length,
+        timeLogs: myTimeLogs?.length
+      });
 
       const validClients = Array.isArray(clientsData) ? clientsData : [];
       const validProjects = Array.isArray(projectsData) ? projectsData : [];
@@ -320,8 +335,9 @@ export default function Dashboard() {
       setAllProjects(validProjects);
       setAllTasks(validTasks);
     } catch (error) {
-      // Error loading data
+      console.error('❌ [DASHBOARD] Error loading data:', error);
     }
+    console.log('✅ [DASHBOARD] Data load complete, setting loading=false');
     setLoading(false);
   }, []);
 

@@ -260,6 +260,7 @@ let clientsCacheTime = 0;
 const CACHE_DURATION = 5 * 60 * 1000;
 
 export default function FloatingTimer() {
+  console.log('⏱️ [TIMER] FloatingTimer component mounting...');
   
   const [prefs, setPrefs] = React.useState(readPrefs());
   const [clients, setClients] = React.useState([]);
@@ -298,14 +299,17 @@ export default function FloatingTimer() {
 
   // בדיקת משתמש מחובר
   useEffect(() => {
+    console.log('⏱️ [TIMER] Checking user auth...');
     const checkUser = async () => {
       try {
         const user = await base44.auth.me();
+        console.log('✅ [TIMER] User authenticated:', user?.email);
         setCurrentUser(user);
       } catch (error) {
         console.warn('⚠️ [TIMER] User not logged in:', error);
         setCurrentUser(null);
       } finally {
+        console.log('⏱️ [TIMER] User check complete');
         setUserLoading(false);
       }
     };
@@ -418,13 +422,17 @@ export default function FloatingTimer() {
       }, []);
 
   const loadData = async (forceRefresh = false) => {
+    console.log('⏱️ [TIMER] loadData called, forceRefresh:', forceRefresh);
     try {
       const now = Date.now();
       if (!forceRefresh && clientsCache && now - clientsCacheTime < CACHE_DURATION) {
+        console.log('⏱️ [TIMER] Using cached clients:', clientsCache?.length);
         setClients(clientsCache);
         return;
       }
+      console.log('⏱️ [TIMER] Fetching clients from server...');
       const allowedClients = await getAllowedClientsForTimer();
+      console.log('⏱️ [TIMER] Got allowedClients:', allowedClients?.length);
 
       // ✅ הגנה על תוצאות
       const validClients = Array.isArray(allowedClients) ? allowedClients : [];
@@ -454,6 +462,7 @@ export default function FloatingTimer() {
         }
       }
       const uniqueClients = Array.from(uniqueClientsMap.values());
+      console.log('✅ [TIMER] Unique clients after dedup:', uniqueClients?.length);
 
       clientsCache = uniqueClients;
       clientsCacheTime = now;
@@ -471,7 +480,9 @@ export default function FloatingTimer() {
   };
 
   useEffect(() => {
+    console.log('⏱️ [TIMER] accessLoading effect, accessLoading:', accessLoading);
     if (!accessLoading) {
+      console.log('⏱️ [TIMER] Access loaded, calling loadData...');
       loadData();
     }
   }, [accessLoading]);
