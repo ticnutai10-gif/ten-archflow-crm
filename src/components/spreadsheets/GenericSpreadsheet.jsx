@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Table, Copy, Settings, Palette, Eye, EyeOff, Edit2, X, Download, Grid, Search, Filter, ArrowUp, ArrowDown, ArrowUpDown, XCircle, Undo, Redo, GripVertical, BarChart3, Calculator, Layers, Bookmark, Users, Zap, MessageSquare, Bold, Scissors, Merge, Type, Circle, ChevronRight, ChevronLeft, ChevronDown } from "lucide-react";
+import { Plus, Trash2, Table, Copy, Settings, Palette, Eye, EyeOff, Edit2, X, Download, Grid, Search, Filter, ArrowUp, ArrowDown, ArrowUpDown, XCircle, Undo, Redo, GripVertical, BarChart3, Calculator, Layers, Bookmark, Users, Zap, MessageSquare, Bold, Scissors, Merge, Type, Circle, ChevronRight, ChevronLeft, ChevronDown, Snowflake } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -2047,6 +2047,30 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     return stats;
   }, [visibleColumns, filteredAndSortedData]);
 
+  // Calculate offsets for sticky columns
+  const stickyColumnOffsets = useMemo(() => {
+    const offsets = [];
+    let currentOffset = 48; // Start after handle column (w-12 = 3rem = 48px)
+    visibleColumns.forEach(col => {
+      offsets.push(currentOffset);
+      const width = parseInt(col.width) || 150;
+      currentOffset += width;
+    });
+    return offsets;
+  }, [visibleColumns]);
+
+  // Calculate offsets for sticky rows (assuming header is ~40px)
+  const stickyRowOffsets = useMemo(() => {
+    const offsets = [];
+    let currentOffset = showSubHeaders && (Object.keys(mergedHeaders).length > 0 || Object.keys(subHeaders).length > 0) ? 80 : 40; // Approx header height
+    filteredAndSortedData.forEach(row => {
+      offsets.push(currentOffset);
+      const height = rowHeights[row.id] || 40;
+      currentOffset += height;
+    });
+    return offsets;
+  }, [filteredAndSortedData, rowHeights, showSubHeaders, mergedHeaders, subHeaders]);
+
   console.log('📊 [RENDER] State:', {
     selectedHeaders: Array.from(selectedHeaders),
     mergedHeaders: Object.keys(mergedHeaders),
@@ -2316,6 +2340,65 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                 <Circle className="w-4 h-4 text-purple-600" />
                 ניהול שלבים
               </Button>
+              
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button size="sm" variant="outline" className="gap-2 hover:bg-cyan-50">
+                    <Snowflake className="w-4 h-4 text-cyan-600" />
+                    הקפאה
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-64" align="end" dir="rtl">
+                  <div className="space-y-4">
+                    <h4 className="font-semibold text-sm flex items-center gap-2">
+                      <Snowflake className="w-4 h-4 text-cyan-600" />
+                      הגדרות הקפאה
+                    </h4>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-slate-600">עמודות להקפאה (מימין):</span>
+                        <Input 
+                          type="number" 
+                          min="0" 
+                          max="5" 
+                          value={freezeSettings.freeze_columns} 
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value) || 0;
+                            setFreezeSettings(prev => ({ ...prev, freeze_columns: val }));
+                            setTimeout(() => saveToBackend(), 500);
+                          }}
+                          className="w-16 h-8 text-center"
+                        />
+                      </div>
+                      <div className="text-xs text-slate-400 pr-1">
+                        * העמודה הראשונה (גרירה) תמיד מוקפאת
+                      </div>
+                    </div>
+                    <Separator />
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-slate-600">שורות להקפאה (מלמעלה):</span>
+                        <Input 
+                          type="number" 
+                          min="0" 
+                          max="5" 
+                          value={freezeSettings.freeze_rows} 
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value) || 0;
+                            setFreezeSettings(prev => ({ ...prev, freeze_rows: val }));
+                            setTimeout(() => saveToBackend(), 500);
+                          }}
+                          className="w-16 h-8 text-center"
+                        />
+                      </div>
+                      <div className="text-xs text-slate-400 pr-1">
+                        * שורת הכותרת תמיד מוקפאת
+                      </div>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+
               <Popover>
                 <PopoverTrigger asChild>
                   <Button size="sm" variant="outline" className="gap-2">
@@ -2696,7 +2779,11 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                   width: col.width,
                                   minWidth: col.width,
                                   maxWidth: col.width,
-                                  position: 'relative',
+                                  // Freeze Columns Logic for Header
+                                  position: colIndex < freezeSettings.freeze_columns ? 'sticky' : 'relative',
+                                  right: colIndex < freezeSettings.freeze_columns ? `${stickyColumnOffsets[colIndex]}px` : 'auto',
+                                  zIndex: snapshot.isDragging ? 50 : (colIndex < freezeSettings.freeze_columns ? 30 : 10),
+                                  
                                   backgroundColor: isHeaderSelected ? palette.selected : (headerStyle.backgroundColor || (snapshot.isDragging ? palette.hover : palette.headerBg)),
                                   color: headerStyle.color || palette.headerText,
                                   fontWeight: headerStyle.fontWeight || 'bold',
@@ -2712,7 +2799,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                   borderRightColor: isFirstInMerge ? palette.border : undefined,
                                   borderLeftWidth: isLastInMerge && !isSeparateBorders ? '3px' : undefined,
                                   borderLeftColor: isLastInMerge ? palette.border : undefined,
-                                  zIndex: snapshot.isDragging ? 50 : 10,
+                                  boxShadow: colIndex === freezeSettings.freeze_columns - 1 ? '-2px 0 5px rgba(0,0,0,0.05)' : 'none',
                                   ...provided.draggableProps.style
                                 }} onClick={(e) => !snapshot.isDragging && handleHeaderClick(col.key, e)}>
                                   {isEditing ? (
@@ -2867,10 +2954,20 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                           fontSize: cellFontSize,
                                           padding: cellPadding,
                                           height: `${rowHeight}px`,
-                                          position: colIndex === 0 ? 'sticky' : 'relative',
-                                          right: colIndex === 0 ? '48px' : 'auto',
-                                          zIndex: colIndex === 0 ? 10 : 1,
-                                          boxShadow: colIndex === 0 ? '2px 0 5px rgba(0,0,0,0.05)' : 'none',
+
+                                          // Freeze Columns Logic
+                                          position: (colIndex < freezeSettings.freeze_columns || rowIndex < freezeSettings.freeze_rows) ? 'sticky' : 'relative',
+                                          right: colIndex < freezeSettings.freeze_columns ? `${stickyColumnOffsets[colIndex]}px` : 'auto',
+                                          top: rowIndex < freezeSettings.freeze_rows ? `${stickyRowOffsets[rowIndex]}px` : 'auto',
+
+                                          // Z-Index Handling for intersections
+                                          zIndex: (colIndex < freezeSettings.freeze_columns && rowIndex < freezeSettings.freeze_rows) ? 20 : 
+                                                  (colIndex < freezeSettings.freeze_columns) ? 10 : 
+                                                  (rowIndex < freezeSettings.freeze_rows) ? 10 : 1,
+
+                                          boxShadow: colIndex === freezeSettings.freeze_columns - 1 ? '-2px 0 5px rgba(0,0,0,0.05)' : 
+                                                     rowIndex === freezeSettings.freeze_rows - 1 ? '0 2px 5px rgba(0,0,0,0.05)' : 'none',
+
                                           borderWidth: isSeparateBorders ? '0' : borderStyle.width,
                                           borderStyle: borderStyle.style,
                                           borderColor: palette.border,
