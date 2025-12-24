@@ -67,17 +67,18 @@ export default function ClientDetails({ client, onBack, onEdit }) {
     // Check URL params ONLY - this is the source of truth
     const urlParams = new URLSearchParams(window.location.search);
     const tabParam = urlParams.get('tab');
-    
+
     console.log('🎯 [CLIENT DETAILS] Initial tab from URL:', {
       urlTab: tabParam,
       willUse: tabParam || 'timeline'
     });
-    
+
     return tabParam || 'timeline';
   });
 
   const [currentClient, setCurrentClient] = useState(client);
   const [isUpdatingStage, setIsUpdatingStage] = useState(false);
+  const [stagePopoverOpen, setStagePopoverOpen] = useState(false);
 
   // Update currentClient when client prop changes
   useEffect(() => {
@@ -309,14 +310,13 @@ export default function ClientDetails({ client, onBack, onEdit }) {
                   {currentClient.name || 'ללא שם'}
                 </CardTitle>
                 <div className="flex flex-wrap gap-2">
-                  <Popover>
+                  <Popover open={stagePopoverOpen} onOpenChange={setStagePopoverOpen}>
                     <PopoverTrigger asChild>
                       <Button 
                         variant="outline" 
                         className="w-[200px] h-8 justify-start gap-2 bg-white"
                         style={{ 
                           borderColor: currentClient.stage ? (() => {
-                            // Find stage in hierarchy
                             const findStage = (val, opts) => {
                               for (const opt of opts) {
                                 if (opt.value === val) return opt;
@@ -365,25 +365,8 @@ export default function ClientDetails({ client, onBack, onEdit }) {
                       <StageSelector 
                         options={stageOptions} 
                         onSelect={(val) => {
-                          // Close popover is handled by Popover's default behavior when clicking outside, 
-                          // but usually we need to manually close it or let the user click.
-                          // However, StageSelector items stopPropagation.
-                          // Wait, we need to close the popover.
-                          // The Popover from shadcn doesn't auto-close if we don't use close ref.
-                          // But we can just use the standard Radix behavior or force it.
-                          // Actually, standard PopoverContent closes on interaction if we don't prevent it?
-                          // StageMenuItem calls stopPropagation which prevents closing.
-                          // I should pass a "close" handler or simply remove stopPropagation for selection?
-                          // But wait, the stopPropagation in StageMenuItem was for the *submenu* interaction potentially?
-                          // No, it was `onClick={(e) => { e.stopPropagation(); onSelect(option.value); }}`
-                          // If I remove e.stopPropagation(), the popover might close.
-                          
-                          // Actually, since I can't easily control the Popover state from here (it's uncontrolled),
-                          // I'll assume the user might need to click outside or I'll try to trigger a click.
-                          // Better: Let's make the Popover controlled.
                           handleStageChange(val);
-                          // We'll rely on a ref click or just let it stay open? No, that's bad UX.
-                          document.body.click(); // Hacky way to close popovers
+                          setStagePopoverOpen(false);
                         }} 
                       />
                     </PopoverContent>
