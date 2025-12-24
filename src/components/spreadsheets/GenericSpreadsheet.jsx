@@ -34,96 +34,106 @@ const DEFAULT_STAGE_OPTIONS = [
   { value: 'סיום', label: 'סיום', color: '#6b7280', glow: 'rgba(107, 114, 128, 0.4)' }
 ];
 
+// Helper component for hierarchical menu items
+function StageMenuItem({ option, onSelect, depth = 0 }) {
+  return (
+    <div className="relative group/item w-full">
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onSelect(option.value);
+        }}
+        className="w-full flex items-center justify-between gap-3 px-3 py-2 hover:bg-purple-50 rounded-lg transition-all text-right"
+      >
+        <div className="flex items-center gap-3">
+          <div 
+            className="w-3 h-3 rounded-full flex-shrink-0"
+            style={{ 
+              backgroundColor: option.color,
+              boxShadow: `0 0 8px ${option.glow}, 0 0 12px ${option.glow}`
+            }}
+          />
+          <span className="text-sm font-medium text-slate-700">{option.label}</span>
+        </div>
+        {option.children && option.children.length > 0 && (
+          <ChevronRight className="w-4 h-4 text-slate-400" />
+        )}
+      </button>
+
+      {/* Submenu on hover */}
+      {option.children && option.children.length > 0 && (
+        <div 
+          className="absolute right-[98%] top-0 hidden group-hover/item:block z-50 pr-1"
+          style={{ minWidth: '180px' }}
+        >
+          <div className="bg-white rounded-lg shadow-xl border border-slate-200 p-1">
+            {option.children.map(child => (
+              <StageMenuItem 
+                key={child.value} 
+                option={child} 
+                onSelect={onSelect} 
+                depth={depth + 1} 
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function StageSelector({ options = [], onSelect }) {
+  return (
+    <div className="p-1 bg-white rounded-lg shadow-xl border border-slate-200 min-w-[200px] max-h-[300px] overflow-y-auto overflow-x-visible">
+      {options.map(option => (
+        <StageMenuItem 
+          key={option.value} 
+          option={option} 
+          onSelect={onSelect} 
+        />
+      ))}
+    </div>
+  );
+}
+
 // Export StageDisplay for use in other components
 export function StageDisplay({ value, column, isEditing, onEdit, editValue, onSave, onCancel, stageOptions = DEFAULT_STAGE_OPTIONS, compact = false, onDirectSave }) {
-  const [showPicker, setShowPicker] = useState(false);
-  
-  // Flatten parents+children so selection supports both
-  const STAGE_OPTIONS = React.useMemo(() => {
+  // Flatten for lookup only
+  const FLAT_OPTIONS = React.useMemo(() => {
     const flat = [];
     (stageOptions || []).forEach(p => {
-      flat.push({ ...p, isParent: true });
+      flat.push({ ...p });
       if (Array.isArray(p.children)) {
-        p.children.forEach(ch => flat.push({ ...ch, parent: p.label, isChild: true }));
+        p.children.forEach(ch => flat.push({ ...ch, parentLabel: p.label }));
       }
     });
-    return flat.length ? flat : (stageOptions || []);
+    return flat;
   }, [stageOptions]);
-  const currentStage = STAGE_OPTIONS.find(s => s.value === value);
+
+  const currentStage = FLAT_OPTIONS.find(s => s.value === value);
   
+  const handleSelect = (val) => {
+    console.log('🟣 [STAGE] Selected:', val);
+    if (onDirectSave) {
+      onDirectSave(val);
+    } else if (typeof onEdit === 'function' && typeof onSave === 'function') {
+      onEdit(val);
+      setTimeout(() => onSave(), 50);
+    }
+  };
+
   if (isEditing) {
     return (
-      <div className="relative" onClick={(e) => e.stopPropagation()}>
-        <div className="space-y-2 p-2 bg-white rounded-lg shadow-lg border-2 border-purple-300 min-w-[180px]">
-          {STAGE_OPTIONS.map(stage => (
-             <button
-               key={stage.value}
-               onClick={() => {
-                 console.log('🟣 [STAGE] Clicked stage:', stage.value);
-                 const chosen = stage.value;
-                 if (onDirectSave) {
-                   onDirectSave(chosen);
-                 } else if (typeof onEdit === 'function' && typeof onSave === 'function') {
-                   onEdit(chosen);
-                   setTimeout(() => onSave(), 100);
-                 }
-               }}
-               className="w-full flex items-center gap-3 px-3 py-2 hover:bg-purple-50 rounded-lg transition-all"
-             >
-               <div 
-                 className="w-3 h-3 rounded-full animate-pulse"
-                 style={{ 
-                   backgroundColor: stage.color,
-                   boxShadow: `0 0 8px ${stage.glow}, 0 0 12px ${stage.glow}`
-                 }}
-               />
-               <div className="flex flex-col items-start">
-                 <span className="text-sm font-medium">{stage.label}</span>
-                 {stage.parent && <span className="text-[10px] text-slate-500">{stage.parent}</span>}
-               </div>
-             </button>
-           ))}
-        </div>
+      <div className="relative z-50" onClick={(e) => e.stopPropagation()}>
+        <StageSelector options={stageOptions} onSelect={handleSelect} />
       </div>
     );
   }
   
-  if (!currentStage && !isEditing) {
+  if (!currentStage) {
     return (
-      <div className="text-xs text-slate-400 text-center py-2 hover:bg-purple-50 rounded transition-colors">
+      <div className="text-xs text-slate-400 text-center py-2 hover:bg-purple-50 rounded transition-colors cursor-pointer">
         לחץ לבחירה
-      </div>
-    );
-  }
-  
-  if (!currentStage && isEditing) {
-    return (
-      <div className="relative" onClick={(e) => e.stopPropagation()}>
-        <div className="space-y-2 p-2 bg-white rounded-lg shadow-lg border-2 border-purple-300 min-w-[180px]">
-          {STAGE_OPTIONS.map(stage => (
-            <button
-              key={stage.value}
-              onClick={() => {
-                if (onDirectSave) {
-                  onDirectSave(stage.value);
-                } else if (typeof onEdit === 'function' && typeof onSave === 'function') {
-                  onEdit(stage.value);
-                  setTimeout(() => onSave(), 50);
-                }
-              }}
-              className="w-full flex items-center gap-3 px-3 py-2 hover:bg-purple-50 rounded-lg transition-all"
-            >
-              <div 
-                className="w-3 h-3 rounded-full"
-                style={{ 
-                  backgroundColor: stage.color,
-                  boxShadow: `0 0 8px ${stage.glow}, 0 0 12px ${stage.glow}`
-                }}
-              />
-              <span className="text-sm font-medium">{stage.label}</span>
-            </button>
-          ))}
-        </div>
       </div>
     );
   }
@@ -138,16 +148,23 @@ export function StageDisplay({ value, column, isEditing, onEdit, editValue, onSa
           border: '2px solid white'
         }}
       />
-      <span 
-        className="text-sm font-semibold px-3 py-1.5 rounded-full transition-all duration-300"
-        style={{ 
-          backgroundColor: `${currentStage.color}20`,
-          color: currentStage.color,
-          border: `2px solid ${currentStage.color}60`
-        }}
-      >
-        {currentStage.label}
-      </span>
+      <div className="flex flex-col items-start">
+        <span 
+          className="text-sm font-semibold px-3 py-1.5 rounded-full transition-all duration-300"
+          style={{ 
+            backgroundColor: `${currentStage.color}20`,
+            color: currentStage.color,
+            border: `2px solid ${currentStage.color}60`
+          }}
+        >
+          {currentStage.label}
+        </span>
+        {currentStage.parentLabel && (
+          <span className="text-[10px] text-slate-400 mr-2 mt-0.5 hidden group-hover:inline-block">
+            {currentStage.parentLabel}
+          </span>
+        )}
+      </div>
     </div>
   );
 }
