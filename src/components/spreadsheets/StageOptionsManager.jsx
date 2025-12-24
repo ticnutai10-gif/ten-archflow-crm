@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Edit2, Trash2, Circle, Save, GripVertical, Download, Upload, FileJson, FileSpreadsheet } from "lucide-react";
+import { Plus, Edit2, Trash2, Circle, Save, GripVertical, Download, Upload, FileJson, FileSpreadsheet, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
@@ -213,6 +213,29 @@ export default function StageOptionsManager({ open, onClose, stageOptions, onSav
     toast.success('הגדרות יוצאו בהצלחה (CSV)');
   };
 
+  const handleExportTXT = () => {
+    let txtContent = "";
+    
+    editedOptions.forEach(parent => {
+      txtContent += `${parent.label}, ${parent.color}\n`;
+      if (parent.children && parent.children.length > 0) {
+        parent.children.forEach(child => {
+          txtContent += `- ${child.label}, ${child.color}\n`;
+        });
+      }
+    });
+
+    const blob = new Blob([txtContent], { type: 'text/plain;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'stages_config.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    toast.success('הגדרות יוצאו בהצלחה (TXT)');
+  };
+
   const handleImport = (event) => {
     const file = event.target.files[0];
     if (!file) return;
@@ -281,8 +304,47 @@ export default function StageOptionsManager({ open, onClose, stageOptions, onSav
             }
           }
           newOptions = Array.from(parentsMap.values());
+        } else if (file.name.endsWith('.txt')) {
+          const lines = content.split('\n').filter(line => line.trim());
+          const options = [];
+          let currentParent = null;
+
+          lines.forEach(line => {
+            const isChild = line.trim().startsWith('-');
+            const parts = line.replace(/^-/, '').split(',').map(s => s.trim());
+            const label = parts[0];
+            const color = parts[1] || (isChild ? '#22c55e' : '#6366f1');
+            
+            if (!label) return;
+
+            // Calc glow
+            const hex = color;
+            const rgb = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            const glow = rgb ? `rgba(${parseInt(rgb[1],16)}, ${parseInt(rgb[2],16)}, ${parseInt(rgb[3],16)}, 0.4)` : 'rgba(99,102,241,0.4)';
+
+            if (isChild && currentParent) {
+              const value = `${currentParent.value}_${label.replace(/\s+/g, '_')}`;
+              currentParent.children.push({
+                label,
+                value,
+                color,
+                glow
+              });
+            } else {
+              const value = label.replace(/\s+/g, '_');
+              currentParent = {
+                label,
+                value,
+                color,
+                glow,
+                children: []
+              };
+              options.push(currentParent);
+            }
+          });
+          newOptions = options;
         } else {
-          toast.error('פורמט קובץ לא נתמך (רק JSON או CSV)');
+          toast.error('פורמט קובץ לא נתמך (רק JSON, CSV, או TXT)');
           return;
         }
 
@@ -588,12 +650,15 @@ export default function StageOptionsManager({ open, onClose, stageOptions, onSav
               טען תבנית קטגוריות לדוגמה
             </Button>
 
-            <div className="grid grid-cols-2 gap-2 mt-4">
-              <Button variant="outline" className="gap-2" onClick={handleExportJSON}>
+            <div className="grid grid-cols-3 gap-2 mt-4">
+              <Button variant="outline" className="gap-2 px-2" onClick={handleExportJSON}>
                 <FileJson className="w-4 h-4 text-orange-600" /> יצא JSON
               </Button>
-              <Button variant="outline" className="gap-2" onClick={handleExportCSV}>
+              <Button variant="outline" className="gap-2 px-2" onClick={handleExportCSV}>
                 <FileSpreadsheet className="w-4 h-4 text-green-600" /> יצא CSV
+              </Button>
+              <Button variant="outline" className="gap-2 px-2" onClick={handleExportTXT}>
+                <FileText className="w-4 h-4 text-slate-600" /> יצא TXT
               </Button>
             </div>
 
@@ -602,7 +667,7 @@ export default function StageOptionsManager({ open, onClose, stageOptions, onSav
                 type="file" 
                 ref={fileInputRef} 
                 className="hidden" 
-                accept=".json,.csv" 
+                accept=".json,.csv,.txt" 
                 onChange={handleImport} 
               />
               <Button 
@@ -611,7 +676,7 @@ export default function StageOptionsManager({ open, onClose, stageOptions, onSav
                 onClick={() => fileInputRef.current.click()}
               >
                 <Upload className="w-4 h-4 text-blue-600" /> 
-                ייבא הגדרות מקובץ (JSON/CSV)
+                ייבא הגדרות מקובץ (JSON/CSV/TXT)
               </Button>
             </div>
 
