@@ -23,7 +23,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { base44 } from "@/api/base44Client";
 import { createPageUrl } from "@/utils";
 import { StageDisplay } from "@/components/spreadsheets/GenericSpreadsheet";
-import StatusDisplay from "@/components/spreadsheets/StatusDisplay";
+
 import StageOptionsManager from "@/components/spreadsheets/StageOptionsManager";
 import UserPreferencesDialog from "@/components/spreadsheets/UserPreferencesDialog";
 
@@ -37,11 +37,7 @@ const STAGE_OPTIONS = [
   { value: 'סיום', label: 'סיום', color: '#6b7280' }
 ];
 
-const statusColors = {
-  'פוטנציאלי': 'bg-amber-100 text-amber-800 border-amber-200',
-  'פעיל': 'bg-green-100 text-green-800 border-green-200',
-  'לא פעיל': 'bg-slate-100 text-slate-800 border-slate-200'
-};
+
 
 const COLORS = [
 { name: 'לבן', value: '#FFFFFF', border: '#E5E7EB' },
@@ -57,8 +53,7 @@ const COLORS = [
 const fixedDefaultColumns = [
 { key: 'name', title: 'שם לקוח', width: '200px', type: 'text', required: true },
 { key: 'phone', title: 'טלפון', width: '150px', type: 'phone', required: false },
-{ key: 'email', title: 'אימייל', width: '150px', type: 'email', required: false },
-{ key: 'status', title: 'סטטוס', width: '120px', type: 'status', required: false }];
+{ key: 'email', title: 'אימייל', width: '150px', type: 'email', required: false }];
 
 
 const isValidPhone = (phone) => {
@@ -326,7 +321,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
   ];
   
   const [stageOptions, setStageOptions] = useState(DEFAULT_WITH_LELO);
-  const [statusOptions, setStatusOptions] = useState(null); // Will load from AppSettings
+
 
 
   const [newColumnName, setNewColumnName] = useState("");
@@ -379,18 +374,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
           }
         }
 
-        // Load Status Options
-        try {
-          const statusSettings = await base44.entities.AppSettings.filter({ setting_key: 'client_status_options' });
-          if (statusSettings.length > 0 && statusSettings[0].value) {
-            const statusValue = statusSettings[0].value;
-            // Handle both array and wrapped object format
-            const opts = Array.isArray(statusValue) ? statusValue : (statusValue.options || null);
-            if (opts) setStatusOptions(opts);
-          }
-        } catch (e) {
-          console.warn('Failed to load status options');
-        }
+
         
         if (userSettings && userSettings.order) {
           
@@ -2966,55 +2950,7 @@ export default function ClientSpreadsheet({ clients, onEdit, onView, isLoading }
                                         {String(cellValue)}
                                       </span>
                                     </div>
-                                  ) : column.type === 'status' || column.key === 'cf:client_status' || column.key === 'client_status' ? (
-                                    <div className="flex items-center justify-center">
-                                      <StatusDisplay
-                                        value={cellValue}
-                                        column={column}
-                                        isEditing={isEditing}
-                                        onEdit={(val) => setEditValue(val)}
-                                        editValue={editValue}
-                                        onSave={saveEdit}
-                                        onCancel={() => {
-                                          setEditingCell(null);
-                                          setEditValue("");
-                                        }}
-                                        statusOptions={statusOptions}
-                                        onDirectSave={async (statusValue) => {
-                                          // Update local state immediately
-                                          // Force update to root field 'client_status'
-                                          const updatedClient = { 
-                                            ...client, 
-                                            client_status: statusValue,
-                                            // Also update custom_data if it exists there to keep sync
-                                            custom_data: {
-                                              ...(client.custom_data || {}),
-                                              client_status: statusValue
-                                            }
-                                          };
-
-                                          setLocalClients(prev => prev.map(c => c.id === client.id ? updatedClient : c));
-                                          setEditingCell(null);
-                                          setEditValue("");
-
-                                          // Save to backend
-                                          const dataToSave = { ...updatedClient };
-                                          delete dataToSave.id;
-                                          delete dataToSave.created_date;
-                                          delete dataToSave.updated_date;
-                                          delete dataToSave.created_by;
-
-                                          await base44.entities.Client.update(client.id, dataToSave);
-                                          const refreshedClient = await base44.entities.Client.get(client.id);
-
-                                          window.dispatchEvent(new CustomEvent('client:updated', {
-                                            detail: refreshedClient
-                                          }));
-
-                                          toast.success('✓ סטטוס עודכן');
-                                        }}
-                                      />
-                                    </div>
+                                  
                                   ) :
                                 column.type === 'phone' || column.key === 'phone_secondary' || column.key === 'whatsapp' ?
                                 cellValue ?
