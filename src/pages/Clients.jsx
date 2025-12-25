@@ -169,7 +169,7 @@ export default function ClientsPage() {
             return 0;
         }
       });
-  }, [clients, searchTerm, statusFilter, sourceFilter, budgetFilter, sortBy]);
+  }, [clients, searchTerm, statusFilter, sourceFilter, budgetFilter, stageFilter, sortBy]);
 
   useEffect(() => {
     if (!accessLoading) {
