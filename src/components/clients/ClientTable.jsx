@@ -8,6 +8,8 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuCheckboxItem
 } from "@/components/ui/dropdown-menu";
 import {
   Phone,
@@ -20,7 +22,10 @@ import {
   Copy,
   Trash2,
   Plus,
-  Circle
+  Circle,
+  ArrowUpDown,
+  Filter,
+  Check
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
@@ -64,15 +69,14 @@ export default function ClientTable({
   onToggleSelect,
   onCopy,
   onDelete,
-  onRefresh
+  onRefresh,
+  stageFilter,
+  onStageFilterChange,
+  sortBy,
+  onSortChange
 }) {
   const [stageOptions, setStageOptions] = useState(DEFAULT_STAGE_OPTIONS);
   
-  console.log('[ClientTable] Props received:', { 
-    hasOnEdit: typeof onEdit === 'function',
-    hasOnView: typeof onView === 'function'
-  });
-
   // Load stage options from UserPreferences
   useEffect(() => {
     const loadStageOptions = async () => {
@@ -104,29 +108,15 @@ export default function ClientTable({
   // האזן לעדכוני לקוחות
   useEffect(() => {
     const handleClientUpdate = (event) => {
-      console.log('📋 [CLIENT TABLE] 📬 Received client:updated event:', {
-        hasDetail: !!event.detail,
-        clientId: event.detail?.id,
-        clientName: event.detail?.name,
-        clientStage: event.detail?.stage,
-        fullData: event.detail
-      });
-      
       if (typeof onRefresh === 'function') {
-        console.log('🔄 [CLIENT TABLE] Calling onRefresh in 100ms...');
         setTimeout(() => {
-          console.log('🔄 [CLIENT TABLE] Executing onRefresh now');
           onRefresh();
         }, 100);
-      } else {
-        console.log('⚠️ [CLIENT TABLE] onRefresh is not a function!');
       }
     };
     
     window.addEventListener('client:updated', handleClientUpdate);
-    console.log('👂 [CLIENT TABLE] Event listener registered');
     return () => {
-      console.log('🔇 [CLIENT TABLE] Event listener removed');
       window.removeEventListener('client:updated', handleClientUpdate);
     };
   }, [onRefresh]);
@@ -137,7 +127,75 @@ export default function ClientTable({
         <TableRow>
           {selectionMode && <TableHead className="w-12"></TableHead>}
           <TableHead className="text-right font-semibold">שם</TableHead>
-          <TableHead className="text-right font-semibold">שלב</TableHead>
+          <TableHead className="text-right font-semibold">
+            <div className="flex items-center gap-2">
+              שלב
+              <div className="flex items-center gap-1">
+                {onSortChange && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={`h-6 w-6 ${sortBy === 'stage' ? 'text-blue-600 bg-blue-50' : 'text-slate-400 hover:text-slate-600'}`}
+                    onClick={() => onSortChange(sortBy === 'stage' ? 'name' : 'stage')}
+                    title="מיין לפי שלב"
+                  >
+                    <ArrowUpDown className="w-3 h-3" />
+                  </Button>
+                )}
+                
+                {onStageFilterChange && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className={`h-6 w-6 ${stageFilter !== 'all' ? 'text-blue-600 bg-blue-50' : 'text-slate-400 hover:text-slate-600'}`}
+                        title="סנן לפי שלב"
+                      >
+                        <Filter className="w-3 h-3" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-48">
+                      <DropdownMenuItem 
+                        onClick={() => onStageFilterChange('all')}
+                        className="flex items-center justify-between"
+                      >
+                        <span>כל השלבים</span>
+                        {stageFilter === 'all' && <Check className="w-4 h-4 text-blue-600" />}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => onStageFilterChange('__UNCLASSIFIED__')}
+                        className="flex items-center justify-between"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Circle className="w-2 h-2 text-slate-300 fill-slate-300" />
+                          <span>ללא שלב</span>
+                        </div>
+                        {stageFilter === '__UNCLASSIFIED__' && <Check className="w-4 h-4 text-blue-600" />}
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      {stageOptions.map((option) => (
+                        <DropdownMenuItem
+                          key={option.value}
+                          onClick={() => onStageFilterChange(option.value)}
+                          className="flex items-center justify-between"
+                        >
+                          <div className="flex items-center gap-2">
+                            <Circle 
+                              className="w-2 h-2 fill-current" 
+                              style={{ color: option.color }}
+                            />
+                            <span>{option.label}</span>
+                          </div>
+                          {stageFilter === option.value && <Check className="w-4 h-4 text-blue-600" />}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
+            </div>
+          </TableHead>
           <TableHead className="text-right font-semibold">טלפון</TableHead>
           <TableHead className="text-right font-semibold">אימייל</TableHead>
           <TableHead className="text-right font-semibold">חברה</TableHead>

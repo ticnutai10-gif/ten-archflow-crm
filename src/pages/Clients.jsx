@@ -165,6 +165,8 @@ export default function ClientsPage() {
             return new Date(b.created_date) - new Date(a.created_date);
           case "status":
             return (a.status || '').localeCompare(b.status || '');
+          case "stage":
+            return (a.stage || '').localeCompare(b.stage || '');
           default:
             return 0;
         }
@@ -1243,6 +1245,10 @@ export default function ClientsPage() {
             onCopy={duplicateClient}
             onDelete={handleDelete}
             onRefresh={loadClients}
+            stageFilter={stageFilter}
+            onStageFilterChange={setStageFilter}
+            sortBy={sortBy}
+            onSortChange={setSortBy}
           />
         ) : viewMode === "compact" ? (
           <ScrollArea className="h-[calc(100vh-380px)] rounded-md pr-4">
