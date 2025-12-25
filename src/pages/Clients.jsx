@@ -151,7 +151,9 @@ export default function ClientsPage() {
         const matchesStatus = statusFilter === "all" || client.status === statusFilter;
         const matchesSource = sourceFilter === "all" || client.source === sourceFilter;
         const matchesBudget = budgetFilter === "all" || client.budget_range && client.budget_range.includes(budgetFilter);
-        const matchesStage = stageFilter === "all" || client.stage === stageFilter;
+        const matchesStage = stageFilter === "all" || 
+                             (stageFilter === "__UNCLASSIFIED__" && (!client.stage || client.stage === 'ללא')) ||
+                             (client.stage === stageFilter);
 
         return matchesSearch && matchesStatus && matchesSource && matchesBudget && matchesStage;
       }).
@@ -926,6 +928,7 @@ export default function ClientsPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">כל השלבים</SelectItem>
+                    <SelectItem value="__UNCLASSIFIED__">ללא שלב</SelectItem>
                     {stageOptions.map(stage => (
                      <SelectItem key={stage.value} value={stage.value}>
                        {stage.label}
@@ -1018,6 +1021,12 @@ export default function ClientsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">כל השלבים</SelectItem>
+                <SelectItem value="__UNCLASSIFIED__">
+                  <div className="flex items-center gap-2">
+                    <Circle className="w-3 h-3 fill-current text-slate-300" />
+                    ללא שלב
+                  </div>
+                </SelectItem>
                 {stageOptions.map(stage => (
                   <SelectItem key={stage.value} value={stage.value}>
                     <div className="flex items-center gap-2">
