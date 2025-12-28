@@ -48,32 +48,7 @@ export default function RecentProjects({ projects = [], isLoading, onUpdate }) {
     loadClients();
   }, []);
 
-  useEffect(() => {
-    console.log('🔍 [RecentProjects] Received projects:', {
-      projectsCount: projects?.length,
-      projectsType: typeof projects,
-      isArray: Array.isArray(projects),
-      firstProject: projects?.[0],
-      allProjects: projects
-    });
-
-    if (projects && Array.isArray(projects)) {
-      projects.forEach((project, index) => {
-        if (!project) {
-          console.error(`❌ [RecentProjects] Project at index ${index} is null/undefined!`);
-        } else if (typeof project !== 'object') {
-          console.error(`❌ [RecentProjects] Project at index ${index} is not an object:`, project);
-        } else {
-          console.log(`✅ [RecentProjects] Project ${index}:`, {
-            id: project.id,
-            name: project.name,
-            hasName: 'name' in project,
-            keys: Object.keys(project)
-          });
-        }
-      });
-    }
-  }, [projects]);
+  // Removed verbose logging for performance
 
   const toggleSelect = (id) => {
     startTransition(() => {
@@ -129,7 +104,6 @@ export default function RecentProjects({ projects = [], isLoading, onUpdate }) {
   };
 
   if (isLoading) {
-    console.log('⏳ [RecentProjects] Loading...');
     return (
       <div className="p-4 space-y-3">
         {[1, 2, 3].map(i => (
@@ -140,7 +114,6 @@ export default function RecentProjects({ projects = [], isLoading, onUpdate }) {
   }
 
   if (!projects || projects.length === 0) {
-    console.log('📭 [RecentProjects] No projects to display');
     return (
       <div className="p-8 text-center text-slate-500">
         <p className="mb-4">אין פרויקטים אחרונים</p>
@@ -152,7 +125,6 @@ export default function RecentProjects({ projects = [], isLoading, onUpdate }) {
   }
 
   const validProjects = projects.filter(p => p && typeof p === 'object');
-  console.log('📊 [RecentProjects] Valid projects:', validProjects.length, 'out of', projects.length);
 
   return (
     <ProjectsTab 
@@ -236,15 +208,7 @@ function ProjectsTab({
             clientName = project.client_name || 'לקוח לא ידוע';
             projectStatus = project.status || 'הצעת מחיר';
             progress = Math.min(100, Math.max(0, project.progress || 0));
-
-            console.log(`✅ [RecentProjects] Rendering project ${index}:`, {
-              id: project.id,
-              projectName,
-              clientName,
-              projectStatus
-            });
           } catch (error) {
-            console.error(`❌ [RecentProjects] Error processing project ${index}:`, error, project);
             return null;
           }
 

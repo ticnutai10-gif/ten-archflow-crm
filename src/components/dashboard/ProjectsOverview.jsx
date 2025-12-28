@@ -49,7 +49,8 @@ export default function ProjectsOverview({ compactHeader = false, isExpanded = t
   const loadProjects = async () => {
     setLoading(true);
     try {
-      const data = await base44.entities.Project.list('-created_date');
+      // Limit to 50 projects for overview to avoid performance issues
+      const data = await base44.entities.Project.list('-created_date', 50);
       setProjects(data || []);
     } catch (error) {
       console.error('Error loading projects:', error);

@@ -287,42 +287,55 @@ export default function Dashboard() {
         }
       });
 
-      const [clientsData, projectsData, quotesData, tasksData, myTimeLogs] = await Promise.all([
-        base44.entities.Client.list().catch(() => []),
-        base44.entities.Project.list('-created_date').catch(() => []),
-        base44.entities.Quote.list('-created_date').catch(() => []),
-        base44.entities.Task.filter({ status: { $ne: 'הושלמה' } }, '-due_date').catch(() => []),
-        timeLogsPromise.catch(() => [])
+      // 1. Fast load: Fetch only recent items and limited lists for immediate display
+      const [recentProjectsData, recentQuotesData, recentTasksData, myTimeLogs, limitedClients] = await Promise.all([
+        base44.entities.Project.list('-created_date', 5).catch(() => []),
+        base44.entities.Quote.list('-created_date', 5).catch(() => []),
+        base44.entities.Task.filter({ status: { $ne: 'הושלמה' } }, '-due_date', 5).catch(() => []),
+        timeLogsPromise.catch(() => []),
+        base44.entities.Client.list('-created_date', 20).catch(() => []) // Limit clients for dropdowns initially
       ]);
 
-      const validClients = Array.isArray(clientsData) ? clientsData : [];
-      const validProjects = Array.isArray(projectsData) ? projectsData : [];
-      const validQuotes = Array.isArray(quotesData) ? quotesData : [];
-      const validTasks = Array.isArray(tasksData) ? tasksData : [];
-      const validTimeLogs = Array.isArray(myTimeLogs) ? myTimeLogs : [];
-
-      const newStats = {
-        clients: validClients.length,
-        projects: validProjects.filter((p) => p?.status !== 'הושלם').length,
-        quotes: validQuotes.filter((q) => q?.status === 'בהמתנה').length,
-        tasks: validTasks.length
-      };
-      setStats(newStats);
-
-      setRecentProjects(validProjects.slice(0, 5));
-      setUpcomingTasks(validTasks.slice(0, 5));
-      setQuotes(validQuotes.slice(0, 5));
-      setTimeLogs(validTimeLogs);
+      setRecentProjects(Array.isArray(recentProjectsData) ? recentProjectsData : []);
+      setUpcomingTasks(Array.isArray(recentTasksData) ? recentTasksData : []);
+      setQuotes(Array.isArray(recentQuotesData) ? recentQuotesData : []);
+      setTimeLogs(Array.isArray(myTimeLogs) ? myTimeLogs : []);
       setUpcomingMeetings(futureMeetings.slice(0, 10));
+      setAllClients(Array.isArray(limitedClients) ? limitedClients : []);
       
-      // Store full data for special views
-      setAllClients(validClients);
-      setAllProjects(validProjects);
-      setAllTasks(validTasks);
+      // Stop spinner here - user sees the dashboard
+      setLoading(false);
+
+      // 2. Background load: Fetch counts and full lists if needed
+      // We do this silently without blocking the UI
+      Promise.all([
+        base44.entities.Client.list().catch(() => []),
+        base44.entities.Project.list().catch(() => []),
+        base44.entities.Quote.filter({ status: 'בהמתנה' }).catch(() => []),
+        base44.entities.Task.filter({ status: { $ne: 'הושלמה' } }).catch(() => [])
+      ]).then(([allClientsData, allProjectsData, pendingQuotesData, activeTasksData]) => {
+        const validAllClients = Array.isArray(allClientsData) ? allClientsData : [];
+        const validAllProjects = Array.isArray(allProjectsData) ? allProjectsData : [];
+        const validPendingQuotes = Array.isArray(pendingQuotesData) ? pendingQuotesData : [];
+        const validActiveTasks = Array.isArray(activeTasksData) ? activeTasksData : [];
+
+        setStats({
+          clients: validAllClients.length,
+          projects: validAllProjects.filter(p => p?.status !== 'הושלם').length,
+          quotes: validPendingQuotes.length,
+          tasks: validActiveTasks.length
+        });
+        
+        // Update full lists for components that might need them (e.g. dropdowns)
+        setAllClients(validAllClients);
+        setAllProjects(validAllProjects);
+        setAllTasks(validActiveTasks);
+      }).catch(e => console.warn("Background data fetch failed", e));
+
     } catch (error) {
-      // Error loading data
+      console.error("Dashboard initial load failed", error);
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   useEffect(() => {
