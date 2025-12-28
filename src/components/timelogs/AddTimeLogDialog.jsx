@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Calendar as CalendarIcon, Clock, Plus, Sparkles } from "lucide-react";
+import { Calendar as CalendarIcon, Clock, Plus, Sparkles, Search, Check, ChevronDown } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import { toast } from "sonner";
@@ -32,11 +32,37 @@ export default function AddTimeLogDialog({
   });
   const [isSaving, setIsSaving] = useState(false);
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  
+  // Client selection state
+  const [isClientOpen, setIsClientOpen] = useState(false);
+  const [clientSearch, setClientSearch] = useState("");
 
-  // Sort clients alphabetically
-  const sortedClients = React.useMemo(() => {
-    return [...clients].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-  }, [clients]);
+  // Optimized client filtering
+  const filteredClients = React.useMemo(() => {
+    if (!clients) return [];
+    
+    // If search is empty, return first 50 sorted clients for speed
+    if (!clientSearch.trim()) {
+      return [...clients]
+        .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+        .slice(0, 50);
+    }
+
+    const searchLower = clientSearch.toLowerCase();
+    return clients
+      .filter(c => (c.name || '').toLowerCase().includes(searchLower))
+      .sort((a, b) => {
+        // Prioritize exact matches or startsWith
+        const aName = (a.name || '').toLowerCase();
+        const bName = (b.name || '').toLowerCase();
+        const aStarts = aName.startsWith(searchLower);
+        const bStarts = bName.startsWith(searchLower);
+        if (aStarts && !bStarts) return -1;
+        if (!aStarts && bStarts) return 1;
+        return aName.localeCompare(bName);
+      })
+      .slice(0, 50); // Limit results for performance
+  }, [clients, clientSearch]);
 
   // Update preselected client when it changes
   React.useEffect(() => {
@@ -165,7 +191,7 @@ export default function AddTimeLogDialog({
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent 
         dir="rtl" 
-        className="max-w-2xl max-h-[85vh] overflow-y-auto p-6"
+        className="max-w-3xl w-full max-h-[90vh] overflow-y-auto p-8 shadow-2xl"
       >
         <DialogHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 -m-6 mb-4 p-6 border-b border-blue-100">
           <DialogTitle className="flex items-center gap-3 text-xl text-blue-900">
@@ -190,27 +216,66 @@ export default function AddTimeLogDialog({
           </TabsList>
 
           <TabsContent value="quick" className="space-y-4 mt-4">
-            {/* Client selection (if not preselected) */}
+            {/* Client selection (Optimized Combobox) */}
             {!preselectedClient && (
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-slate-700 block">
                   לקוח <span className="text-red-500">*</span>
                 </label>
-                <Select
-                  value={formData.client_id}
-                  onValueChange={(value) => setFormData({ ...formData, client_id: value })}
-                >
-                  <SelectTrigger className="w-full h-12 text-base bg-white border-slate-200 focus:ring-2 focus:ring-blue-500 transition-all">
-                    <SelectValue placeholder="בחר לקוח..." />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-64">
-                    {sortedClients.map(client => (
-                      <SelectItem key={client.id} value={client.id} className="text-right py-3 cursor-pointer">
-                        {client.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Popover open={isClientOpen} onOpenChange={setIsClientOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={isClientOpen}
+                      className="w-full h-14 justify-between text-base bg-white border-slate-200 hover:border-blue-400 hover:bg-slate-50 transition-all px-4 shadow-sm"
+                    >
+                      {formData.client_id
+                        ? clients.find((c) => c.id === formData.client_id)?.name
+                        : "בחר לקוח..."}
+                      <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 bg-white shadow-xl border border-slate-200" align="start">
+                    <div className="flex items-center border-b border-slate-100 px-3 py-2 bg-slate-50/50">
+                      <Search className="ml-2 h-4 w-4 text-slate-400" />
+                      <input
+                        className="flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-slate-400 disabled:cursor-not-allowed disabled:opacity-50"
+                        placeholder="חפש לקוח..."
+                        value={clientSearch}
+                        onChange={(e) => setClientSearch(e.target.value)}
+                        autoFocus
+                      />
+                    </div>
+                    <div className="max-h-[300px] overflow-y-auto p-1">
+                      {filteredClients.length === 0 ? (
+                        <div className="py-6 text-center text-sm text-slate-500">
+                          לא נמצאו לקוחות
+                        </div>
+                      ) : (
+                        filteredClients.map((client) => (
+                          <div
+                            key={client.id}
+                            className={`
+                              relative flex cursor-pointer select-none items-center rounded-lg px-3 py-2.5 text-sm outline-none transition-colors
+                              ${formData.client_id === client.id ? 'bg-blue-50 text-blue-700' : 'hover:bg-slate-100 text-slate-700'}
+                            `}
+                            onClick={() => {
+                              setFormData({ ...formData, client_id: client.id });
+                              setIsClientOpen(false);
+                              setClientSearch(""); // Reset search on select
+                            }}
+                          >
+                            <span className="flex-1 font-medium">{client.name}</span>
+                            {formData.client_id === client.id && (
+                              <Check className="h-4 w-4 text-blue-600" />
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </div>
             )}
 
@@ -280,7 +345,7 @@ export default function AddTimeLogDialog({
             </div>
 
             {/* Title & Notes with AI */}
-            <div>
+            <div className="pt-2">
               <div className="flex items-center justify-between mb-2">
                 <label className="text-sm font-semibold text-slate-700">כותרת</label>
                 <Button
@@ -304,6 +369,7 @@ export default function AddTimeLogDialog({
                 placeholder="למשל: פגישת תכנון, ייעוץ טלפוני..."
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                className="h-12"
               />
             </div>
 
@@ -313,7 +379,7 @@ export default function AddTimeLogDialog({
                 placeholder="פרטים נוספים..."
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                className="min-h-[80px]"
+                className="min-h-[100px] text-base"
               />
             </div>
           </TabsContent>
