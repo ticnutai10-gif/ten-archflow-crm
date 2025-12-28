@@ -287,7 +287,7 @@ export default function AddTimeLogDialog({
             {/* Date with Manual Entry & Visual Picker */}
             <div>
               <label className="text-sm font-semibold text-slate-700 mb-2 block">תאריך</label>
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2">
                 <Input
                   value={dateInputValue}
                   onChange={(e) => {
@@ -305,16 +305,17 @@ export default function AddTimeLogDialog({
                       }
                     }
                   }}
-                  className="flex-1 h-12 text-lg"
+                  className="w-full h-12 text-lg text-center tracking-wider"
                   placeholder="DD/MM/YYYY"
                 />
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" className="h-12 w-12 p-0 flex-shrink-0">
-                      <CalendarIcon className="h-5 w-5 text-slate-500" />
+                    <Button variant="outline" className="w-full h-10 flex gap-2 items-center justify-center text-slate-600 bg-slate-50 hover:bg-slate-100 border-slate-200">
+                      <CalendarIcon className="h-4 w-4" />
+                      <span>בחירה מלוח שנה</span>
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0 z-[200]" align="start">
+                  <PopoverContent className="w-auto p-0 z-[200]" align="center">
                     <div className="p-2">
                       <VisualDatePicker
                         selectedDate={selectedDate}
