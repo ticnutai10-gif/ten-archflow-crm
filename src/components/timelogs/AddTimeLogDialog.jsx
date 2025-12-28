@@ -309,11 +309,9 @@ export default function AddTimeLogDialog({
                   placeholder="DD/MM/YYYY"
                 />
                 <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-full h-10 flex gap-2 items-center justify-center text-slate-600 bg-slate-50 hover:bg-slate-100 border-slate-200">
-                      <CalendarIcon className="h-4 w-4" />
-                      <span>בחירה מלוח שנה</span>
-                    </Button>
+                  <PopoverTrigger className="w-full h-10 flex gap-2 items-center justify-center rounded-md border border-slate-200 bg-slate-50 text-slate-600 text-sm font-medium hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                    <CalendarIcon className="h-4 w-4" />
+                    <span>בחירה מלוח שנה</span>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0 z-[200]" align="center">
                     <div className="p-2">
