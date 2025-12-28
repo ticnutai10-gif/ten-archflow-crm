@@ -223,20 +223,15 @@ export default function AddTimeLogDialog({
                   לקוח <span className="text-red-500">*</span>
                 </label>
                 <Popover open={isClientOpen} onOpenChange={setIsClientOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      role="combobox"
-                      aria-expanded={isClientOpen}
-                      className="w-full h-14 justify-between text-base bg-white border-slate-200 hover:border-blue-400 hover:bg-slate-50 transition-all px-4 shadow-sm"
-                    >
-                      {formData.client_id
-                        ? clients.find((c) => c.id === formData.client_id)?.name
-                        : "בחר לקוח..."}
-                      <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
+                  <PopoverTrigger 
+                    className="flex w-full h-14 items-center justify-between rounded-md border border-slate-200 bg-white px-4 py-2 text-base ring-offset-background placeholder:text-slate-500 hover:border-blue-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all shadow-sm"
+                  >
+                    {formData.client_id
+                      ? clients.find((c) => c.id === formData.client_id)?.name
+                      : <span className="text-slate-500">בחר לקוח...</span>}
+                    <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </PopoverTrigger>
-                  <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 bg-white shadow-xl border border-slate-200" align="start">
+                  <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 bg-white shadow-xl border border-slate-200 z-[200]" align="start">
                     <div className="flex items-center border-b border-slate-100 px-3 py-2 bg-slate-50/50">
                       <Search className="ml-2 h-4 w-4 text-slate-400" />
                       <input
@@ -283,16 +278,13 @@ export default function AddTimeLogDialog({
             <div>
               <label className="text-sm font-semibold text-slate-700 mb-2 block">תאריך</label>
               <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start text-left font-normal text-lg h-12"
-                  >
-                    <CalendarIcon className="ml-2 h-5 w-5 text-slate-500" />
-                    {selectedDate ? format(selectedDate, "PPP", { locale: he }) : <span>בחר תאריך</span>}
-                  </Button>
+                <PopoverTrigger 
+                  className="flex w-full items-center justify-start rounded-md border border-slate-200 bg-white px-4 py-3 text-right text-lg font-normal ring-offset-background transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-12"
+                >
+                  <CalendarIcon className="ml-2 h-5 w-5 text-slate-500" />
+                  {selectedDate ? format(selectedDate, "PPP", { locale: he }) : <span>בחר תאריך</span>}
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
+                <PopoverContent className="w-auto p-0 z-[200]" align="start">
                   <div className="p-2">
                     <VisualDatePicker
                       selectedDate={selectedDate}
