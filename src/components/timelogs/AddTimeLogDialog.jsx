@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Calendar as CalendarIcon, Clock, Plus, Sparkles } from "lucide-react";
 import { format } from "date-fns";
@@ -31,6 +32,11 @@ export default function AddTimeLogDialog({
   });
   const [isSaving, setIsSaving] = useState(false);
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+
+  // Sort clients alphabetically
+  const sortedClients = React.useMemo(() => {
+    return [...clients].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  }, [clients]);
 
   // Update preselected client when it changes
   React.useEffect(() => {
@@ -161,15 +167,19 @@ export default function AddTimeLogDialog({
         dir="rtl" 
         className="max-w-2xl max-h-[85vh] overflow-y-auto p-6"
       >
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Clock className="w-5 h-5 text-blue-600" />
-            הוסף רישום זמן
-            {selectedClient && (
-              <span className="text-sm font-normal text-slate-600">
-                • {selectedClient.name}
-              </span>
-            )}
+        <DialogHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 -m-6 mb-4 p-6 border-b border-blue-100">
+          <DialogTitle className="flex items-center gap-3 text-xl text-blue-900">
+            <div className="bg-white p-2 rounded-full shadow-sm">
+              <Clock className="w-6 h-6 text-blue-600" />
+            </div>
+            <div>
+              הוסף רישום זמן
+              {selectedClient && (
+                <div className="text-sm font-normal text-slate-600 mt-1">
+                  עבור: {selectedClient.name}
+                </div>
+              )}
+            </div>
           </DialogTitle>
         </DialogHeader>
 
@@ -182,20 +192,25 @@ export default function AddTimeLogDialog({
           <TabsContent value="quick" className="space-y-4 mt-4">
             {/* Client selection (if not preselected) */}
             {!preselectedClient && (
-              <div>
-                <label className="text-sm font-semibold text-slate-700 mb-2 block">
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-slate-700 block">
                   לקוח <span className="text-red-500">*</span>
                 </label>
-                <select
+                <Select
                   value={formData.client_id}
-                  onChange={(e) => setFormData({ ...formData, client_id: e.target.value })}
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2"
+                  onValueChange={(value) => setFormData({ ...formData, client_id: value })}
                 >
-                  <option value="">בחר לקוח...</option>
-                  {clients.map(client => (
-                    <option key={client.id} value={client.id}>{client.name}</option>
-                  ))}
-                </select>
+                  <SelectTrigger className="w-full h-12 text-base bg-white border-slate-200 focus:ring-2 focus:ring-blue-500 transition-all">
+                    <SelectValue placeholder="בחר לקוח..." />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-64">
+                    {sortedClients.map(client => (
+                      <SelectItem key={client.id} value={client.id} className="text-right py-3 cursor-pointer">
+                        {client.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             )}
 
