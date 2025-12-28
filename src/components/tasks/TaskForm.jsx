@@ -140,7 +140,7 @@ export default function TaskForm({ task, clients, projects, onSubmit, onCancel, 
 
   return (
     <Dialog open={true} onOpenChange={(open) => !open && onCancel()}>
-      <DialogContent className="sm:max-w-lg text-right max-h-[90vh] overflow-y-auto" dir="rtl">
+      <DialogContent className="sm:max-w-2xl text-right max-h-[90vh] overflow-y-auto" dir="rtl">
         <DialogHeader>
           <DialogTitle>{task ? 'עריכת' : 'יצירת'} משימה</DialogTitle>
         </DialogHeader>
