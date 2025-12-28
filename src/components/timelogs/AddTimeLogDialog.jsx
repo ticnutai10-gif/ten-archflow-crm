@@ -50,15 +50,21 @@ export default function AddTimeLogDialog({
 
     const searchLower = clientSearch.toLowerCase();
     return clients
-      .filter(c => (c.name || '').toLowerCase().includes(searchLower))
+      .filter(c => 
+        (c.name || '').toLowerCase().includes(searchLower) ||
+        (c.email || '').toLowerCase().includes(searchLower) ||
+        (c.phone || '').includes(searchLower)
+      )
       .sort((a, b) => {
-        // Prioritize exact matches or startsWith
+        // Prioritize exact matches or startsWith on name
         const aName = (a.name || '').toLowerCase();
         const bName = (b.name || '').toLowerCase();
         const aStarts = aName.startsWith(searchLower);
         const bStarts = bName.startsWith(searchLower);
+        
         if (aStarts && !bStarts) return -1;
         if (!aStarts && bStarts) return 1;
+        
         return aName.localeCompare(bName);
       })
       .slice(0, 50); // Limit results for performance
