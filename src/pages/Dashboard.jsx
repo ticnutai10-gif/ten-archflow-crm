@@ -37,7 +37,8 @@ import {
   Save,
   Bookmark,
   X,
-  Trash2
+  Trash2,
+  Filter
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -90,6 +91,7 @@ export default function Dashboard() {
   const [showSaveLayoutDialog, setShowSaveLayoutDialog] = useState(false);
   const [savedLayouts, setSavedLayouts] = useState([]);
   const [layoutName, setLayoutName] = useState('');
+  const [clientFilter, setClientFilter] = useState('active');
   
   // Load preferences from localStorage immediately (synchronous - no delay)
   const loadInitialPrefs = () => {
@@ -373,6 +375,25 @@ export default function Dashboard() {
 
   const currentView = VIEW_MODES.find(v => v.value === viewMode) || VIEW_MODES[1];
   const ViewIcon = currentView.icon;
+
+  const displayedClientCount = React.useMemo(() => {
+    if (!allClients) return 0;
+    switch (clientFilter) {
+      case 'all': return allClients.length;
+      case 'active': return allClients.filter(c => c.status === 'פעיל').length;
+      case 'potential': return allClients.filter(c => c.status === 'פוטנציאלי').length;
+      default: return allClients.filter(c => c.status === 'פעיל').length;
+    }
+  }, [allClients, clientFilter]);
+
+  const clientFilterLabel = React.useMemo(() => {
+    switch (clientFilter) {
+      case 'all': return 'כל הלקוחות';
+      case 'active': return 'לקוחות פעילים';
+      case 'potential': return 'לקוחות פוטנציאליים';
+      default: return 'לקוחות פעילים';
+    }
+  }, [clientFilter]);
   
   const getGridClass = () => {
     if (viewMode === 'grid-2') return 'grid grid-cols-1 md:grid-cols-2 gap-6';
@@ -531,14 +552,28 @@ export default function Dashboard() {
           isMobile ? (
             /* Mobile Stats - Large Touch-Friendly Grid */
             <div className="grid grid-cols-2 gap-3 mb-4" dir="rtl">
-              <Link to={createPageUrl("Clients")} className="block">
+              <Link to={createPageUrl("Clients")} className="block relative">
                 <Card className="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-lg hover:shadow-xl transition-all active:scale-95">
-                  <CardContent className="p-4 text-center">
+                  <CardContent className="p-4 text-center relative">
+                    <div className="absolute top-0 left-0">
+                       <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <div className="p-2" onClick={(e) => e.preventDefault()}>
+                             <Filter className="w-4 h-4 text-white/70" />
+                          </div>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start">
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setClientFilter('all'); }}>כל הלקוחות</DropdownMenuItem>
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setClientFilter('active'); }}>לקוחות פעילים</DropdownMenuItem>
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setClientFilter('potential'); }}>לקוחות פוטנציאליים</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                     <div className="w-14 h-14 mx-auto mb-2 rounded-2xl bg-white/20 flex items-center justify-center">
                       <Users className="w-7 h-7" />
                     </div>
-                    <div className="text-3xl font-bold mb-1">{stats.clients}</div>
-                    <div className="text-xs text-white/80">לקוחות פעילים</div>
+                    <div className="text-3xl font-bold mb-1">{displayedClientCount}</div>
+                    <div className="text-xs text-white/80">{clientFilterLabel}</div>
                   </CardContent>
                 </Card>
               </Link>
