@@ -193,7 +193,7 @@ function LayoutInner({ children, currentPageName }) {
   }, []);
 
   const handleMouseLeave = useCallback(() => {
-    setTimeout(() => setHovered(false), 200);
+    setTimeout(() => setHovered(false), 800);
   }, []);
 
   const sidebarStyles = isExpanded ? {
@@ -647,7 +647,7 @@ function LayoutInner({ children, currentPageName }) {
                 })}
               </nav>
 
-              <div className="p-3 border-t border-slate-200 bg-slate-50">
+              <div className="p-3 pb-8 border-t border-slate-200 bg-slate-50">
                 {user ? (
                   <div className="flex items-center gap-2">
                     <div 
