@@ -5,108 +5,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Calendar as CalendarIcon, Clock, Plus, Sparkles } from "lucide-react";
-import { format, addDays, startOfMonth, endOfMonth, startOfWeek, endOfWeek, isSameDay, isWithinInterval } from "date-fns";
+import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import { toast } from "sonner";
 import { base44 } from "@/api/base44Client";
-
-// Simple calendar component
-function MiniCalendar({ selectedDate, onSelectDate, timeLogs }) {
-  const [currentMonth, setCurrentMonth] = useState(new Date());
-
-  const getDaysInMonth = () => {
-    const monthStart = startOfMonth(currentMonth);
-    const monthEnd = endOfMonth(currentMonth);
-    const start = startOfWeek(monthStart, { weekStartsOn: 0 });
-    const end = endOfWeek(monthEnd, { weekStartsOn: 0 });
-    
-    const days = [];
-    let current = new Date(start);
-    
-    while (current <= end) {
-      days.push(new Date(current));
-      current = addDays(current, 1);
-    }
-    
-    return days;
-  };
-
-  const getHoursForDay = (date) => {
-    if (!date || isNaN(date.getTime())) return 0;
-    
-    const logsForDay = timeLogs.filter(log => {
-      if (!log || !log.log_date) return false;
-      try {
-        const logDate = new Date(log.log_date);
-        return !isNaN(logDate.getTime()) && isSameDay(logDate, date);
-      } catch {
-        return false;
-      }
-    });
-    const totalSeconds = logsForDay.reduce((sum, log) => sum + (log.duration_seconds || 0), 0);
-    return totalSeconds / 3600;
-  };
-
-  const days = getDaysInMonth();
-  const daysOfWeek = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'];
-
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <Button variant="outline" size="sm" onClick={() => setCurrentMonth(addDays(currentMonth, -30))}>
-          ←
-        </Button>
-        <h3 className="font-semibold">
-          {currentMonth && !isNaN(currentMonth.getTime()) 
-            ? format(currentMonth, 'MMMM yyyy', { locale: he })
-            : format(new Date(), 'MMMM yyyy', { locale: he })}
-        </h3>
-        <Button variant="outline" size="sm" onClick={() => setCurrentMonth(addDays(currentMonth, 30))}>
-          →
-        </Button>
-      </div>
-      
-      <div className="grid grid-cols-7 gap-1">
-        {daysOfWeek.map((day, i) => (
-          <div key={i} className="text-center text-xs text-slate-500 font-medium py-1">
-            {day}
-          </div>
-        ))}
-        
-        {days.map((day, i) => {
-          const hours = getHoursForDay(day);
-          const isSelected = selectedDate && isSameDay(day, selectedDate);
-          const isToday = isSameDay(day, new Date());
-          const isOutsideMonth = !isWithinInterval(day, {
-            start: startOfMonth(currentMonth),
-            end: endOfMonth(currentMonth)
-          });
-          
-          return (
-            <button
-              key={i}
-              onClick={() => onSelectDate(day)}
-              className={`
-                aspect-square p-1 rounded-lg text-sm transition-all
-                ${isSelected ? 'bg-blue-600 text-white ring-2 ring-blue-400' : ''}
-                ${isToday && !isSelected ? 'bg-blue-50 text-blue-600 font-bold' : ''}
-                ${isOutsideMonth ? 'text-slate-300' : 'text-slate-700 hover:bg-slate-100'}
-                ${hours > 0 && !isSelected ? 'font-semibold' : ''}
-              `}
-            >
-              <div>{format(day, 'd')}</div>
-              {hours > 0 && !isSelected && (
-                <div className="text-[8px] text-blue-600 mt-0.5">
-                  {hours.toFixed(1)}ש'
-                </div>
-              )}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
+import VisualDatePicker from "@/components/ui/VisualDatePicker";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 export default function AddTimeLogDialog({ 
   open, 
@@ -295,19 +199,28 @@ export default function AddTimeLogDialog({
               </div>
             )}
 
-            {/* Date */}
+            {/* Date with Visual Picker */}
             <div>
               <label className="text-sm font-semibold text-slate-700 mb-2 block">תאריך</label>
-              <Input
-                type="date"
-                value={selectedDate && !isNaN(selectedDate.getTime()) ? format(selectedDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd')}
-                onChange={(e) => {
-                  const newDate = new Date(e.target.value);
-                  if (!isNaN(newDate.getTime())) {
-                    setSelectedDate(newDate);
-                  }
-                }}
-              />
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start text-left font-normal text-lg h-12"
+                  >
+                    <CalendarIcon className="ml-2 h-5 w-5 text-slate-500" />
+                    {selectedDate ? format(selectedDate, "PPP", { locale: he }) : <span>בחר תאריך</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <div className="p-2">
+                    <VisualDatePicker
+                      selectedDate={selectedDate}
+                      onSelect={(date) => setSelectedDate(date)}
+                    />
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
 
             {/* Duration */}
@@ -391,13 +304,12 @@ export default function AddTimeLogDialog({
           </TabsContent>
 
           <TabsContent value="calendar" className="space-y-4 mt-4">
-            <MiniCalendar
+            <VisualDatePicker
               selectedDate={selectedDate}
-              onSelectDate={(date) => {
+              onSelect={(date) => {
                 setSelectedDate(date);
                 setActiveTab('quick'); // Switch to quick entry after selecting date
               }}
-              timeLogs={timeLogs}
             />
             <div className="bg-blue-50 rounded-lg p-3 text-center text-sm text-blue-800">
               לחץ על יום כדי לבחור תאריך ולעבור למילוי הפרטים
