@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { base44 } from "@/api/base44Client";
 import VisualDatePicker from "@/components/ui/VisualDatePicker";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import QuickOptions from "./QuickOptions";
 
 export default function AddTimeLogDialog({ 
   open, 
@@ -23,6 +24,7 @@ export default function AddTimeLogDialog({
 }) {
   const [activeTab, setActiveTab] = useState('quick');
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [dateInputValue, setDateInputValue] = useState(format(new Date(), "dd/MM/yyyy"));
   const [formData, setFormData] = useState({
     client_id: preselectedClient?.id || '',
     hours: '',
@@ -142,7 +144,9 @@ export default function AddTimeLogDialog({
       title: '',
       notes: ''
     });
-    setSelectedDate(new Date());
+    const now = new Date();
+    setSelectedDate(now);
+    setDateInputValue(format(now, "dd/MM/yyyy"));
     setActiveTab('quick');
     onClose();
   };
@@ -280,33 +284,72 @@ export default function AddTimeLogDialog({
               </div>
             )}
 
-            {/* Date with Visual Picker */}
+            {/* Date with Manual Entry & Visual Picker */}
             <div>
               <label className="text-sm font-semibold text-slate-700 mb-2 block">תאריך</label>
-              <Popover>
-                <PopoverTrigger 
-                  className="flex w-full items-center justify-start rounded-md border border-slate-200 bg-white px-4 py-3 text-right text-lg font-normal ring-offset-background transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-12"
-                >
-                  <CalendarIcon className="ml-2 h-5 w-5 text-slate-500" />
-                  {selectedDate ? format(selectedDate, "PPP", { locale: he }) : <span>בחר תאריך</span>}
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 z-[200]" align="start">
-                  <div className="p-2">
-                    <VisualDatePicker
-                      selectedDate={selectedDate}
-                      onSelect={(date) => setSelectedDate(date)}
-                    />
-                  </div>
-                </PopoverContent>
-              </Popover>
+              <div className="flex gap-2">
+                <Input
+                  value={dateInputValue}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setDateInputValue(val);
+                    // Try parse dd/MM/yyyy
+                    const parts = val.split('/');
+                    if (parts.length === 3) {
+                      const d = parseInt(parts[0]);
+                      const m = parseInt(parts[1]) - 1;
+                      const y = parseInt(parts[2]);
+                      const newDate = new Date(y, m, d);
+                      if (!isNaN(newDate.getTime()) && newDate.getFullYear() > 2000) {
+                        setSelectedDate(newDate);
+                      }
+                    }
+                  }}
+                  className="flex-1 h-12 text-lg"
+                  placeholder="DD/MM/YYYY"
+                />
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="h-12 w-12 p-0 flex-shrink-0">
+                      <CalendarIcon className="h-5 w-5 text-slate-500" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 z-[200]" align="start">
+                    <div className="p-2">
+                      <VisualDatePicker
+                        selectedDate={selectedDate}
+                        onSelect={(date) => {
+                          setSelectedDate(date);
+                          setDateInputValue(format(date, "dd/MM/yyyy"));
+                        }}
+                      />
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
             </div>
 
-            {/* Duration */}
+            {/* Duration (Swapped order: Hours on Left, Minutes on Right in RTL flow means Minutes first then Hours) */}
             <div>
               <label className="text-sm font-semibold text-slate-700 mb-2 block">
                 משך זמן <span className="text-red-500">*</span>
               </label>
-              <div className="flex items-center gap-3 justify-center">
+              <div className="flex items-center gap-3 justify-center" dir="rtl">
+                 {/* Right Side (Start in RTL) - Minutes */}
+                 <div className="flex flex-col items-center">
+                  <Input
+                    value={formData.minutes}
+                    onChange={(e) => setFormData({ ...formData, minutes: e.target.value.replace(/\D/g, '').slice(0, 2) })}
+                    className="w-20 h-12 text-center text-lg font-bold"
+                    placeholder="00"
+                    maxLength={2}
+                  />
+                  <span className="text-xs text-slate-600 mt-1 font-medium">דקות</span>
+                </div>
+                
+                <span className="text-2xl font-bold text-blue-600">:</span>
+
+                {/* Left Side (End in RTL) - Hours */}
                 <div className="flex flex-col items-center">
                   <Input
                     value={formData.hours}
@@ -316,17 +359,6 @@ export default function AddTimeLogDialog({
                     maxLength={2}
                   />
                   <span className="text-xs text-slate-600 mt-1 font-medium">שעות</span>
-                </div>
-                <span className="text-2xl font-bold text-blue-600">:</span>
-                <div className="flex flex-col items-center">
-                  <Input
-                    value={formData.minutes}
-                    onChange={(e) => setFormData({ ...formData, minutes: e.target.value.replace(/\D/g, '').slice(0, 2) })}
-                    className="w-20 h-12 text-center text-lg font-bold"
-                    placeholder="00"
-                    maxLength={2}
-                  />
-                  <span className="text-xs text-slate-600 mt-1 font-medium">דקות</span>
                 </div>
               </div>
               <div className="flex gap-2 mt-2 justify-center">
@@ -369,6 +401,10 @@ export default function AddTimeLogDialog({
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                 className="h-12"
               />
+              <QuickOptions 
+                type="title" 
+                onSelect={(val) => setFormData(prev => ({ ...prev, title: val }))} 
+              />
             </div>
 
             <div>
@@ -378,6 +414,13 @@ export default function AddTimeLogDialog({
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                 className="min-h-[100px] text-base"
+              />
+              <QuickOptions 
+                type="notes" 
+                onSelect={(val) => setFormData(prev => ({ 
+                  ...prev, 
+                  notes: prev.notes ? prev.notes + '\n' + val : val 
+                }))} 
               />
             </div>
           </TabsContent>
