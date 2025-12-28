@@ -617,15 +617,29 @@ export default function Dashboard() {
           ) : (
             /* Desktop Stats */
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8" dir="rtl">
-              <Card className="bg-white shadow-md hover:shadow-lg transition-shadow">
+              <Card className="bg-white shadow-md hover:shadow-lg transition-shadow relative overflow-visible">
+                <div className="absolute top-2 left-2 z-10">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-blue-600">
+                        <Filter className="h-3 w-3" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => setClientFilter('all')}>כל הלקוחות</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setClientFilter('active')}>לקוחות פעילים</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setClientFilter('potential')}>לקוחות פוטנציאליים</DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm text-slate-600 font-normal text-center">
-                    לקוחות פעילים
+                    {clientFilterLabel}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="font-bold text-center mb-2 text-4xl">
-                    {stats.clients}
+                    {displayedClientCount}
                   </div>
                   <Link to={createPageUrl("Clients")} className="block">
                     <Button variant="link" className="w-full text-xs" style={{ color: '#2C3E50' }}>
