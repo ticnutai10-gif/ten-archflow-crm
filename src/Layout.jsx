@@ -201,6 +201,15 @@ function LayoutInner({ children, currentPageName }) {
     hoverTimeoutRef.current = setTimeout(() => setHovered(false), 500);
   }, []);
 
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const sidebarStyles = isExpanded ? {
     width: '320px',
     opacity: 1,
