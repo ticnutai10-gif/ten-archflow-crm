@@ -91,7 +91,6 @@ export default function Dashboard() {
   const [showSaveLayoutDialog, setShowSaveLayoutDialog] = useState(false);
   const [savedLayouts, setSavedLayouts] = useState([]);
   const [layoutName, setLayoutName] = useState('');
-  const [clientFilter, setClientFilter] = useState('active');
   
   // Load preferences from localStorage immediately (synchronous - no delay)
   const loadInitialPrefs = () => {
@@ -110,6 +109,7 @@ export default function Dashboard() {
 
   // User Preferences - loaded instantly from localStorage
   const [viewMode, setViewMode] = useState(initialPrefs?.viewMode || 'grid-3');
+  const [clientFilter, setClientFilter] = useState(initialPrefs?.clientFilter || 'all');
   const [expandedCards, setExpandedCards] = useState(initialPrefs?.expandedCards || {
     projects: true,
     clients: true,
@@ -151,10 +151,11 @@ export default function Dashboard() {
         if (userPrefs.length > 0 && userPrefs[0].dashboard_preferences) {
           const p = userPrefs[0].dashboard_preferences;
           localStorage.setItem('dashboard_preferences', JSON.stringify(p));
-          
+
           // Only update if different from current state
-          if (JSON.stringify(p) !== JSON.stringify({ viewMode, expandedCards, visibleCards, cardOrder, savedLayouts })) {
+          if (JSON.stringify(p) !== JSON.stringify({ viewMode, clientFilter, expandedCards, visibleCards, cardOrder, savedLayouts })) {
             if (p.viewMode) setViewMode(p.viewMode);
+            if (p.clientFilter) setClientFilter(p.clientFilter);
             if (p.expandedCards) setExpandedCards(p.expandedCards);
             if (p.visibleCards) setVisibleCards(p.visibleCards);
             if (p.cardOrder) setCardOrder(p.cardOrder);
@@ -173,7 +174,7 @@ export default function Dashboard() {
   useEffect(() => {
     const savePrefs = async () => {
       try {
-        const prefs = { viewMode, expandedCards, visibleCards, cardOrder, savedLayouts };
+        const prefs = { viewMode, clientFilter, expandedCards, visibleCards, cardOrder, savedLayouts };
         
         // Save to localStorage immediately (synchronous)
         localStorage.setItem('dashboard_preferences', JSON.stringify(prefs));
@@ -199,7 +200,7 @@ export default function Dashboard() {
     
     const timeoutId = setTimeout(savePrefs, 500);
     return () => clearTimeout(timeoutId);
-  }, [viewMode, expandedCards, visibleCards, cardOrder, savedLayouts]);
+  }, [viewMode, clientFilter, expandedCards, visibleCards, cardOrder, savedLayouts]);
 
   const toggleCard = useCallback((cardName) => {
     startTransition(() => {
