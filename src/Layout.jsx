@@ -90,6 +90,7 @@ function LayoutInner({ children, currentPageName }) {
   const [hovered, setHovered] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const loadedRef = useRef(false);
+  const hoverTimeoutRef = useRef(null);
 
   const [showPerformanceMonitor, setShowPerformanceMonitor] = useState(() => {
     try {
@@ -189,11 +190,15 @@ function LayoutInner({ children, currentPageName }) {
   }, [pinned, hovered, isExpanded, isMobile]);
 
   const handleMouseEnter = useCallback(() => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
     setHovered(true);
   }, []);
 
   const handleMouseLeave = useCallback(() => {
-    setTimeout(() => setHovered(false), 800);
+    hoverTimeoutRef.current = setTimeout(() => setHovered(false), 500);
   }, []);
 
   const sidebarStyles = isExpanded ? {
@@ -323,7 +328,7 @@ function LayoutInner({ children, currentPageName }) {
           }
           
           .sidebar-container {
-            transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 500ms cubic-bezier(0.4, 0, 0.2, 1);
             will-change: width, opacity, visibility, transform;
           }
           
