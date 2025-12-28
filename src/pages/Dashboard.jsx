@@ -59,6 +59,7 @@ const HeatmapView = React.lazy(() => import("../components/dashboard/HeatmapView
 const TrendsView = React.lazy(() => import("../components/dashboard/TrendsView"));
 const AIInsightsPanel = React.lazy(() => import("../components/ai/AIInsightsPanel"));
 import { useIsMobile } from "../components/utils/useMediaQuery";
+import { useAccessControl } from "../components/access/AccessValidator";
 
 const VIEW_MODES = [
   { value: 'grid-2', label: 'רשת 2 עמודות', icon: Grid2x2 },
@@ -69,6 +70,7 @@ const VIEW_MODES = [
 
 export default function Dashboard() {
   const isMobile = useIsMobile();
+  const { filterClients } = useAccessControl();
   const [loading, setLoading] = useState(true);
   
   // Data
@@ -314,20 +316,42 @@ export default function Dashboard() {
         base44.entities.Quote.filter({ status: 'בהמתנה' }).catch(() => []),
         base44.entities.Task.filter({ status: { $ne: 'הושלמה' } }).catch(() => [])
       ]).then(([allClientsData, allProjectsData, pendingQuotesData, activeTasksData]) => {
-        const validAllClients = Array.isArray(allClientsData) ? allClientsData : [];
+        let validAllClients = Array.isArray(allClientsData) ? allClientsData : [];
+        
+        // Filter by access control
+        validAllClients = filterClients(validAllClients);
+
+        // Deduplicate clients (same logic as Clients page)
+        const uniqueMap = new Map();
+        for (const client of validAllClients) {
+          if (!client) continue;
+          const cleanName = (client.name_clean || client.name || '').trim().toLowerCase().replace(/\s+/g, ' ');
+          if (!cleanName) continue;
+          
+          if (!uniqueMap.has(cleanName)) {
+            uniqueMap.set(cleanName, client);
+          } else {
+            const existing = uniqueMap.get(cleanName);
+            if (new Date(client.updated_date) > new Date(existing.updated_date)) {
+              uniqueMap.set(cleanName, client);
+            }
+          }
+        }
+        const dedupedClients = Array.from(uniqueMap.values());
+        
         const validAllProjects = Array.isArray(allProjectsData) ? allProjectsData : [];
         const validPendingQuotes = Array.isArray(pendingQuotesData) ? pendingQuotesData : [];
         const validActiveTasks = Array.isArray(activeTasksData) ? activeTasksData : [];
 
         setStats({
-          clients: validAllClients.length,
+          clients: dedupedClients.filter(c => c.status === 'פעיל').length,
           projects: validAllProjects.filter(p => p?.status !== 'הושלם').length,
           quotes: validPendingQuotes.length,
           tasks: validActiveTasks.length
         });
         
         // Update full lists for components that might need them (e.g. dropdowns)
-        setAllClients(validAllClients);
+        setAllClients(dedupedClients);
         setAllProjects(validAllProjects);
         setAllTasks(validActiveTasks);
       }).catch(e => console.warn("Background data fetch failed", e));
@@ -343,7 +367,7 @@ export default function Dashboard() {
     const onTimelogCreated = () => { loadDashboardData(); };
     window.addEventListener('timelog:created', onTimelogCreated);
     return () => { window.removeEventListener('timelog:created', onTimelogCreated); };
-  }, [loadDashboardData]);
+  }, [loadDashboardData, filterClients]);
 
 
 
