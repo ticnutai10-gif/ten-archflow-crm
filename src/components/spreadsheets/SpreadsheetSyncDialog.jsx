@@ -87,32 +87,9 @@ export default function SpreadsheetSyncDialog({ open, onClose, spreadsheet, onIm
     }
   };
 
-  const runDiagnostics = async () => {
-    setLoading(true);
-    try {
-      toast.info('מריץ בדיקות אבחון...');
-      const { data } = await base44.functions.invoke('testGoogleSheets', {});
-      console.log('=== DIAGNOSTICS RESULTS ===');
-      console.log(JSON.stringify(data, null, 2));
-      data.steps?.forEach(step => {
-        console.log(`[${step.status}] ${step.step}:`, step.data);
-      });
-      toast.success('בדיקות הסתיימו - בדוק את הקונסול');
-      return data;
-    } catch (e) {
-      console.error('Diagnostics error:', e);
-      toast.error('שגיאה בהרצת בדיקות');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const loadSheets = async (id) => {
     setLoading(true);
     try {
-      // First run diagnostics
-      await runDiagnostics();
-      
       const { data } = await base44.functions.invoke('googleSheets', {
         action: 'getSheets',
         spreadsheetId: id
@@ -362,18 +339,6 @@ export default function SpreadsheetSyncDialog({ open, onClose, spreadsheet, onIm
               <Button onClick={handleCreateNew} disabled={loading} variant="outline" className="flex-1">
                 <Upload className="w-4 h-4 ml-2" />
                 צור חדש
-              </Button>
-            </div>
-            <div className="pt-2 border-t">
-              <Button 
-                onClick={runDiagnostics} 
-                disabled={loading} 
-                variant="ghost" 
-                size="sm"
-                className="w-full text-xs text-slate-500"
-              >
-                {loading ? <Loader2 className="w-3 h-3 animate-spin ml-1" /> : <Settings2 className="w-3 h-3 ml-1" />}
-                הרץ בדיקות אבחון (Debug)
               </Button>
             </div>
           </div>
