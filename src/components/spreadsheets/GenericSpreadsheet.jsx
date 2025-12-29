@@ -2037,46 +2037,111 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         }, 100);
       }
     } else {
+      
+      // Prepare Metadata for Export (Full Sync only)
+      let metadata = null;
+      if (syncMode === 'overwrite') {
+          metadata = {
+              merges: [],
+              styles: [],
+              notes: [],
+              headerStyles: []
+          };
+
+          // 1. Merges
+          // Convert local mergedCells (rowId_colKey) to indices
+          Object.values(mergedCells).forEach(merge => {
+              // Parse master to get start
+              const masterParts = merge.master.split('_col');
+              if (masterParts.length < 2) return;
+              const rowId = masterParts[0]; // e.g. "row_123"
+              // Fix for complex IDs: "row_123_456" -> we split by LAST _col
+              // Actually my parser above is weak. Let's use generic approach:
+              
+              const lastUnderscore = merge.master.lastIndexOf('_');
+              const rId = merge.master.substring(0, lastUnderscore);
+              const cKey = merge.master.substring(lastUnderscore + 1);
+              
+              const rIndex = rows.findIndex((r, i) => filteredAndSortedData[i].id === rId);
+              const cIndex = visibleCols.findIndex(c => c.key === cKey);
+              
+              if (rIndex >= 0 && cIndex >= 0) {
+                  metadata.merges.push({
+                      startRowIndex: rIndex + 1, // +1 for header
+                      endRowIndex: rIndex + 1 + (merge.rowspan || 1),
+                      startColumnIndex: cIndex,
+                      endColumnIndex: cIndex + (merge.colspan || 1)
+                  });
+              }
+          });
+
+          // 2. Styles & Notes
+          rows.forEach((row, rIndex) => {
+              const rowData = filteredAndSortedData[rIndex];
+              const rowStyles = [];
+              const rowNotes = [];
+              
+              visibleCols.forEach((col, cIndex) => {
+                  const cellKey = `${rowData.id}_${col.key}`;
+                  const style = cellStyles[cellKey];
+                  const note = cellNotes[cellKey];
+                  
+                  if (style) rowStyles[cIndex] = style;
+                  if (note) rowNotes[cIndex] = note;
+              });
+              metadata.styles.push(rowStyles);
+              metadata.notes.push(rowNotes);
+          });
+          
+          // 3. Header Styles
+          // Not fully implemented on frontend side to store array, but we have `headerStyles` map
+          // metadata.headerStyles = ...
+      }
+
       await base44.functions.invoke('googleSheets', {
         action: 'update',
         spreadsheetId,
         sheetName,
         headers,
         values: rows,
-        mode: syncMode // 'overwrite', 'append', 'update_existing'
+        mode: syncMode, // 'overwrite', 'append', 'update_existing'
+        metadata: metadata // New: Send formatting data
       });
     }
   };
 
   const handleImportFromGoogle = async (spreadsheetId, sheetName, syncMode = 'overwrite') => {
+    toast.info('מייבא נתונים, עיצובים ומיזוגים מגוגל...');
+    
     const { data } = await base44.functions.invoke('googleSheets', {
       action: 'read',
       spreadsheetId,
-      sheetName
+      sheetName,
+      includeMetadata: true // NEW: Request advanced data
     });
 
-    console.log('📥 [IMPORT] Google Sheets Data:', data);
+    console.log('📥 [IMPORT] Google Sheets Data (Advanced):', data);
 
     if (data.success) {
-      // Map headers to existing columns or create new ones
       const importedHeaders = data.headers || [];
       const importedRows = data.rows || [];
+      const importedMerges = data.merges || []; // [{startRowIndex, endRowIndex, startColumnIndex, endColumnIndex}]
+      const importedStyles = data.styles || []; // [ [ {backgroundColor...} ] ]
+      const importedNotes = data.notes || []; // [ [ "note" ] ]
       
       let newColumns = [...columns];
-      const colMapping = []; // index in sheet -> colKey in system
+      const colMapping = []; // sheet_index -> colKey
 
-      // Build Column Mapping
+      // 1. Map Headers / Columns
       importedHeaders.forEach((header, index) => {
         const existingCol = newColumns.find(c => c.title === header);
         if (existingCol) {
           colMapping[index] = existingCol.key;
         } else {
-          // If in append/update mode, maybe try to reuse existing columns by order if titles differ? 
-          // For safety, we match by title only. If header missing, create new column.
-          const newKey = `col_${Date.now()}_${index}`;
+          const newKey = `col_imp_${Date.now()}_${index}`;
           newColumns.push({
             key: newKey,
-            title: header,
+            title: header || `Column ${index + 1}`,
             width: '150px',
             type: 'text',
             visible: true
@@ -2085,10 +2150,9 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         }
       });
 
-      // Map Rows
+      // 2. Map Rows
       const newRowsData = importedRows.map((row, rIndex) => {
         const newRow = { id: `row_imp_${Date.now()}_${rIndex}` };
-        // Ensure we handle rows that might be longer/shorter than headers
         row.forEach((cellVal, cIndex) => {
           const key = colMapping[cIndex];
           if (key) newRow[key] = cellVal;
@@ -2096,22 +2160,98 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         return newRow;
       });
 
-      console.log(`📥 [IMPORT] Processed ${newRowsData.length} rows. Mode: ${syncMode}`);
+      // 3. Process Metadata (Styles, Notes, Merges)
+      let newCellStyles = { ...cellStylesRef.current };
+      let newCellNotes = { ...cellNotesRef.current };
+      let newMergedCells = { ...mergedCellsRef.current };
 
-      // Apply based on Sync Mode
+      if (syncMode === 'overwrite') {
+          newCellStyles = {};
+          newCellNotes = {};
+          newMergedCells = {};
+      }
+
+      // Map Styles & Notes
+      newRowsData.forEach((row, rIndex) => {
+          const rowStyles = importedStyles[rIndex] || [];
+          const rowNotes = importedNotes[rIndex] || [];
+          
+          rowStyles.forEach((style, cIndex) => {
+              if (style && Object.keys(style).length > 0) {
+                  const key = colMapping[cIndex];
+                  if (key) newCellStyles[`${row.id}_${key}`] = style;
+              }
+          });
+          
+          rowNotes.forEach((note, cIndex) => {
+              if (note) {
+                  const key = colMapping[cIndex];
+                  if (key) newCellNotes[`${row.id}_${key}`] = note;
+              }
+          });
+      });
+
+      // Map Merges
+      // Google Indices: Row 0 = Header. Data starts at Row 1.
+      // GenericSpreadsheet: Headers are separate. Data rows index 0 = Row 1 in Grid.
+      // So Google Row 1 = Data Row 0.
+      
+      importedMerges.forEach(merge => {
+          // Check if it's a body merge or header merge
+          // Header is row index 0.
+          
+          if (merge.startRowIndex === 0) {
+              // HEADER MERGE (Not fully supported in GenericSpreadsheet for complex cases yet, but we have subheaders)
+              // If we have mergedHeaders support:
+              // merge.startColumnIndex to merge.endColumnIndex - 1
+              // Not implemented in this import pass to keep it safe, 
+              // focusing on BODY merges which are indices > 0
+          } else {
+              // BODY MERGE
+              // Adjust indices for data rows (subtract 1 for header)
+              const startRow = merge.startRowIndex - 1;
+              const endRow = merge.endRowIndex - 1; // Exclusive in Google, so (end-1) - 1
+              
+              if (startRow >= 0 && newRowsData[startRow]) {
+                  const rowId = newRowsData[startRow].id;
+                  const colKey = colMapping[merge.startColumnIndex];
+                  
+                  if (rowId && colKey) {
+                      const mergeKey = `merge_imp_${Date.now()}_${Math.random()}`;
+                      const cells = [];
+                      
+                      // Collect all cell keys in range
+                      for(let r = startRow; r < endRow; r++) {
+                          for(let c = merge.startColumnIndex; c < merge.endColumnIndex; c++) {
+                              if (newRowsData[r] && colMapping[c]) {
+                                  cells.push(`${newRowsData[r].id}_${colMapping[c]}`);
+                              }
+                          }
+                      }
+                      
+                      const rowspan = endRow - startRow;
+                      const colspan = merge.endColumnIndex - merge.startColumnIndex;
+                      
+                      newMergedCells[mergeKey] = {
+                          cells,
+                          master: `${rowId}_${colKey}`,
+                          rowspan,
+                          colspan
+                      };
+                  }
+              }
+          }
+      });
+
+      // Apply Data
       let finalRows = [];
       let finalColumns = newColumns;
 
       if (syncMode === 'append') {
         finalRows = [...rowsDataRef.current, ...newRowsData];
-        // Merge columns (we already added new ones to newColumns based on existing 'columns')
-        // So finalColumns is correct (old + new from import)
       } else if (syncMode === 'update_existing') {
-        // Try to update existing rows by matching first column value, append others
-        // This is heuristic-based since we don't have shared IDs
         const existingRows = [...rowsDataRef.current];
-        const keyCol = newColumns[0]?.key; // Assuming first column is key
-        
+        const keyCol = newColumns[0]?.key;
         if (keyCol) {
             newRowsData.forEach(importedRow => {
                 const matchIndex = existingRows.findIndex(r => r[keyCol] === importedRow[keyCol]);
@@ -2123,27 +2263,30 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
             });
             finalRows = existingRows;
         } else {
-            // Fallback to append if no columns
             finalRows = [...existingRows, ...newRowsData];
         }
       } else {
-        // Overwrite (default)
         finalRows = newRowsData;
       }
 
       setColumns(finalColumns);
       setRowsData(finalRows);
+      setCellStyles(newCellStyles);
+      setCellNotes(newCellNotes);
+      setMergedCells(newMergedCells);
       
-      // Update refs immediately
       columnsRef.current = finalColumns;
       rowsDataRef.current = finalRows;
+      cellStylesRef.current = newCellStyles;
+      cellNotesRef.current = newCellNotes;
+      mergedCellsRef.current = newMergedCells;
       
       setTimeout(() => {
-        saveToHistory(finalColumns, finalRows, cellStylesRef.current, cellNotesRef.current);
+        saveToHistory(finalColumns, finalRows, newCellStyles, newCellNotes, subHeadersRef.current, mergedHeadersRef.current, headerStylesRef.current);
         saveToBackend();
       }, 100);
       
-      toast.success(`✓ יובאו ${newRowsData.length} שורות (${syncMode === 'overwrite' ? 'החלפה' : 'הוספה/עדכון'})`);
+      toast.success(`✓ יובאו נתונים, עיצובים ומיזוגים בהצלחה!`);
     } else {
       throw new Error(data.error || 'Import failed');
     }

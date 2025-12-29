@@ -207,22 +207,121 @@ Deno.serve(async (req) => {
         readRange = sheetName;
       }
 
-      const response = await sheets.spreadsheets.values.get({
-        spreadsheetId,
-        range: readRange || 'A1:Z1000',
-      });
+      // Check if metadata is requested
+      const includeMetadata = payload.includeMetadata;
 
-      const rows = response.data.values || [];
-      const headerRow = rows.length > 0 ? rows[0] : [];
-      const dataRows = rows.slice(1);
+      if (includeMetadata) {
+          // Fetch Grid Data (Values + Formatting + Metadata)
+          const response = await sheets.spreadsheets.get({
+              spreadsheetId,
+              ranges: [readRange || 'A1:Z1000'],
+              includeGridData: true
+          });
 
-      return Response.json({
-        success: true,
-        headers: headerRow,
-        rows: dataRows,
-        totalRows: dataRows.length,
-        debug: debugLogs
-      });
+          const sheet = response.data.sheets?.[0];
+          if (!sheet) {
+              return Response.json({ success: false, error: 'Sheet not found' });
+          }
+
+          const data = sheet.data?.[0] || {};
+          const rowData = data.rowData || [];
+          const merges = sheet.merges || [];
+
+          const rows = [];
+          const styles = [];
+          const notes = [];
+
+          rowData.forEach((row, rowIndex) => {
+              const rowValues = [];
+              const rowStyles = [];
+              const rowNotes = [];
+
+              if (row.values) {
+                  row.values.forEach((cell, colIndex) => {
+                      // Value
+                      let cellValue = '';
+                      if (cell.formattedValue) cellValue = cell.formattedValue;
+                      else if (cell.userEnteredValue?.stringValue) cellValue = cell.userEnteredValue.stringValue;
+                      else if (cell.userEnteredValue?.numberValue !== undefined) cellValue = cell.userEnteredValue.numberValue;
+                      else if (cell.userEnteredValue?.boolValue !== undefined) cellValue = cell.userEnteredValue.boolValue;
+
+                      rowValues.push(cellValue);
+
+                      // Formatting
+                      if (cell.userEnteredFormat || cell.note) {
+                          const style = {};
+                          const format = cell.userEnteredFormat || {};
+
+                          if (format.backgroundColor) {
+                              const { red, green, blue } = format.backgroundColor;
+                              // Google uses 0-1, we need 0-255 hex
+                              const toHex = (c) => {
+                                  const hex = Math.round((c || 0) * 255).toString(16);
+                                  return hex.length === 1 ? '0' + hex : hex;
+                              };
+                              // Ignore pure white/empty as default
+                              if (red !== undefined || green !== undefined || blue !== undefined) {
+                                  style.backgroundColor = `#${toHex(red)}${toHex(green)}${toHex(blue)}`;
+                              }
+                          }
+
+                          if (format.textFormat) {
+                              if (format.textFormat.bold) style.fontWeight = 'bold';
+                              if (format.textFormat.foregroundColor) {
+                                  const { red, green, blue } = format.textFormat.foregroundColor;
+                                  style.color = `#${Math.round((red||0)*255).toString(16).padStart(2,'0')}${Math.round((green||0)*255).toString(16).padStart(2,'0')}${Math.round((blue||0)*255).toString(16).padStart(2,'0')}`;
+                              }
+                          }
+
+                          if (Object.keys(style).length > 0) {
+                              rowStyles[colIndex] = style;
+                          }
+
+                          if (cell.note) {
+                              rowNotes[colIndex] = cell.note;
+                          }
+                      }
+                  });
+              }
+              rows.push(rowValues);
+              styles.push(rowStyles);
+              notes.push(rowNotes);
+          });
+
+          const headerRow = rows.length > 0 ? rows[0] : [];
+          const dataRows = rows.slice(1);
+
+          return Response.json({
+              success: true,
+              headers: headerRow,
+              rows: dataRows,
+              merges: merges, // Array of {startRowIndex, endRowIndex, startColumnIndex, endColumnIndex}
+              styles: styles.slice(1), // Remove header styles from data styles
+              headerStyles: styles[0],
+              notes: notes.slice(1),
+              totalRows: dataRows.length,
+              debug: debugLogs
+          });
+
+      } else {
+          // Simple values only read
+          const response = await sheets.spreadsheets.values.get({
+            spreadsheetId,
+            range: readRange || 'A1:Z1000',
+          });
+
+          const rows = response.data.values || [];
+          const headerRow = rows.length > 0 ? rows[0] : [];
+          const dataRows = rows.slice(1);
+
+          return Response.json({
+            success: true,
+            headers: headerRow,
+            rows: dataRows,
+            totalRows: dataRows.length,
+            debug: debugLogs
+          });
+      }
     }
 
     if (action === 'update') {
