@@ -4,24 +4,10 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, RefreshCw, Upload, Download, Check, AlertCircle, ExternalLink, FileSpreadsheet, Clock, ArrowLeftRight, Settings2, Plus, Trash2 } from "lucide-react";
+import { Loader2, RefreshCw, Upload, Download, Check, AlertCircle, ExternalLink, FileSpreadsheet, Clock, ArrowLeftRight, Settings2 } from "lucide-react";
 import { toast } from "sonner";
 import { base44 } from "@/api/base44Client";
-import { ScrollArea } from "@/components/ui/scroll-area";
-
-// System fields available for mapping
-const SYSTEM_FIELDS = [
-  { value: 'name', label: 'שם' },
-  { value: 'phone', label: 'טלפון' },
-  { value: 'email', label: 'אימייל' },
-  { value: 'company', label: 'חברה' },
-  { value: 'address', label: 'כתובת' },
-  { value: 'status', label: 'סטטוס' },
-  { value: 'source', label: 'מקור הגעה' },
-  { value: 'budget_range', label: 'טווח תקציב' },
-  { value: 'notes', label: 'הערות' },
-  { value: 'created_date', label: 'תאריך יצירה' }
-];
+import { googleSheets } from "@/functions/googleSheets";
 
 export default function SpreadsheetSyncDialog({ open, onClose, spreadsheet, onImport, onExport, onSaveLink }) {
   const [step, setStep] = useState('connect'); // connect, select, sync
@@ -29,29 +15,12 @@ export default function SpreadsheetSyncDialog({ open, onClose, spreadsheet, onIm
   const [spreadsheetId, setSpreadsheetId] = useState(spreadsheet?.google_sheet_id || '');
   const [sheetName, setSheetName] = useState(spreadsheet?.google_sheet_name || '');
   const [availableSheets, setAvailableSheets] = useState([]);
-  const [sheetHeaders, setSheetHeaders] = useState([]);
-  const [customFields, setCustomFields] = useState([]);
   const [syncDirection, setSyncDirection] = useState('export'); // export (to google), import (from google)
   const [syncConfig, setSyncConfig] = useState({
     auto_sync_interval: 'none',
     sync_mode: 'overwrite',
     field_mapping: []
   });
-
-  useEffect(() => {
-    // Load Custom Fields
-    const loadCustomFields = async () => {
-      try {
-        const settings = await base44.entities.AppSettings.filter({ setting_key: 'client_custom_fields_schema' });
-        if (settings.length > 0 && settings[0].value?.fields) {
-          setCustomFields(settings[0].value.fields);
-        }
-      } catch (e) {
-        console.warn('Failed to load custom fields', e);
-      }
-    };
-    loadCustomFields();
-  }, []);
 
   useEffect(() => {
     if (open) {
@@ -97,34 +66,17 @@ export default function SpreadsheetSyncDialog({ open, onClose, spreadsheet, onIm
       
       if (data.success) {
         setAvailableSheets(data.sheets);
-        const targetSheet = sheetName || data.sheets[0]?.title;
         if (!sheetName && data.sheets.length > 0) {
           setSheetName(data.sheets[0].title);
         }
         setStep('sync');
-        onSaveLink(id, targetSheet);
-        
-        // Fetch headers for the selected/default sheet
-        if (targetSheet) {
-            loadHeaders(id, targetSheet);
-        }
-        
-        // Show debug info if available
-        if (data.debug) {
-          console.log('Google Sheets Debug:', data.debug);
-        }
+        onSaveLink(id, sheetName || data.sheets[0]?.title);
       } else {
-        // Show detailed debug info
-        console.error('Google Sheets Error:', data);
-        if (data.debug) {
-          console.log('Debug logs:', data.debug);
-          // Show last debug message to user
-          const lastLog = data.debug[data.debug.length - 1];
-          toast.error(`שגיאה: ${data.error}\n\nפרטים: ${lastLog?.msg || 'לא זמין'}`);
-        } else if (data.error && data.error.includes('No authentication')) {
+        if (data.error && data.error.includes('No authentication')) {
+           // Prompt for auth
            setStep('auth_needed');
         } else {
-           toast.error(`לא ניתן לטעון גיליונות: ${data.error || 'שגיאה לא ידועה'}`);
+           toast.error('לא ניתן לטעון גיליונות. וודא שהמזהה תקין ושיש הרשאות.');
         }
       }
     } catch (e) {
@@ -133,110 +85,6 @@ export default function SpreadsheetSyncDialog({ open, onClose, spreadsheet, onIm
     } finally {
       setLoading(false);
     }
-  };
-
-  const loadHeaders = async (id, sheet) => {
-      try {
-          const { data } = await base44.functions.invoke('googleSheets', {
-              action: 'getHeaders',
-              spreadsheetId: id,
-              sheetName: sheet
-          });
-          if (data.success) {
-              setSheetHeaders(data.headers || []);
-          }
-      } catch (e) {
-          console.warn('Failed to load headers', e);
-      }
-  };
-
-  // Trigger loadHeaders when sheetName changes if we are connected
-  useEffect(() => {
-      if (spreadsheetId && sheetName && step === 'sync') {
-          loadHeaders(spreadsheetId, sheetName);
-      }
-  }, [sheetName]);
-
-  const handleAutoMap = () => {
-      const newMapping = [];
-      const usedHeaders = new Set();
-
-      // Combine System and Custom fields
-      const allFields = [
-          ...SYSTEM_FIELDS.map(f => ({ ...f, type: 'system' })),
-          ...customFields.map(f => ({ value: `custom_data.${f.key}`, label: f.label, type: 'custom' }))
-      ];
-
-      allFields.forEach(field => {
-          // Find matching header (case insensitive)
-          const match = sheetHeaders.find(h => 
-              h.trim().toLowerCase() === field.label.trim().toLowerCase() && !usedHeaders.has(h)
-          );
-          
-          if (match) {
-              newMapping.push({
-                  entity_field: field.value,
-                  sheet_column: match,
-                  entity_type: 'client'
-              });
-              usedHeaders.add(match);
-          } else {
-              // Auto-create: Map to a new column with same name
-              newMapping.push({
-                  entity_field: field.value,
-                  sheet_column: field.label,
-                  entity_type: 'client',
-                  is_new: true // Flag to indicate this needs to be created
-              });
-          }
-      });
-
-      setSyncConfig(prev => ({ ...prev, field_mapping: newMapping }));
-      toast.success('מיפוי אוטומטי בוצע!');
-  };
-
-  const handleUpdateColumns = async () => {
-      if (!syncConfig.field_mapping || syncConfig.field_mapping.length === 0) {
-          toast.error('אין שדות ממופים');
-          return;
-      }
-
-      setLoading(true);
-      try {
-          // Construct new headers row
-          // We respect existing headers order, and append new ones
-          const newHeaders = [...sheetHeaders];
-          const mappingHeaders = syncConfig.field_mapping.map(m => m.sheet_column);
-          
-          mappingHeaders.forEach(h => {
-              if (!newHeaders.includes(h)) {
-                  newHeaders.push(h);
-              }
-          });
-
-          const { data } = await base44.functions.invoke('googleSheets', {
-              action: 'updateHeaders',
-              spreadsheetId,
-              sheetName,
-              headers: newHeaders
-          });
-
-          if (data.success) {
-              toast.success('עמודות עודכנו ב-Google Sheets');
-              setSheetHeaders(newHeaders);
-              // Clear "is_new" flags
-              setSyncConfig(prev => ({
-                  ...prev,
-                  field_mapping: prev.field_mapping.map(m => ({ ...m, is_new: false }))
-              }));
-          } else {
-              toast.error('שגיאה בעדכון עמודות');
-          }
-      } catch (e) {
-          toast.error('שגיאה: ' + e.message);
-      } finally {
-          setLoading(false);
-      }
   };
 
   const handleConnect = () => {
@@ -412,115 +260,25 @@ export default function SpreadsheetSyncDialog({ open, onClose, spreadsheet, onIm
                 </div>
               </TabsContent>
 
-              <TabsContent value="settings" className="space-y-4 pt-4 h-[400px]">
-                <ScrollArea className="h-full pr-4">
-                
-                {/* Field Mapping UI */}
-                <div className="space-y-3 mb-6">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-bold flex items-center gap-2">
-                        <ArrowLeftRight className="w-4 h-4 text-slate-500" />
-                        מיפוי שדות
-                    </h4>
-                    <Button variant="ghost" size="sm" onClick={handleAutoMap} className="text-blue-600 text-xs h-7">
-                        <RefreshCw className="w-3 h-3 ml-1" />
-                        מיפוי אוטומטי
-                    </Button>
-                  </div>
-
-                  <div className="border rounded-lg overflow-hidden text-sm">
-                      <div className="grid grid-cols-2 bg-slate-50 p-2 font-medium border-b">
-                          <div>שדה במערכת</div>
-                          <div>עמודה ב-Google Sheet</div>
-                      </div>
-                      <div className="divide-y max-h-[200px] overflow-y-auto">
-                          {syncConfig.field_mapping.map((mapping, idx) => (
-                              <div key={idx} className="grid grid-cols-2 p-2 items-center gap-2">
-                                  <div className="truncate" title={mapping.entity_field}>
-                                      {SYSTEM_FIELDS.find(f => f.value === mapping.entity_field)?.label || 
-                                       customFields.find(f => `custom_data.${f.key}` === mapping.entity_field)?.label ||
-                                       mapping.entity_field}
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                      {mapping.is_new ? (
-                                          <span className="text-green-600 text-xs bg-green-50 px-2 py-1 rounded flex-1 truncate">
-                                              + {mapping.sheet_column} (חדש)
-                                          </span>
-                                      ) : (
-                                          <span className="text-slate-700 bg-slate-50 px-2 py-1 rounded flex-1 truncate">
-                                              {mapping.sheet_column}
-                                          </span>
-                                      )}
-                                      <Button 
-                                        variant="ghost" 
-                                        size="icon" 
-                                        className="h-6 w-6 text-red-400 hover:text-red-600"
-                                        onClick={() => {
-                                            const newMapping = [...syncConfig.field_mapping];
-                                            newMapping.splice(idx, 1);
-                                            setSyncConfig({ ...syncConfig, field_mapping: newMapping });
-                                        }}
-                                      >
-                                          <Trash2 className="w-3 h-3" />
-                                      </Button>
-                                  </div>
-                              </div>
-                          ))}
-                          {syncConfig.field_mapping.length === 0 && (
-                              <div className="p-4 text-center text-slate-400 text-xs">
-                                  לא הוגדר מיפוי. לחץ על "מיפוי אוטומטי" או הוסף ידנית.
-                              </div>
-                          )}
-                      </div>
-                  </div>
-
-                  <div className="flex gap-2">
-                      <Select 
-                        onValueChange={(val) => {
-                            const label = SYSTEM_FIELDS.find(f => f.value === val)?.label || 
-                                          customFields.find(f => `custom_data.${f.key}` === val)?.label;
-                            
-                            // Check if already mapped
-                            if (syncConfig.field_mapping.some(m => m.entity_field === val)) return;
-
-                            setSyncConfig(prev => ({
-                                ...prev,
-                                field_mapping: [...prev.field_mapping, {
-                                    entity_field: val,
-                                    sheet_column: label,
-                                    entity_type: 'client',
-                                    is_new: !sheetHeaders.includes(label)
-                                }]
-                            }));
-                        }}
-                      >
-                          <SelectTrigger className="flex-1 h-8 text-xs">
-                              <SelectValue placeholder="הוסף שדה למיפוי..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                              <div className="p-1 text-xs font-semibold text-slate-500">שדות מערכת</div>
-                              {SYSTEM_FIELDS.map(f => (
-                                  <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
-                              ))}
-                              <div className="p-1 text-xs font-semibold text-slate-500 mt-1">שדות מותאמים</div>
-                              {customFields.map(f => (
-                                  <SelectItem key={f.key} value={`custom_data.${f.key}`}>{f.label}</SelectItem>
-                              ))}
-                          </SelectContent>
-                      </Select>
-                  </div>
-
-                  {syncConfig.field_mapping.some(m => m.is_new) && (
-                      <Button 
-                        size="sm" 
-                        onClick={handleUpdateColumns}
-                        className="w-full bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200"
-                        disabled={loading}
-                      >
-                          {loading ? <Loader2 className="w-3 h-3 animate-spin ml-2" /> : <Plus className="w-3 h-3 ml-2" />}
-                          צור עמודות חסרות ב-Google Sheets
-                      </Button>
-                  )}
+              <TabsContent value="settings" className="space-y-4 pt-4">
+                <div className="space-y-3">
+                  <h4 className="text-sm font-bold flex items-center gap-2">
+                    <Settings2 className="w-4 h-4 text-slate-500" />
+                    אופן סנכרון
+                  </h4>
+                  <Select 
+                    value={syncConfig.sync_mode} 
+                    onValueChange={(val) => setSyncConfig(prev => ({ ...prev, sync_mode: val }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="overwrite">דריסה מלאה (Overwrite)</SelectItem>
+                      <SelectItem value="append">הוספה בלבד (Append)</SelectItem>
+                      <SelectItem value="update_existing">עדכון חכם (Update/Insert)</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-3 pt-2 border-t">
@@ -542,28 +300,23 @@ export default function SpreadsheetSyncDialog({ open, onClose, spreadsheet, onIm
                       <SelectItem value="on_change">בעת שינוי (On Change)</SelectItem>
                     </SelectContent>
                   </Select>
+                  <p className="text-xs text-slate-500">
+                    * סנכרון אוטומטי יתבצע ברקע בהתאם להגדרות אלו.
+                  </p>
                 </div>
 
                 <div className="space-y-3 pt-2 border-t">
                   <h4 className="text-sm font-bold flex items-center gap-2">
-                    <Settings2 className="w-4 h-4 text-slate-500" />
-                    מצב כתיבה
+                    <ArrowLeftRight className="w-4 h-4 text-slate-500" />
+                    מיפוי שדות (אופציונלי)
                   </h4>
-                  <Select 
-                    value={syncConfig.sync_mode} 
-                    onValueChange={(val) => setSyncConfig(prev => ({ ...prev, sync_mode: val }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="overwrite">דריסה מלאה (Overwrite)</SelectItem>
-                      <SelectItem value="append">הוספה בלבד (Append)</SelectItem>
-                      <SelectItem value="update_existing">עדכון חכם (Update/Insert)</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <p className="text-xs text-slate-500">
+                    מיפוי זה משמש כאשר מסנכרנים נתונים לישויות מערכת (כמו לקוחות).
+                  </p>
+                  <Button variant="outline" size="sm" className="w-full text-xs" disabled>
+                    ערוך מיפוי שדות (בקרוב)
+                  </Button>
                 </div>
-                </ScrollArea>
               </TabsContent>
             </Tabs>
             

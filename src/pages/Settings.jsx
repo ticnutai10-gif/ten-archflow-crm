@@ -12,10 +12,8 @@ import NotificationSettingsTab from "@/components/settings/NotificationSettingsT
 import DashboardCustomizer from "@/components/settings/DashboardCustomizer";
 import WhatsAppConnector from "@/components/settings/WhatsAppConnector";
 import LanguageSelector from "@/components/settings/LanguageSelector";
-import CustomFieldsEditor from "@/components/settings/CustomFieldsEditor";
 import { toast } from "sonner";
 import { base44 } from "@/api/base44Client";
-import { Database } from "lucide-react";
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = React.useState(() => {
@@ -364,14 +362,6 @@ export default function SettingsPage() {
                 </TabsTrigger>
                 
                 <TabsTrigger 
-                  value="custom_fields" 
-                  className="data-[state=active]:bg-[#2C3A50] data-[state=active]:text-white px-6 py-3"
-                >
-                  <Database className="w-4 h-4 ml-2" />
-                  שדות מותאמים
-                </TabsTrigger>
-
-                <TabsTrigger 
                   value="general" 
                   className="data-[state=active]:bg-[#2C3A50] data-[state=active]:text-white px-6 py-3"
                 >
@@ -416,10 +406,6 @@ export default function SettingsPage() {
 
               <TabsContent value="language" className="mt-0">
                 <LanguageSelector />
-              </TabsContent>
-
-              <TabsContent value="custom_fields" className="mt-0">
-                <CustomFieldsEditor />
               </TabsContent>
 
               <TabsContent value="general" className="mt-0">

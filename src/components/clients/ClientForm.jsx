@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,9 +8,6 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Save, X } from "lucide-react";
 import { StageDisplay } from "@/components/spreadsheets/GenericSpreadsheet";
-import { base44 } from "@/api/base44Client";
-import { Switch } from "@/components/ui/switch";
-import { format } from "date-fns";
 
 const DEFAULT_STAGE_OPTIONS = [
   { value: 'ללא', label: 'ללא', color: '#cbd5e1', glow: 'rgba(203, 213, 225, 0.4)' },
@@ -45,21 +42,6 @@ export default function ClientForm({ client, onSubmit, onCancel }) {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
-  const [customFields, setCustomFields] = useState([]);
-
-  useEffect(() => {
-    const loadCustomFields = async () => {
-      try {
-        const settings = await base44.entities.AppSettings.filter({ setting_key: 'client_custom_fields_schema' });
-        if (settings.length > 0 && settings[0].value?.fields) {
-          setCustomFields(settings[0].value.fields);
-        }
-      } catch (error) {
-        console.warn('Failed to load custom fields:', error);
-      }
-    };
-    loadCustomFields();
-  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -334,90 +316,9 @@ export default function ClientForm({ client, onSubmit, onCancel }) {
               </div>
             </div>
 
-            {/* שדות מותאמים אישית */}
-            {customFields.length > 0 && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-slate-900 border-b pb-2">פרטים נוספים</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {customFields.map((field) => (
-                    <div key={field.key} className="space-y-2">
-                      <Label htmlFor={field.key} className="text-sm font-medium text-slate-700">
-                        {field.label} {field.required && <span className="text-red-500">*</span>}
-                      </Label>
-                      
-                      {field.type === 'text' && (
-                        <Input
-                          id={field.key}
-                          value={formData.custom_data?.[field.key] || ''}
-                          onChange={(e) => updateField('custom_data', { ...formData.custom_data, [field.key]: e.target.value })}
-                          required={field.required}
-                        />
-                      )}
-
-                      {field.type === 'number' && (
-                        <Input
-                          id={field.key}
-                          type="number"
-                          value={formData.custom_data?.[field.key] || ''}
-                          onChange={(e) => updateField('custom_data', { ...formData.custom_data, [field.key]: e.target.value })}
-                          required={field.required}
-                        />
-                      )}
-
-                      {field.type === 'date' && (
-                        <Input
-                          id={field.key}
-                          type="date"
-                          value={formData.custom_data?.[field.key] || ''}
-                          onChange={(e) => updateField('custom_data', { ...formData.custom_data, [field.key]: e.target.value })}
-                          required={field.required}
-                        />
-                      )}
-
-                      {field.type === 'boolean' && (
-                        <div className="flex items-center gap-2 h-10">
-                          <Switch
-                            id={field.key}
-                            checked={!!formData.custom_data?.[field.key]}
-                            onCheckedChange={(checked) => updateField('custom_data', { ...formData.custom_data, [field.key]: checked })}
-                          />
-                          <span className="text-sm text-slate-600">{formData.custom_data?.[field.key] ? 'כן' : 'לא'}</span>
-                        </div>
-                      )}
-
-                      {(field.type === 'select') && (
-                        <Select 
-                          value={formData.custom_data?.[field.key] || ''} 
-                          onValueChange={(val) => updateField('custom_data', { ...formData.custom_data, [field.key]: val })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="בחר..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {field.options?.map((opt) => (
-                              <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-
-                      {field.type === 'textarea' && (
-                        <Textarea
-                          id={field.key}
-                          value={formData.custom_data?.[field.key] || ''}
-                          onChange={(e) => updateField('custom_data', { ...formData.custom_data, [field.key]: e.target.value })}
-                          rows={3}
-                        />
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {/* מידע נוסף */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-slate-900 border-b pb-2">הערות ותגיות</h3>
+              <h3 className="text-lg font-semibold text-slate-900 border-b pb-2">מידע נוסף</h3>
               
               <div className="space-y-4">
                 <div className="space-y-2">
