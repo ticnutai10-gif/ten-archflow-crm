@@ -61,64 +61,15 @@ export default function SpreadsheetDetailsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6" dir="rtl">
-      <div className="max-w-[95%] mx-auto space-y-6">
-        {/* Breadcrumbs Navigation */}
-        <div className="mb-4">
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem>
-                <BreadcrumbLink href={createPageUrl('Dashboard')} className="flex items-center gap-1">
-                  <Home className="w-3 h-3" />
-                  דשבורד
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbLink href={createPageUrl('CustomSpreadsheets')} className="flex items-center gap-1">
-                  <FileText className="w-3 h-3" />
-                  טבלאות מותאמות
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbPage>{spreadsheet?.name || 'טבלה ללא שם'}</BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
-        </div>
-
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-slate-800">{spreadsheet?.name}</h1>
-          
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => window.location.href = createPageUrl('CustomSpreadsheets')}
-              className="gap-2"
-              size="sm"
-            >
-              <ArrowRight className="w-4 h-4" />
-              חזרה
-            </Button>
-            <Button
-              variant="outline"
-              onClick={loadSpreadsheet}
-              className="gap-2"
-              size="sm"
-            >
-              <RefreshCw className="w-4 h-4" />
-              רענן
-            </Button>
-          </div>
-        </div>
-
+    <div className="min-h-screen bg-slate-50 p-2" dir="rtl">
+      <div className="w-full mx-auto">
         {spreadsheet && (
           <GenericSpreadsheet
             spreadsheet={spreadsheet}
             onUpdate={null}
             fullScreenMode={true}
             onNavigate={(url) => navigate(url)}
+            onBack={() => navigate(createPageUrl('CustomSpreadsheets'))}
           />
         )}
       </div>

@@ -2909,7 +2909,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         style={{ border: outerBorderStyle }}
       >
         <CardHeader className="border-b space-y-4 pb-4 flex-shrink-0">
-          {!fullScreenMode && !isFullScreen && (
+          {(onBack || (!fullScreenMode && !isFullScreen)) && (
             <div className="flex items-center mb-2">
               <Button
                 variant="ghost"
@@ -3559,7 +3559,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
           )}
 
           {viewMode === 'table' && (
-          <div className="overflow-auto fancy-scrollbar" style={{ maxHeight: isFullScreen ? 'calc(100vh - 140px)' : (fullScreenMode ? '85vh' : '60vh'), contentVisibility: 'auto' }}>
+          <div className="overflow-auto fancy-scrollbar" style={{ maxHeight: isFullScreen ? 'calc(100vh - 140px)' : (fullScreenMode ? 'calc(100vh - 180px)' : '60vh'), contentVisibility: 'auto' }}>
             <DragDropContext onDragEnd={handleDragEnd}>
               <table ref={tableRef} className="w-full" dir="rtl" style={{
                 fontFamily: cellFont.value,
