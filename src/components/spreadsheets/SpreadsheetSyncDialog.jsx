@@ -364,6 +364,18 @@ export default function SpreadsheetSyncDialog({ open, onClose, spreadsheet, onIm
                 צור חדש
               </Button>
             </div>
+            <div className="pt-2 border-t">
+              <Button 
+                onClick={runDiagnostics} 
+                disabled={loading} 
+                variant="ghost" 
+                size="sm"
+                className="w-full text-xs text-slate-500"
+              >
+                {loading ? <Loader2 className="w-3 h-3 animate-spin ml-1" /> : <Settings2 className="w-3 h-3 ml-1" />}
+                הרץ בדיקות אבחון (Debug)
+              </Button>
+            </div>
           </div>
         )}
 
