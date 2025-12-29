@@ -322,6 +322,19 @@ Deno.serve(async (req) => {
       return Response.json({ success: true, sheetName: sheetName });
     }
 
+    if (action === 'updateHeaders') {
+      // Updates the first row of the sheet (headers)
+      const response = await sheets.spreadsheets.values.update({
+        spreadsheetId,
+        range: `${sheetName}!A1`,
+        valueInputOption: 'USER_ENTERED',
+        resource: {
+          values: [headers]
+        }
+      });
+      return Response.json({ success: true, updatedCells: response.data.updatedCells });
+    }
+
     return Response.json({ success: false, error: 'Unknown action' });
 
   } catch (error) {

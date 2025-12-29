@@ -261,24 +261,62 @@ export default function SpreadsheetSyncDialog({ open, onClose, spreadsheet, onIm
               </TabsContent>
 
               <TabsContent value="settings" className="space-y-4 pt-4">
+                {/* Field Mapping Section */}
                 <div className="space-y-3">
                   <h4 className="text-sm font-bold flex items-center gap-2">
-                    <Settings2 className="w-4 h-4 text-slate-500" />
-                    אופן סנכרון
+                    <ArrowLeftRight className="w-4 h-4 text-slate-500" />
+                    ניהול עמודות ב-Google Sheets
                   </h4>
-                  <Select 
-                    value={syncConfig.sync_mode} 
-                    onValueChange={(val) => setSyncConfig(prev => ({ ...prev, sync_mode: val }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="overwrite">דריסה מלאה (Overwrite)</SelectItem>
-                      <SelectItem value="append">הוספה בלבד (Append)</SelectItem>
-                      <SelectItem value="update_existing">עדכון חכם (Update/Insert)</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  
+                  <div className="bg-slate-50 p-3 rounded-lg space-y-3">
+                    <p className="text-xs text-slate-600">
+                      באפשרותך ליצור אוטומטית עמודות בגיליון Google עבור כל השדות במערכת, כולל שדות מותאמים אישית.
+                    </p>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full bg-white hover:bg-blue-50 text-blue-700 border-blue-200"
+                      onClick={async () => {
+                        if (!confirm("האם לעדכן את שורת הכותרת (שורה 1) בגיליון עם כל השדות הקיימים?")) return;
+                        
+                        setLoading(true);
+                        try {
+                          // Fetch custom fields
+                          const settings = await base44.entities.AppSettings.filter({ setting_key: 'client_custom_fields_schema' });
+                          const customFields = settings[0]?.value?.fields || [];
+                          
+                          // Default fields + Custom fields
+                          const defaultHeaders = [
+                            'שם', 'טלפון', 'אימייל', 'חברה', 'כתובת', 
+                            'סטטוס', 'מקור הגעה', 'טווח תקציב', 'הערות', 'תאריך יצירה'
+                          ];
+                          
+                          const customHeaders = customFields.map(f => f.label);
+                          const allHeaders = [...defaultHeaders, ...customHeaders];
+                          
+                          const { data } = await base44.functions.invoke('googleSheets', {
+                            action: 'updateHeaders',
+                            spreadsheetId,
+                            sheetName,
+                            headers: allHeaders
+                          });
+                          
+                          if (data.success) {
+                            toast.success('עמודות עודכנו בהצלחה!');
+                          } else {
+                            toast.error('שגיאה בעדכון עמודות: ' + (data.error || 'Unknown'));
+                          }
+                        } catch(e) {
+                          toast.error('שגיאה: ' + e.message);
+                        } finally {
+                          setLoading(false);
+                        }
+                      }}
+                    >
+                      <Settings2 className="w-3 h-3 ml-2" />
+                      עדכן עמודות בגיליון (צור חסרות)
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="space-y-3 pt-2 border-t">
@@ -300,22 +338,26 @@ export default function SpreadsheetSyncDialog({ open, onClose, spreadsheet, onIm
                       <SelectItem value="on_change">בעת שינוי (On Change)</SelectItem>
                     </SelectContent>
                   </Select>
-                  <p className="text-xs text-slate-500">
-                    * סנכרון אוטומטי יתבצע ברקע בהתאם להגדרות אלו.
-                  </p>
                 </div>
 
                 <div className="space-y-3 pt-2 border-t">
                   <h4 className="text-sm font-bold flex items-center gap-2">
-                    <ArrowLeftRight className="w-4 h-4 text-slate-500" />
-                    מיפוי שדות (אופציונלי)
+                    <Settings2 className="w-4 h-4 text-slate-500" />
+                    מצב כתיבה
                   </h4>
-                  <p className="text-xs text-slate-500">
-                    מיפוי זה משמש כאשר מסנכרנים נתונים לישויות מערכת (כמו לקוחות).
-                  </p>
-                  <Button variant="outline" size="sm" className="w-full text-xs" disabled>
-                    ערוך מיפוי שדות (בקרוב)
-                  </Button>
+                  <Select 
+                    value={syncConfig.sync_mode} 
+                    onValueChange={(val) => setSyncConfig(prev => ({ ...prev, sync_mode: val }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="overwrite">דריסה מלאה (Overwrite)</SelectItem>
+                      <SelectItem value="append">הוספה בלבד (Append)</SelectItem>
+                      <SelectItem value="update_existing">עדכון חכם (Update/Insert)</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </TabsContent>
             </Tabs>
