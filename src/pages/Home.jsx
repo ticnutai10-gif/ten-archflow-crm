@@ -1,125 +1,119 @@
-import React, { useEffect, useState } from 'react';
-import { base44 } from '@/api/base44Client';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
+import React from 'react';
+
+console.log('🚀 HOME PAGE LOADED - React is working!');
+console.log('📅 Current time:', new Date().toISOString());
+console.log('🌐 Window location:', window.location.href);
 
 export default function Home() {
-  const [logs, setLogs] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  const addLog = (message, type = 'info') => {
-    console.log(`[${type.toUpperCase()}] ${message}`);
-    setLogs(prev => [...prev, { message, type, time: new Date().toLocaleTimeString() }]);
-  };
-
-  useEffect(() => {
-    addLog('🚀 Starting Home page initialization');
+  console.log('✅ Home component rendering...');
+  
+  React.useEffect(() => {
+    console.log('✅ Home component mounted!');
+    console.log('📊 Environment check:');
+    console.log('- React version:', React.version);
+    console.log('- Document ready:', document.readyState);
     
-    const init = async () => {
-      try {
-        addLog('📡 Checking authentication...');
-        const user = await base44.auth.me();
-        addLog(`✅ User authenticated: ${user?.email || 'unknown'}`, 'success');
-        
-        addLog('📊 Loading entities...');
-        const clients = await base44.entities.Client.list();
-        addLog(`✅ Loaded ${clients?.length || 0} clients`, 'success');
-        
-        const projects = await base44.entities.Project.list();
-        addLog(`✅ Loaded ${projects?.length || 0} projects`, 'success');
-        
-        addLog('🎉 All systems operational!', 'success');
-        setLoading(false);
-      } catch (err) {
-        addLog(`❌ Error: ${err.message}`, 'error');
-        setError(err.message);
-        setLoading(false);
-      }
+    return () => {
+      console.log('🔴 Home component unmounted');
     };
-
-    init();
   }, []);
 
   return (
-    <div className="min-h-screen p-6 bg-gradient-to-br from-blue-50 to-purple-50" dir="rtl">
-      <div className="max-w-4xl mx-auto">
-        <Card className="p-6 shadow-lg">
-          <h1 className="text-3xl font-bold mb-6 text-center">
-            🔍 דיבאג ומעקב מערכת
-          </h1>
-          
-          {loading && (
-            <div className="flex items-center gap-2 text-blue-600 mb-4">
-              <Loader2 className="w-5 h-5 animate-spin" />
-              <span>טוען מערכת...</span>
-            </div>
-          )}
-
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4 flex items-start gap-2">
-              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-              <div>
-                <div className="font-semibold text-red-800">שגיאה קריטית</div>
-                <div className="text-sm text-red-700">{error}</div>
-              </div>
-            </div>
-          )}
-
-          <div className="space-y-2">
-            <h2 className="font-semibold text-lg mb-3">לוגים:</h2>
-            {logs.map((log, idx) => (
-              <div 
-                key={idx}
-                className={`p-3 rounded-lg border ${
-                  log.type === 'error' 
-                    ? 'bg-red-50 border-red-200 text-red-800'
-                    : log.type === 'success'
-                    ? 'bg-green-50 border-green-200 text-green-800'
-                    : 'bg-slate-50 border-slate-200 text-slate-700'
-                }`}
-              >
-                <div className="flex items-start gap-2">
-                  {log.type === 'error' && <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />}
-                  {log.type === 'success' && <CheckCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />}
-                  <div className="flex-1">
-                    <span className="text-xs text-slate-500">[{log.time}]</span>
-                    <span className="mr-2">{log.message}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {!loading && !error && (
-            <div className="mt-6 text-center">
-              <div className="inline-flex items-center gap-2 bg-green-50 text-green-700 px-4 py-2 rounded-lg border border-green-200">
-                <CheckCircle className="w-5 h-5" />
-                <span className="font-semibold">המערכת פועלת תקין!</span>
-              </div>
-            </div>
-          )}
-
-          <div className="mt-6">
-            <Button 
-              onClick={() => {
-                setLogs([]);
-                setError(null);
-                setLoading(true);
-                window.location.reload();
-              }}
-              variant="outline"
-              className="w-full"
-            >
-              🔄 טען מחדש
-            </Button>
-          </div>
-        </Card>
-
-        <div className="mt-4 text-center text-sm text-slate-500">
-          פתח את קונסולת המפתחים (F12) למידע נוסף
+    <div style={{ 
+      minHeight: '100vh', 
+      padding: '40px', 
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontFamily: 'Arial, sans-serif'
+    }}>
+      <div style={{
+        background: 'white',
+        padding: '40px',
+        borderRadius: '20px',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+        maxWidth: '600px',
+        width: '100%'
+      }}>
+        <h1 style={{ 
+          fontSize: '36px', 
+          fontWeight: 'bold', 
+          marginBottom: '20px',
+          textAlign: 'center',
+          color: '#333'
+        }}>
+          🔍 מערכת דיבאג
+        </h1>
+        
+        <div style={{
+          background: '#f0f9ff',
+          border: '2px solid #0ea5e9',
+          borderRadius: '12px',
+          padding: '20px',
+          marginBottom: '20px'
+        }}>
+          <h2 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '10px', color: '#0369a1' }}>
+            ✅ האתר עובד!
+          </h2>
+          <p style={{ margin: '5px 0', color: '#0c4a6e' }}>React טען בהצלחה</p>
+          <p style={{ margin: '5px 0', color: '#0c4a6e' }}>הדף מוצג כראוי</p>
+          <p style={{ margin: '5px 0', color: '#0c4a6e' }}>זמן: {new Date().toLocaleTimeString('he-IL')}</p>
         </div>
+
+        <div style={{
+          background: '#fef3c7',
+          border: '2px solid #f59e0b',
+          borderRadius: '12px',
+          padding: '20px',
+          marginBottom: '20px'
+        }}>
+          <h3 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '10px', color: '#92400e' }}>
+            📋 הוראות
+          </h3>
+          <ol style={{ margin: '0', paddingRight: '20px', color: '#78350f', lineHeight: '1.8' }}>
+            <li>פתח את קונסולת המפתחים (לחץ F12)</li>
+            <li>בדוק את הלוגים בקונסול</li>
+            <li>חפש הודעות שגיאה באדום</li>
+            <li>העתק את השגיאות ושלח לי</li>
+          </ol>
+        </div>
+
+        <div style={{
+          background: '#f3f4f6',
+          borderRadius: '12px',
+          padding: '15px',
+          fontSize: '14px',
+          color: '#6b7280',
+          textAlign: 'center'
+        }}>
+          <p style={{ margin: '5px 0' }}>🌐 כתובת: {window.location.href}</p>
+          <p style={{ margin: '5px 0' }}>🕐 זמן טעינה: {new Date().toLocaleString('he-IL')}</p>
+        </div>
+
+        <button 
+          onClick={() => {
+            console.log('🔄 Reload button clicked');
+            window.location.reload();
+          }}
+          style={{
+            width: '100%',
+            marginTop: '20px',
+            padding: '15px',
+            background: '#667eea',
+            color: 'white',
+            border: 'none',
+            borderRadius: '10px',
+            fontSize: '16px',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            transition: 'all 0.3s'
+          }}
+          onMouseOver={(e) => e.target.style.background = '#5568d3'}
+          onMouseOut={(e) => e.target.style.background = '#667eea'}
+        >
+          🔄 טען מחדש
+        </button>
       </div>
     </div>
   );
