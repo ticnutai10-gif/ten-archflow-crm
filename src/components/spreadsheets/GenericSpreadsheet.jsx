@@ -3973,6 +3973,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
           </div>
         </div>
       </Card>
+      </div>
 
       {/* Google Sheets Tabs Bar */}
       {spreadsheet?.google_sheet_id && (
