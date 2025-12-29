@@ -51,7 +51,7 @@ export default function TaskForm({ task, clients, projects, onSubmit, onCancel, 
   useEffect(() => {
     const loadUserData = async () => {
       try {
-        const currentUser = await User.me();
+        const currentUser = await base44.auth.me();
         setUser(currentUser);
         setCustomRingtones(currentUser.custom_ringtones || []);
       } catch (error) {
