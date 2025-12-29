@@ -24,6 +24,8 @@ import ColumnsManagerDialog from "./ColumnsManagerDialog";
 import BulkColumnsDialog from "./BulkColumnsDialog";
 import StageOptionsManager from "./StageOptionsManager";
 import SpreadsheetSyncDialog from "./SpreadsheetSyncDialog";
+import Collaborators from "./Collaborators";
+import CommentsSidebar from "./CommentsSidebar";
 import { FileSpreadsheet } from "lucide-react";
 
 // Default stage options with colors - MUST BE OUTSIDE COMPONENT
@@ -239,6 +241,13 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const [colorPickerTargetCell, setColorPickerTargetCell] = useState(null);
   const [showHeaderColorDialog, setShowHeaderColorDialog] = useState(false);
   const [colorPickerTargetHeader, setColorPickerTargetHeader] = useState(null);
+  
+  // Collaboration State
+  const [currentUser, setCurrentUser] = useState(null);
+  const [showCommentsSidebar, setShowCommentsSidebar] = useState(false);
+  const [commentsTargetCell, setCommentsTargetCell] = useState(null); // null = general, string = cellKey
+  const [activeCollaborators, setActiveCollaborators] = useState([]);
+  const [currentFocusedCell, setCurrentFocusedCell] = useState(null);
 
   const editInputRef = useRef(null);
   const columnEditRef = useRef(null);
@@ -283,6 +292,44 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   useEffect(() => { savedViewsRef.current = savedViews; }, [savedViews]);
   useEffect(() => { activeViewIdRef.current = activeViewId; }, [activeViewId]);
   useEffect(() => { chartsRef.current = charts; }, [charts]);
+
+  // Fetch current user
+  useEffect(() => {
+    base44.auth.me().then(setCurrentUser).catch(() => {});
+  }, []);
+
+  // Polling for spreadsheet data updates (Real-time sync)
+  useEffect(() => {
+    if (!spreadsheet?.id) return;
+    
+    const checkForUpdates = async () => {
+      // Don't pull updates if user is currently editing a cell to avoid conflicts
+      if (editingCell) return;
+      
+      try {
+        const latest = await base44.entities.CustomSpreadsheet.get(spreadsheet.id);
+        
+        // Simple check if rows changed (length or JSON string) - optimize this in real app
+        // Here we just update rows if they are different to allow seeing others' changes
+        // We compare stringified versions to avoid deep object equality check complexity
+        // Note: This is a heavy operation for large sheets, but acceptable for MVP
+        
+        if (latest && JSON.stringify(latest.rows_data) !== JSON.stringify(rowsDataRef.current)) {
+          console.log('🔄 [SYNC] Incoming changes detected, updating rows...');
+          setRowsData(latest.rows_data);
+          // Also update columns if changed
+          if (JSON.stringify(latest.columns) !== JSON.stringify(columnsRef.current)) {
+             setColumns(latest.columns);
+          }
+        }
+      } catch (e) {
+        // console.error("Sync polling error", e);
+      }
+    };
+
+    const interval = setInterval(checkForUpdates, 5000); // Poll every 5 seconds
+    return () => clearInterval(interval);
+  }, [spreadsheet?.id, editingCell]);
 
   const { filterClients } = useAccessControl();
 
@@ -1616,6 +1663,9 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     if (!row) return;
     const column = columns.find(c => c.key === columnKey);
 
+    // Update presence
+    setCurrentFocusedCell(`${rowId}_${column.key}`);
+
     // Stage columns have their own click handler
     if (column.type === 'stage') {
       setEditingCell(`${rowId}_${column.key}`);
@@ -2260,6 +2310,17 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                 </Badge>
               )}
             </div>
+            
+            {/* Collaborators & Presence */}
+            <div className="flex items-center gap-2 px-2 border-l border-slate-200">
+               <Collaborators 
+                 spreadsheetId={spreadsheet.id} 
+                 currentUser={currentUser}
+                 currentCell={currentFocusedCell}
+                 onCollaboratorsChange={setActiveCollaborators}
+               />
+            </div>
+
             <div className="flex gap-2 flex-wrap">
               <Button onClick={handleUndo} size="sm" variant="outline" disabled={!canUndo} title="בטל (Ctrl+Z)"><Undo className="w-4 h-4" /></Button>
               <Button onClick={handleRedo} size="sm" variant="outline" disabled={!canRedo} title="שחזר (Ctrl+Y)"><Redo className="w-4 h-4" /></Button>
@@ -2436,6 +2497,15 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
               <Button onClick={() => React.startTransition(() => setShowStageManager(true))} size="sm" variant="outline" className="gap-2 hover:bg-purple-50">
                 <Circle className="w-4 h-4 text-purple-600" />
                 ניהול שלבים
+              </Button>
+              <Button 
+                onClick={() => { setCommentsTargetCell(null); setShowCommentsSidebar(true); }} 
+                size="sm" 
+                variant="outline" 
+                className="gap-2 hover:bg-blue-50"
+              >
+                <MessageSquare className="w-4 h-4 text-blue-600" />
+                תגובות
               </Button>
 
               <Button onClick={() => setShowSyncDialog(true)} size="sm" variant="outline" className="gap-2 hover:bg-green-50 border-green-200">
@@ -3029,6 +3099,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                     }
                                     
                                     const isEditing = editingCell === cellKey;
+                                    const activeUserOnCell = activeCollaborators.find(u => u.focus_cell === cellKey && u.user_email !== currentUser?.email);
                                     const isSelected = selectedCells.has(cellKey);
                                     const isClientPicker = showClientPicker === cellKey;
                                     const cellValue = row[column.key] || '';
@@ -3044,6 +3115,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                         colSpan={mergeInfo?.colspan || 1}
                                         className={`cursor-pointer relative ${isSelected ? 'ring-2 ring-purple-500' : ''} ${isClientPicker ? 'ring-2 ring-blue-500' : ''} ${mergeInfo ? 'bg-green-50/50' : ''}`} 
                                         style={{
+                                          border: activeUserOnCell ? `2px solid ${activeUserOnCell.color}` : undefined,
                                           backgroundColor: isSelected ? palette.selected : (
                                             (column.type === 'checkmark' || column.type === 'mixed_check') && cellValue === '✓' ? '#dcfce7' : 
                                             (column.type === 'checkmark' || column.type === 'mixed_check') && cellValue === '✗' ? '#fee2e2' :
@@ -3082,15 +3154,23 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                       >
 
                                         {hasNote && (
-                                          <div 
-                                            className="absolute top-0 right-0 w-0 h-0 z-10 cursor-pointer hover:opacity-80 transition-opacity" 
-                                            style={{
-                                              borderTop: '14px solid #f59e0b',
-                                              borderLeft: '14px solid transparent'
-                                            }}
-                                            title={cellNotes[cellKey]}
-                                            onClick={(e) => handleNoteTriangleClick(cellKey, e)}
-                                          />
+                                        <div 
+                                          className="absolute top-0 right-0 w-0 h-0 z-10 cursor-pointer hover:opacity-80 transition-opacity" 
+                                          style={{
+                                            borderTop: '14px solid #f59e0b',
+                                            borderLeft: '14px solid transparent'
+                                          }}
+                                          title={cellNotes[cellKey]}
+                                          onClick={(e) => handleNoteTriangleClick(cellKey, e)}
+                                        />
+                                        )}
+                                        {activeUserOnCell && (
+                                        <div 
+                                          className="absolute -top-3 left-0 z-20 text-[10px] px-1.5 py-0.5 rounded-t text-white shadow-sm whitespace-nowrap pointer-events-none"
+                                          style={{ backgroundColor: activeUserOnCell.color }}
+                                        >
+                                          {activeUserOnCell.user_name}
+                                        </div>
                                         )}
                                         {column.type === 'checkmark' ? (
                                           <div className="flex items-center justify-center text-2xl font-bold select-none">
@@ -3403,11 +3483,24 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
             <Button 
               variant="ghost" 
               size="sm" 
+              className="w-full justify-start gap-2 hover:bg-blue-50"
+              onClick={() => {
+                setCommentsTargetCell(cellContextMenu);
+                setShowCommentsSidebar(true);
+                setCellContextMenu(null);
+              }}
+            >
+              <MessageSquare className="w-4 h-4 text-blue-600" />
+              פתח תגובות (צ'אט)
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm" 
               className="w-full justify-start gap-2 hover:bg-amber-50"
               onClick={() => handleOpenNoteDialog(cellContextMenu)}
             >
               <MessageSquare className="w-4 h-4 text-amber-600" />
-              {cellNotes[cellContextMenu] ? 'ערוך הערה' : 'הוסף הערה'}
+              {cellNotes[cellContextMenu] ? 'ערוך פתקית (צהובה)' : 'הוסף פתקית (צהובה)'}
             </Button>
             <Button 
               variant="ghost" 
@@ -3687,6 +3780,15 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         onImport={handleImportFromGoogle}
         onExport={handleExportToGoogle}
         onSaveLink={handleSaveGoogleLink}
+      />
+
+      <CommentsSidebar 
+        spreadsheetId={spreadsheet.id}
+        cellKey={commentsTargetCell}
+        cellTitle={commentsTargetCell ? `${columns.find(c => c.key === commentsTargetCell.split('_').pop())?.title}` : 'כללי'}
+        currentUser={currentUser}
+        isOpen={showCommentsSidebar}
+        onClose={() => setShowCommentsSidebar(false)}
       />
 
       {editingCell && (() => {
