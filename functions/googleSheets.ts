@@ -136,6 +136,15 @@ Deno.serve(async (req) => {
       return Response.json({ success: true, sheets: sheetList });
     }
 
+    if (action === 'getHeaders') {
+      const response = await sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: `${sheetName}!A1:Z1`, // Assuming headers are in the first row
+      });
+      const headers = response.data.values ? response.data.values[0] : [];
+      return Response.json({ success: true, headers });
+    }
+
     if (action === 'read') {
       // If sheetName is provided, read that sheet. Otherwise read first sheet or provided range.
       let readRange = range;
