@@ -44,7 +44,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { TimeLog, Client } from "@/entities/all";
-import { User as UserEntity } from "@/entities/User";
+import { base44 } from "@/api/base44Client";
 
 function formatDuration(seconds) {
   const hours = Math.floor(seconds / 3600);
