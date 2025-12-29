@@ -28,6 +28,7 @@ import Collaborators from "./Collaborators";
 import CommentsSidebar from "./CommentsSidebar";
 import SpreadsheetRow from "./SpreadsheetRow"; // IMPORT NEW COMPONENT
 import ColumnFilter from "./ColumnFilter"; // Import Advanced Filter
+import SmartSplitDialog from "./SmartSplitDialog"; // Import Smart Split
 
 // Default stage options with colors - MUST BE OUTSIDE COMPONENT
 const DEFAULT_STAGE_OPTIONS = [
@@ -247,6 +248,8 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const [showStageManager, setShowStageManager] = useState(false);
   const [customStageOptions, setCustomStageOptions] = useState(DEFAULT_STAGE_OPTIONS);
   const [showSyncDialog, setShowSyncDialog] = useState(false);
+  const [showSplitDialog, setShowSplitDialog] = useState(false);
+  const [splitTargetColumn, setSplitTargetColumn] = useState(null);
   // When using categories/children, allow selecting either parent or child
   const [viewMode, setViewMode] = useState('table');
   const [cellContextMenu, setCellContextMenu] = useState(null);
@@ -2577,25 +2580,30 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     if (onUpdate) onUpdate();
   };
 
-  const splitColumn = async (columnKey) => {
+  const openSmartSplit = (columnKey) => {
+    const col = columns.find(c => c.key === columnKey);
+    if (!col) return;
+    setSplitTargetColumn(col);
+    setShowSplitDialog(true);
+  };
+
+  const handleSmartSplit = async (columnKey, delimiter) => {
     const col = columns.find(c => c.key === columnKey);
     if (!col) return;
 
-    const delimiter = prompt(`פיצול עמודה "${col.title}"\n\nהזן תו מפריד (לדוגמה: , או ; או רווח):`, ',');
-    if (!delimiter && delimiter !== '') return;
-
-    const numParts = prompt('לכמה חלקים לפצל? (מקסימום 10)', '2');
-    const parts = parseInt(numParts);
-    if (isNaN(parts) || parts < 2 || parts > 10) {
-      toast.error('מספר חלקים לא תקין (2-10)');
-      return;
-    }
+    // Detect max parts needed (up to 5 for safety)
+    let maxParts = 2;
+    rowsData.forEach(row => {
+      const val = String(row[columnKey] || '');
+      const parts = val.split(delimiter).length;
+      if (parts > maxParts) maxParts = Math.min(parts, 5);
+    });
 
     const newColumns = [];
-    for (let i = 1; i <= parts; i++) {
+    for (let i = 1; i <= maxParts; i++) {
       newColumns.push({
-        key: `${columnKey}_part${i}`,
-        title: `${col.title} (${i})`,
+        key: `${columnKey}_split_${Date.now()}_${i}`,
+        title: `${col.title} ${i}`,
         width: col.width,
         type: col.type,
         visible: true
@@ -2603,21 +2611,27 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     }
 
     const colIndex = columns.findIndex(c => c.key === columnKey);
+    // Keep original column? usually no in split.
     const updatedColumns = [
-      ...columns.slice(0, colIndex),
+      ...columns.slice(0, colIndex + 1), // Keep original to the left? or Replace? Standard is replace or add to right. Let's add to right and keep original hidden or remove. 
+      // Let's REMOVE original to be clean like Excel
       ...newColumns,
       ...columns.slice(colIndex + 1)
     ];
+    // Actually, let's remove the original from the array
+    updatedColumns.splice(colIndex, 1, ...newColumns);
 
     const updatedRows = rowsData.map(row => {
       const value = row[columnKey] || '';
       const splitValues = String(value).split(delimiter);
       const newRow = { ...row };
 
+      // Remove old data
       delete newRow[columnKey];
 
-      for (let i = 0; i < parts; i++) {
-        newRow[`${columnKey}_part${i + 1}`] = splitValues[i]?.trim() || '';
+      // Add new data
+      for (let i = 0; i < maxParts; i++) {
+        newRow[newColumns[i].key] = splitValues[i]?.trim() || '';
       }
 
       return newRow;
@@ -2631,7 +2645,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       saveToBackend();
     }, 50);
 
-    toast.success(`✓ עמודה פוצלה ל-${parts} חלקים לפי "${delimiter}"`);
+    toast.success(`✓ העמודה פוצלה בהצלחה ל-${maxParts} עמודות`);
   };
 
   const applyHeaderColor = (columnKey, style) => {
@@ -3622,7 +3636,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                               <Button variant="outline" size="sm" className="w-full justify-start gap-2" onClick={() => { setEditingColumnKey(col.key); setEditingColumnTitle(col.title); setPopoverOpen(null); }}><Edit2 className="w-4 h-4" />שנה שם</Button>
                                               <Button variant="outline" size="sm" className="w-full justify-start gap-2 bg-purple-50 hover:bg-purple-100" onClick={() => { handleOpenHeaderColorDialog(col.key); }}><Palette className="w-4 h-4 text-purple-600" />צבע כותרת</Button>
                                               <Button variant="outline" size="sm" className="w-full justify-start gap-2 bg-blue-50" onClick={() => { addOrEditSubHeader(col.key); setPopoverOpen(null); }}><Type className="w-4 h-4 text-blue-600" />{hasSubHeader ? 'ערוך' : 'הוסף'} כותרת משנה</Button>
-                                              <Button variant="outline" size="sm" className="w-full justify-start gap-2 bg-orange-50 hover:bg-orange-100" onClick={() => { splitColumn(col.key); setPopoverOpen(null); }}><Scissors className="w-4 h-4 text-orange-600" />פצל עמודה</Button>
+                                              <Button variant="outline" size="sm" className="w-full justify-start gap-2 bg-orange-50 hover:bg-orange-100" onClick={() => { openSmartSplit(col.key); setPopoverOpen(null); }}><Scissors className="w-4 h-4 text-orange-600" />פצל עמודה חכם</Button>
                                               <Button variant="outline" size="sm" className="w-full justify-start gap-2" onClick={() => { toggleColumnVisibility(col.key); setPopoverOpen(null); }}><EyeOff className="w-4 h-4" />הסתר</Button>
                                               <Button variant="outline" size="sm" className="w-full justify-start gap-2 text-red-600" onClick={() => { deleteColumn(col.key); setPopoverOpen(null); }}><Trash2 className="w-4 h-4" />מחק</Button>
                                             </div>
@@ -4023,20 +4037,33 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
               <Bold className="w-4 h-4 text-blue-600" />
               {cellStyles[cellContextMenu]?.fontWeight === 'bold' ? 'בטל הדגשה' : 'הדגש'}
             </Button>
+            <Separator />
             {getMergeInfo(cellContextMenu) ? (
-              <>
-                <Separator />
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="w-full justify-start gap-2 hover:bg-orange-50"
-                  onClick={() => unmergeCells(cellContextMenu)}
-                >
-                  <Scissors className="w-4 h-4 text-orange-600" />
-                  בטל מיזוג תאים
-                </Button>
-              </>
-            ) : null}
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="w-full justify-start gap-2 hover:bg-orange-50"
+                onClick={() => unmergeCells(cellContextMenu)}
+              >
+                <Scissors className="w-4 h-4 text-orange-600" />
+                בטל מיזוג (פצל תא)
+              </Button>
+            ) : (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="w-full justify-start gap-2 hover:bg-orange-50"
+                onClick={() => {
+                  const lastColIndex = cellContextMenu.lastIndexOf('_col');
+                  const colKey = cellContextMenu.substring(lastColIndex + 1);
+                  openSmartSplit(colKey);
+                  setCellContextMenu(null);
+                }}
+              >
+                <Scissors className="w-4 h-4 text-orange-600" />
+                פצל תא/עמודה לשניים...
+              </Button>
+            )}
             <Separator />
             <Button 
               variant="ghost" 
@@ -4297,6 +4324,14 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         onImport={handleImportFromGoogle}
         onExport={handleExportToGoogle}
         onSaveLink={handleSaveGoogleLink}
+      />
+
+      <SmartSplitDialog 
+        open={showSplitDialog}
+        onClose={() => setShowSplitDialog(false)}
+        column={splitTargetColumn}
+        rowsData={rowsData}
+        onSplit={handleSmartSplit}
       />
 
       <CommentsSidebar 
