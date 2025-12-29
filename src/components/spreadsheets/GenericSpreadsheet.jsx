@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Table, Copy, Settings, Palette, Eye, EyeOff, Edit2, X, Download, Grid, Search, Filter, ArrowUp, ArrowDown, ArrowUpDown, XCircle, Undo, Redo, GripVertical, BarChart3, Calculator, Layers, Bookmark, Users, Zap, MessageSquare, Bold, Scissors, Merge, Type, Circle, ChevronRight, ChevronLeft, ChevronDown, Snowflake, RefreshCw } from "lucide-react";
+import { Plus, Trash2, Table, Copy, Settings, Palette, Eye, EyeOff, Edit2, X, Download, Grid, Search, Filter, ArrowUp, ArrowDown, ArrowUpDown, XCircle, Undo, Redo, GripVertical, BarChart3, Calculator, Layers, Bookmark, Users, Zap, MessageSquare, Bold, Scissors, Merge, Type, Circle, ChevronRight, ChevronLeft, ChevronDown, Snowflake, RefreshCw, PlusCircle, FileSpreadsheet } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -249,6 +249,11 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const [commentsTargetCell, setCommentsTargetCell] = useState(null); // null = general, string = cellKey
   const [activeCollaborators, setActiveCollaborators] = useState([]);
   const [currentFocusedCell, setCurrentFocusedCell] = useState(null);
+  
+  // Google Sheets Tabs
+  const [sheetTabs, setSheetTabs] = useState([]);
+  const [relatedEntities, setRelatedEntities] = useState([]);
+  const [loadingTabs, setLoadingTabs] = useState(false);
 
   const editInputRef = useRef(null);
   const columnEditRef = useRef(null);
@@ -405,6 +410,102 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     };
     loadClients();
   }, [filterClients]);
+
+  // Load Sheets Tabs and Siblings
+  useEffect(() => {
+    const loadTabsData = async () => {
+      if (!spreadsheet?.google_sheet_id) return;
+      setLoadingTabs(true);
+      try {
+        // 1. Fetch Google Sheets Tabs
+        const { data } = await base44.functions.invoke('googleSheets', {
+          action: 'getSheets',
+          spreadsheetId: spreadsheet.google_sheet_id
+        });
+        
+        if (data.success) {
+          setSheetTabs(data.sheets || []);
+        }
+
+        // 2. Fetch Related Entities (Siblings)
+        const siblings = await base44.entities.CustomSpreadsheet.filter({ 
+          google_sheet_id: spreadsheet.google_sheet_id 
+        });
+        setRelatedEntities(siblings || []);
+        
+      } catch (e) {
+        console.error('Failed to load tabs:', e);
+      } finally {
+        setLoadingTabs(false);
+      }
+    };
+    
+    loadTabsData();
+  }, [spreadsheet?.google_sheet_id]);
+
+  const handleSheetTabClick = async (sheetName) => {
+    if (sheetName === spreadsheet.google_sheet_name) return; // Already here
+    
+    toast.info(`טוען גיליון: ${sheetName}...`);
+    
+    // Check if entity exists
+    const existingEntity = relatedEntities.find(e => e.google_sheet_name === sheetName);
+    
+    if (existingEntity) {
+      // Switch to existing entity
+      window.location.href = createPageUrl(`SpreadsheetDetails?id=${existingEntity.id}`);
+    } else {
+      // Create new entity for this sheet
+      try {
+        const newEntity = await base44.entities.CustomSpreadsheet.create({
+          name: `${spreadsheet.name} - ${sheetName}`, // Or just keep same name? Better to distinguish.
+          description: `Linked to sheet: ${sheetName}`,
+          client_id: spreadsheet.client_id,
+          client_name: spreadsheet.client_name,
+          google_sheet_id: spreadsheet.google_sheet_id,
+          google_sheet_name: sheetName,
+          columns: [], // Will be auto-filled on import
+          rows_data: [],
+          sync_config: {
+            ...spreadsheet.sync_config,
+            sync_direction: 'import_on_load' // Default to import so we get data
+          }
+        });
+        
+        toast.success('גיליון חדש נוצר במערכת!');
+        window.location.href = createPageUrl(`SpreadsheetDetails?id=${newEntity.id}`);
+      } catch (e) {
+        console.error('Error creating linked sheet:', e);
+        toast.error('שגיאה ביצירת גיליון חדש');
+      }
+    }
+  };
+
+  const handleAddGoogleSheet = async () => {
+    const name = prompt('שם הגיליון החדש:');
+    if (!name) return;
+    
+    try {
+      toast.info('יוצר גיליון ב-Google Sheets...');
+      // 1. Create in Google
+      const { data } = await base44.functions.invoke('googleSheets', {
+        action: 'addSheet',
+        spreadsheetId: spreadsheet.google_sheet_id,
+        sheetName: name
+      });
+      
+      if (data.success) {
+        toast.success('גיליון נוצר ב-Google!');
+        // 2. Refresh list and switch (create entity)
+        await handleSheetTabClick(name);
+      } else {
+        toast.error('שגיאה ביצירת גיליון בגוגל: ' + (data.error || 'Unknown'));
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error('שגיאה ביצירת גיליון');
+    }
+  };
 
   useEffect(() => {
     if (spreadsheet) {
@@ -3629,6 +3730,53 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
           </div>
         </div>
       </Card>
+
+      {/* Google Sheets Tabs Bar */}
+      {spreadsheet?.google_sheet_id && (
+        <div className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden flex items-center">
+          <div className="bg-green-50 px-3 py-2 border-l border-green-100 flex items-center justify-center">
+             <FileSpreadsheet className="w-5 h-5 text-green-700" />
+          </div>
+          
+          <ScrollArea className="flex-1 w-full whitespace-nowrap" dir="rtl">
+            <div className="flex items-center p-1 gap-1">
+              {sheetTabs.map((sheet) => {
+                const isActive = sheet.title === spreadsheet.google_sheet_name;
+                // Check if mapped
+                const isMapped = relatedEntities.some(e => e.google_sheet_name === sheet.title);
+                
+                return (
+                  <button
+                    key={sheet.id}
+                    onClick={() => handleSheetTabClick(sheet.title)}
+                    className={`
+                      px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 flex items-center gap-2 border
+                      ${isActive 
+                        ? 'bg-green-100 text-green-800 border-green-200 shadow-sm' 
+                        : 'bg-white text-slate-600 border-transparent hover:bg-slate-50 hover:border-slate-200'
+                      }
+                    `}
+                  >
+                    {sheet.title}
+                    {isMapped && !isActive && <span className="w-1.5 h-1.5 rounded-full bg-blue-400" title="מקושר במערכת"></span>}
+                  </button>
+                );
+              })}
+              <button 
+                onClick={handleAddGoogleSheet}
+                className="ml-2 p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-green-600 transition-colors"
+                title="הוסף גיליון חדש"
+              >
+                <PlusCircle className="w-5 h-5" />
+              </button>
+            </div>
+          </ScrollArea>
+          
+          <div className="px-3 text-xs text-slate-400 border-r bg-slate-50 py-3">
+             {loadingTabs ? <RefreshCw className="w-3 h-3 animate-spin" /> : `${sheetTabs.length} גיליונות`}
+          </div>
+        </div>
+      )}
 
       {popoverOpen && (() => {
         const lastColIndex = popoverOpen.lastIndexOf('_col');
