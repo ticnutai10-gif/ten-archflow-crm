@@ -33,6 +33,7 @@ const SpreadsheetRow = memo(({
   currentUser,
   cellStyles,
   cellNotes,
+  commentCounts, // New prop
   mergedCells,
   customStageOptions,
   allClients,
@@ -122,6 +123,7 @@ const SpreadsheetRow = memo(({
             const conditionalStyle = getConditionalStyle(column.key, cellValue);
             const finalStyle = { ...conditionalStyle, ...cellStyle };
             const hasNote = cellNotes[cellKey];
+            const commentCount = commentCounts?.[cellKey] || 0;
 
             // Luxury touches: Selection glow, smoother borders
             const selectionClass = isSelected ? 'ring-2 ring-purple-500 ring-inset z-20' : '';
@@ -189,6 +191,18 @@ const SpreadsheetRow = memo(({
                   title={cellNotes[cellKey]}
                   onClick={(e) => onNoteTriangleClick(cellKey, e)}
                 />
+                )}
+
+                {/* Comment Indicator */}
+                {commentCount > 0 && (
+                  <div 
+                    className="absolute top-0 left-0 z-10 cursor-pointer hover:scale-110 transition-transform"
+                    title={`${commentCount} תגובות`}
+                  >
+                    <div className="bg-blue-500 text-white text-[8px] font-bold px-1 rounded-br-md shadow-sm">
+                      {commentCount}
+                    </div>
+                  </div>
                 )}
                 
                 {/* Active Collaborator Label */}

@@ -15,6 +15,9 @@ export default function ViewManager({
   savedViews = [], 
   activeViewId, 
   currentColumns,
+  currentSort,       // { column, direction }
+  currentFilters,    // { columnKey: value }
+  currentGlobalFilter, // string
   onSaveView,
   onLoadView,
   onDeleteView,
@@ -33,17 +36,20 @@ export default function ViewManager({
 
     const viewId = `view_${Date.now()}`;
     const newView = {
-      id: viewId,
-      name: newViewName.trim(),
-      description: newViewDescription.trim(),
-      isDefault: savedViews.length === 0, // אם זו התצוגה הראשונה, היא תהיה ברירת מחדל
-      columns: currentColumns.map((col, index) => ({
-        key: col.key,
-        visible: col.visible !== false,
-        width: col.width,
-        order: index
-      })),
-      created_at: new Date().toISOString()
+    id: viewId,
+    name: newViewName.trim(),
+    description: newViewDescription.trim(),
+    isDefault: savedViews.length === 0,
+    sort: currentSort,
+    filters: currentFilters,
+    globalFilter: currentGlobalFilter,
+    columns: currentColumns.map((col, index) => ({
+      key: col.key,
+      visible: col.visible !== false,
+      width: col.width,
+      order: index
+    })),
+    created_at: new Date().toISOString()
     };
 
     onSaveView(newView);
@@ -63,6 +69,9 @@ export default function ViewManager({
       ...editingView,
       name: newViewName.trim(),
       description: newViewDescription.trim(),
+      sort: currentSort,
+      filters: currentFilters,
+      globalFilter: currentGlobalFilter,
       columns: currentColumns.map((col, index) => ({
         key: col.key,
         visible: col.visible !== false,

@@ -248,6 +248,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const [commentsTargetCell, setCommentsTargetCell] = useState(null); // null = general, string = cellKey
   const [activeCollaborators, setActiveCollaborators] = useState([]);
   const [currentFocusedCell, setCurrentFocusedCell] = useState(null);
+  const [commentCounts, setCommentCounts] = useState({}); // New state for comments
   
   // Google Sheets Tabs
   const [sheetTabs, setSheetTabs] = useState([]);
@@ -302,6 +303,34 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   useEffect(() => {
     base44.auth.me().then(setCurrentUser).catch(() => {});
   }, []);
+
+  // Fetch comments count
+  useEffect(() => {
+    if (!spreadsheet?.id) return;
+    const fetchCommentsCount = async () => {
+      try {
+        // Fetch all comments for this spreadsheet
+        const comments = await base44.entities.SheetComment.filter({ 
+          spreadsheet_id: spreadsheet.id,
+          resolved: false 
+        });
+        
+        const counts = {};
+        comments.forEach(c => {
+          if (c.cell_key) {
+            counts[c.cell_key] = (counts[c.cell_key] || 0) + 1;
+          }
+        });
+        setCommentCounts(counts);
+      } catch (e) {
+        console.error("Failed to fetch comments count", e);
+      }
+    };
+    
+    fetchCommentsCount();
+    const interval = setInterval(fetchCommentsCount, 10000); // Update every 10s
+    return () => clearInterval(interval);
+  }, [spreadsheet?.id]);
 
   // Handle Auto-Import on Load
   useEffect(() => {
@@ -3627,6 +3656,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                               currentUser={currentUser}
                               cellStyles={cellStyles}
                               cellNotes={cellNotes}
+                              commentCounts={commentCounts}
                               mergedCells={mergedCells}
                               customStageOptions={customStageOptions}
                               allClients={allClients}
@@ -3737,8 +3767,11 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
              <FileSpreadsheet className="w-5 h-5 text-green-700" />
           </div>
           
-          <ScrollArea className="flex-1 w-full whitespace-nowrap" dir="rtl">
-            <div className="flex items-center p-1 gap-1">
+          <ScrollArea className="flex-1 w-full whitespace-nowrap overflow-x-auto" dir="rtl">
+            <div className="flex items-center p-1 gap-1 min-w-max">
+              {sheetTabs.length === 0 && !loadingTabs && (
+                 <div className="text-xs text-slate-400 px-2 italic">לא נמצאו גיליונות נוספים.</div>
+              )}
               {sheetTabs.map((sheet) => {
                 const isActive = sheet.title === spreadsheet.google_sheet_name;
                 // Check if mapped
@@ -4039,14 +4072,28 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         onClose={() => setShowViewManager(false)} 
         savedViews={savedViews} 
         activeViewId={activeViewId} 
-        currentColumns={columns} 
+        currentColumns={columns}
+        currentSort={sortColumn ? { column: sortColumn, direction: sortDirection } : null}
+        currentFilters={columnFilters}
+        currentGlobalFilter={globalFilter}
         onSaveView={(view) => { 
           setSavedViews([...savedViews, view]); 
           setTimeout(() => saveToBackend(), 50);
         }} 
         onLoadView={(view) => { 
-          setColumns(view.columns); 
+          setColumns(view.columns);
+          if (view.sort) {
+            setSortColumn(view.sort.column);
+            setSortDirection(view.sort.direction);
+          } else {
+            setSortColumn(null);
+          }
+          if (view.filters) setColumnFilters(view.filters);
+          if (view.globalFilter) setGlobalFilter(view.globalFilter);
+          
+          setActiveViewId(view.id);
           setTimeout(() => saveToBackend(), 50);
+          toast.success(`✓ תצוגה "${view.name}" נטענה`);
         }} 
         onDeleteView={(viewId) => { 
           setSavedViews(savedViews.filter(v => v.id !== viewId)); 
