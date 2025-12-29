@@ -46,6 +46,7 @@ const SpreadsheetRow = memo(({
   // Handlers
   onCellClick,
   onCellDoubleClick,
+  onCellContextMenu,
   onCellMouseDown,
   onCellMouseEnter,
   onCheckmarkClick,
@@ -185,6 +186,7 @@ const SpreadsheetRow = memo(({
                 }} 
                 onClick={(e) => !isEditing && (column.type === 'checkmark' ? onCheckmarkClick(row.id, column.key, e) : onCellClick(row.id, column.key, e))} 
                 onDoubleClick={(e) => onCellDoubleClick(row.id, column.key, e)}
+                onContextMenu={(e) => onCellContextMenu(row.id, column.key, e)}
                 onMouseDown={(e) => !isEditing && onCellMouseDown(row.id, column.key, e)} 
                 onMouseEnter={() => onCellMouseEnter(row.id, column.key)}
               >

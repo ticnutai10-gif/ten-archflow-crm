@@ -1915,6 +1915,13 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     setCellContextMenu(cellKey);
   };
 
+  const handleCellContextMenu = (rowId, columnKey, event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const cellKey = `${rowId}_${columnKey}`;
+    setCellContextMenu(cellKey);
+  };
+
   const handleHeaderClick = (columnKey, event) => {
     const isAltPressed = event?.altKey || event?.getModifierState?.('AltGraph');
     console.log('🖱️ [HEADER CLICK]', { columnKey, alt: event?.altKey, altGraph: event?.getModifierState?.('AltGraph'), shift: event?.shiftKey, ctrl: event?.ctrlKey });
@@ -2585,6 +2592,75 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     if (!col) return;
     setSplitTargetColumn(col);
     setShowSplitDialog(true);
+  };
+
+  const splitSingleCell = async (cellKey) => {
+    const lastColIndex = cellKey.lastIndexOf('_col');
+    const rowId = cellKey.substring(0, lastColIndex);
+    const colKey = cellKey.substring(lastColIndex + 1);
+    
+    const col = columns.find(c => c.key === colKey);
+    if (!col) return;
+    
+    const row = rowsData.find(r => r.id === rowId);
+    const val = String(row[colKey] || '');
+    
+    const delimiter = prompt('הזן תו מפריד לפיצול התא (לדוגמה: רווח או פסיק):', ' ');
+    if (delimiter === null) return;
+    
+    const parts = val.split(delimiter);
+    
+    // Insert new column
+    const newColKey = `${colKey}_split_${Date.now()}`;
+    const newColumn = {
+        key: newColKey,
+        title: `${col.title} (המשך)`,
+        width: col.width,
+        type: col.type,
+        visible: true
+    };
+    
+    const colIndex = columns.findIndex(c => c.key === colKey);
+    const newColumns = [...columns];
+    newColumns.splice(colIndex + 1, 0, newColumn);
+    
+    // Update target row
+    const updatedRows = rowsData.map(r => {
+        if (r.id === rowId) {
+            return {
+                ...r,
+                [colKey]: parts[0] || '',
+                [newColKey]: parts.slice(1).join(delimiter) || ''
+            };
+        }
+        return r;
+    });
+    
+    // Merge other rows
+    const newMergedCells = { ...mergedCells };
+    updatedRows.forEach(r => {
+        if (r.id !== rowId) {
+            const mergeKey = `merge_auto_${r.id}_${Date.now()}_${Math.random()}`;
+            newMergedCells[mergeKey] = {
+                cells: [`${r.id}_${colKey}`, `${r.id}_${newColKey}`],
+                master: `${r.id}_${colKey}`,
+                rowspan: 1,
+                colspan: 2
+            };
+        }
+    });
+    
+    setColumns(newColumns);
+    setRowsData(updatedRows);
+    setMergedCells(newMergedCells);
+    setCellContextMenu(null);
+    
+    setTimeout(() => {
+        saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current, cellNotesRef.current, subHeadersRef.current, mergedHeadersRef.current, headerStylesRef.current);
+        saveToBackend();
+    }, 50);
+    
+    toast.success('✓ תא פוצל (הוספה עמודה חדשה ומוזגה בשאר השורות)');
   };
 
   const handleSmartSplit = async (columnKey, delimiter) => {
@@ -3760,6 +3836,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                               
                               onCellClick={handleCellClick}
                               onCellDoubleClick={handleCellDoubleClick}
+                              onCellContextMenu={handleCellContextMenu}
                               onCellMouseDown={handleCellMouseDown}
                               onCellMouseEnter={handleCellMouseEnter}
                               onCheckmarkClick={handleCheckmarkClick}
@@ -4061,7 +4138,18 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                 }}
               >
                 <Scissors className="w-4 h-4 text-orange-600" />
-                פצל תא/עמודה לשניים...
+                פצל עמודה לשניים...
+              </Button>
+            )}
+            {!getMergeInfo(cellContextMenu) && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="w-full justify-start gap-2 hover:bg-orange-50"
+                onClick={() => splitSingleCell(cellContextMenu)}
+              >
+                <Scissors className="w-4 h-4 text-orange-600" />
+                פצל תא זה בלבד
               </Button>
             )}
             <Separator />
