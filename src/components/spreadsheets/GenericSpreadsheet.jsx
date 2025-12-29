@@ -298,6 +298,27 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     base44.auth.me().then(setCurrentUser).catch(() => {});
   }, []);
 
+  // Handle Auto-Import on Load
+  useEffect(() => {
+    const checkAutoImport = async () => {
+      if (!spreadsheet?.id || !spreadsheet.google_sheet_id || !spreadsheet.google_sheet_name) return;
+      if (spreadsheet.sync_config?.sync_direction === 'import_on_load' || spreadsheet.sync_config?.sync_direction === 'two_way') {
+        console.log('🔄 [AUTO-IMPORT] Triggering import from Google Sheets...');
+        try {
+          toast.info('טוען נתונים עדכניים מ-Google Sheets...');
+          await handleImportFromGoogle(spreadsheet.google_sheet_id, spreadsheet.google_sheet_name);
+          toast.success('✓ נתונים סונכרנו מ-Google Sheets');
+        } catch (e) {
+          console.error('Auto-import failed:', e);
+          toast.error('שגיאה בטעינת נתונים מ-Google Sheets');
+        }
+      }
+    };
+    
+    // Slight delay to ensure everything is mounted
+    setTimeout(checkAutoImport, 1000);
+  }, [spreadsheet?.id]);
+
   // Polling for spreadsheet data updates (Real-time sync)
   useEffect(() => {
     if (!spreadsheet?.id) return;

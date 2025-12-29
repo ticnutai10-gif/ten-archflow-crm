@@ -35,6 +35,7 @@ export default function SpreadsheetSyncDialog({ open, onClose, spreadsheet, onIm
   const [syncConfig, setSyncConfig] = useState({
     auto_sync_interval: 'none',
     sync_mode: 'overwrite',
+    sync_direction: 'export_only',
     field_mapping: []
   });
 
@@ -101,9 +102,10 @@ export default function SpreadsheetSyncDialog({ open, onClose, spreadsheet, onIm
         setSheetName(spreadsheet.google_sheet_name || '');
         if (spreadsheet.sync_config) {
           setSyncConfig({
-            auto_sync_interval: spreadsheet.sync_config.auto_sync_interval || 'none',
-            sync_mode: spreadsheet.sync_config.sync_mode || 'overwrite',
-            field_mapping: spreadsheet.sync_config.field_mapping || []
+          auto_sync_interval: spreadsheet.sync_config.auto_sync_interval || 'none',
+          sync_mode: spreadsheet.sync_config.sync_mode || 'overwrite',
+          sync_direction: spreadsheet.sync_config.sync_direction || 'export_only',
+          field_mapping: spreadsheet.sync_config.field_mapping || []
           });
         }
         loadSheets(spreadsheet.google_sheet_id);
@@ -662,6 +664,36 @@ export default function SpreadsheetSyncDialog({ open, onClose, spreadsheet, onIm
                       <SelectItem value="on_change">בעת שינוי (On Change)</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+
+                <div className="space-y-3 pt-2 border-t">
+                  <h4 className="text-sm font-bold flex items-center gap-2">
+                    <ArrowLeftRight className="w-4 h-4 text-slate-500" />
+                    כיוון סנכרון אוטומטי
+                  </h4>
+                  <Select 
+                    value={syncConfig.sync_direction} 
+                    onValueChange={(val) => setSyncConfig(prev => ({ ...prev, sync_direction: val }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="export_only">ייצוא בלבד (Base44 ← Google Sheets)</SelectItem>
+                      <SelectItem value="import_on_load">ייבוא בטעינה (Base44 → Google Sheets)</SelectItem>
+                      <SelectItem value="two_way">דו-כיווני (מסוכן - עלול ליצור קונפליקטים)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {syncConfig.sync_direction === 'import_on_load' && (
+                    <p className="text-xs text-amber-600 bg-amber-50 p-2 rounded">
+                      ⚠️ זהירות: הנתונים ייטענו מ-Google Sheets בכל פעם שתפתח את הטבלה, וידרסו שינויים מקומיים שטרם סונכרנו.
+                    </p>
+                  )}
+                  {syncConfig.sync_direction === 'two_way' && (
+                    <p className="text-xs text-amber-600 bg-amber-50 p-2 rounded">
+                      ⚠️ זהירות: מצב דו-כיווני מנסה למזג נתונים אך עלול לגרום לקונפליקטים אם שני הצדדים נערכים במקביל.
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-3 pt-2 border-t">
