@@ -177,9 +177,9 @@ const SpreadsheetRow = memo(({
                   boxShadow: colIndex === freezeSettings.freeze_columns - 1 ? '-4px 0 8px -2px rgba(0,0,0,0.05)' : 
                              rowIndex === freezeSettings.freeze_rows - 1 ? '0 4px 8px -2px rgba(0,0,0,0.05)' : 'none',
 
-                  borderWidth: isSeparateBorders ? '0' : borderStyle.width,
-                  borderStyle: borderStyle.style,
-                  borderColor: palette.border,
+                  borderWidth: isSeparateBorders ? '0' : '0 0 1px 1px',
+                  borderStyle: 'solid',
+                  borderColor: isSelected ? 'transparent' : `${palette.border}40`,
                   borderRadius: isSeparateBorders ? tableBorderRadius : '0'
                 }} 
                 onClick={(e) => !isEditing && (column.type === 'checkmark' ? onCheckmarkClick(row.id, column.key, e) : onCellClick(row.id, column.key, e))} 

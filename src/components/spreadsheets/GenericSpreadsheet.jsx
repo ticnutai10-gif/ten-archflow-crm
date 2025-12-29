@@ -180,6 +180,20 @@ export function StageDisplay({ value, column, isEditing, onEdit, editValue, onSa
 }
 
 export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMode = false, filterByClient = null, onBack = null, onNavigate = null }) {
+  // Premium Scrollbar Styles
+  React.useEffect(() => {
+    const style = document.createElement('style');
+    style.innerHTML = `
+      .fancy-scrollbar::-webkit-scrollbar { width: 10px; height: 10px; }
+      .fancy-scrollbar::-webkit-scrollbar-track { background: transparent; }
+      .fancy-scrollbar::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 5px; border: 2px solid transparent; background-clip: content-box; }
+      .fancy-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.2); border: 2px solid transparent; background-clip: content-box; }
+      .glass-header { backdrop-filter: blur(12px); background: rgba(255,255,255,0.85); border-bottom: 1px solid rgba(0,0,0,0.05); }
+    `;
+    document.head.appendChild(style);
+    return () => document.head.removeChild(style);
+  }, []);
+
   const [columns, setColumns] = useState([]);
   const [rowsData, setRowsData] = useState([]);
   const [editingCell, setEditingCell] = useState(null);
@@ -2826,7 +2840,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
             </div>
           </div>
 
-          <div className="flex flex-col lg:flex-row gap-3 pt-2">
+          <div className="flex flex-col lg:flex-row gap-3 pt-3 pb-2 sticky top-0 z-40 glass-header px-4 -mx-4">
             <div className="flex flex-1 items-center gap-2 overflow-x-auto pb-2 lg:pb-0 no-scrollbar mask-fade-right">
               <Button onClick={handleUndo} size="sm" variant="outline" disabled={!canUndo} title="בטל (Ctrl+Z)"><Undo className="w-4 h-4" /></Button>
               <Button onClick={handleRedo} size="sm" variant="outline" disabled={!canRedo} title="שחזר (Ctrl+Y)"><Redo className="w-4 h-4" /></Button>
