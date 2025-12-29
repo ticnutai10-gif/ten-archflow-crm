@@ -283,11 +283,15 @@ function LayoutInner({ children, currentPageName }) {
             font-family: 'Heebo', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
           }
 
-          html, body {
+          html {
+            height: 100%;
+            overflow-x: hidden;
+          }
+
+          body {
+            min-height: 100%;
             overflow-x: hidden;
             overflow-y: auto;
-            height: 100%;
-            min-height: 100vh;
             transition: background-color 0.3s ease;
             -webkit-overflow-scrolling: touch;
             touch-action: pan-y;
@@ -295,7 +299,8 @@ function LayoutInner({ children, currentPageName }) {
 
           #root {
             min-height: 100vh;
-            height: auto;
+            display: flex;
+            flex-direction: column;
           }
           
           [data-app-root] {

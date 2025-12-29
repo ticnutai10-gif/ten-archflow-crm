@@ -20,22 +20,25 @@
 }
 
 /* Mobile Touch Scrolling Fix */
-html, body {
-  overflow-y: auto !important;
-  overflow-x: hidden !important;
+html {
   height: 100%;
   width: 100%;
+}
+
+body {
+  min-height: 100%;
+  width: 100%;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
   touch-action: pan-y pan-x;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: auto;
 }
 
 #root {
-  min-height: 100%;
-  overflow-y: auto !important;
+  min-height: 100vh;
+  width: 100%;
   overflow-x: hidden !important;
-  -webkit-overflow-scrolling: touch;
-  touch-action: pan-y pan-x;
 }
 
 /* Allow scrolling on all elements */
