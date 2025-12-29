@@ -168,7 +168,7 @@ export default function SpreadsheetSyncDialog({ open, onClose, spreadsheet, onIm
     }
   };
 
-  const loadSheets = async (id) => {
+  const loadSheets = async (id, targetGid = null) => {
     setLoading(true);
     try {
       // First run diagnostics
@@ -185,17 +185,26 @@ export default function SpreadsheetSyncDialog({ open, onClose, spreadsheet, onIm
         // Smart sheet selection
         let targetSheet = sheetName;
         const sheetTitles = data.sheets.map(s => s.title);
+
+        // Priority: Match by GID if provided in URL
+        if (targetGid) {
+            const matchedSheet = data.sheets.find(s => String(s.id) === String(targetGid));
+            if (matchedSheet) {
+                targetSheet = matchedSheet.title;
+                toast.success(`זוהה גיליון ספציפי: ${targetSheet}`);
+            }
+        }
         
-        // If no sheet selected or selected sheet doesn't exist, pick the first one
+        // Fallback: If no sheet selected or selected sheet doesn't exist, pick the first one
         if (!targetSheet || !sheetTitles.includes(targetSheet)) {
             const defaultSheet = sheetTitles[0];
             if (targetSheet && !sheetTitles.includes(targetSheet)) {
                  toast.warning(`הגיליון "${targetSheet}" לא נמצא ב-Google Sheets. נבחר אוטומטית "${defaultSheet}".`);
             }
             targetSheet = defaultSheet;
-            setSheetName(targetSheet);
         }
-        
+
+        setSheetName(targetSheet);
         setStep('sync');
         onSaveLink(id, targetSheet);
         
@@ -341,11 +350,18 @@ export default function SpreadsheetSyncDialog({ open, onClose, spreadsheet, onIm
     }
     // Extract ID from URL if full URL pasted
     let cleanId = spreadsheetId;
+    let gid = null;
+
     const match = spreadsheetId.match(/\/d\/([a-zA-Z0-9-_]+)/);
-    if (match) cleanId = match[1];
+    if (match) {
+        cleanId = match[1];
+        // Try to extract specific sheet ID (gid)
+        const gidMatch = spreadsheetId.match(/[#&]gid=([0-9]+)/);
+        if (gidMatch) gid = gidMatch[1];
+    }
     
     setSpreadsheetId(cleanId);
-    loadSheets(cleanId);
+    loadSheets(cleanId, gid);
   };
 
   const handleCreateNew = async () => {
