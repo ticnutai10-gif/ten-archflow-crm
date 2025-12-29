@@ -2908,107 +2908,32 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         className={`shadow-lg bg-white/80 backdrop-blur-sm transition-all duration-300 ${isFullScreen ? 'h-full flex flex-col' : ''}`}
         style={{ border: outerBorderStyle }}
       >
-        <CardHeader className="border-b space-y-4 pb-4 flex-shrink-0">
-          {(onBack || (!fullScreenMode && !isFullScreen)) && (
-            <div className="flex items-center mb-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  if (onBack) {
-                    onBack();
-                  } else {
-                    window.history.back();
-                  }
-                }}
-                className="gap-1 text-slate-500 hover:text-slate-800 p-0 hover:bg-transparent"
-              >
-                <ChevronRight className="w-4 h-4" />
-                חזרה לרשימת טבלאות
-              </Button>
-            </div>
-          )}
-          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
-            <div className="flex items-center gap-3 flex-wrap">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <Table className="w-6 h-6 text-purple-600" />
+        <CardHeader className="border-b px-4 py-2 flex-shrink-0 space-y-0">
+          <div className="flex items-center justify-between gap-4 flex-wrap lg:flex-nowrap">
+            {/* Left Side: Title & Icon */}
+            <div className="flex items-center gap-3">
+              {(onBack || (!fullScreenMode && !isFullScreen)) && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => onBack ? onBack() : window.history.back()}
+                  className="h-8 w-8 text-slate-500 hover:text-slate-800 -mr-2"
+                  title="חזרה"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </Button>
+              )}
+              <div className="p-1.5 bg-purple-100 rounded-lg">
+                <Table className="w-5 h-5 text-purple-600" />
               </div>
-              <div>
-                <CardTitle className="text-xl font-bold text-slate-800">{spreadsheet.name}</CardTitle>
-                <div className="flex items-center gap-2 mt-1 text-xs text-slate-500">
-                  <span className="bg-slate-100 px-2 py-0.5 rounded-full">{filteredAndSortedData.length} שורות</span>
-                  <span>•</span>
-                  <span>{visibleColumns.length} עמודות</span>
-                </div>
+              <div className="flex items-baseline gap-2">
+                <CardTitle className="text-lg font-bold text-slate-800 whitespace-nowrap">{spreadsheet.name}</CardTitle>
+                <span className="text-xs text-slate-400 font-medium hidden sm:inline-block">({filteredAndSortedData.length} שורות)</span>
               </div>
-              
-              <div className="flex items-center gap-2 mr-4 flex-wrap">
-              {Object.keys(cellStyles).length > 0 && (
-                <Badge variant="secondary" className="bg-purple-50 text-purple-700 hover:bg-purple-100 border-purple-200">
-                  <Palette className="w-3 h-3 ml-1" />
-                  {Object.keys(cellStyles).length}
-                </Badge>
-              )}
-              {Object.keys(cellNotes).length > 0 && (
-                <Badge variant="secondary" className="bg-amber-50 text-amber-700 hover:bg-amber-100 border-amber-200">
-                  <MessageSquare className="w-3 h-3 ml-1" />
-                  {Object.keys(cellNotes).length}
-                </Badge>
-              )}
-              </div>
-              <Badge variant="outline">{visibleColumns.length}/{columns.length} עמודות</Badge>
-              {Object.keys(cellStyles).length > 0 && (
-                <Badge className="bg-purple-100 text-purple-800">
-                  <Palette className="w-3 h-3 ml-1" />
-                  {Object.keys(cellStyles).length} עיצובים
-                </Badge>
-              )}
-              {Object.keys(cellNotes).length > 0 && (
-                <Badge className="bg-amber-100 text-amber-800">
-                  <MessageSquare className="w-3 h-3 ml-1" />
-                  {Object.keys(cellNotes).length} הערות
-                </Badge>
-              )}
-              {Object.keys(mergedCells).length > 0 && (
-                <Badge className="bg-green-100 text-green-800">
-                  <Grid className="w-3 h-3 ml-1" />
-                  {Object.keys(mergedCells).length} מיזוגי תאים
-                </Badge>
-              )}
-              {(Object.keys(mergedHeaders).length > 0 || Object.keys(subHeaders).length > 0) && (
-                <Badge className="bg-blue-100 text-blue-800">
-                  <Merge className="w-3 h-3 ml-1" />
-                  {Object.keys(mergedHeaders).length + Object.keys(subHeaders).length} כותרות
-                </Badge>
-              )}
-              {Object.keys(headerStyles).length > 0 && (
-                <Badge className="bg-yellow-100 text-yellow-800">
-                  <Palette className="w-3 h-3 ml-1" />
-                  {Object.keys(headerStyles).length} עיצוב כותרות
-                </Badge>
-              )}
-              {hasActiveFilters && <Badge className="bg-blue-600 text-white"><Filter className="w-3 h-3 ml-1" />פעיל</Badge>}
-              {activeViewId && savedViews.find(v => v.id === activeViewId) && (
-                <Badge className="bg-indigo-100 text-indigo-800 border-indigo-300">
-                  <Bookmark className="w-3 h-3 ml-1" />
-                  {savedViews.find(v => v.id === activeViewId)?.name}
-                </Badge>
-              )}
             </div>
-            
-            {/* Collaborators & Presence */}
-            <div className="flex items-center gap-2 px-2 xl:border-l border-slate-200">
-               <Collaborators 
-                 spreadsheetId={spreadsheet.id} 
-                 currentUser={currentUser}
-                 currentCell={currentFocusedCell}
-                 onCollaboratorsChange={setActiveCollaborators}
-               />
-            </div>
-          </div>
 
-          <div className="flex flex-col lg:flex-row gap-3 pt-3 pb-2 sticky top-0 z-40 glass-header px-4 -mx-4">
-            <div className="flex flex-1 items-center gap-2 overflow-x-auto pb-2 lg:pb-0 no-scrollbar mask-fade-right">
+            {/* Center: Toolbar Actions */}
+            <div className="flex flex-1 items-center gap-1 overflow-x-auto no-scrollbar mask-fade-right justify-start lg:justify-center">
               <Button onClick={handleUndo} size="sm" variant="outline" disabled={!canUndo} title="בטל (Ctrl+Z)"><Undo className="w-4 h-4" /></Button>
               <Button onClick={handleRedo} size="sm" variant="outline" disabled={!canRedo} title="שחזר (Ctrl+Y)"><Redo className="w-4 h-4" /></Button>
               <Popover>
@@ -3426,14 +3351,37 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
               </div>
             </div>
             
-            <div className="relative w-full lg:w-72">
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <Input 
-                placeholder="חיפוש מהיר..." 
-                value={globalFilter} 
-                onChange={(e) => setGlobalFilter(e.target.value)} 
-                className="pr-10 bg-slate-50 border-slate-200 focus:bg-white transition-colors" 
-              />
+            </div>
+
+            {/* Right Side: Search & Collab */}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="relative">
+                <div className={`transition-all duration-300 ease-in-out overflow-hidden flex items-center ${globalFilter ? 'w-48' : 'w-8 hover:w-48 focus-within:w-48'}`}>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="absolute right-0 top-0 h-8 w-8 z-10 pointer-events-none"
+                  >
+                    <Search className="w-4 h-4 text-slate-500" />
+                  </Button>
+                  <Input 
+                    placeholder="חיפוש..." 
+                    value={globalFilter} 
+                    onChange={(e) => setGlobalFilter(e.target.value)} 
+                    className="h-8 pr-8 pl-2 bg-slate-50 border-slate-200 focus:bg-white text-sm w-full" 
+                  />
+                </div>
+              </div>
+              
+              <div className="h-4 w-px bg-slate-200 mx-1"></div>
+              
+              <Collaborators 
+                 spreadsheetId={spreadsheet.id} 
+                 currentUser={currentUser}
+                 currentCell={currentFocusedCell}
+                 onCollaboratorsChange={setActiveCollaborators}
+                 compact={true}
+               />
             </div>
           </div>
         </CardHeader>
@@ -3559,7 +3507,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
           )}
 
           {viewMode === 'table' && (
-          <div className="overflow-auto fancy-scrollbar" style={{ maxHeight: isFullScreen ? 'calc(100vh - 140px)' : (fullScreenMode ? 'calc(100vh - 180px)' : '60vh'), contentVisibility: 'auto' }}>
+          <div className="overflow-auto fancy-scrollbar" style={{ maxHeight: isFullScreen ? 'calc(100vh - 100px)' : (fullScreenMode ? 'calc(100vh - 120px)' : '75vh'), contentVisibility: 'auto' }}>
             <DragDropContext onDragEnd={handleDragEnd}>
               <table ref={tableRef} className="w-full" dir="rtl" style={{
                 fontFamily: cellFont.value,
@@ -3950,26 +3898,13 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
           </div>
           )}
         </CardContent>
-        <div className="px-6 py-3 border-t bg-gradient-to-r from-slate-50 to-slate-100 text-xs text-slate-600 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <span className="font-semibold">{filteredAndSortedData.length}/{rowsData.length} שורות</span>
-            <span>•</span>
-            <span>{visibleColumns.length} עמודות</span>
-            {selectedCells.size > 0 && (
-              <>
-                <span>•</span>
-                <span className="text-purple-600 font-semibold">נבחרו {selectedCells.size} תאים</span>
-              </>
-            )}
-            {selectedHeaders.size > 0 && (
-              <>
-                <span>•</span>
-                <span className="text-blue-600 font-semibold">נבחרו {selectedHeaders.size} כותרות</span>
-              </>
-            )}
+        <div className="px-4 py-1 border-t bg-slate-50 text-[10px] text-slate-500 flex items-center justify-between h-8">
+          <div className="flex items-center gap-3">
+            <span>{filteredAndSortedData.length} שורות</span>
+            {selectedCells.size > 0 && <span className="text-purple-600 font-medium">נבחרו {selectedCells.size}</span>}
           </div>
-          <div className="text-slate-400 text-[10px] bg-slate-100 px-2 py-1 rounded">
-            💡 Ctrl+לחיצה על תא לקוח = תפריט ניווט • Alt+Click לבחירה מרובה • Shift+גרירה לטווח • לחיצה כפולה לתפריט • 🔺 להערה
+          <div className="text-slate-400">
+            Ctrl+Click לניווט • Shift+גרירה לבחירה
           </div>
         </div>
       </Card>
