@@ -2878,7 +2878,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   });
 
   return (
-    <div className="w-full space-y-6" dir="rtl">
+    <div className={`w-full space-y-6 ${fullScreenMode ? 'h-full flex flex-col' : ''}`} dir="rtl">
       {charts.length > 0 && !isFullScreen && (
         <div className="space-y-4">
           <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
@@ -2901,11 +2901,11 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       )}
 
       <div 
-        className={`${isFullScreen ? 'fixed inset-0 z-[100] h-screen w-screen overflow-hidden p-4 bg-slate-100/90 backdrop-blur' : ''}`}
+        className={`${isFullScreen ? 'fixed inset-0 z-[100] h-screen w-screen overflow-hidden p-4 bg-slate-100/90 backdrop-blur' : (fullScreenMode ? 'flex-1 min-h-0' : '')}`}
         style={isFullScreen ? { touchAction: 'none' } : {}}
       >
       <Card 
-        className={`shadow-lg bg-white/80 backdrop-blur-sm transition-all duration-300 ${isFullScreen ? 'h-full flex flex-col' : ''}`}
+        className={`shadow-lg bg-white/80 backdrop-blur-sm transition-all duration-300 ${isFullScreen || fullScreenMode ? 'h-full flex flex-col' : ''}`}
         style={{ border: outerBorderStyle }}
       >
         <CardHeader className="border-b px-4 py-2 flex-shrink-0 space-y-0">
@@ -3505,7 +3505,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
           )}
 
           {viewMode === 'table' && (
-          <div className="overflow-auto fancy-scrollbar" style={{ maxHeight: isFullScreen ? 'calc(100vh - 100px)' : (fullScreenMode ? 'calc(100vh - 120px)' : '75vh'), contentVisibility: 'auto' }}>
+          <div className={`overflow-auto fancy-scrollbar ${isFullScreen || fullScreenMode ? 'flex-1 min-h-0' : ''}`} style={!(isFullScreen || fullScreenMode) ? { maxHeight: '75vh', contentVisibility: 'auto' } : { contentVisibility: 'auto' }}>
             <DragDropContext onDragEnd={handleDragEnd}>
               <table ref={tableRef} className="w-full" dir="rtl" style={{
                 fontFamily: cellFont.value,

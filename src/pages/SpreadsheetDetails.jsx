@@ -61,8 +61,8 @@ export default function SpreadsheetDetailsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 p-2" dir="rtl">
-      <div className="w-full mx-auto">
+    <div className="h-[calc(100vh-1rem)] bg-slate-50 p-2 flex flex-col" dir="rtl">
+      <div className="w-full h-full mx-auto flex flex-col">
         {spreadsheet && (
           <GenericSpreadsheet
             spreadsheet={spreadsheet}
