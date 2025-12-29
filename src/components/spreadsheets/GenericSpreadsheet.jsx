@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Table, Copy, Settings, Palette, Eye, EyeOff, Edit2, X, Download, Grid, Search, Filter, ArrowUp, ArrowDown, ArrowUpDown, XCircle, Undo, Redo, GripVertical, BarChart3, Calculator, Layers, Bookmark, Users, Zap, MessageSquare, Bold, Scissors, Merge, Type, Circle, ChevronRight, ChevronLeft, ChevronDown, Snowflake, RefreshCw, PlusCircle, FileSpreadsheet } from "lucide-react";
+import { Plus, Trash2, Table, Copy, Settings, Palette, Eye, EyeOff, Edit2, X, Download, Grid, Search, Filter, ArrowUp, ArrowDown, ArrowUpDown, XCircle, Undo, Redo, GripVertical, BarChart3, Calculator, Layers, Bookmark, Users, Zap, MessageSquare, Bold, Scissors, Merge, Type, Circle, ChevronRight, ChevronLeft, ChevronDown, Snowflake, RefreshCw, PlusCircle, FileSpreadsheet, Maximize, Minimize } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -267,6 +267,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const [activeCollaborators, setActiveCollaborators] = useState([]);
   const [currentFocusedCell, setCurrentFocusedCell] = useState(null);
   const [commentCounts, setCommentCounts] = useState({}); // New state for comments
+  const [isFullScreen, setIsFullScreen] = useState(false); // Full Screen State
   
   // Google Sheets Tabs
   const [sheetTabs, setSheetTabs] = useState([]);
@@ -597,6 +598,8 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         shadow: "none",
         cellSpacing: "none",
         hoverEffect: "subtle",
+        outerBorderColor: "#D4AF37",
+        outerBorderSize: "thin",
         customColors: null
       };
 
@@ -841,6 +844,17 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     window.addEventListener('client:updated', handleClientUpdate);
     return () => window.removeEventListener('client:updated', handleClientUpdate);
   }, []);
+
+  // Handle Escape for Full Screen
+  useEffect(() => {
+    const handleEscapeFullScreen = (e) => {
+      if (e.key === 'Escape' && isFullScreen) {
+        setIsFullScreen(false);
+      }
+    };
+    window.addEventListener('keydown', handleEscapeFullScreen);
+    return () => window.removeEventListener('keydown', handleEscapeFullScreen);
+  }, [isFullScreen]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -2760,6 +2774,8 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     shadow: "none",
     cellSpacing: "none",
     hoverEffect: "subtle",
+    outerBorderColor: "#D4AF37",
+    outerBorderSize: "thin",
     customColors: null
   };
 
@@ -2799,6 +2815,17 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const tableShadow = shadowMap[currentTheme.shadow] || "none";
   const tableCellSpacing = cellSpacingMap[currentTheme.cellSpacing] || "0px";
   const isSeparateBorders = currentTheme.cellSpacing !== 'none';
+
+  // Outer Border Logic
+  const outerBorderWidthMap = {
+    none: "0px",
+    thin: "1px",
+    medium: "3px",
+    thick: "6px"
+  };
+  const outerBorderWidth = outerBorderWidthMap[currentTheme.outerBorderSize || "thin"];
+  const outerBorderColor = currentTheme.outerBorderColor || "#D4AF37";
+  const outerBorderStyle = `${outerBorderWidth} solid ${outerBorderColor}`;
 
   const columnStats = useMemo(() => {
     const stats = {};
@@ -2852,7 +2879,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
 
   return (
     <div className="w-full space-y-6" dir="rtl">
-      {charts.length > 0 && (
+      {charts.length > 0 && !isFullScreen && (
         <div className="space-y-4">
           <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
             <BarChart3 className="w-6 h-6 text-green-600" />
@@ -2873,9 +2900,16 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         </div>
       )}
 
-      <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-        <CardHeader className="border-b space-y-4 pb-4">
-          {!fullScreenMode && (
+      <div 
+        className={`${isFullScreen ? 'fixed inset-0 z-[100] h-screen w-screen overflow-hidden p-4 bg-slate-100/90 backdrop-blur' : ''}`}
+        style={isFullScreen ? { touchAction: 'none' } : {}}
+      >
+      <Card 
+        className={`shadow-lg bg-white/80 backdrop-blur-sm transition-all duration-300 ${isFullScreen ? 'h-full flex flex-col' : ''}`}
+        style={{ border: outerBorderStyle }}
+      >
+        <CardHeader className="border-b space-y-4 pb-4 flex-shrink-0">
+          {!fullScreenMode && !isFullScreen && (
             <div className="flex items-center mb-2">
               <Button
                 variant="ghost"
@@ -3159,6 +3193,17 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
               >
                 <MessageSquare className="w-4 h-4 text-blue-600" />
                 תגובות
+              </Button>
+
+              <Button 
+                onClick={() => setIsFullScreen(!isFullScreen)} 
+                size="sm" 
+                variant="outline" 
+                className="gap-2 hover:bg-slate-100"
+                title={isFullScreen ? "צא ממסך מלא (Esc)" : "מסך מלא"}
+              >
+                {isFullScreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+                {isFullScreen ? 'צא' : 'מסך מלא'}
               </Button>
 
               {/* Sync Status Indicators */}
@@ -3514,7 +3559,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
           )}
 
           {viewMode === 'table' && (
-          <div className="overflow-auto fancy-scrollbar" style={{ maxHeight: fullScreenMode ? '85vh' : '60vh', contentVisibility: 'auto' }}>
+          <div className="overflow-auto fancy-scrollbar" style={{ maxHeight: isFullScreen ? 'calc(100vh - 140px)' : (fullScreenMode ? '85vh' : '60vh'), contentVisibility: 'auto' }}>
             <DragDropContext onDragEnd={handleDragEnd}>
               <table ref={tableRef} className="w-full" dir="rtl" style={{
                 fontFamily: cellFont.value,
