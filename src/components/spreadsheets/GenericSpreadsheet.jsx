@@ -1981,12 +1981,30 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     });
 
     if (syncMode === 'two_way_sync') {
+      // 1. Prepare Local Metadata for Sync
+      const localStyles = [];
+      const localNotes = [];
+      
+      rows.forEach((row) => {
+          const rowStyles = [];
+          const rowNotes = [];
+          visibleCols.forEach((col) => {
+              const cellKey = `${row.id}_${col.key}`;
+              rowStyles.push(cellStyles[cellKey] || null);
+              rowNotes.push(cellNotes[cellKey] || null);
+          });
+          localStyles.push(rowStyles);
+          localNotes.push(rowNotes);
+      });
+
       const { data } = await base44.functions.invoke('googleSheets', {
         action: 'twoWaySync',
         spreadsheetId,
         sheetName,
         localHeaders: headers,
         localRows: rows,
+        localStyles,
+        localNotes,
         primaryKeyColumn: visibleCols[0]?.title // Assuming first column is key/ID
       });
 
@@ -1994,6 +2012,9 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         // Handle merged data update
         const mergedHeaders = data.mergedHeaders || headers;
         const mergedRows = data.mergedData;
+        const mergedStyles = data.mergedStyles || [];
+        const mergedNotes = data.mergedNotes || [];
+        const remoteMerges = data.mergedMerges || [];
 
         // Update columns structure if new headers appeared
         const newColumns = [...columns];
@@ -2016,25 +2037,79 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
           }
         });
 
-        // Rebuild rows data
-        const newRowsData = mergedRows.map((row, rIndex) => {
-          const newRow = { id: `row_${Date.now()}_${rIndex}` };
+        // Rebuild rows data and Metadata
+        const newRowsData = [];
+        const newCellStyles = {};
+        const newCellNotes = {};
+        
+        mergedRows.forEach((row, rIndex) => {
+          const newRow = { id: `row_sync_${Date.now()}_${rIndex}` };
+          const rowStyles = mergedStyles[rIndex] || [];
+          const rowNotes = mergedNotes[rIndex] || [];
+
           row.forEach((cellVal, cIndex) => {
             const key = colMapping[cIndex];
-            if (key) newRow[key] = cellVal;
+            if (key) {
+                newRow[key] = cellVal;
+                // Map style/note back to cellKey
+                if (rowStyles[cIndex]) newCellStyles[`${newRow.id}_${key}`] = rowStyles[cIndex];
+                if (rowNotes[cIndex]) newCellNotes[`${newRow.id}_${key}`] = rowNotes[cIndex];
+            }
           });
-          return newRow;
+          newRowsData.push(newRow);
+        });
+
+        // Map Remote Merges back to Local
+        const newMergedCells = {};
+        remoteMerges.forEach(merge => {
+             // Skip header merges (rowIndex 0)
+             if (merge.startRowIndex > 0) {
+                 const startRow = merge.startRowIndex - 1;
+                 const endRow = merge.endRowIndex - 1;
+                 
+                 if (newRowsData[startRow]) {
+                     const rowId = newRowsData[startRow].id;
+                     const colKey = colMapping[merge.startColumnIndex];
+                     
+                     if (rowId && colKey) {
+                         const mergeKey = `merge_sync_${Date.now()}_${Math.random()}`;
+                         const cells = [];
+                         for(let r = startRow; r < endRow; r++) {
+                             for(let c = merge.startColumnIndex; c < merge.endColumnIndex; c++) {
+                                 if (newRowsData[r] && colMapping[c]) {
+                                     cells.push(`${newRowsData[r].id}_${colMapping[c]}`);
+                                 }
+                             }
+                         }
+                         newMergedCells[mergeKey] = {
+                             cells,
+                             master: `${rowId}_${colKey}`,
+                             rowspan: endRow - startRow,
+                             colspan: merge.endColumnIndex - merge.startColumnIndex
+                         };
+                     }
+                 }
+             }
         });
 
         setColumns(newColumns);
         setRowsData(newRowsData);
+        setCellStyles(newCellStyles);
+        setCellNotes(newCellNotes);
+        setMergedCells(newMergedCells);
+
         columnsRef.current = newColumns;
         rowsDataRef.current = newRowsData;
+        cellStylesRef.current = newCellStyles;
+        cellNotesRef.current = newCellNotes;
+        mergedCellsRef.current = newMergedCells;
         
         setTimeout(() => {
-          saveToHistory(newColumns, newRowsData, cellStylesRef.current, cellNotesRef.current);
+          saveToHistory(newColumns, newRowsData, newCellStyles, newCellNotes, subHeadersRef.current, mergedHeadersRef.current, headerStylesRef.current);
           saveToBackend();
         }, 100);
+        
+        toast.success(`✓ סנכרון דו-כיווני הושלם עם מטא-דאטה`);
       }
     } else {
       
