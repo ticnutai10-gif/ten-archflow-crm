@@ -27,6 +27,7 @@ import SpreadsheetSyncDialog from "./SpreadsheetSyncDialog";
 import Collaborators from "./Collaborators";
 import CommentsSidebar from "./CommentsSidebar";
 import SpreadsheetRow from "./SpreadsheetRow"; // IMPORT NEW COMPONENT
+import ColumnFilter from "./ColumnFilter"; // Import Advanced Filter
 
 // Default stage options with colors - MUST BE OUTSIDE COMPONENT
 const DEFAULT_STAGE_OPTIONS = [
@@ -1034,16 +1035,58 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     }
     Object.entries(columnFilters).forEach(([columnKey, filterValue]) => {
       if (filterValue) {
-        const searchLower = filterValue.toLowerCase();
-        const col = columns.find(c => c.key === columnKey);
+        // Handle advanced filters (object) or legacy text filters (string)
+        const filter = typeof filterValue === 'string' ? { type: 'text', value: filterValue } : filterValue;
+        
         result = result.filter(row => {
           const val = row[columnKey];
-          // For stage columns, filter by label
-          if (col?.type === 'stage') {
-            const stage = STAGE_OPTIONS.find(s => s.value === val);
-            return stage?.label?.toLowerCase().includes(searchLower) || stage?.parent?.toLowerCase().includes(searchLower);
+          
+          // 1. Text / Legacy Filter
+          if (filter.type === 'text') {
+            const searchLower = (filter.value || '').toLowerCase();
+            const col = columns.find(c => c.key === columnKey);
+            if (col?.type === 'stage') {
+              const stage = (customStageOptions || []).flatMap(g => [g, ...(g.children || [])]).find(s => s.value === val);
+              return stage?.label?.toLowerCase().includes(searchLower);
+            }
+            return String(val || '').toLowerCase().includes(searchLower);
           }
-          return String(val || '').toLowerCase().includes(searchLower);
+
+          // 2. Multi-Select Filter
+          if (filter.type === 'multi-select') {
+            if (!filter.selectedValues || filter.selectedValues.length === 0) return true; // No selection = all
+            return filter.selectedValues.includes(String(val || ''));
+          }
+
+          // 3. Number Range Filter
+          if (filter.type === 'number-range') {
+            const numVal = Number(val);
+            if (isNaN(numVal)) return false; // Non-numbers excluded
+            if (filter.min !== undefined && filter.min !== '' && numVal < Number(filter.min)) return false;
+            if (filter.max !== undefined && filter.max !== '' && numVal > Number(filter.max)) return false;
+            return true;
+          }
+
+          // 4. Date Range Filter
+          if (filter.type === 'date-range') {
+            if (!val) return false;
+            const dateVal = new Date(val);
+            if (isNaN(dateVal.getTime())) return false;
+            
+            if (filter.start) {
+              const startDate = new Date(filter.start);
+              if (dateVal < startDate) return false;
+            }
+            if (filter.end) {
+              const endDate = new Date(filter.end);
+              // Set end date to end of day
+              endDate.setHours(23, 59, 59, 999);
+              if (dateVal > endDate) return false;
+            }
+            return true;
+          }
+
+          return true;
         });
       }
     });
@@ -3560,6 +3603,14 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                         {hasSubHeader && <Type className="w-3 h-3 text-blue-500" title={hasSubHeader} />}
                                       </div>
                                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        {/* Advanced Filter Button */}
+                                        <ColumnFilter 
+                                          column={col} 
+                                          rowsData={rowsData} 
+                                          currentFilter={columnFilters[col.key]} 
+                                          onFilterChange={(newFilter) => setColumnFilters(prev => ({ ...prev, [col.key]: newFilter }))} 
+                                        />
+                                        
                                         <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); handleSort(col.key); }}>{isSorted ? (sortDirection === 'asc' ? <ArrowUp className="w-4 h-4 text-blue-600" /> : <ArrowDown className="w-4 h-4 text-blue-600" />) : <ArrowUpDown className="w-4 h-4 text-slate-400" />}</Button>
                                         <Popover open={popoverOpen === `header_${col.key}`} onOpenChange={(open) => !open && setPopoverOpen(null)}>
                                           <PopoverTrigger asChild>
