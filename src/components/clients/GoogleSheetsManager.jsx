@@ -13,12 +13,20 @@ import {
   Copy,
   Info,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Settings,
+  Upload,
+  RefreshCw
 } from "lucide-react";
 import { toast } from "sonner";
+import { base44 } from "@/api/base44Client";
+import { Textarea } from "@/components/ui/textarea";
 
 export default function GoogleSheetsManager({ clients = [], onRefresh }) {
   const [isExporting, setIsExporting] = useState(false);
+  const [serviceAccountEmail, setServiceAccountEmail] = useState(null);
+  const [jsonInput, setJsonInput] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
   
   // מצב מזעור/הרחבה עם שמירה ב-localStorage
   const [isCollapsed, setIsCollapsed] = useState(() => {
@@ -37,6 +45,55 @@ export default function GoogleSheetsManager({ clients = [], onRefresh }) {
       localStorage.setItem('google-sheets-manager-collapsed', newState.toString());
     } catch (e) {
       console.warn('Failed to save Google Sheets Manager collapsed state:', e);
+    }
+  };
+
+  // Fetch Service Account Email on mount
+  React.useEffect(() => {
+    const fetchEmail = async () => {
+      try {
+        const { data } = await base44.functions.invoke('googleSheets', { action: 'getServiceAccountEmail' });
+        if (data.success && data.email) {
+          setServiceAccountEmail(data.email);
+        }
+      } catch (e) {
+        console.warn('Failed to fetch service account email', e);
+      }
+    };
+    if (!isCollapsed) {
+        fetchEmail();
+    }
+  }, [isCollapsed]);
+
+  const handleSaveJson = async () => {
+    if (!jsonInput.trim()) return;
+    setIsSaving(true);
+    try {
+        let json;
+        try {
+            json = JSON.parse(jsonInput);
+        } catch (e) {
+            toast.error("קובץ ה-JSON אינו תקין");
+            setIsSaving(false);
+            return;
+        }
+
+        const { data } = await base44.functions.invoke('googleSheets', { 
+            action: 'saveServiceAccount',
+            json 
+        });
+
+        if (data.success) {
+            toast.success("פרטי החשבון נשמרו בהצלחה!");
+            setServiceAccountEmail(data.email);
+            setJsonInput("");
+        } else {
+            toast.error(data.error || "שגיאה בשמירה");
+        }
+    } catch (e) {
+        toast.error("שגיאה בשמירה: " + e.message);
+    } finally {
+        setIsSaving(false);
     }
   };
 
@@ -151,9 +208,10 @@ export default function GoogleSheetsManager({ clients = [], onRefresh }) {
         {!isCollapsed && (
           <CardContent className="space-y-4">
             <Tabs defaultValue="export" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="export">ייצוא נתונים</TabsTrigger>
                 <TabsTrigger value="connect">התחברות לגיליון</TabsTrigger>
+                <TabsTrigger value="service_account">חשבון שירות</TabsTrigger>
                 <TabsTrigger value="troubleshoot">פתרון בעיות</TabsTrigger>
               </TabsList>
               
@@ -234,6 +292,60 @@ export default function GoogleSheetsManager({ clients = [], onRefresh }) {
                       תוכל לערוך נתונים ישירות בגיליון Google Sheets שלך
                     </AlertDescription>
                   </Alert>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="service_account" className="space-y-4">
+                <div className="bg-white p-4 rounded-lg border space-y-4">
+                    <div>
+                        <h3 className="text-lg font-semibold mb-2">הגדרת חשבון שירות (Service Account)</h3>
+                        <p className="text-sm text-slate-600 mb-4">
+                            כדי לאפשר לאפליקציה לגשת ל-Google Sheets באופן אוטומטי, יש להעלות קובץ מפתח JSON של חשבון שירות.
+                        </p>
+                    </div>
+
+                    {serviceAccountEmail && (
+                        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                            <p className="text-xs text-blue-800 font-semibold mb-1">כתובת האימייל לשיתוף:</p>
+                            <div className="flex items-center gap-2">
+                                <code className="flex-1 bg-white p-2 rounded border text-xs overflow-hidden text-ellipsis">
+                                    {serviceAccountEmail}
+                                </code>
+                                <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(serviceAccountEmail);
+                                        toast.success("הכתובת הועתקה!");
+                                    }}
+                                >
+                                    <Copy className="w-4 h-4" />
+                                </Button>
+                            </div>
+                            <p className="text-xs text-blue-600 mt-2">
+                                * יש לשתף את הגיליון (Share) עם כתובת זו בהרשאת "Editor".
+                            </p>
+                        </div>
+                    )}
+
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium">הדבק תוכן קובץ JSON כאן:</label>
+                        <Textarea 
+                            value={jsonInput}
+                            onChange={(e) => setJsonInput(e.target.value)}
+                            placeholder='{"type": "service_account", ...}'
+                            className="font-mono text-xs h-32 text-left ltr"
+                            dir="ltr"
+                        />
+                        <Button 
+                            onClick={handleSaveJson} 
+                            disabled={isSaving || !jsonInput.trim()}
+                            className="w-full"
+                        >
+                            {isSaving ? <RefreshCw className="w-4 h-4 animate-spin ml-2" /> : <Upload className="w-4 h-4 ml-2" />}
+                            שמור הגדרות
+                        </Button>
+                    </div>
                 </div>
               </TabsContent>
 

@@ -9,6 +9,7 @@ import { Download, Upload, ShieldCheck, Database, RefreshCw, Settings, CalendarC
 import { exportEntities } from "@/functions/exportEntities";
 import { importBackupJson } from "@/functions/importBackupJson";
 import EntityImporter from "@/components/backup/EntityImporter";
+import { User } from "@/entities/User";
 import { exportAllData } from "@/functions/exportAllData";
 import { importBackupData } from "@/functions/importBackupData";
 import { base44 } from "@/api/base44Client";
@@ -66,7 +67,7 @@ export default function BackupPage() {
     // load user backup prefs
     (async () => {
       try {
-        const me = await base44.auth.me().catch(() => null);
+        const me = await User.me().catch(() => null);
         if (me) {
           setAutoEnabled(!!me.backup_auto_enabled);
           setAutoFreq(me.backup_auto_frequency || "daily");
@@ -121,7 +122,7 @@ export default function BackupPage() {
 
       if (shouldRun && selected.size > 0 && !busy) {
         await handleExport('json'); // Auto-backup always exports as JSON
-        await base44.auth.updateMe({ backup_last_run_at: new Date().toISOString() });
+        await User.updateMyUserData({ backup_last_run_at: new Date().toISOString() });
         setLastRun(new Date().toISOString());
       }
     })();
@@ -269,7 +270,7 @@ export default function BackupPage() {
   };
 
   const saveAutoSettings = async () => {
-    await base44.auth.updateMe({
+    await User.updateMyUserData({
       backup_auto_enabled: autoEnabled,
       backup_auto_frequency: autoFreq,
       backup_selected_categories: Array.from(selected)
