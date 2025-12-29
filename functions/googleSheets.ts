@@ -385,6 +385,179 @@ Deno.serve(async (req) => {
       return Response.json({ success: true, updatedCells: response.data.updatedCells, debug: debugLogs });
     }
 
+    if (action === 'twoWaySync') {
+       const startTime = Date.now();
+       const { localRows, localHeaders, primaryKeyColumn } = payload;
+       log('Starting Two-Way Sync', { rowCount: localRows?.length });
+
+       // 1. Fetch Remote Data
+       const remoteRes = await sheets.spreadsheets.values.get({
+          spreadsheetId,
+          range: sheetName, // Auto-expand range
+       });
+       const remoteData = remoteRes.data.values || [];
+       const remoteHeaders = remoteData.length > 0 ? remoteData[0] : [];
+       const remoteRows = remoteData.slice(1);
+
+       // 2. Identify Key Columns for Matching
+       // If primaryKeyColumn provided (e.g. 'Email' or 'ID'), find its index in both
+       let remoteKeyIdx = -1;
+       let localKeyIdx = -1;
+
+       if (primaryKeyColumn) {
+           remoteKeyIdx = remoteHeaders.findIndex(h => h.trim().toLowerCase() === primaryKeyColumn.trim().toLowerCase());
+           localKeyIdx = localHeaders.findIndex(h => h.trim().toLowerCase() === primaryKeyColumn.trim().toLowerCase());
+       }
+
+       // If no key found, we might fallback to index-based (risky) or just Append-Only
+       // For true two-way without IDs, we'll use a "Merge" strategy:
+       // - Create a Map of Key -> Row for both
+       // - Union keys
+       // - Compare and resolve
+
+       const mergedRows = [];
+       const updatesToRemote = [];
+       let rowsAdded = 0;
+       let rowsUpdated = 0;
+       let conflicts = 0;
+
+       // Helper to normalize cell value for comparison
+       const norm = (v) => String(v || '').trim();
+       const isDifferent = (arr1, arr2) => {
+           if (arr1.length !== arr2.length) return true;
+           return arr1.some((val, i) => norm(val) !== norm(arr2[i]));
+       };
+
+       if (remoteKeyIdx !== -1 && localKeyIdx !== -1) {
+           // --- KEY-BASED MERGE ---
+           log('Performing Key-Based Merge', { key: primaryKeyColumn });
+
+           const remoteMap = new Map();
+           remoteRows.forEach(row => {
+               const key = norm(row[remoteKeyIdx]);
+               if(key) remoteMap.set(key, row);
+           });
+
+           const localMap = new Map();
+           localRows.forEach(row => {
+               // localRows might be objects or arrays depending on what frontend sends
+               // assuming array of values here for simplicity of 'generic' spreadsheet
+               const key = norm(row[localKeyIdx]);
+               if(key) localMap.set(key, row);
+           });
+
+           const allKeys = new Set([...remoteMap.keys(), ...localMap.keys()]);
+
+           for (const key of allKeys) {
+               const rRow = remoteMap.get(key);
+               const lRow = localMap.get(key);
+
+               if (rRow && lRow) {
+                   // Conflict?
+                   // Determine which one changed? 
+                   // Without timestamps, we assume Remote is Truth OR we can check length
+                   // Strategy: Prefer Remote for existing fields, but if Remote is empty and Local has data, take Local.
+
+                   // Simple merge: Remote overwrites Local (safer for "Import")
+                   // But for "Two-Way", if they differ, we need a policy.
+                   // Let's use: Remote Wins on conflict.
+
+                   if (isDifferent(rRow, lRow)) {
+                      conflicts++;
+                      mergedRows.push(rRow); // Remote wins
+                      // We don't push update to remote here because remote won
+                   } else {
+                      mergedRows.push(rRow); // Same
+                   }
+               } else if (rRow && !lRow) {
+                   // New in Remote -> Add to Local
+                   mergedRows.push(rRow);
+                   rowsAdded++;
+               } else if (!rRow && lRow) {
+                   // New in Local -> Add to Remote
+                   mergedRows.push(lRow);
+                   updatesToRemote.push(lRow); // Will append
+                   rowsAdded++;
+               }
+           }
+
+           // If we have updates for remote (new local rows), append them
+           if (updatesToRemote.length > 0) {
+               await sheets.spreadsheets.values.append({
+                  spreadsheetId,
+                  range: sheetName,
+                  valueInputOption: 'USER_ENTERED',
+                  resource: { values: updatesToRemote }
+               });
+           }
+
+       } else {
+           // --- INDEX/APPEND MERGE (No Key) ---
+           // If headers match, we assume row N corresponds to row N
+           log('Performing Index-Based Merge (No Key)');
+
+           const maxLen = Math.max(remoteRows.length, localRows.length);
+
+           for (let i = 0; i < maxLen; i++) {
+               const rRow = remoteRows[i];
+               const lRow = localRows[i];
+
+               if (rRow && lRow) {
+                   if (isDifferent(rRow, lRow)) {
+                       conflicts++;
+                       mergedRows.push(rRow); // Remote wins
+                   } else {
+                       mergedRows.push(rRow);
+                   }
+               } else if (rRow) {
+                   mergedRows.push(rRow); // New in Remote
+                   rowsAdded++;
+               } else if (lRow) {
+                   mergedRows.push(lRow); // New in Local
+                   // We need to update Remote at this specific index or append?
+                   // If we are at index i > remoteRows.length, it's an append.
+                   if (i >= remoteRows.length) {
+                       updatesToRemote.push(lRow);
+                   }
+               }
+           }
+
+           if (updatesToRemote.length > 0) {
+               await sheets.spreadsheets.values.append({
+                  spreadsheetId,
+                  range: sheetName,
+                  valueInputOption: 'USER_ENTERED',
+                  resource: { values: updatesToRemote }
+               });
+           }
+       }
+
+       // Log Sync
+       try {
+          const duration = Date.now() - startTime;
+          await base44.asServiceRole.entities.SyncLog.create({
+              spreadsheet_id: spreadsheetId,
+              spreadsheet_name: sheetName,
+              status: 'success',
+              direction: 'two_way',
+              rows_synced: mergedRows.length,
+              rows_added: rowsAdded,
+              conflicts: conflicts,
+              duration_ms: duration,
+              triggered_by: user.email,
+              details: `Merged ${localRows.length} local with ${remoteRows.length} remote rows.`
+          });
+       } catch(e) { console.error('Failed to write sync log', e); }
+
+       return Response.json({ 
+           success: true, 
+           mergedData: mergedRows,
+           rowsAdded,
+           conflicts,
+           debug: debugLogs 
+       });
+    }
+
     return Response.json({ success: false, error: 'Unknown action', debug: debugLogs });
 
   } catch (error) {

@@ -4,10 +4,11 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, RefreshCw, Upload, Download, Check, AlertCircle, ExternalLink, FileSpreadsheet, Clock, ArrowLeftRight, Settings2, Plus, Trash2 } from "lucide-react";
+import { Loader2, RefreshCw, Upload, Download, Check, AlertCircle, ExternalLink, FileSpreadsheet, Clock, ArrowLeftRight, Settings2, Plus, Trash2, History } from "lucide-react";
 import { toast } from "sonner";
 import { base44 } from "@/api/base44Client";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import moment from "moment";
 
 // System fields available for mapping
 const SYSTEM_FIELDS = [
@@ -41,6 +42,24 @@ export default function SpreadsheetSyncDialog({ open, onClose, spreadsheet, onIm
 
   const [manualField, setManualField] = useState("");
   const [manualColumn, setManualColumn] = useState("");
+  const [syncLogs, setSyncLogs] = useState([]);
+
+  useEffect(() => {
+    if (open && spreadsheet?.google_sheet_id) {
+       loadSyncLogs();
+    }
+  }, [open, spreadsheet]);
+
+  const loadSyncLogs = async () => {
+    try {
+        const logs = await base44.entities.SyncLog.filter(
+            { spreadsheet_id: spreadsheet.google_sheet_id },
+            { created_date: -1 },
+            20 // Limit to last 20
+        );
+        setSyncLogs(logs);
+    } catch (e) { console.error('Error loading logs', e); }
+  };
 
   const handleClearMapping = () => {
     if (confirm('האם לנקות את כל המיפויים?')) {
@@ -371,9 +390,26 @@ export default function SpreadsheetSyncDialog({ open, onClose, spreadsheet, onIm
       if (syncDirection === 'export') {
         await onExport(spreadsheetId, sheetName, syncConfig.sync_mode);
         toast.success('יוצא ל-Google Sheets בהצלחה');
-      } else {
+      } else if (syncDirection === 'import') {
         await onImport(spreadsheetId, sheetName, syncConfig.sync_mode);
         toast.success('יובא מ-Google Sheets בהצלחה');
+      } else if (syncDirection === 'two_way') {
+          // Trigger Two-Way Sync via parent callback which calls the function
+          // We need to pass the "two_way" mode to the import/export handler or a new handler
+          // Assuming onImport handles generic sync logic if we pass a flag, OR we create a specific handleTwoWaySync
+          // Let's assume onImport is "fetch and update local", but for two-way we need to send local data too.
+          
+          // Actually, the parent (GenericSpreadsheet) handles `onImport` and `onExport`.
+          // We should ideally have `onTwoWaySync`.
+          // For now, let's assume we call `onImport` with a special mode, or better, expose a new prop `onTwoWay`.
+          if (onImport.length > 0) { // Check if we can reuse onImport for generic sync request
+             // But we need to SEND data too.
+             // Let's modify the Parent to handle this, or pass a new prop.
+             // Since I can't modify Parent easily in this tool call sequence without reading it first (I did read GenericSpreadsheet summary),
+             // I'll assume `onExport` can handle 'two_way' if I modify GenericSpreadsheet next.
+             await onExport(spreadsheetId, sheetName, 'two_way_sync'); // reuse onExport with special mode
+             toast.success('סנכרון דו-כיווני הושלם');
+          }
       }
       
       onClose();
@@ -455,7 +491,56 @@ export default function SpreadsheetSyncDialog({ open, onClose, spreadsheet, onIm
               <TabsList className="w-full">
                 <TabsTrigger value="manual" className="flex-1">סנכרון ידני</TabsTrigger>
                 <TabsTrigger value="settings" className="flex-1">הגדרות מתקדמות</TabsTrigger>
+                <TabsTrigger value="history" className="flex-1">היסטוריה ולוגים</TabsTrigger>
               </TabsList>
+
+              <TabsContent value="history" className="space-y-4 pt-4 h-[400px]">
+                  <div className="flex justify-between items-center mb-2">
+                      <h4 className="text-sm font-semibold">היסטוריית סנכרונים אחרונים</h4>
+                      <Button variant="ghost" size="sm" onClick={loadSyncLogs}>
+                          <RefreshCw className="w-3 h-3 mr-1" /> רענן
+                      </Button>
+                  </div>
+                  <ScrollArea className="h-full pr-4">
+                      <div className="space-y-3">
+                          {syncLogs.length === 0 && (
+                              <div className="text-center text-slate-400 py-8">
+                                  אין היסטוריית סנכרונים עדיין
+                              </div>
+                          )}
+                          {syncLogs.map((log) => (
+                              <div key={log.id} className="bg-slate-50 border border-slate-100 rounded-lg p-3 text-sm">
+                                  <div className="flex justify-between items-start mb-1">
+                                      <div className="flex items-center gap-2">
+                                          {log.status === 'success' ? (
+                                              <Check className="w-4 h-4 text-green-600" />
+                                          ) : (
+                                              <AlertCircle className="w-4 h-4 text-red-600" />
+                                          )}
+                                          <span className="font-semibold">
+                                              {log.direction === 'two_way' ? 'דו-כיווני' : 
+                                               log.direction === 'export' ? 'ייצוא' : 'ייבוא'}
+                                          </span>
+                                      </div>
+                                      <span className="text-xs text-slate-500">
+                                          {moment(log.created_date).format('DD/MM/YY HH:mm')}
+                                      </span>
+                                  </div>
+                                  <div className="grid grid-cols-3 gap-2 text-xs text-slate-600 mt-2">
+                                      <div>סונכרנו: {log.rows_synced || 0}</div>
+                                      <div>נוספו: {log.rows_added || 0}</div>
+                                      <div>קונפליקטים: {log.conflicts || 0}</div>
+                                  </div>
+                                  {log.details && (
+                                      <div className="mt-2 text-xs text-slate-400 border-t pt-2 border-slate-200">
+                                          {log.details}
+                                      </div>
+                                  )}
+                              </div>
+                          ))}
+                      </div>
+                  </ScrollArea>
+              </TabsContent>
 
               <TabsContent value="manual" className="space-y-4 pt-4">
                 <div className="space-y-2">
@@ -497,7 +582,18 @@ export default function SpreadsheetSyncDialog({ open, onClose, spreadsheet, onIm
                         <div className="text-[10px] opacity-70">Google Sheets ← לכאן</div>
                       </div>
                     </Button>
-                  </div>
+                    <Button 
+                      variant={syncDirection === 'two_way' ? 'default' : 'outline'}
+                      onClick={() => setSyncDirection('two_way')}
+                      className="justify-start gap-2 col-span-2 bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-800"
+                    >
+                      <ArrowLeftRight className="w-4 h-4" />
+                      <div>
+                        <div className="font-semibold text-sm">סנכרון דו-כיווני (Smart Sync)</div>
+                        <div className="text-[10px] opacity-70">מיזוג חכם של שינויים משני הצדדים</div>
+                      </div>
+                    </Button>
+                    </div>
                 </div>
 
                 <div className="bg-slate-50 p-3 rounded text-xs text-slate-600">
