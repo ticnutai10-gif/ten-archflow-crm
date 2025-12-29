@@ -2048,7 +2048,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     }
   };
 
-  const handleImportFromGoogle = async (spreadsheetId, sheetName) => {
+  const handleImportFromGoogle = async (spreadsheetId, sheetName, syncMode = 'overwrite') => {
     const { data } = await base44.functions.invoke('googleSheets', {
       action: 'read',
       spreadsheetId,
@@ -2062,16 +2062,17 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       const importedHeaders = data.headers || [];
       const importedRows = data.rows || [];
       
-      // Update columns if needed (optional - or just map by index/name)
-      // For now, let's assume we map by title if exists, or create new cols
       let newColumns = [...columns];
       const colMapping = []; // index in sheet -> colKey in system
 
+      // Build Column Mapping
       importedHeaders.forEach((header, index) => {
         const existingCol = newColumns.find(c => c.title === header);
         if (existingCol) {
           colMapping[index] = existingCol.key;
         } else {
+          // If in append/update mode, maybe try to reuse existing columns by order if titles differ? 
+          // For safety, we match by title only. If header missing, create new column.
           const newKey = `col_${Date.now()}_${index}`;
           newColumns.push({
             key: newKey,
@@ -2084,8 +2085,10 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         }
       });
 
+      // Map Rows
       const newRowsData = importedRows.map((row, rIndex) => {
-        const newRow = { id: `row_${Date.now()}_${rIndex}` };
+        const newRow = { id: `row_imp_${Date.now()}_${rIndex}` };
+        // Ensure we handle rows that might be longer/shorter than headers
         row.forEach((cellVal, cIndex) => {
           const key = colMapping[cIndex];
           if (key) newRow[key] = cellVal;
@@ -2093,17 +2096,54 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         return newRow;
       });
 
-      setColumns(newColumns);
-      setRowsData(newRowsData);
+      console.log(`📥 [IMPORT] Processed ${newRowsData.length} rows. Mode: ${syncMode}`);
+
+      // Apply based on Sync Mode
+      let finalRows = [];
+      let finalColumns = newColumns;
+
+      if (syncMode === 'append') {
+        finalRows = [...rowsDataRef.current, ...newRowsData];
+        // Merge columns (we already added new ones to newColumns based on existing 'columns')
+        // So finalColumns is correct (old + new from import)
+      } else if (syncMode === 'update_existing') {
+        // Try to update existing rows by matching first column value, append others
+        // This is heuristic-based since we don't have shared IDs
+        const existingRows = [...rowsDataRef.current];
+        const keyCol = newColumns[0]?.key; // Assuming first column is key
+        
+        if (keyCol) {
+            newRowsData.forEach(importedRow => {
+                const matchIndex = existingRows.findIndex(r => r[keyCol] === importedRow[keyCol]);
+                if (matchIndex >= 0) {
+                    existingRows[matchIndex] = { ...existingRows[matchIndex], ...importedRow };
+                } else {
+                    existingRows.push(importedRow);
+                }
+            });
+            finalRows = existingRows;
+        } else {
+            // Fallback to append if no columns
+            finalRows = [...existingRows, ...newRowsData];
+        }
+      } else {
+        // Overwrite (default)
+        finalRows = newRowsData;
+      }
+
+      setColumns(finalColumns);
+      setRowsData(finalRows);
       
-      // Update refs immediately to ensure saveToBackend uses new data
-      columnsRef.current = newColumns;
-      rowsDataRef.current = newRowsData;
+      // Update refs immediately
+      columnsRef.current = finalColumns;
+      rowsDataRef.current = finalRows;
       
       setTimeout(() => {
-        saveToHistory(newColumns, newRowsData, cellStylesRef.current, cellNotesRef.current);
+        saveToHistory(finalColumns, finalRows, cellStylesRef.current, cellNotesRef.current);
         saveToBackend();
       }, 100);
+      
+      toast.success(`✓ יובאו ${newRowsData.length} שורות (${syncMode === 'overwrite' ? 'החלפה' : 'הוספה/עדכון'})`);
     } else {
       throw new Error(data.error || 'Import failed');
     }
