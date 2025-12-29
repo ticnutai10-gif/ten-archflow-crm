@@ -91,6 +91,7 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
   const [editing, setEditing] = useState(null);
   const [editData, setEditData] = useState({ title: "", notes: "" });
   const [userIdToDataMap, setUserIdToDataMap] = useState({});
+  const [sortBy, setSortBy] = useState("log_date"); // log_date | created_date
   
   // Add time log dialog state
   const [showAddDialog, setShowAddDialog] = useState(false);
