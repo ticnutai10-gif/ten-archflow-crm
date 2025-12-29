@@ -100,33 +100,127 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'update') {
-      // values expected to be array of arrays
-      // headers optional. if provided, we assume we overwrite the whole sheet or append?
-      // Simple sync: Clear sheet and write all data
-      
-      if (!range && sheetName) {
+      const mode = payload.mode || 'overwrite'; // 'overwrite', 'append', 'update_existing'
+
+      if (mode === 'overwrite') {
         // Full sync mode: Clear and write
-        // 1. Clear
-        await sheets.spreadsheets.values.clear({
+        if (!range && sheetName) {
+          // 1. Clear
+          await sheets.spreadsheets.values.clear({
+            spreadsheetId,
+            range: sheetName,
+          });
+
+          // 2. Write headers + rows
+          const allValues = headers ? [headers, ...values] : values;
+          
+          const response = await sheets.spreadsheets.values.update({
+            spreadsheetId,
+            range: `${sheetName}!A1`,
+            valueInputOption: 'USER_ENTERED',
+            resource: {
+              values: allValues
+            }
+          });
+          
+          return Response.json({ success: true, updatedCells: response.data.updatedCells });
+        }
+      } 
+      
+      else if (mode === 'append') {
+        // Append rows to the end of the sheet
+        const response = await sheets.spreadsheets.values.append({
+          spreadsheetId,
+          range: sheetName,
+          valueInputOption: 'USER_ENTERED',
+          resource: {
+            values: values // Just the data rows
+          }
+        });
+        return Response.json({ success: true, updates: response.data.updates });
+      } 
+      
+      else if (mode === 'update_existing') {
+        // Smart update: Read existing data, match by first column (ID/Key), update if exists, append if new
+        
+        // 1. Read existing data
+        const readResponse = await sheets.spreadsheets.values.get({
           spreadsheetId,
           range: sheetName,
         });
-
-        // 2. Write headers + rows
-        const allValues = headers ? [headers, ...values] : values;
         
-        const response = await sheets.spreadsheets.values.update({
-          spreadsheetId,
-          range: `${sheetName}!A1`,
-          valueInputOption: 'USER_ENTERED',
-          resource: {
-            values: allValues
+        const existingRows = readResponse.data.values || [];
+        const existingHeaders = existingRows[0] || [];
+        const existingData = existingRows.slice(1);
+        
+        // If sheet is empty, treat as overwrite
+        if (existingRows.length === 0) {
+           const allValues = headers ? [headers, ...values] : values;
+           const response = await sheets.spreadsheets.values.update({
+            spreadsheetId,
+            range: `${sheetName}!A1`,
+            valueInputOption: 'USER_ENTERED',
+            resource: { values: allValues }
+          });
+          return Response.json({ success: true, updatedCells: response.data.updatedCells, note: 'Sheet was empty, performed full write' });
+        }
+
+        // Map existing rows by first column (assuming it's a unique key)
+        const existingMap = new Map();
+        existingData.forEach((row, index) => {
+          if (row[0]) existingMap.set(String(row[0]), index + 2); // Store 1-based row index (header is 1, so data starts at 2)
+        });
+
+        const updates = []; // Batch updates
+        const newRows = []; // Rows to append
+
+        values.forEach(row => {
+          const key = String(row[0]);
+          if (existingMap.has(key)) {
+            // Update existing row
+            const rowIndex = existingMap.get(key);
+            updates.push({
+              range: `${sheetName}!A${rowIndex}`,
+              values: [row]
+            });
+          } else {
+            // Append new row
+            newRows.push(row);
           }
         });
-        
-        return Response.json({ success: true, updatedCells: response.data.updatedCells });
-      } else {
-        // Specific range update
+
+        // Perform batch updates
+        if (updates.length > 0) {
+          await sheets.spreadsheets.values.batchUpdate({
+            spreadsheetId,
+            resource: {
+              valueInputOption: 'USER_ENTERED',
+              data: updates
+            }
+          });
+        }
+
+        // Perform append for new rows
+        if (newRows.length > 0) {
+          await sheets.spreadsheets.values.append({
+            spreadsheetId,
+            range: sheetName,
+            valueInputOption: 'USER_ENTERED',
+            resource: {
+              values: newRows
+            }
+          });
+        }
+
+        return Response.json({ 
+          success: true, 
+          updatedRows: updates.length, 
+          addedRows: newRows.length 
+        });
+      }
+
+      // Fallback for simple update with range
+      if (range) {
         const response = await sheets.spreadsheets.values.update({
           spreadsheetId,
           range: range,

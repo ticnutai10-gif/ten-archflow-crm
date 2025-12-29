@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, RefreshCw, Upload, Download, Check, AlertCircle, ExternalLink, FileSpreadsheet } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Loader2, RefreshCw, Upload, Download, Check, AlertCircle, ExternalLink, FileSpreadsheet, Clock, ArrowLeftRight, Settings2 } from "lucide-react";
 import { toast } from "sonner";
 import { base44 } from "@/api/base44Client";
 import { googleSheets } from "@/functions/googleSheets";
@@ -15,6 +16,11 @@ export default function SpreadsheetSyncDialog({ open, onClose, spreadsheet, onIm
   const [sheetName, setSheetName] = useState(spreadsheet?.google_sheet_name || '');
   const [availableSheets, setAvailableSheets] = useState([]);
   const [syncDirection, setSyncDirection] = useState('export'); // export (to google), import (from google)
+  const [syncConfig, setSyncConfig] = useState({
+    auto_sync_interval: 'none',
+    sync_mode: 'overwrite',
+    field_mapping: []
+  });
 
   useEffect(() => {
     if (open) {
@@ -22,6 +28,13 @@ export default function SpreadsheetSyncDialog({ open, onClose, spreadsheet, onIm
         setStep('sync');
         setSpreadsheetId(spreadsheet.google_sheet_id);
         setSheetName(spreadsheet.google_sheet_name || '');
+        if (spreadsheet.sync_config) {
+          setSyncConfig({
+            auto_sync_interval: spreadsheet.sync_config.auto_sync_interval || 'none',
+            sync_mode: spreadsheet.sync_config.sync_mode || 'overwrite',
+            field_mapping: spreadsheet.sync_config.field_mapping || []
+          });
+        }
         loadSheets(spreadsheet.google_sheet_id);
       } else {
         setStep('connect');
@@ -119,13 +132,13 @@ export default function SpreadsheetSyncDialog({ open, onClose, spreadsheet, onIm
     setLoading(true);
     try {
       if (syncDirection === 'export') {
-        await onExport(spreadsheetId, sheetName);
+        await onExport(spreadsheetId, sheetName, syncConfig.sync_mode);
         toast.success('יוצא ל-Google Sheets בהצלחה');
       } else {
-        await onImport(spreadsheetId, sheetName);
+        await onImport(spreadsheetId, sheetName, syncConfig.sync_mode);
         toast.success('יובא מ-Google Sheets בהצלחה');
       }
-      onSaveLink(spreadsheetId, sheetName);
+      onSaveLink(spreadsheetId, sheetName, syncConfig);
       onClose();
     } catch (e) {
       console.error(e);
@@ -181,51 +194,131 @@ export default function SpreadsheetSyncDialog({ open, onClose, spreadsheet, onIm
 
         {step === 'sync' && (
           <div className="space-y-4 py-4">
-            <div className="p-2 bg-green-50 border border-green-200 rounded text-sm text-green-800 flex items-center gap-2">
+            <div className="p-2 bg-green-50 border border-green-200 rounded text-sm text-green-800 flex items-center gap-2 mb-4">
               <Check className="w-4 h-4" />
-              מחובר לגיליון
-            </div>
-            
-            <div className="space-y-2">
-              <label className="text-sm font-medium">בחר גיליון (Tab)</label>
-              <Select value={sheetName} onValueChange={setSheetName}>
-                <SelectTrigger>
-                  <SelectValue placeholder="בחר..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableSheets.map(s => (
-                    <SelectItem key={s.title} value={s.title}>{s.title}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              מחובר לגיליון Google Sheets
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">כיוון סנכרון</label>
-              <div className="grid grid-cols-2 gap-2">
-                <Button 
-                  variant={syncDirection === 'export' ? 'default' : 'outline'}
-                  onClick={() => setSyncDirection('export')}
-                  className="justify-start"
-                >
-                  <Upload className="w-4 h-4 ml-2" />
-                  ייצוא לגוגל
-                </Button>
-                <Button 
-                  variant={syncDirection === 'import' ? 'default' : 'outline'}
-                  onClick={() => setSyncDirection('import')}
-                  className="justify-start"
-                >
-                  <Download className="w-4 h-4 ml-2" />
-                  ייבוא מגוגל
-                </Button>
-              </div>
-              <p className="text-xs text-slate-500 mt-1">
-                {syncDirection === 'export' 
-                  ? 'הנתונים בטבלה זו ידרוס את הנתונים בגיליון Google שנבחר.' 
-                  : 'הנתונים מגיליון Google יחליפו את הנתונים בטבלה זו.'}
-              </p>
-            </div>
+            <Tabs defaultValue="manual" dir="rtl">
+              <TabsList className="w-full">
+                <TabsTrigger value="manual" className="flex-1">סנכרון ידני</TabsTrigger>
+                <TabsTrigger value="settings" className="flex-1">הגדרות מתקדמות</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="manual" className="space-y-4 pt-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">בחר גיליון (Tab)</label>
+                  <Select value={sheetName} onValueChange={setSheetName}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="בחר..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableSheets.map(s => (
+                        <SelectItem key={s.title} value={s.title}>{s.title}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">כיוון סנכרון</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button 
+                      variant={syncDirection === 'export' ? 'default' : 'outline'}
+                      onClick={() => setSyncDirection('export')}
+                      className="justify-start gap-2"
+                    >
+                      <Upload className="w-4 h-4" />
+                      <div>
+                        <div className="font-semibold text-sm">ייצוא לגוגל</div>
+                        <div className="text-[10px] opacity-70">מכאן ← Google Sheets</div>
+                      </div>
+                    </Button>
+                    <Button 
+                      variant={syncDirection === 'import' ? 'default' : 'outline'}
+                      onClick={() => setSyncDirection('import')}
+                      className="justify-start gap-2"
+                    >
+                      <Download className="w-4 h-4" />
+                      <div>
+                        <div className="font-semibold text-sm">ייבוא מגוגל</div>
+                        <div className="text-[10px] opacity-70">Google Sheets ← לכאן</div>
+                      </div>
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 p-3 rounded text-xs text-slate-600">
+                  <p className="font-semibold mb-1">
+                    {syncDirection === 'export' ? 'אופן הייצוא הנבחר:' : 'אופן הייבוא הנבחר:'}
+                  </p>
+                  <p>
+                    {syncConfig.sync_mode === 'overwrite' && 'דריסה מלאה - מוחק את כל הנתונים ביעד וכותב מחדש.'}
+                    {syncConfig.sync_mode === 'append' && 'הוספה בלבד - מוסיף שורות חדשות בסוף הטבלה.'}
+                    {syncConfig.sync_mode === 'update_existing' && 'עדכון קיים - מעדכן רשומות קיימות ומוסיף חדשות (לפי עמודה ראשונה).'}
+                  </p>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="settings" className="space-y-4 pt-4">
+                <div className="space-y-3">
+                  <h4 className="text-sm font-bold flex items-center gap-2">
+                    <Settings2 className="w-4 h-4 text-slate-500" />
+                    אופן סנכרון
+                  </h4>
+                  <Select 
+                    value={syncConfig.sync_mode} 
+                    onValueChange={(val) => setSyncConfig(prev => ({ ...prev, sync_mode: val }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="overwrite">דריסה מלאה (Overwrite)</SelectItem>
+                      <SelectItem value="append">הוספה בלבד (Append)</SelectItem>
+                      <SelectItem value="update_existing">עדכון חכם (Update/Insert)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-3 pt-2 border-t">
+                  <h4 className="text-sm font-bold flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-slate-500" />
+                    סנכרון אוטומטי
+                  </h4>
+                  <Select 
+                    value={syncConfig.auto_sync_interval} 
+                    onValueChange={(val) => setSyncConfig(prev => ({ ...prev, auto_sync_interval: val }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">ללא (ידני בלבד)</SelectItem>
+                      <SelectItem value="hourly">כל שעה</SelectItem>
+                      <SelectItem value="daily">פעם ביום</SelectItem>
+                      <SelectItem value="on_change">בעת שינוי (On Change)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-slate-500">
+                    * סנכרון אוטומטי יתבצע ברקע בהתאם להגדרות אלו.
+                  </p>
+                </div>
+
+                <div className="space-y-3 pt-2 border-t">
+                  <h4 className="text-sm font-bold flex items-center gap-2">
+                    <ArrowLeftRight className="w-4 h-4 text-slate-500" />
+                    מיפוי שדות (אופציונלי)
+                  </h4>
+                  <p className="text-xs text-slate-500">
+                    מיפוי זה משמש כאשר מסנכרנים נתונים לישויות מערכת (כמו לקוחות).
+                  </p>
+                  <Button variant="outline" size="sm" className="w-full text-xs" disabled>
+                    ערוך מיפוי שדות (בקרוב)
+                  </Button>
+                </div>
+              </TabsContent>
+            </Tabs>
             
             <div className="pt-2 text-center">
                <a 

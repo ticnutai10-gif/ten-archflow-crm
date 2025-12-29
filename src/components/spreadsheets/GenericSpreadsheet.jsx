@@ -1898,7 +1898,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     setPopoverOpen(null);
   };
 
-  const handleExportToGoogle = async (spreadsheetId, sheetName) => {
+  const handleExportToGoogle = async (spreadsheetId, sheetName, syncMode = 'overwrite') => {
     const visibleCols = columns.filter(col => col.visible !== false);
     const headers = visibleCols.map(col => col.title);
     const rows = filteredAndSortedData.map(row => {
@@ -1914,7 +1914,8 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       spreadsheetId,
       sheetName,
       headers,
-      values: rows
+      values: rows,
+      mode: syncMode // 'overwrite', 'append', 'update_existing'
     });
   };
 
@@ -1973,11 +1974,15 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     }
   };
 
-  const handleSaveGoogleLink = async (spreadsheetId, sheetName) => {
-    await base44.entities.CustomSpreadsheet.update(spreadsheet.id, {
+  const handleSaveGoogleLink = async (spreadsheetId, sheetName, syncConfig) => {
+    const updateData = {
       google_sheet_id: spreadsheetId,
       google_sheet_name: sheetName
-    });
+    };
+    if (syncConfig) {
+      updateData.sync_config = syncConfig;
+    }
+    await base44.entities.CustomSpreadsheet.update(spreadsheet.id, updateData);
     if (onUpdate) onUpdate();
   };
 
