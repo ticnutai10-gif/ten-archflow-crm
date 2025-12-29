@@ -114,7 +114,7 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
 
         if (uniqueCreatedBys.length === 0) return;
 
-        const users = await UserEntity.list();
+        const users = await base44.entities.User.list();
         
         // יצירת מיפוי - גם לפי ID וגם לפי מייל
         const mapping = {};
