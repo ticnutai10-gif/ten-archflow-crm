@@ -1926,6 +1926,8 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       sheetName
     });
 
+    console.log('📥 [IMPORT] Google Sheets Data:', data);
+
     if (data.success) {
       // Map headers to existing columns or create new ones
       const importedHeaders = data.headers || [];
@@ -1965,8 +1967,12 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       setColumns(newColumns);
       setRowsData(newRowsData);
       
+      // Update refs immediately to ensure saveToBackend uses new data
+      columnsRef.current = newColumns;
+      rowsDataRef.current = newRowsData;
+      
       setTimeout(() => {
-        saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current, cellNotesRef.current);
+        saveToHistory(newColumns, newRowsData, cellStylesRef.current, cellNotesRef.current);
         saveToBackend();
       }, 100);
     } else {
