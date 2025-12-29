@@ -26,6 +26,7 @@ import StageOptionsManager from "./StageOptionsManager";
 import SpreadsheetSyncDialog from "./SpreadsheetSyncDialog";
 import Collaborators from "./Collaborators";
 import CommentsSidebar from "./CommentsSidebar";
+import SpreadsheetRow from "./SpreadsheetRow"; // IMPORT NEW COMPONENT
 import { FileSpreadsheet } from "lucide-react";
 
 // Default stage options with colors - MUST BE OUTSIDE COMPONENT
@@ -3503,275 +3504,96 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                         filteredAndSortedData.map((row, rowIndex) => {
                           const rowHeight = rowHeights[row.id] || 40;
                           return (
-                            <Draggable key={row.id} draggableId={row.id} index={rowIndex}>
-                              {(provided, snapshot) => (
-                                <tr ref={provided.innerRef} {...provided.draggableProps} className={snapshot.isDragging ? 'opacity-70 shadow-lg' : ''} style={{ height: `${rowHeight}px`, backgroundColor: rowIndex % 2 === 0 ? palette.cellBg : palette.cellAltBg }}>
-                                  <td {...provided.dragHandleProps} className="p-2 cursor-grab sticky right-0 shadow-[2px_0_5px_rgba(0,0,0,0.1)]" style={{ height: `${rowHeight}px`, zIndex: 15, backgroundColor: palette.headerBg, borderWidth: isSeparateBorders ? '0' : borderStyle.width, borderStyle: borderStyle.style, borderColor: palette.border }}>
-                                    <GripVertical className="w-4 h-4 mx-auto" style={{ color: palette.headerText }} />
-                                    <div onMouseDown={(e) => handleRowResizeStart(e, row.id)} className="absolute left-0 right-0 cursor-row-resize" style={{ bottom: '-4px', height: '8px', backgroundColor: resizingRow === row.id ? '#3b82f6' : '#e2e8f0', zIndex: 999, opacity: 0.3 }} />
-                                  </td>
-                                  {visibleColumns.map((column, colIndex) => {
-                                    const cellKey = `${row.id}_${column.key}`;
-                                    const mergeInfo = getMergeInfo(cellKey);
-                                    
-                                    if (mergeInfo && !mergeInfo.isMaster) {
-                                      return null;
-                                    }
-                                    
-                                    const isEditing = editingCell === cellKey;
-                                    const activeUserOnCell = activeCollaborators.find(u => u.focus_cell === cellKey && u.user_email !== currentUser?.email);
-                                    const isSelected = selectedCells.has(cellKey);
-                                    const isClientPicker = showClientPicker === cellKey;
-                                    const cellValue = row[column.key] || '';
-                                    const cellStyle = cellStyles[cellKey] || {};
-                                    const conditionalStyle = getConditionalStyle(column.key, cellValue);
-                                    const finalStyle = { ...conditionalStyle, ...cellStyle };
-                                    const hasNote = cellNotes[cellKey];
-
-                                    return (
-                                      <td 
-                                        key={column.key}
-                                        rowSpan={mergeInfo?.rowspan || 1}
-                                        colSpan={mergeInfo?.colspan || 1}
-                                        className={`cursor-pointer relative ${isSelected ? 'ring-2 ring-purple-500' : ''} ${isClientPicker ? 'ring-2 ring-blue-500' : ''} ${mergeInfo ? 'bg-green-50/50' : ''}`} 
-                                        style={{
-                                          border: activeUserOnCell ? `2px solid ${activeUserOnCell.color}` : undefined,
-                                          backgroundColor: isSelected ? palette.selected : (
-                                            (column.type === 'checkmark' || column.type === 'mixed_check') && cellValue === '✓' ? '#dcfce7' : 
-                                            (column.type === 'checkmark' || column.type === 'mixed_check') && cellValue === '✗' ? '#fee2e2' :
-                                            finalStyle.backgroundColor || (rowIndex % 2 === 0 ? palette.cellBg : palette.cellAltBg)
-                                          ),
-                                          color: finalStyle.color || palette.cellText,
-                                          opacity: finalStyle.opacity ? finalStyle.opacity / 100 : 1,
-                                          fontWeight: finalStyle.fontWeight || 'normal',
-                                          fontFamily: cellFont.value,
-                                          fontSize: cellFontSize,
-                                          padding: cellPadding,
-                                          height: `${rowHeight}px`,
-
-                                          // Freeze Columns Logic
-                                          position: (colIndex < freezeSettings.freeze_columns || rowIndex < freezeSettings.freeze_rows) ? 'sticky' : 'relative',
-                                          right: colIndex < freezeSettings.freeze_columns ? `${stickyColumnOffsets[colIndex]}px` : 'auto',
-                                          top: rowIndex < freezeSettings.freeze_rows ? `${stickyRowOffsets[rowIndex]}px` : 'auto',
-
-                                          // Z-Index Handling for intersections
-                                          zIndex: (colIndex < freezeSettings.freeze_columns && rowIndex < freezeSettings.freeze_rows) ? 20 : 
-                                                  (colIndex < freezeSettings.freeze_columns) ? 10 : 
-                                                  (rowIndex < freezeSettings.freeze_rows) ? 10 : 1,
-
-                                          boxShadow: colIndex === freezeSettings.freeze_columns - 1 ? '-2px 0 5px rgba(0,0,0,0.05)' : 
-                                                     rowIndex === freezeSettings.freeze_rows - 1 ? '0 2px 5px rgba(0,0,0,0.05)' : 'none',
-
-                                          borderWidth: isSeparateBorders ? '0' : borderStyle.width,
-                                          borderStyle: borderStyle.style,
-                                          borderColor: palette.border,
-                                          borderRadius: isSeparateBorders ? tableBorderRadius : '0'
-                                        }} 
-                                        onClick={(e) => !isEditing && (column.type === 'checkmark' ? handleCheckmarkClick(row.id, column.key, e) : handleCellClick(row.id, column.key, e))} 
-                                        onDoubleClick={(e) => handleCellDoubleClick(row.id, column.key, e)}
-                                        onMouseDown={(e) => !isEditing && handleCellMouseDown(row.id, column.key, e)} 
-                                        onMouseEnter={() => handleCellMouseEnter(row.id, column.key)}
-                                      >
-
-                                        {hasNote && (
-                                        <div 
-                                          className="absolute top-0 right-0 w-0 h-0 z-10 cursor-pointer hover:opacity-80 transition-opacity" 
-                                          style={{
-                                            borderTop: '14px solid #f59e0b',
-                                            borderLeft: '14px solid transparent'
-                                          }}
-                                          title={cellNotes[cellKey]}
-                                          onClick={(e) => handleNoteTriangleClick(cellKey, e)}
-                                        />
-                                        )}
-                                        {activeUserOnCell && (
-                                        <div 
-                                          className="absolute -top-3 left-0 z-20 text-[10px] px-1.5 py-0.5 rounded-t text-white shadow-sm whitespace-nowrap pointer-events-none"
-                                          style={{ backgroundColor: activeUserOnCell.color }}
-                                        >
-                                          {activeUserOnCell.user_name}
-                                        </div>
-                                        )}
-                                        {column.type === 'checkmark' ? (
-                                          <div className="flex items-center justify-center text-2xl font-bold select-none">
-                                            {cellValue === '✓' ? <span className="text-green-600">✓</span> : cellValue === '✗' ? <span className="text-red-600">✗</span> : <span className="text-slate-300">○</span>}
-                                          </div>
-                                        ) : column.type === 'mixed_check' ? (
-                                          isEditing ? (
-                                            <Input ref={editInputRef} value={editValue} onChange={(e) => setEditValue(e.target.value)} onBlur={saveEdit} onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') { setEditingCell(null); setEditValue(""); } }} className="h-8" autoFocus dir="rtl" placeholder="V, X או טקסט..." />
-                                          ) : (
-                                            <div className="flex items-center justify-center text-lg font-bold select-none">
-                                              {cellValue === '✓' || cellValue === 'V' || cellValue === 'v' ? (
-                                                <span className="text-green-600 bg-green-50 px-2 py-1 rounded">✓</span>
-                                              ) : cellValue === '✗' || cellValue === 'X' || cellValue === 'x' ? (
-                                                <span className="text-red-600 bg-red-50 px-2 py-1 rounded">✗</span>
-                                              ) : cellValue ? (
-                                                <span className="text-slate-700 text-sm">{String(cellValue)}</span>
-                                              ) : (
-                                                <span className="text-slate-300">○</span>
-                                              )}
-                                            </div>
-                                          )
-                                        ) : column.type === 'stage' ? (
-                                          <div className="flex items-center justify-center">
-                                            <StageDisplay 
-                                              value={cellValue} 
-                                              column={column} 
-                                              isEditing={isEditing} 
-                                              onEdit={(val) => setEditValue(val)} 
-                                              editValue={editValue} 
-                                              onSave={saveEdit} 
-                                              onCancel={() => { setEditingCell(null); setEditValue(""); }} 
-                                              stageOptions={customStageOptions}
-                                              onDirectSave={async (stageValue) => {
-                                                console.log('🟣 [STAGE SAVE] Direct save called with:', stageValue);
-                                                const updatedRows = rowsData.map(r => 
-                                                  r.id === row.id ? { ...r, [column.key]: stageValue } : r
-                                                );
-                                                console.log('🟣 [STAGE SAVE] Updated rows:', updatedRows);
-                                                setRowsData(updatedRows);
-                                                setEditingCell(null);
-                                                setEditValue("");
-                                                rowsDataRef.current = updatedRows;
-                                                
-                                                // Find and update the actual client in the database
-                                                const clientColumns = columnsRef.current.filter(col => 
-                                                  col.type === 'client' || 
-                                                  col.key.toLowerCase().includes('client') || 
-                                                  col.key.toLowerCase().includes('לקוח') ||
-                                                  col.title?.toLowerCase().includes('לקוח') ||
-                                                  col.title?.toLowerCase().includes('client')
-                                                );
-                                                
-                                                if (clientColumns.length > 0) {
-                                                  const clientName = row[clientColumns[0].key];
-                                                  console.log('🔍 [STAGE SAVE] Looking for client:', clientName);
-                                                  
-                                                  if (clientName) {
-                                                    try {
-                                                      const matchingClient = allClients.find(c => 
-                                                        c.name?.toLowerCase() === clientName.toLowerCase()
-                                                      );
-                                                      
-                                                      if (matchingClient) {
-                                                        console.log('✅ [STAGE SAVE] Found client, updating stage:', matchingClient.id, stageValue);
-                                                        await base44.entities.Client.update(matchingClient.id, { stage: stageValue });
-                                                        
-                                                        // Get updated client and dispatch event
-                                                        const updatedClient = await base44.entities.Client.get(matchingClient.id);
-                                                        window.dispatchEvent(new CustomEvent('client:updated', {
-                                                          detail: updatedClient
-                                                        }));
-                                                        console.log('📢 [STAGE SAVE] Client updated and event dispatched');
-                                                      } else {
-                                                        console.log('⚠️ [STAGE SAVE] Client not found in system');
-                                                      }
-                                                    } catch (error) {
-                                                      console.error('❌ [STAGE SAVE] Error updating client:', error);
-                                                    }
-                                                  }
-                                                }
-                                                
-                                                setTimeout(() => {
-                                                  saveToHistory(columnsRef.current, updatedRows, cellStylesRef.current, cellNotesRef.current);
-                                                  saveToBackend();
-                                                }, 50);
-                                                toast.success('✓ שלב עודכן');
-                                              }}
-                                            />
-                                          </div>
-                                        ) : isClientColumn(column) ? (
-                                          <div className="relative group/client">
-                                            {isEditing ? (
-                                              <>
-                                                <Input 
-                                                  ref={editInputRef} 
-                                                  value={editValue} 
-                                                  onChange={(e) => {
-                                                    console.log('🔍 [INPUT] Client input changed:', e.target.value);
-                                                    setEditValue(e.target.value);
-                                                  }} 
-                                                  onBlur={(e) => {
-                                                    console.log('🔍 [INPUT] Input blurred, saving...');
-                                                    setTimeout(() => saveEdit(), 200);
-                                                  }}
-                                                  onKeyDown={(e) => { 
-                                                    if (e.key === 'Enter') {
-                                                      e.preventDefault();
-                                                      console.log('🔍 [INPUT] Enter pressed, saving...');
-                                                      saveEdit();
-                                                    }
-                                                    if (e.key === 'Escape') { 
-                                                      console.log('🔍 [INPUT] Escape pressed, canceling...');
-                                                      setEditingCell(null); 
-                                                      setEditValue(""); 
-                                                    } 
-                                                  }} 
-                                                  className="h-8" 
-                                                  autoFocus 
-                                                  dir="rtl" 
-                                                  placeholder="הקלד שם לקוח..."
-                                                />
-                                              </>
-                                            ) : (
-                                             <div className="flex items-center gap-2 text-sm">
-                                               {(() => {
-                                                 if (!cellValue) return <span className="text-slate-400">הקלד שם...</span>;
-
-                                                 // Find stage column and get stage value for THIS ROW
-                                                 const stageColumn = visibleColumns.find(col => col.type === 'stage');
-                                                 if (stageColumn) {
-                                                   const stageValue = row[stageColumn.key];
-                                                   if (stageValue) {
-                                                     const currentStage = customStageOptions.find(s => s.value === stageValue);
-                                                     if (currentStage) {
-                                                       return (
-                                                         <>
-                                                           <div 
-                                                             className="w-3 h-3 rounded-full flex-shrink-0 animate-pulse"
-                                                             style={{ 
-                                                               backgroundColor: currentStage.color,
-                                                               boxShadow: `0 0 8px ${currentStage.glow}, 0 0 12px ${currentStage.glow}`,
-                                                               border: '1px solid white'
-                                                             }}
-                                                             title={currentStage.label}
-                                                           />
-                                                           <span className="text-slate-900 font-medium">{cellValue}</span>
-                                                         </>
-                                                       );
-                                                     }
-                                                   }
-                                                 }
-
-                                                 // Default: just user icon and name
-                                                 return (
-                                                   <>
-                                                     <Users className="w-4 h-4 text-blue-600 flex-shrink-0" />
-                                                     <span className="text-slate-900 font-medium">{cellValue}</span>
-                                                   </>
-                                                 );
-                                               })()}
-                                             </div>
-                                            )}
-                                          </div>
-                                        ) : isEditing ? (
-                                          <Input ref={editInputRef} value={editValue} onChange={(e) => setEditValue(e.target.value)} onBlur={saveEdit} onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') { setEditingCell(null); setEditValue(""); } }} className="h-8" autoFocus dir="rtl" list={`ac-${column.key}`} />
-                                        ) : (
-                                          <div className="text-sm">{String(cellValue)}</div>
-                                        )}
-                                        <datalist id={`ac-${column.key}`}>{getAutoCompleteSuggestions(column.key).map((s, i) => <option key={i} value={s} />)}</datalist>
-                                      </td>
-                                    );
-                                  })}
-                                  <td className="p-2" style={{ height: `${rowHeight}px`, backgroundColor: rowIndex % 2 === 0 ? palette.cellBg : palette.cellAltBg, borderWidth: isSeparateBorders ? '0' : borderStyle.width, borderStyle: borderStyle.style, borderColor: palette.border }}>
-                                    <div className="flex gap-1 justify-center">
-                                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => duplicateRow(row)}><Copy className="w-3 h-3 text-blue-600" /></Button>
-                                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => deleteRow(row.id)}><Trash2 className="w-3 h-3 text-red-600" /></Button>
-                                    </div>
-                                  </td>
-                                </tr>
-                              )}
-                            </Draggable>
+                            <SpreadsheetRow
+                              key={row.id}
+                              row={row}
+                              rowIndex={rowIndex}
+                              visibleColumns={visibleColumns}
+                              rowHeight={rowHeight}
+                              palette={palette}
+                              cellFont={cellFont}
+                              cellFontSize={cellFontSize}
+                              cellPadding={cellPadding}
+                              isSeparateBorders={isSeparateBorders}
+                              borderStyle={borderStyle}
+                              tableBorderRadius={tableBorderRadius}
+                              freezeSettings={freezeSettings}
+                              stickyColumnOffsets={stickyColumnOffsets}
+                              stickyRowOffsets={stickyRowOffsets}
+                              editingCell={editingCell}
+                              selectedCells={selectedCells}
+                              showClientPicker={showClientPicker}
+                              activeCollaborators={activeCollaborators}
+                              currentUser={currentUser}
+                              cellStyles={cellStyles}
+                              cellNotes={cellNotes}
+                              mergedCells={mergedCells}
+                              customStageOptions={customStageOptions}
+                              allClients={allClients}
+                              editValue={editValue}
+                              getConditionalStyle={getConditionalStyle}
+                              getStageLabel={getStageLabel}
+                              getMergeInfo={getMergeInfo}
+                              isClientColumn={isClientColumn}
+                              getAutoCompleteSuggestions={getAutoCompleteSuggestions}
+                              
+                              onCellClick={handleCellClick}
+                              onCellDoubleClick={handleCellDoubleClick}
+                              onCellMouseDown={handleCellMouseDown}
+                              onCellMouseEnter={handleCellMouseEnter}
+                              onCheckmarkClick={handleCheckmarkClick}
+                              onClientPickerToggle={handleClientPickerToggle}
+                              onNoteTriangleClick={handleNoteTriangleClick}
+                              onDuplicateRow={duplicateRow}
+                              onDeleteRow={deleteRow}
+                              onRowResizeStart={handleRowResizeStart}
+                              
+                              setEditingCell={setEditingCell}
+                              setEditValue={setEditValue}
+                              saveEdit={saveEdit}
+                              editInputRef={editInputRef}
+                              
+                              onDirectSaveStage={async (stageValue, columnKey) => {
+                                // Simplified Direct Save Logic passed as callback
+                                // Re-implemented inline in row component, but we can pass the heavy logic here if needed
+                                // Or better: The row component calls this prop with stageValue
+                                
+                                console.log('🟣 [STAGE SAVE] Direct save called with:', stageValue);
+                                const column = columns.find(c => c.key === columnKey); // We need columnKey passed back
+                                const updatedRows = rowsData.map(r => 
+                                  r.id === row.id ? { ...r, [columnKey]: stageValue } : r
+                                );
+                                setRowsData(updatedRows);
+                                setEditingCell(null);
+                                setEditValue("");
+                                rowsDataRef.current = updatedRows;
+                                
+                                // Client update logic
+                                const clientColumns = columnsRef.current.filter(col => 
+                                  col.type === 'client' || col.key.toLowerCase().includes('client') || col.title?.toLowerCase().includes('לקוח')
+                                );
+                                
+                                if (clientColumns.length > 0) {
+                                  const clientName = row[clientColumns[0].key];
+                                  if (clientName) {
+                                    try {
+                                      const matchingClient = allClients.find(c => c.name?.toLowerCase() === clientName.toLowerCase());
+                                      if (matchingClient) {
+                                        await base44.entities.Client.update(matchingClient.id, { stage: stageValue });
+                                        const updatedClient = await base44.entities.Client.get(matchingClient.id);
+                                        window.dispatchEvent(new CustomEvent('client:updated', { detail: updatedClient }));
+                                      }
+                                    } catch (e) { console.error(e); }
+                                  }
+                                }
+                                
+                                setTimeout(() => {
+                                  saveToHistory(columnsRef.current, updatedRows, cellStylesRef.current, cellNotesRef.current);
+                                  saveToBackend();
+                                }, 50);
+                                toast.success('✓ שלב עודכן');
+                              }}
+                            />
                           );
                         })
                       )}
