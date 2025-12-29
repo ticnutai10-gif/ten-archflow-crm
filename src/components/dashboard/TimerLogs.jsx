@@ -638,6 +638,20 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
           {/* מפריד */}
           <div className="h-6 w-px bg-slate-300"></div>
 
+          {/* מיון */}
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="w-40 h-9" title="מיון">
+              <SelectValue placeholder="מיון לפי" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="log_date">תאריך רישום</SelectItem>
+              <SelectItem value="created_date">תאריך יצירה</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* מפריד */}
+          <div className="h-6 w-px bg-slate-300"></div>
+
           {/* סטטיסטיקות */}
           <Button
             variant={showStats ? "default" : "ghost"}
