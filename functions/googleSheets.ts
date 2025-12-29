@@ -87,7 +87,10 @@ Deno.serve(async (req) => {
     }
 
     // Fallback to Service Account if no OAuth
+    const authErrors = [];
+    
     if (!auth) {
+      authErrors.push("OAuth token missing or invalid");
       log('No OAuth, trying Service Account fallback...');
       let credentials = null;
 
@@ -111,10 +114,13 @@ Deno.serve(async (req) => {
             credentials = JSON.parse(SERVICE_ACCOUNT_JSON);
             log('Parsed service account JSON successfully', { email: credentials?.client_email, hasPrivateKey: !!credentials?.private_key });
           } catch (e) {
-            log('Failed to parse GOOGLE_SERVICE_ACCOUNT_JSON', { error: e.message });
+            const msg = `Failed to parse GOOGLE_SERVICE_ACCOUNT_JSON (Length: ${SERVICE_ACCOUNT_JSON.length}). Possibly truncated. Error: ${e.message}`;
+            log(msg);
+            authErrors.push(msg);
           }
         } else {
           log('GOOGLE_SERVICE_ACCOUNT_JSON env var not found');
+          authErrors.push("GOOGLE_SERVICE_ACCOUNT_JSON env var missing");
         }
       }
 
@@ -129,6 +135,7 @@ Deno.serve(async (req) => {
           log('GoogleAuth created successfully');
         } catch (e) {
           log('Failed to create GoogleAuth', { error: e.message });
+          authErrors.push(`GoogleAuth creation failed: ${e.message}`);
         }
       }
     }
@@ -137,7 +144,7 @@ Deno.serve(async (req) => {
       log('No authentication method available!');
       return Response.json({ 
         success: false, 
-        error: 'לא התקבל קוד אישור מ-Google. נא לחבר את חשבון Google Sheets דרך הגדרות האפליקציה.',
+        error: 'אימות נכשל. ' + authErrors.join('. '),
         debug: debugLogs
       }, { status: 400 });
     }
