@@ -324,13 +324,23 @@ Deno.serve(async (req) => {
           });
         }
 
+        // Update headers to ensure new columns are added
+        if (headers && headers.length > 0) {
+            await sheets.spreadsheets.values.update({
+                spreadsheetId,
+                range: `${sheetName}!A1`,
+                valueInputOption: 'USER_ENTERED',
+                resource: { values: [headers] }
+            });
+        }
+
         return Response.json({ 
           success: true, 
           updatedRows: updates.length, 
           addedRows: newRows.length,
           debug: debugLogs
         });
-      }
+        }
 
       if (range) {
         const response = await sheets.spreadsheets.values.update({
@@ -399,14 +409,41 @@ Deno.serve(async (req) => {
        const remoteHeaders = remoteData.length > 0 ? remoteData[0] : [];
        const remoteRows = remoteData.slice(1);
 
+       // 1.5 Merge Headers (Structure Sync)
+       // Union of local and remote headers to ensure all columns exist
+       const mergedHeaders = [...remoteHeaders];
+       const headerMap = new Map(); // Header Name -> Index in Merged
+       const norm = (v) => String(v || '').trim().toLowerCase(); // Normalize helper defined early
+
+       remoteHeaders.forEach((h, i) => headerMap.set(norm(h), i));
+
+       // Add missing local headers to merged list
+       localHeaders.forEach(h => {
+           if (!headerMap.has(norm(h))) {
+               mergedHeaders.push(h);
+               headerMap.set(norm(h), mergedHeaders.length - 1);
+           }
+       });
+
+       // Update headers in Google Sheet if changed
+       if (mergedHeaders.length > remoteHeaders.length) {
+           log('Updating remote headers with new columns', { count: mergedHeaders.length });
+           await sheets.spreadsheets.values.update({
+               spreadsheetId,
+               range: `${sheetName}!A1`,
+               valueInputOption: 'USER_ENTERED',
+               resource: { values: [mergedHeaders] }
+           });
+       }
+
        // 2. Identify Key Columns for Matching
        // If primaryKeyColumn provided (e.g. 'Email' or 'ID'), find its index in both
        let remoteKeyIdx = -1;
        let localKeyIdx = -1;
 
        if (primaryKeyColumn) {
-           remoteKeyIdx = remoteHeaders.findIndex(h => h.trim().toLowerCase() === primaryKeyColumn.trim().toLowerCase());
-           localKeyIdx = localHeaders.findIndex(h => h.trim().toLowerCase() === primaryKeyColumn.trim().toLowerCase());
+           remoteKeyIdx = remoteHeaders.findIndex(h => norm(h) === norm(primaryKeyColumn));
+           localKeyIdx = localHeaders.findIndex(h => norm(h) === norm(primaryKeyColumn));
        }
 
        // If no key found, we might fallback to index-based (risky) or just Append-Only
@@ -421,11 +458,25 @@ Deno.serve(async (req) => {
        let rowsUpdated = 0;
        let conflicts = 0;
 
-       // Helper to normalize cell value for comparison
-       const norm = (v) => String(v || '').trim();
+       // Helper to align row to merged headers
+       const alignRow = (row, sourceHeaders) => {
+           const newRow = new Array(mergedHeaders.length).fill('');
+           sourceHeaders.forEach((h, i) => {
+               const targetIdx = headerMap.get(norm(h));
+               if (targetIdx !== undefined && row[i] !== undefined) {
+                   newRow[targetIdx] = row[i];
+               }
+           });
+           return newRow;
+       };
+
        const isDifferent = (arr1, arr2) => {
-           if (arr1.length !== arr2.length) return true;
-           return arr1.some((val, i) => norm(val) !== norm(arr2[i]));
+           // Compare only up to the length of existing data to avoid false positives on empty trailing cells
+           const len = Math.max(arr1.length, arr2.length);
+           for(let i=0; i<len; i++) {
+               if (norm(arr1[i]) !== norm(arr2[i])) return true;
+           }
+           return false;
        };
 
        if (remoteKeyIdx !== -1 && localKeyIdx !== -1) {
@@ -452,31 +503,33 @@ Deno.serve(async (req) => {
                const rRow = remoteMap.get(key);
                const lRow = localMap.get(key);
 
-               if (rRow && lRow) {
-                   // Conflict?
-                   // Determine which one changed? 
-                   // Without timestamps, we assume Remote is Truth OR we can check length
-                   // Strategy: Prefer Remote for existing fields, but if Remote is empty and Local has data, take Local.
+               // Align rows to merged headers
+               const alignedRRow = rRow ? alignRow(rRow, remoteHeaders) : null;
+               const alignedLRow = lRow ? alignRow(lRow, localHeaders) : null;
 
-                   // Simple merge: Remote overwrites Local (safer for "Import")
-                   // But for "Two-Way", if they differ, we need a policy.
-                   // Let's use: Remote Wins on conflict.
-
-                   if (isDifferent(rRow, lRow)) {
+               if (alignedRRow && alignedLRow) {
+                   // Conflict Resolution: Remote Wins, but keep Local values for new columns (if Remote is empty there)
+                   if (isDifferent(alignedRRow, alignedLRow)) {
                       conflicts++;
-                      mergedRows.push(rRow); // Remote wins
-                      // We don't push update to remote here because remote won
+                      const mergedRow = [...alignedRRow];
+                      // Fill gaps in remote row from local row (for new columns)
+                      for(let i=0; i<mergedRow.length; i++) {
+                          if (!mergedRow[i] && alignedLRow[i]) mergedRow[i] = alignedLRow[i];
+                      }
+                      mergedRows.push(mergedRow);
+
+                      // Optionally update remote here? For simplicity we won't patch existing rows in remote, only append new ones
                    } else {
-                      mergedRows.push(rRow); // Same
+                      mergedRows.push(alignedRRow);
                    }
-               } else if (rRow && !lRow) {
+               } else if (alignedRRow && !alignedLRow) {
                    // New in Remote -> Add to Local
-                   mergedRows.push(rRow);
+                   mergedRows.push(alignedRRow);
                    rowsAdded++;
-               } else if (!rRow && lRow) {
+               } else if (!alignedRRow && alignedLRow) {
                    // New in Local -> Add to Remote
-                   mergedRows.push(lRow);
-                   updatesToRemote.push(lRow); // Will append
+                   mergedRows.push(alignedLRow);
+                   updatesToRemote.push(alignedLRow); // Will append
                    rowsAdded++;
                }
            }
@@ -491,7 +544,7 @@ Deno.serve(async (req) => {
                });
            }
 
-       } else {
+           } else {
            // --- INDEX/APPEND MERGE (No Key) ---
            // If headers match, we assume row N corresponds to row N
            log('Performing Index-Based Merge (No Key)');
@@ -502,22 +555,30 @@ Deno.serve(async (req) => {
                const rRow = remoteRows[i];
                const lRow = localRows[i];
 
-               if (rRow && lRow) {
-                   if (isDifferent(rRow, lRow)) {
+               // Align
+               const alignedRRow = rRow ? alignRow(rRow, remoteHeaders) : null;
+               const alignedLRow = lRow ? alignRow(lRow, localHeaders) : null;
+
+               if (alignedRRow && alignedLRow) {
+                   if (isDifferent(alignedRRow, alignedLRow)) {
                        conflicts++;
-                       mergedRows.push(rRow); // Remote wins
+                       const mergedRow = [...alignedRRow];
+                       for(let j=0; j<mergedRow.length; j++) {
+                           if (!mergedRow[j] && alignedLRow[j]) mergedRow[j] = alignedLRow[j];
+                       }
+                       mergedRows.push(mergedRow); 
                    } else {
-                       mergedRows.push(rRow);
+                       mergedRows.push(alignedRRow);
                    }
-               } else if (rRow) {
-                   mergedRows.push(rRow); // New in Remote
+               } else if (alignedRRow) {
+                   mergedRows.push(alignedRRow); // New in Remote
                    rowsAdded++;
-               } else if (lRow) {
-                   mergedRows.push(lRow); // New in Local
+               } else if (alignedLRow) {
+                   mergedRows.push(alignedLRow); // New in Local
                    // We need to update Remote at this specific index or append?
                    // If we are at index i > remoteRows.length, it's an append.
                    if (i >= remoteRows.length) {
-                       updatesToRemote.push(lRow);
+                       updatesToRemote.push(alignedLRow);
                    }
                }
            }
@@ -530,12 +591,12 @@ Deno.serve(async (req) => {
                   resource: { values: updatesToRemote }
                });
            }
-       }
+           }
 
-       // Log Sync
-       try {
-          const duration = Date.now() - startTime;
-          await base44.asServiceRole.entities.SyncLog.create({
+           // Log Sync
+           try {
+           const duration = Date.now() - startTime;
+           await base44.asServiceRole.entities.SyncLog.create({
               spreadsheet_id: spreadsheetId,
               spreadsheet_name: sheetName,
               status: 'success',
@@ -545,18 +606,19 @@ Deno.serve(async (req) => {
               conflicts: conflicts,
               duration_ms: duration,
               triggered_by: user.email,
-              details: `Merged ${localRows.length} local with ${remoteRows.length} remote rows.`
-          });
-       } catch(e) { console.error('Failed to write sync log', e); }
+              details: `Merged ${localRows.length} local with ${remoteRows.length} remote rows. Added ${mergedHeaders.length - remoteHeaders.length} columns.`
+           });
+           } catch(e) { console.error('Failed to write sync log', e); }
 
-       return Response.json({ 
+           return Response.json({ 
            success: true, 
            mergedData: mergedRows,
+           mergedHeaders: mergedHeaders,
            rowsAdded,
            conflicts,
            debug: debugLogs 
-       });
-    }
+           });
+           }
 
     return Response.json({ success: false, error: 'Unknown action', debug: debugLogs });
 

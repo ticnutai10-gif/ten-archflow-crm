@@ -1980,14 +1980,72 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       });
     });
 
-    await base44.functions.invoke('googleSheets', {
-      action: 'update',
-      spreadsheetId,
-      sheetName,
-      headers,
-      values: rows,
-      mode: syncMode // 'overwrite', 'append', 'update_existing'
-    });
+    if (syncMode === 'two_way_sync') {
+      const { data } = await base44.functions.invoke('googleSheets', {
+        action: 'twoWaySync',
+        spreadsheetId,
+        sheetName,
+        localHeaders: headers,
+        localRows: rows,
+        primaryKeyColumn: visibleCols[0]?.title // Assuming first column is key/ID
+      });
+
+      if (data.success && data.mergedData) {
+        // Handle merged data update
+        const mergedHeaders = data.mergedHeaders || headers;
+        const mergedRows = data.mergedData;
+
+        // Update columns structure if new headers appeared
+        const newColumns = [...columns];
+        const colMapping = [];
+        
+        mergedHeaders.forEach((header, index) => {
+          const existingCol = newColumns.find(c => c.title === header);
+          if (existingCol) {
+            colMapping[index] = existingCol.key;
+          } else {
+            const newKey = `col_${Date.now()}_${index}`;
+            newColumns.push({
+              key: newKey,
+              title: header,
+              width: '150px',
+              type: 'text',
+              visible: true
+            });
+            colMapping[index] = newKey;
+          }
+        });
+
+        // Rebuild rows data
+        const newRowsData = mergedRows.map((row, rIndex) => {
+          const newRow = { id: `row_${Date.now()}_${rIndex}` };
+          row.forEach((cellVal, cIndex) => {
+            const key = colMapping[cIndex];
+            if (key) newRow[key] = cellVal;
+          });
+          return newRow;
+        });
+
+        setColumns(newColumns);
+        setRowsData(newRowsData);
+        columnsRef.current = newColumns;
+        rowsDataRef.current = newRowsData;
+        
+        setTimeout(() => {
+          saveToHistory(newColumns, newRowsData, cellStylesRef.current, cellNotesRef.current);
+          saveToBackend();
+        }, 100);
+      }
+    } else {
+      await base44.functions.invoke('googleSheets', {
+        action: 'update',
+        spreadsheetId,
+        sheetName,
+        headers,
+        values: rows,
+        mode: syncMode // 'overwrite', 'append', 'update_existing'
+      });
+    }
   };
 
   const handleImportFromGoogle = async (spreadsheetId, sheetName) => {
