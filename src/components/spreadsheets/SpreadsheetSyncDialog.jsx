@@ -38,6 +38,46 @@ export default function SpreadsheetSyncDialog({ open, onClose, spreadsheet, onIm
     field_mapping: []
   });
 
+  const [manualField, setManualField] = useState("");
+  const [manualColumn, setManualColumn] = useState("");
+
+  const handleClearMapping = () => {
+    if (confirm('האם לנקות את כל המיפויים?')) {
+      setSyncConfig(prev => ({ ...prev, field_mapping: [] }));
+      toast.success('המיפוי נוקה');
+    }
+  };
+
+  const handleAddManualMapping = () => {
+    if (!manualField) {
+      toast.error('נא לבחור שדה');
+      return;
+    }
+    if (!manualColumn.trim()) {
+      toast.error('נא להזין שם עמודה');
+      return;
+    }
+
+    if (syncConfig.field_mapping.some(m => m.entity_field === manualField)) {
+      toast.error('שדה זה כבר ממופה');
+      return;
+    }
+
+    setSyncConfig(prev => ({
+      ...prev,
+      field_mapping: [...prev.field_mapping, {
+        entity_field: manualField,
+        sheet_column: manualColumn.trim(),
+        entity_type: 'client',
+        is_new: !sheetHeaders.includes(manualColumn.trim())
+      }]
+    }));
+
+    setManualField("");
+    setManualColumn("");
+    toast.success('מיפוי נוסף');
+  };
+
   useEffect(() => {
     // Load Custom Fields
     const loadCustomFields = async () => {
@@ -462,16 +502,22 @@ export default function SpreadsheetSyncDialog({ open, onClose, spreadsheet, onIm
                 {/* Field Mapping UI */}
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <h4 className="font-bold flex items-center gap-2 text-slate-800">
-                        <div className="p-1.5 bg-blue-100 rounded text-blue-700">
-                          <ArrowLeftRight className="w-4 h-4" />
-                        </div>
-                        מיפוי שדות
-                    </h4>
+                  <h4 className="font-bold flex items-center gap-2 text-slate-800">
+                      <div className="p-1.5 bg-blue-100 rounded text-blue-700">
+                        <ArrowLeftRight className="w-4 h-4" />
+                      </div>
+                      מיפוי שדות
+                  </h4>
+                  <div className="flex gap-2">
+                    <Button variant="ghost" size="sm" onClick={handleClearMapping} className="text-red-600 hover:bg-red-50">
+                        <Trash2 className="w-4 h-4 ml-2" />
+                        נקה הכל
+                    </Button>
                     <Button variant="ghost" size="sm" onClick={handleAutoMap} className="text-blue-600 hover:bg-blue-50">
                         <RefreshCw className="w-4 h-4 ml-2" />
                         מיפוי אוטומטי
                     </Button>
+                  </div>
                   </div>
 
                   <div className="border rounded-xl overflow-hidden shadow-sm bg-white">
@@ -521,40 +567,54 @@ export default function SpreadsheetSyncDialog({ open, onClose, spreadsheet, onIm
                       </div>
                   </div>
 
-                  <div className="flex gap-2">
-                      <Select 
-                        onValueChange={(val) => {
-                            const label = SYSTEM_FIELDS.find(f => f.value === val)?.label || 
-                                          customFields.find(f => `custom_data.${f.key}` === val)?.label;
-                            
-                            // Check if already mapped
-                            if (syncConfig.field_mapping.some(m => m.entity_field === val)) return;
+                  <div className="flex gap-2 items-end p-3 bg-slate-50 rounded-xl border border-slate-200">
+                      <div className="flex-1 space-y-1">
+                        <label className="text-xs font-medium text-slate-500">שדה במערכת</label>
+                        <Select 
+                          value={manualField} 
+                          onValueChange={(val) => {
+                            setManualField(val);
+                            // Auto-fill column name if empty
+                            if (!manualColumn) {
+                              const label = SYSTEM_FIELDS.find(f => f.value === val)?.label || 
+                                            customFields.find(f => `custom_data.${f.key}` === val)?.label;
+                              setManualColumn(label || '');
+                            }
+                          }}
+                        >
+                            <SelectTrigger className="h-9 bg-white">
+                                <SelectValue placeholder="בחר שדה..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <div className="p-1 text-xs font-semibold text-slate-500">שדות מערכת</div>
+                                {SYSTEM_FIELDS.map(f => (
+                                    <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+                                ))}
+                                <div className="p-1 text-xs font-semibold text-slate-500 mt-1">שדות מותאמים</div>
+                                {customFields.map(f => (
+                                    <SelectItem key={f.key} value={`custom_data.${f.key}`}>{f.label}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="flex-1 space-y-1">
+                        <label className="text-xs font-medium text-slate-500">עמודה ב-Google Sheet</label>
+                        <Input 
+                          value={manualColumn}
+                          onChange={(e) => setManualColumn(e.target.value)}
+                          placeholder="שם העמודה..."
+                          className="h-9 bg-white"
+                        />
+                      </div>
 
-                            setSyncConfig(prev => ({
-                                ...prev,
-                                field_mapping: [...prev.field_mapping, {
-                                    entity_field: val,
-                                    sheet_column: label,
-                                    entity_type: 'client',
-                                    is_new: !sheetHeaders.includes(label)
-                                }]
-                            }));
-                        }}
+                      <Button 
+                        onClick={handleAddManualMapping}
+                        className="h-9 bg-blue-600 hover:bg-blue-700"
+                        disabled={!manualField || !manualColumn}
                       >
-                          <SelectTrigger className="flex-1 h-10">
-                              <SelectValue placeholder="הוסף שדה למיפוי..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                              <div className="p-1 text-xs font-semibold text-slate-500">שדות מערכת</div>
-                              {SYSTEM_FIELDS.map(f => (
-                                  <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
-                              ))}
-                              <div className="p-1 text-xs font-semibold text-slate-500 mt-1">שדות מותאמים</div>
-                              {customFields.map(f => (
-                                  <SelectItem key={f.key} value={`custom_data.${f.key}`}>{f.label}</SelectItem>
-                              ))}
-                          </SelectContent>
-                      </Select>
+                        <Plus className="w-4 h-4" />
+                      </Button>
                   </div>
 
                   {syncConfig.field_mapping.some(m => m.is_new) && (
