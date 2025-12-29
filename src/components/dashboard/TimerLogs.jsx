@@ -350,8 +350,18 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
       }
 
       return matchesSearch && matchesClient && matchesUser && matchesTime;
+    }).sort((a, b) => {
+      if (sortBy === 'created_date') {
+        const dateA = new Date(a.created_date || 0);
+        const dateB = new Date(b.created_date || 0);
+        return dateB - dateA;
+      }
+      // default: log_date
+      const dateA = new Date(a.log_date || 0);
+      const dateB = new Date(b.log_date || 0);
+      return dateB - dateA;
     });
-  }, [safeTimeLogs, searchTerm, clientFilter, userFilter, timeFilter]);
+  }, [safeTimeLogs, searchTerm, clientFilter, userFilter, timeFilter, sortBy]);
 
   // ✅ הגנה על totalTime
   const totalTime = React.useMemo(() => {
