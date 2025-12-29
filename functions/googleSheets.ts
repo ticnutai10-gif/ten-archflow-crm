@@ -362,6 +362,19 @@ Deno.serve(async (req) => {
             }
           });
           
+          // Log success
+          try {
+             await base44.asServiceRole.entities.SyncLog.create({
+                spreadsheet_id: spreadsheetId,
+                spreadsheet_name: sheetName,
+                status: 'success',
+                direction: 'export',
+                rows_synced: values.length,
+                triggered_by: user.email,
+                details: `Exported ${values.length} rows (${mode})`
+             });
+          } catch(e) { console.error('Log error', e); }
+
           return Response.json({ success: true, updatedCells: response.data.updatedCells, debug: debugLogs });
         }
       } 

@@ -2798,33 +2798,59 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                 תגובות
               </Button>
 
-              <Button 
-                onClick={() => setShowSyncDialog(true)} 
-                size="sm" 
-                variant={spreadsheet.sync_config?.auto_sync_interval !== 'none' && spreadsheet.sync_config?.sync_direction === 'two_way' ? "default" : "outline"} 
-                className={`gap-2 border-green-200 ${
-                  spreadsheet.sync_config?.auto_sync_interval !== 'none' && spreadsheet.sync_config?.sync_direction === 'two_way'
-                    ? "bg-green-600 hover:bg-green-700 text-white animate-pulse-subtle shadow-md shadow-green-200" 
-                    : "hover:bg-green-50 text-slate-700"
-                }`}
-              >
-                {spreadsheet.sync_config?.auto_sync_interval !== 'none' && spreadsheet.sync_config?.sync_direction === 'two_way' ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 animate-spin-slow" />
-                    סנכרון דו-כיווני פעיל
-                  </>
-                ) : spreadsheet.sync_config?.auto_sync_interval !== 'none' ? (
-                  <>
-                    <ArrowUp className="w-4 h-4 text-green-600" />
-                    סנכרון אוטומטי
-                  </>
-                ) : (
-                  <>
-                    <FileSpreadsheet className="w-4 h-4 text-green-600" />
-                    {spreadsheet.google_sheet_id ? 'סנכרון Google' : 'חבר ל-Google Sheets'}
-                  </>
-                )}
-              </Button>
+              {/* Sync Status Indicators */}
+              {spreadsheet?.google_sheet_id ? (
+                <div className="flex items-center bg-white border border-slate-200 rounded-lg p-0.5 shadow-sm mr-2">
+                   <div className="flex items-center px-2 py-1 gap-1.5 border-l border-slate-100">
+                       <div className={`w-2 h-2 rounded-full ${
+                           spreadsheet.sync_config?.auto_sync_interval !== 'none' ? 'bg-green-500 animate-pulse' : 'bg-slate-300'
+                       }`} title={spreadsheet.sync_config?.auto_sync_interval !== 'none' ? 'סנכרון אוטומטי פעיל' : 'סנכרון ידני'} />
+                       
+                       {spreadsheet.sync_config?.sync_direction === 'two_way' ? (
+                           <ArrowUpDown className="w-3.5 h-3.5 text-blue-600" title="סנכרון דו-כיווני" />
+                       ) : spreadsheet.sync_config?.sync_direction === 'import_on_load' ? (
+                           <ArrowDown className="w-3.5 h-3.5 text-orange-600" title="ייבוא בלבד" />
+                       ) : (
+                           <ArrowUp className="w-3.5 h-3.5 text-green-600" title="ייצוא בלבד" />
+                       )}
+                   </div>
+   
+                   <Button
+                       variant="ghost"
+                       size="sm"
+                       className="h-7 px-2 hover:bg-slate-100 text-slate-600 gap-1.5 rounded-md"
+                       onClick={() => {
+                           const mode = spreadsheet.sync_config?.sync_direction || 'export_only';
+                           if (mode === 'import_on_load') handleImportFromGoogle(spreadsheet.google_sheet_id, spreadsheet.google_sheet_name);
+                           else if (mode === 'two_way') handleImportFromGoogle(spreadsheet.google_sheet_id, spreadsheet.google_sheet_name, 'two_way');
+                           else handleExportToGoogle(spreadsheet.google_sheet_id, spreadsheet.google_sheet_name);
+                       }}
+                       title="סנכרון מהיר עכשיו"
+                   >
+                       <RefreshCw className="w-3.5 h-3.5" />
+                   </Button>
+   
+                   <Button
+                       variant="ghost"
+                       size="sm"
+                       className="h-7 px-2 hover:bg-slate-100 text-slate-400 hover:text-slate-700 rounded-md"
+                       onClick={() => setShowSyncDialog(true)}
+                       title="הגדרות סנכרון"
+                   >
+                       <Settings className="w-3.5 h-3.5" />
+                   </Button>
+                </div>
+              ) : (
+                <Button
+                   variant="outline"
+                   size="sm"
+                   onClick={() => setShowSyncDialog(true)}
+                   className="gap-2"
+                 >
+                   <RefreshCw className="w-4 h-4" />
+                   חיבור ל-Google Sheets
+                 </Button>
+              )}
               
               <Popover>
                 <PopoverTrigger asChild>
