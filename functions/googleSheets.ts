@@ -66,77 +66,78 @@ Deno.serve(async (req) => {
          return Response.json({ success: true, email });
     }
 
-    // Get authentication - Try OAuth App Connector FIRST (this is the authorized one)
+    // Get authentication
     let auth = null;
     let authMethod = 'none';
-    
-    try {
-      log('Trying OAuth App Connector for googlesheets...');
-      const accessToken = await base44.asServiceRole.connectors.getAccessToken("googlesheets");
-      if (accessToken) {
-        log('OAuth token received from App Connector', { tokenLength: accessToken?.length });
-        const oauth2Client = new google.auth.OAuth2();
-        oauth2Client.setCredentials({ access_token: accessToken });
-        auth = oauth2Client;
-        authMethod = 'oauth_connector';
-      } else {
-        log('OAuth token is null/empty');
-      }
-    } catch (e) {
-      log('OAuth connector failed', { error: e.message });
-    }
-
-    // Fallback to Service Account if no OAuth
     const authErrors = [];
-    
-    if (!auth) {
-      authErrors.push("OAuth token missing or invalid");
-      log('No OAuth, trying Service Account fallback...');
-      let credentials = null;
 
-      // 1. Check AppSettings
-      log('Checking AppSettings for service account...');
-      const settings = await base44.asServiceRole.entities.AppSettings.filter({ setting_key: 'google_service_account' });
-      if (settings && settings.length > 0) {
-         credentials = settings[0].value;
-         log('Found service account in AppSettings', { email: credentials?.client_email });
-      } else {
-         log('No service account in AppSettings');
-      }
+    // 1. Check AppSettings (User Manual Override) - HIGHEST PRIORITY
+    log('Checking AppSettings for service account...');
+    const settings = await base44.asServiceRole.entities.AppSettings.filter({ setting_key: 'google_service_account' });
+    if (settings && settings.length > 0) {
+       const credentials = settings[0].value;
+       log('Found service account in AppSettings', { email: credentials?.client_email });
 
-      // 2. Check Env Var
-      if (!credentials) {
-        log('Checking GOOGLE_SERVICE_ACCOUNT_JSON env var...');
-        const SERVICE_ACCOUNT_JSON = Deno.env.get("GOOGLE_SERVICE_ACCOUNT_JSON");
-        if (SERVICE_ACCOUNT_JSON) {
-          log('Found GOOGLE_SERVICE_ACCOUNT_JSON env var', { length: SERVICE_ACCOUNT_JSON.length });
-          try {
-            credentials = JSON.parse(SERVICE_ACCOUNT_JSON);
-            log('Parsed service account JSON successfully', { email: credentials?.client_email, hasPrivateKey: !!credentials?.private_key });
-          } catch (e) {
-            const msg = `Failed to parse GOOGLE_SERVICE_ACCOUNT_JSON (Length: ${SERVICE_ACCOUNT_JSON.length}). Possibly truncated. Error: ${e.message}`;
-            log(msg);
-            authErrors.push(msg);
-          }
-        } else {
-          log('GOOGLE_SERVICE_ACCOUNT_JSON env var not found');
-          authErrors.push("GOOGLE_SERVICE_ACCOUNT_JSON env var missing");
-        }
-      }
-
-      if (credentials) {
-        log('Creating GoogleAuth with service account credentials...');
-        try {
+       try {
           auth = new google.auth.GoogleAuth({
             credentials,
             scopes: ['https://www.googleapis.com/auth/spreadsheets'],
           });
-          authMethod = 'service_account';
-          log('GoogleAuth created successfully');
+          authMethod = 'service_account_manual';
+          log('GoogleAuth created successfully from AppSettings');
         } catch (e) {
-          log('Failed to create GoogleAuth', { error: e.message });
-          authErrors.push(`GoogleAuth creation failed: ${e.message}`);
+          log('Failed to create GoogleAuth from AppSettings', { error: e.message });
+          authErrors.push(`Manual Service Account failed: ${e.message}`);
         }
+    } else {
+       log('No service account in AppSettings');
+    }
+
+    // 2. Try OAuth App Connector if no manual service account
+    if (!auth) {
+        try {
+          log('Trying OAuth App Connector for googlesheets...');
+          const accessToken = await base44.asServiceRole.connectors.getAccessToken("googlesheets");
+          if (accessToken) {
+            log('OAuth token received from App Connector', { tokenLength: accessToken?.length });
+            const oauth2Client = new google.auth.OAuth2();
+            oauth2Client.setCredentials({ access_token: accessToken });
+            auth = oauth2Client;
+            authMethod = 'oauth_connector';
+          } else {
+            log('OAuth token is null/empty');
+            authErrors.push("OAuth token missing");
+          }
+        } catch (e) {
+          log('OAuth connector failed', { error: e.message });
+          authErrors.push(`OAuth failed: ${e.message}`);
+        }
+    }
+
+    // 3. Fallback to Env Var Service Account
+    if (!auth) {
+      log('No Auth yet, checking GOOGLE_SERVICE_ACCOUNT_JSON env var...');
+      const SERVICE_ACCOUNT_JSON = Deno.env.get("GOOGLE_SERVICE_ACCOUNT_JSON");
+      if (SERVICE_ACCOUNT_JSON) {
+        log('Found GOOGLE_SERVICE_ACCOUNT_JSON env var', { length: SERVICE_ACCOUNT_JSON.length });
+        try {
+          const credentials = JSON.parse(SERVICE_ACCOUNT_JSON);
+          log('Parsed service account JSON successfully', { email: credentials?.client_email });
+
+          auth = new google.auth.GoogleAuth({
+              credentials,
+              scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+          });
+          authMethod = 'service_account_env';
+          log('GoogleAuth created successfully from Env Var');
+        } catch (e) {
+          const msg = `Failed to parse GOOGLE_SERVICE_ACCOUNT_JSON (Length: ${SERVICE_ACCOUNT_JSON.length}). Possibly truncated. Error: ${e.message}`;
+          log(msg);
+          authErrors.push(msg);
+        }
+      } else {
+        log('GOOGLE_SERVICE_ACCOUNT_JSON env var not found');
+        authErrors.push("GOOGLE_SERVICE_ACCOUNT_JSON env var missing");
       }
     }
 
