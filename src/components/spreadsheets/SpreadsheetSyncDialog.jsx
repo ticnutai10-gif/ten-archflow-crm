@@ -87,9 +87,32 @@ export default function SpreadsheetSyncDialog({ open, onClose, spreadsheet, onIm
     }
   };
 
+  const runDiagnostics = async () => {
+    setLoading(true);
+    try {
+      toast.info('מריץ בדיקות אבחון...');
+      const { data } = await base44.functions.invoke('testGoogleSheets', {});
+      console.log('=== DIAGNOSTICS RESULTS ===');
+      console.log(JSON.stringify(data, null, 2));
+      data.steps?.forEach(step => {
+        console.log(`[${step.status}] ${step.step}:`, step.data);
+      });
+      toast.success('בדיקות הסתיימו - בדוק את הקונסול');
+      return data;
+    } catch (e) {
+      console.error('Diagnostics error:', e);
+      toast.error('שגיאה בהרצת בדיקות');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const loadSheets = async (id) => {
     setLoading(true);
     try {
+      // First run diagnostics
+      await runDiagnostics();
+      
       const { data } = await base44.functions.invoke('googleSheets', {
         action: 'getSheets',
         spreadsheetId: id
