@@ -179,7 +179,7 @@ export function StageDisplay({ value, column, isEditing, onEdit, editValue, onSa
   return Badge;
 }
 
-export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMode = false, filterByClient = null, onBack = null }) {
+export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMode = false, filterByClient = null, onBack = null, onNavigate = null }) {
   const [columns, setColumns] = useState([]);
   const [rowsData, setRowsData] = useState([]);
   const [editingCell, setEditingCell] = useState(null);
@@ -480,39 +480,38 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     const existingEntity = relatedEntities.find(e => e.google_sheet_name === sheetName);
     
     if (existingEntity) {
-      // Switch to existing entity
-      const url = createPageUrl(`SpreadsheetDetails?id=${existingEntity.id}`);
-      // Use history.pushState if possible to avoid reload, or location.href if not
-      // But since we are likely inside a generic component, let's use window.location.href BUT
-      // the parent should ideally handle this.
-      // However, to fix "spinning" (reload), we should check if we can use client-side navigation.
-      // Since we don't have navigate prop, we'll try to dispatch a custom event or just use window.location
-      // BUT if the spinning is due to slow backend, we should show a loader.
-      
-      // Let's use a smoother transition if possible or at least show loading
       setLoadingTabs(true);
-      window.location.href = url;
+      const targetUrl = `SpreadsheetDetails?id=${existingEntity.id}`;
+      if (onNavigate) {
+        onNavigate(targetUrl);
+      } else {
+        window.location.href = createPageUrl(targetUrl);
+      }
     } else {
-      // Create new entity for this sheet
       setLoadingTabs(true);
       try {
         const newEntity = await base44.entities.CustomSpreadsheet.create({
-          name: `${spreadsheet.name}`, // Keep original name or append sheet name
+          name: `${spreadsheet.name}`,
           description: `Linked to sheet: ${sheetName}`,
           client_id: spreadsheet.client_id,
           client_name: spreadsheet.client_name,
           google_sheet_id: spreadsheet.google_sheet_id,
           google_sheet_name: sheetName,
-          columns: [], // Will be auto-filled on import
+          columns: [],
           rows_data: [],
           sync_config: {
             ...spreadsheet.sync_config,
-            sync_direction: 'import_on_load' // Default to import so we get data
+            sync_direction: 'import_on_load'
           }
         });
         
         toast.success('גיליון חדש נוצר במערכת!');
-        window.location.href = createPageUrl(`SpreadsheetDetails?id=${newEntity.id}`);
+        const targetUrl = `SpreadsheetDetails?id=${newEntity.id}`;
+        if (onNavigate) {
+          onNavigate(targetUrl);
+        } else {
+          window.location.href = createPageUrl(targetUrl);
+        }
       } catch (e) {
         console.error('Error creating linked sheet:', e);
         toast.error('שגיאה ביצירת גיליון חדש');

@@ -78,6 +78,7 @@ export default function SpreadsheetDetailsPage() {
             spreadsheet={spreadsheet}
             onUpdate={null}
             fullScreenMode={true}
+            onNavigate={(url) => navigate(url)}
           />
         )}
       </div>
