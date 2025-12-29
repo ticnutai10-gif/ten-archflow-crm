@@ -198,6 +198,7 @@ export default function SpreadsheetSyncDialog({ open, onClose, spreadsheet, onIm
         // Fallback: If no sheet selected or selected sheet doesn't exist, pick the first one
         if (!targetSheet || !sheetTitles.includes(targetSheet)) {
             const defaultSheet = sheetTitles[0];
+            // Don't warn if it's just the first load and nothing was selected yet
             if (targetSheet && !sheetTitles.includes(targetSheet)) {
                  toast.warning(`הגיליון "${targetSheet}" לא נמצא ב-Google Sheets. נבחר אוטומטית "${defaultSheet}".`);
             }
@@ -206,8 +207,12 @@ export default function SpreadsheetSyncDialog({ open, onClose, spreadsheet, onIm
 
         setSheetName(targetSheet);
         setStep('sync');
-        onSaveLink(id, targetSheet);
-        
+
+        // Only save if it's different from what we had (avoid unnecessary updates)
+        if (targetSheet !== spreadsheet.google_sheet_name) {
+            onSaveLink(id, targetSheet);
+        }
+
         // Fetch headers for the selected/default sheet
         if (targetSheet) {
             loadHeaders(id, targetSheet);

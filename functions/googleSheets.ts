@@ -207,6 +207,9 @@ Deno.serve(async (req) => {
         readRange = sheetName;
       }
 
+      // Log start of import
+      const startTime = Date.now();
+
       // Check if metadata is requested
       const includeMetadata = payload.includeMetadata;
 
@@ -291,6 +294,20 @@ Deno.serve(async (req) => {
           const headerRow = rows.length > 0 ? rows[0] : [];
           const dataRows = rows.slice(1);
 
+          // Log success
+          try {
+             await base44.asServiceRole.entities.SyncLog.create({
+                spreadsheet_id: spreadsheetId,
+                spreadsheet_name: sheetName,
+                status: 'success',
+                direction: 'import',
+                rows_synced: dataRows.length,
+                duration_ms: Date.now() - startTime,
+                triggered_by: user.email,
+                details: `Imported ${dataRows.length} rows with metadata`
+             });
+          } catch(e) { console.error('Log error', e); }
+
           return Response.json({
               success: true,
               headers: headerRow,
@@ -303,7 +320,7 @@ Deno.serve(async (req) => {
               debug: debugLogs
           });
 
-      } else {
+          } else {
           // Simple values only read
           const response = await sheets.spreadsheets.values.get({
             spreadsheetId,
