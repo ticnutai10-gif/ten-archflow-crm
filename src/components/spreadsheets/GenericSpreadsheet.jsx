@@ -3350,8 +3350,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                 <Button onClick={clearAllFilters} size="sm" variant={hasActiveFilters ? "default" : "outline"} className="gap-2">{hasActiveFilters ? <><XCircle className="w-4 h-4" />נקה סינון</> : <><Filter className="w-4 h-4" />סינון</>}</Button>
               </div>
             </div>
-            
-            </div>
 
             {/* Right Side: Search & Collab */}
             <div className="flex items-center gap-2 flex-shrink-0">
