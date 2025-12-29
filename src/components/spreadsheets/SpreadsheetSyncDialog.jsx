@@ -603,7 +603,6 @@ export default function SpreadsheetSyncDialog({ open, onClose, spreadsheet, onIm
                     </SelectContent>
                   </Select>
                 </div>
-                </ScrollArea>
               </TabsContent>
             </Tabs>
             
