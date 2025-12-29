@@ -2,28 +2,47 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.3';
 import { google } from 'npm:googleapis';
 
 Deno.serve(async (req) => {
+  const debugLogs = [];
+  const log = (msg, data = null) => {
+    const entry = { time: new Date().toISOString(), msg, data };
+    debugLogs.push(entry);
+    console.log(`[DEBUG] ${msg}`, data || '');
+  };
+
   try {
+    log('Starting Google Sheets function');
+    
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     
     if (!user) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+      log('User not authenticated');
+      return Response.json({ error: 'Unauthorized', debug: debugLogs }, { status: 401 });
     }
+    log('User authenticated', { email: user.email });
 
     // Try to get OAuth token first (App Connector)
     let auth = null;
+    let authMethod = 'none';
+    
     try {
+      log('Trying OAuth App Connector for googlesheets...');
       const accessToken = await base44.asServiceRole.connectors.getAccessToken("googlesheets");
       if (accessToken) {
+        log('OAuth token received from App Connector', { tokenLength: accessToken?.length });
         const oauth2Client = new google.auth.OAuth2();
         oauth2Client.setCredentials({ access_token: accessToken });
         auth = oauth2Client;
+        authMethod = 'oauth_connector';
+      } else {
+        log('OAuth token is null/empty');
       }
     } catch (e) {
-      console.log("No OAuth token found, falling back to Service Account if available");
+      log('OAuth connector failed', { error: e.message });
     }
 
     const payload = await req.json();
+    log('Received payload', { action: payload.action, spreadsheetId: payload.spreadsheetId });
     const { action, spreadsheetId, sheetName, range, values, headers, title } = payload;
 
     // Handle service account management actions BEFORE auth check
@@ -70,40 +89,61 @@ Deno.serve(async (req) => {
 
     // Fallback to Service Account if no OAuth
     if (!auth) {
+      log('No OAuth, trying Service Account fallback...');
       let credentials = null;
 
       // 1. Check AppSettings
+      log('Checking AppSettings for service account...');
       const settings = await base44.asServiceRole.entities.AppSettings.filter({ setting_key: 'google_service_account' });
       if (settings && settings.length > 0) {
          credentials = settings[0].value;
+         log('Found service account in AppSettings', { email: credentials?.client_email });
+      } else {
+         log('No service account in AppSettings');
       }
 
       // 2. Check Env Var
       if (!credentials) {
+        log('Checking GOOGLE_SERVICE_ACCOUNT_JSON env var...');
         const SERVICE_ACCOUNT_JSON = Deno.env.get("GOOGLE_SERVICE_ACCOUNT_JSON");
         if (SERVICE_ACCOUNT_JSON) {
+          log('Found GOOGLE_SERVICE_ACCOUNT_JSON env var', { length: SERVICE_ACCOUNT_JSON.length });
           try {
             credentials = JSON.parse(SERVICE_ACCOUNT_JSON);
+            log('Parsed service account JSON successfully', { email: credentials?.client_email, hasPrivateKey: !!credentials?.private_key });
           } catch (e) {
-            console.error("Failed to parse GOOGLE_SERVICE_ACCOUNT_JSON", e);
+            log('Failed to parse GOOGLE_SERVICE_ACCOUNT_JSON', { error: e.message });
           }
+        } else {
+          log('GOOGLE_SERVICE_ACCOUNT_JSON env var not found');
         }
       }
 
       if (credentials) {
-        auth = new google.auth.GoogleAuth({
-          credentials,
-          scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-        });
+        log('Creating GoogleAuth with service account credentials...');
+        try {
+          auth = new google.auth.GoogleAuth({
+            credentials,
+            scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+          });
+          authMethod = 'service_account';
+          log('GoogleAuth created successfully');
+        } catch (e) {
+          log('Failed to create GoogleAuth', { error: e.message });
+        }
       }
     }
 
     if (!auth) {
+      log('No authentication method available!');
       return Response.json({ 
         success: false, 
-        error: 'No authentication method available. Please connect Google Sheets or upload Service Account JSON.' 
+        error: 'No authentication method available. Please connect Google Sheets or upload Service Account JSON.',
+        debug: debugLogs
       }, { status: 400 });
     }
+    
+    log('Authentication ready', { method: authMethod });
 
     const sheets = google.sheets({ version: 'v4', auth });
 
@@ -121,19 +161,27 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'getSheets') {
-      const response = await sheets.spreadsheets.get({
-        spreadsheetId,
-        fields: 'sheets.properties',
-      });
-      
-      const sheetList = response.data.sheets.map(s => ({
-        id: s.properties.sheetId,
-        title: s.properties.title,
-        rowCount: s.properties.gridProperties.rowCount,
-        colCount: s.properties.gridProperties.columnCount
-      }));
-      
-      return Response.json({ success: true, sheets: sheetList });
+      log('Getting sheets list', { spreadsheetId });
+      try {
+        const response = await sheets.spreadsheets.get({
+          spreadsheetId,
+          fields: 'sheets.properties',
+        });
+        
+        log('Sheets API response received', { sheetsCount: response.data.sheets?.length });
+        
+        const sheetList = response.data.sheets.map(s => ({
+          id: s.properties.sheetId,
+          title: s.properties.title,
+          rowCount: s.properties.gridProperties.rowCount,
+          colCount: s.properties.gridProperties.columnCount
+        }));
+        
+        return Response.json({ success: true, sheets: sheetList, debug: debugLogs });
+      } catch (e) {
+        log('getSheets failed', { error: e.message, code: e.code, status: e.status });
+        throw e;
+      }
     }
 
     if (action === 'getHeaders') {
@@ -348,10 +396,12 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     console.error('Google Sheets error:', error);
+    debugLogs.push({ time: new Date().toISOString(), msg: 'FATAL ERROR', data: { message: error.message, code: error.code, status: error.status } });
     return Response.json({ 
       success: false, 
       error: error.message,
-      details: error.response?.data 
+      details: error.response?.data,
+      debug: debugLogs
     }, { status: 500 });
   }
 });
