@@ -102,12 +102,23 @@ const COLOR_PALETTES = {
     name: "יוקרתי מנהלים",
     headerBg: "#1a1a1a",
     headerText: "#e8d4b0",
-    cellBg: "#f9f7f4",
-    cellAltBg: "#f2ede6",
-    cellText: "#2d2d2d",
-    border: "#d4c5b0",
-    hover: "#e8dfd2",
-    selected: "#faf6f0"
+    cellBg: "#ffffff",
+    cellAltBg: "#f9f9f9",
+    cellText: "#1f2937",
+    border: "#e5e7eb",
+    hover: "#f3f4f6",
+    selected: "#eff6ff"
+  },
+  modern_clean: {
+    name: "נקי מודרני",
+    headerBg: "#ffffff",
+    headerText: "#0f172a",
+    cellBg: "#ffffff",
+    cellAltBg: "#ffffff",
+    cellText: "#334155",
+    border: "#f1f5f9",
+    hover: "#f8fafc",
+    selected: "#e0f2fe"
   },
   royal: {
     name: "מלכותי",

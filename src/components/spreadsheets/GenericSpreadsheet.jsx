@@ -3367,14 +3367,15 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
           )}
 
           {viewMode === 'table' && (
-          <div className="overflow-auto" style={{ maxHeight: fullScreenMode ? '85vh' : '60vh' }}>
+          <div className="overflow-auto fancy-scrollbar" style={{ maxHeight: fullScreenMode ? '85vh' : '60vh', contentVisibility: 'auto' }}>
             <DragDropContext onDragEnd={handleDragEnd}>
               <table ref={tableRef} className="w-full" dir="rtl" style={{
                 fontFamily: cellFont.value,
                 borderCollapse: isSeparateBorders ? 'separate' : 'collapse',
                 borderSpacing: isSeparateBorders ? tableCellSpacing : '0',
                 borderRadius: tableBorderRadius,
-                boxShadow: tableShadow
+                boxShadow: tableShadow,
+                contain: 'paint' // Major performance boost
               }}>
                 <Droppable droppableId="columns" direction="horizontal" type="column">
                   {(provided) => (

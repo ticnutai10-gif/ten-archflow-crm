@@ -71,12 +71,11 @@ const SpreadsheetRow = memo(({
         <tr 
           ref={provided.innerRef} 
           {...provided.draggableProps} 
-          className={`group transition-colors duration-150 ease-in-out ${snapshot.isDragging ? 'opacity-90 shadow-2xl bg-white z-50' : ''}`} 
+          className={`group transition-all duration-200 ease-out hover:brightness-95 hover:shadow-sm ${snapshot.isDragging ? 'opacity-95 shadow-2xl bg-white scale-[1.01] z-[100] ring-2 ring-blue-500/20' : ''}`}
           style={{ 
             height: `${rowHeight}px`, 
             backgroundColor: rowIndex % 2 === 0 ? palette.cellBg : palette.cellAltBg,
-            // Luxurious hover effect handled by CSS group-hover usually, but inline styles might override.
-            // We'll rely on the specific cell backgrounds mostly.
+            contentVisibility: 'auto' // Improves scroll perf
           }}
         >
           {/* Row Handle & Index */}
@@ -125,21 +124,30 @@ const SpreadsheetRow = memo(({
             const hasNote = cellNotes[cellKey];
             const commentCount = commentCounts?.[cellKey] || 0;
 
-            // Luxury touches: Selection glow, smoother borders
-            const selectionClass = isSelected ? 'ring-2 ring-purple-500 ring-inset z-20' : '';
+            // Premium touches: Active cell border (Excel style), smooth focus
+            const selectionClass = isSelected 
+              ? 'ring-[2px] ring-blue-600 ring-inset z-20 bg-blue-50/30' 
+              : 'border-b border-r border-slate-200/50'; // Softer default borders
+            
             const activeUserClass = activeUserOnCell ? 'ring-2 ring-offset-1 z-20' : '';
             
+            // Highlight for row hover (subtle vertical guide)
+            const hoverClass = !isEditing && !isSelected && !mergeInfo 
+              ? 'group-hover:bg-black/[0.015] hover:!bg-black/[0.03] transition-colors duration-100' 
+              : '';
+
             return (
               <td 
                 key={column.key}
                 rowSpan={mergeInfo?.rowspan || 1}
                 colSpan={mergeInfo?.colspan || 1}
                 className={`
-                  relative px-2 py-1 outline-none focus:outline-none transition-all duration-200
+                  relative px-3 py-1.5 outline-none focus:outline-none 
                   ${selectionClass} 
-                  ${isClientPicker ? 'ring-2 ring-blue-500 z-30' : ''} 
+                  ${hoverClass}
+                  ${isClientPicker ? 'ring-2 ring-blue-500 z-30 shadow-lg' : ''} 
                   ${mergeInfo ? 'bg-white shadow-sm' : ''}
-                  ${!isEditing && !isSelected && !mergeInfo ? 'hover:bg-black/[0.02]' : ''}
+                  overflow-hidden
                 `}
                 style={{
                   ...((activeUserOnCell) ? { borderColor: activeUserOnCell.color } : {}),
