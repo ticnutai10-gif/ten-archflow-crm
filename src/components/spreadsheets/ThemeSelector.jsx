@@ -275,6 +275,8 @@ export default function ThemeSelector({ open, onClose, currentTheme, onApply }) 
     shadow: "none",
     cellSpacing: "none",
     hoverEffect: "subtle",
+    outerBorderColor: "#D4AF37", // Default gold
+    outerBorderSize: "thin", // Default thin
     customColors: null
   });
   
@@ -317,6 +319,8 @@ export default function ThemeSelector({ open, onClose, currentTheme, onApply }) 
       shadow: "none",
       cellSpacing: "none",
       hoverEffect: "subtle",
+      outerBorderColor: "#D4AF37",
+      outerBorderSize: "thin",
       customColors: null
     };
     setTheme(defaultTheme);
@@ -431,6 +435,14 @@ export default function ThemeSelector({ open, onClose, currentTheme, onApply }) 
   const currentShadow = shadowOptions[theme.shadow || "none"];
   const currentSpacing = cellSpacingOptions[theme.cellSpacing || "none"];
   const currentHover = hoverEffectOptions[theme.hoverEffect || "subtle"];
+
+  // אפשרויות עובי מסגרת חיצונית
+  const outerBorderOptions = {
+    none: { name: "ללא", value: "0px" },
+    thin: { name: "דק", value: "1px" },
+    medium: { name: "בינוני", value: "3px" },
+    thick: { name: "עבה", value: "6px" }
+  };
 
   return (
     <>
@@ -752,6 +764,52 @@ export default function ThemeSelector({ open, onClose, currentTheme, onApply }) 
                   </div>
                 </div>
 
+                {/* מסגרת חיצונית */}
+                <div className="space-y-3">
+                  <Label className="text-base font-bold flex items-center gap-2">
+                    <Grid className="w-5 h-5" />
+                    מסגרת חיצונית
+                  </Label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-semibold">צבע מסגרת</Label>
+                      <div className="flex gap-2">
+                        <Input 
+                          type="color" 
+                          value={theme.outerBorderColor || "#D4AF37"}
+                          onChange={(e) => setTheme({ ...theme, outerBorderColor: e.target.value })}
+                          className="w-full h-10 cursor-pointer"
+                        />
+                        <Input 
+                          type="text" 
+                          value={theme.outerBorderColor || "#D4AF37"}
+                          onChange={(e) => setTheme({ ...theme, outerBorderColor: e.target.value })}
+                          className="w-24 text-center font-mono"
+                          dir="ltr"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-semibold">עובי מסגרת</Label>
+                      <Select 
+                        value={theme.outerBorderSize || "thin"} 
+                        onValueChange={(value) => setTheme({ ...theme, outerBorderSize: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(outerBorderOptions).map(([key, option]) => (
+                            <SelectItem key={key} value={key}>
+                              {option.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+
                 {/* פונטים */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
@@ -833,10 +891,11 @@ export default function ThemeSelector({ open, onClose, currentTheme, onApply }) 
                     תצוגה מקדימה חיה
                   </Label>
                   <div 
-                    className="border-2 border-slate-300 overflow-hidden"
+                    className="overflow-hidden"
                     style={{ 
                       borderRadius: currentRadius.value,
-                      boxShadow: currentShadow.value
+                      boxShadow: currentShadow.value,
+                      border: `${outerBorderOptions[theme.outerBorderSize || "thin"].value} solid ${theme.outerBorderColor || "#D4AF37"}`
                     }}
                   >
                     <table className="w-full" dir="rtl" style={{ borderCollapse: theme.cellSpacing === 'none' ? 'collapse' : 'separate', borderSpacing: currentSpacing.value }}>
