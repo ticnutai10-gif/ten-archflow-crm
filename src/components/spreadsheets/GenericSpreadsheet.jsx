@@ -27,7 +27,6 @@ import SpreadsheetSyncDialog from "./SpreadsheetSyncDialog";
 import Collaborators from "./Collaborators";
 import CommentsSidebar from "./CommentsSidebar";
 import SpreadsheetRow from "./SpreadsheetRow"; // IMPORT NEW COMPONENT
-import { FileSpreadsheet } from "lucide-react";
 
 // Default stage options with colors - MUST BE OUTSIDE COMPONENT
 const DEFAULT_STAGE_OPTIONS = [
