@@ -66,7 +66,7 @@ export default function BackupPage() {
     // load user backup prefs
     (async () => {
       try {
-        const me = await User.me().catch(() => null);
+        const me = await base44.auth.me().catch(() => null);
         if (me) {
           setAutoEnabled(!!me.backup_auto_enabled);
           setAutoFreq(me.backup_auto_frequency || "daily");
@@ -121,7 +121,7 @@ export default function BackupPage() {
 
       if (shouldRun && selected.size > 0 && !busy) {
         await handleExport('json'); // Auto-backup always exports as JSON
-        await User.updateMyUserData({ backup_last_run_at: new Date().toISOString() });
+        await base44.auth.updateMe({ backup_last_run_at: new Date().toISOString() });
         setLastRun(new Date().toISOString());
       }
     })();
@@ -269,7 +269,7 @@ export default function BackupPage() {
   };
 
   const saveAutoSettings = async () => {
-    await User.updateMyUserData({
+    await base44.auth.updateMe({
       backup_auto_enabled: autoEnabled,
       backup_auto_frequency: autoFreq,
       backup_selected_categories: Array.from(selected)
