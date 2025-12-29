@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { User } from '@/entities/User'; // תיקון הייבוא
+import { base44 } from "@/api/base44Client";
 import { Clock } from "lucide-react";
 import {
   DropdownMenu,
