@@ -3708,6 +3708,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                               setEditValue={setEditValue}
                               saveEdit={saveEdit}
                               editInputRef={editInputRef}
+                              validateCell={validateCell}
                               
                               onDirectSaveStage={async (stageValue, columnKey) => {
                                 // Simplified Direct Save Logic passed as callback

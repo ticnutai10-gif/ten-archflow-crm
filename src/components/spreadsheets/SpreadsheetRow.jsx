@@ -60,6 +60,7 @@ const SpreadsheetRow = memo(({
   setEditValue,
   saveEdit,
   editInputRef,
+  validateCell,
   
   // Stage Handlers
   onDirectSaveStage
@@ -314,17 +315,46 @@ const SpreadsheetRow = memo(({
                       </div>
                     )
                   ) : isEditing ? (
-                    <Input 
-                      ref={editInputRef} 
-                      value={editValue} 
-                      onChange={(e) => setEditValue(e.target.value)} 
-                      onBlur={saveEdit} 
-                      onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') { setEditingCell(null); setEditValue(""); } }} 
-                      className="h-full w-full border-none shadow-none focus:ring-0 bg-transparent p-0 text-inherit" 
-                      autoFocus 
-                      dir="rtl" 
-                      list={`ac-${column.key}`} 
-                    />
+                    <div className="relative w-full h-full">
+                      {column.type === 'long_text' ? (
+                        <textarea
+                          ref={editInputRef}
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onBlur={saveEdit}
+                          onKeyDown={(e) => { 
+                            if (e.key === 'Enter' && e.ctrlKey) saveEdit(); 
+                            if (e.key === 'Escape') { setEditingCell(null); setEditValue(""); } 
+                          }}
+                          className="absolute inset-0 w-full h-full min-h-[60px] z-50 p-2 bg-white border-2 border-blue-500 rounded shadow-lg resize-none text-sm leading-snug"
+                          autoFocus
+                          dir="rtl"
+                        />
+                      ) : (
+                        <>
+                          <Input 
+                            ref={editInputRef} 
+                            type={column.type === 'date' ? 'date' : column.type === 'number' ? 'number' : 'text'}
+                            value={editValue} 
+                            onChange={(e) => setEditValue(e.target.value)} 
+                            onBlur={saveEdit} 
+                            onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') { setEditingCell(null); setEditValue(""); } }} 
+                            className={`h-full w-full border-none shadow-none focus:ring-0 bg-white/50 p-0 text-inherit ${
+                              validateCell && validateCell(column.key, editValue) ? 'text-red-600 bg-red-50' : ''
+                            }`}
+                            autoFocus 
+                            dir="rtl" 
+                            list={column.type === 'text' || !column.type ? `ac-${column.key}` : undefined} 
+                          />
+                          {validateCell && validateCell(column.key, editValue) && (
+                            <div className="absolute bottom-full left-0 mb-1 z-[60] bg-red-600 text-white text-[10px] px-2 py-1 rounded shadow-md whitespace-nowrap pointer-events-none animate-in fade-in slide-in-from-bottom-1">
+                              {validateCell(column.key, editValue)}
+                              <div className="absolute top-full left-2 border-4 border-transparent border-t-red-600"></div>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
                   ) : (
                     <div className="truncate w-full" title={String(cellValue).length > 20 ? String(cellValue) : ''}>
                       {String(cellValue)}
