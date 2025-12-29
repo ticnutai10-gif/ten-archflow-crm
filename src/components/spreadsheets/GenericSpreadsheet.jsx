@@ -481,11 +481,11 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     
     if (existingEntity) {
       setLoadingTabs(true);
-      const targetUrl = `SpreadsheetDetails?id=${existingEntity.id}`;
+      const targetUrl = createPageUrl(`SpreadsheetDetails?id=${existingEntity.id}`);
       if (onNavigate) {
         onNavigate(targetUrl);
       } else {
-        window.location.href = createPageUrl(targetUrl);
+        window.location.href = targetUrl;
       }
     } else {
       setLoadingTabs(true);
@@ -506,11 +506,11 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         });
         
         toast.success('גיליון חדש נוצר במערכת!');
-        const targetUrl = `SpreadsheetDetails?id=${newEntity.id}`;
+        const targetUrl = createPageUrl(`SpreadsheetDetails?id=${newEntity.id}`);
         if (onNavigate) {
           onNavigate(targetUrl);
         } else {
-          window.location.href = createPageUrl(targetUrl);
+          window.location.href = targetUrl;
         }
       } catch (e) {
         console.error('Error creating linked sheet:', e);
