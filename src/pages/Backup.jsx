@@ -9,7 +9,6 @@ import { Download, Upload, ShieldCheck, Database, RefreshCw, Settings, CalendarC
 import { exportEntities } from "@/functions/exportEntities";
 import { importBackupJson } from "@/functions/importBackupJson";
 import EntityImporter from "@/components/backup/EntityImporter";
-import { User } from "@/entities/User";
 import { exportAllData } from "@/functions/exportAllData";
 import { importBackupData } from "@/functions/importBackupData";
 import { base44 } from "@/api/base44Client";

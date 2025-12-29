@@ -16,7 +16,6 @@ import Documents from './pages/Documents';
 import Exports from './pages/Exports';
 import Folders from './pages/Folders';
 import GreenInvoice from './pages/GreenInvoice';
-import Home from './pages/Home';
 import Integrations from './pages/Integrations';
 import InternalChat from './pages/InternalChat';
 import Invoices from './pages/Invoices';
@@ -28,13 +27,14 @@ import Quotes from './pages/Quotes';
 import Register from './pages/Register';
 import RemoveDuplicates from './pages/RemoveDuplicates';
 import Reports from './pages/Reports';
-import Settings from './pages/Settings';
 import SpreadsheetDetails from './pages/SpreadsheetDetails';
 import Tasks from './pages/Tasks';
 import TimeLogs from './pages/TimeLogs';
 import TimerShowcase from './pages/TimerShowcase';
 import UserApprovals from './pages/UserApprovals';
 import WorkflowBuilder from './pages/WorkflowBuilder';
+import Home from './pages/Home';
+import Settings from './pages/Settings';
 import __Layout from './Layout.jsx';
 
 
@@ -57,7 +57,6 @@ export const PAGES = {
     "Exports": Exports,
     "Folders": Folders,
     "GreenInvoice": GreenInvoice,
-    "Home": Home,
     "Integrations": Integrations,
     "InternalChat": InternalChat,
     "Invoices": Invoices,
@@ -69,13 +68,14 @@ export const PAGES = {
     "Register": Register,
     "RemoveDuplicates": RemoveDuplicates,
     "Reports": Reports,
-    "Settings": Settings,
     "SpreadsheetDetails": SpreadsheetDetails,
     "Tasks": Tasks,
     "TimeLogs": TimeLogs,
     "TimerShowcase": TimerShowcase,
     "UserApprovals": UserApprovals,
     "WorkflowBuilder": WorkflowBuilder,
+    "Home": Home,
+    "Settings": Settings,
 }
 
 export const pagesConfig = {
