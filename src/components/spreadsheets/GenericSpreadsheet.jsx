@@ -481,12 +481,23 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     
     if (existingEntity) {
       // Switch to existing entity
-      window.location.href = createPageUrl(`SpreadsheetDetails?id=${existingEntity.id}`);
+      const url = createPageUrl(`SpreadsheetDetails?id=${existingEntity.id}`);
+      // Use history.pushState if possible to avoid reload, or location.href if not
+      // But since we are likely inside a generic component, let's use window.location.href BUT
+      // the parent should ideally handle this.
+      // However, to fix "spinning" (reload), we should check if we can use client-side navigation.
+      // Since we don't have navigate prop, we'll try to dispatch a custom event or just use window.location
+      // BUT if the spinning is due to slow backend, we should show a loader.
+      
+      // Let's use a smoother transition if possible or at least show loading
+      setLoadingTabs(true);
+      window.location.href = url;
     } else {
       // Create new entity for this sheet
+      setLoadingTabs(true);
       try {
         const newEntity = await base44.entities.CustomSpreadsheet.create({
-          name: `${spreadsheet.name} - ${sheetName}`, // Or just keep same name? Better to distinguish.
+          name: `${spreadsheet.name}`, // Keep original name or append sheet name
           description: `Linked to sheet: ${sheetName}`,
           client_id: spreadsheet.client_id,
           client_name: spreadsheet.client_name,
@@ -505,6 +516,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       } catch (e) {
         console.error('Error creating linked sheet:', e);
         toast.error('שגיאה ביצירת גיליון חדש');
+        setLoadingTabs(false);
       }
     }
   };
@@ -3781,15 +3793,18 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                   <button
                     key={sheet.id}
                     onClick={() => handleSheetTabClick(sheet.title)}
+                    disabled={loadingTabs} // Disable while switching
                     className={`
                       px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 flex items-center gap-2 border
                       ${isActive 
                         ? 'bg-green-100 text-green-800 border-green-200 shadow-sm' 
                         : 'bg-white text-slate-600 border-transparent hover:bg-slate-50 hover:border-slate-200'
                       }
+                      ${loadingTabs ? 'opacity-50 cursor-not-allowed' : ''}
                     `}
                   >
                     {sheet.title}
+                    {loadingTabs && !isActive && sheet.title === loadingTabs && <RefreshCw className="w-3 h-3 animate-spin" />}
                     {isMapped && !isActive && <span className="w-1.5 h-1.5 rounded-full bg-blue-400" title="מקושר במערכת"></span>}
                   </button>
                 );
