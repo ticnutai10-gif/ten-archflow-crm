@@ -2269,29 +2269,55 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         </div>
       )}
 
-      <Card className="shadow-lg">
-        <CardHeader className="border-b space-y-4">
+      <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+        <CardHeader className="border-b space-y-4 pb-4">
           {!fullScreenMode && (
-            <Button
-              variant="outline"
-              onClick={() => {
-                if (onBack) {
-                  onBack();
-                } else {
-                  window.history.back();
-                }
-              }}
-              className="gap-2 mb-4"
-            >
-              <ChevronRight className="w-4 h-4" />
-              חזרה לרשימת טבלאות
-            </Button>
+            <div className="flex items-center mb-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  if (onBack) {
+                    onBack();
+                  } else {
+                    window.history.back();
+                  }
+                }}
+                className="gap-1 text-slate-500 hover:text-slate-800 p-0 hover:bg-transparent"
+              >
+                <ChevronRight className="w-4 h-4" />
+                חזרה לרשימת טבלאות
+              </Button>
+            </div>
           )}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
             <div className="flex items-center gap-3 flex-wrap">
-              <Table className="w-6 h-6 text-purple-600" />
-              <CardTitle className="text-xl">{spreadsheet.name}</CardTitle>
-              <Badge variant="outline">{filteredAndSortedData.length}/{rowsData.length} שורות</Badge>
+              <div className="p-2 bg-purple-100 rounded-lg">
+                <Table className="w-6 h-6 text-purple-600" />
+              </div>
+              <div>
+                <CardTitle className="text-xl font-bold text-slate-800">{spreadsheet.name}</CardTitle>
+                <div className="flex items-center gap-2 mt-1 text-xs text-slate-500">
+                  <span className="bg-slate-100 px-2 py-0.5 rounded-full">{filteredAndSortedData.length} שורות</span>
+                  <span>•</span>
+                  <span>{visibleColumns.length} עמודות</span>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-2 mr-4 flex-wrap">
+              {Object.keys(cellStyles).length > 0 && (
+                <Badge variant="secondary" className="bg-purple-50 text-purple-700 hover:bg-purple-100 border-purple-200">
+                  <Palette className="w-3 h-3 ml-1" />
+                  {Object.keys(cellStyles).length}
+                </Badge>
+              )}
+              {Object.keys(cellNotes).length > 0 && (
+                <Badge variant="secondary" className="bg-amber-50 text-amber-700 hover:bg-amber-100 border-amber-200">
+                  <MessageSquare className="w-3 h-3 ml-1" />
+                  {Object.keys(cellNotes).length}
+                </Badge>
+              )}
+              </div>
               <Badge variant="outline">{visibleColumns.length}/{columns.length} עמודות</Badge>
               {Object.keys(cellStyles).length > 0 && (
                 <Badge className="bg-purple-100 text-purple-800">
@@ -2333,7 +2359,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
             </div>
             
             {/* Collaborators & Presence */}
-            <div className="flex items-center gap-2 px-2 border-l border-slate-200">
+            <div className="flex items-center gap-2 px-2 xl:border-l border-slate-200">
                <Collaborators 
                  spreadsheetId={spreadsheet.id} 
                  currentUser={currentUser}
@@ -2341,8 +2367,10 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                  onCollaboratorsChange={setActiveCollaborators}
                />
             </div>
+          </div>
 
-            <div className="flex gap-2 flex-wrap">
+          <div className="flex flex-col lg:flex-row gap-3 pt-2">
+            <div className="flex flex-1 items-center gap-2 overflow-x-auto pb-2 lg:pb-0 no-scrollbar mask-fade-right">
               <Button onClick={handleUndo} size="sm" variant="outline" disabled={!canUndo} title="בטל (Ctrl+Z)"><Undo className="w-4 h-4" /></Button>
               <Button onClick={handleRedo} size="sm" variant="outline" disabled={!canRedo} title="שחזר (Ctrl+Y)"><Redo className="w-4 h-4" /></Button>
               <Popover>
@@ -2694,14 +2722,20 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                   <Button size="sm" variant="ghost" onClick={() => setSelectedHeaders(new Set())} className="gap-2"><X className="w-4 h-4" /></Button>
                 </>
               )}
-              <Popover><PopoverTrigger asChild><Button size="sm" variant="outline" className="gap-2"><Download className="w-4 h-4" />ייצוא</Button></PopoverTrigger><PopoverContent className="w-48" align="end" dir="rtl"><div className="space-y-2"><Button variant="outline" size="sm" className="w-full justify-start gap-2" onClick={exportToCSV}><Download className="w-4 h-4" />CSV</Button><Button variant="outline" size="sm" className="w-full justify-start gap-2" onClick={exportToPDF}><Download className="w-4 h-4" />PDF</Button></div></PopoverContent></Popover>
-              <Button onClick={clearAllFilters} size="sm" variant={hasActiveFilters ? "default" : "outline"} className="gap-2">{hasActiveFilters ? <><XCircle className="w-4 h-4" />נקה סינון</> : <><Filter className="w-4 h-4" />סינון</>}</Button>
+              <div className="ml-auto flex items-center gap-2">
+                <Popover><PopoverTrigger asChild><Button size="sm" variant="outline" className="gap-2"><Download className="w-4 h-4" />ייצוא</Button></PopoverTrigger><PopoverContent className="w-48" align="end" dir="rtl"><div className="space-y-2"><Button variant="outline" size="sm" className="w-full justify-start gap-2" onClick={exportToCSV}><Download className="w-4 h-4" />CSV</Button><Button variant="outline" size="sm" className="w-full justify-start gap-2" onClick={exportToPDF}><Download className="w-4 h-4" />PDF</Button></div></PopoverContent></Popover>
+                <Button onClick={clearAllFilters} size="sm" variant={hasActiveFilters ? "default" : "outline"} className="gap-2">{hasActiveFilters ? <><XCircle className="w-4 h-4" />נקה סינון</> : <><Filter className="w-4 h-4" />סינון</>}</Button>
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1 max-w-md">
+            
+            <div className="relative w-full lg:w-72">
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <Input placeholder="חיפוש..." value={globalFilter} onChange={(e) => setGlobalFilter(e.target.value)} className="pr-10" />
+              <Input 
+                placeholder="חיפוש מהיר..." 
+                value={globalFilter} 
+                onChange={(e) => setGlobalFilter(e.target.value)} 
+                className="pr-10 bg-slate-50 border-slate-200 focus:bg-white transition-colors" 
+              />
             </div>
           </div>
         </CardHeader>

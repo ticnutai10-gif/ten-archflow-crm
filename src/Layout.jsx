@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Building2, Settings, Users, FileText, Clock,
   BarChart3, Archive, FolderOpen, MessageSquare,
@@ -78,6 +79,7 @@ const MENU_ITEMS = [
 
 function LayoutInner({ children, currentPageName }) {
   const isMobile = useIsMobile();
+  const location = useLocation();
   const [user, setUser] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [pinned, setPinned] = useState(() => {
@@ -730,7 +732,13 @@ function LayoutInner({ children, currentPageName }) {
           {user && !isMobile && (
             <div className="px-6 py-3" dir="rtl" style={{ backgroundColor: 'var(--bg-cream)' }}>
               <div className="max-w-7xl mx-auto">
-                <div className="flex items-center gap-3" dir="rtl">
+                <motion.div 
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5 }}
+                  className="flex items-center gap-3" 
+                  dir="rtl"
+                >
                   <div 
                     className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shadow-md"
                     style={{ backgroundColor: ACCENT_COLOR }}
@@ -745,13 +753,24 @@ function LayoutInner({ children, currentPageName }) {
                       {new Date().toLocaleDateString('he-IL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                     </div>
                   </div>
-                </div>
+                </motion.div>
               </div>
             </div>
           )}
           
-          <div dir="rtl">
-            {children}
+          <div dir="rtl" className="h-full">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={location.pathname}
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -15 }}
+                transition={{ duration: 0.3, ease: "easeOut" }}
+                className="h-full"
+              >
+                {children}
+              </motion.div>
+            </AnimatePresence>
           </div>
         </div>
 
