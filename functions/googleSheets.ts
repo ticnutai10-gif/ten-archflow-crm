@@ -23,11 +23,74 @@ Deno.serve(async (req) => {
       console.log("No OAuth token found, falling back to Service Account if available");
     }
 
+    const payload = await req.json();
+    const { action, spreadsheetId, sheetName, range, values, headers, title } = payload;
+
+    // Handle service account management actions BEFORE auth check
+    if (action === 'saveServiceAccount') {
+        const { json } = payload;
+        if (!json || !json.client_email || !json.private_key) {
+             return Response.json({ success: false, error: 'Invalid Service Account JSON' });
+        }
+        
+        const existing = await base44.asServiceRole.entities.AppSettings.filter({ setting_key: 'google_service_account' });
+        if (existing.length > 0) {
+            await base44.asServiceRole.entities.AppSettings.update(existing[0].id, { value: json });
+        } else {
+            await base44.asServiceRole.entities.AppSettings.create({ 
+                setting_key: 'google_service_account', 
+                value: json,
+                description: 'Google Service Account Credentials'
+            });
+        }
+        return Response.json({ success: true, email: json.client_email });
+    }
+
+    if (action === 'getServiceAccountEmail') {
+         let email = null;
+         // 1. Check AppSettings
+         const settings = await base44.asServiceRole.entities.AppSettings.filter({ setting_key: 'google_service_account' });
+         if (settings.length > 0) {
+             email = settings[0].value.client_email;
+         }
+         
+         // 2. Check Env Var if not found
+         if (!email) {
+            const envVar = Deno.env.get("GOOGLE_SERVICE_ACCOUNT_JSON");
+            if (envVar) {
+                try { 
+                    const parsed = JSON.parse(envVar);
+                    email = parsed.client_email;
+                } catch(e) {}
+            }
+         }
+         
+         return Response.json({ success: true, email });
+    }
+
     // Fallback to Service Account if no OAuth
     if (!auth) {
-      const SERVICE_ACCOUNT_JSON = Deno.env.get("GOOGLE_SERVICE_ACCOUNT_JSON");
-      if (SERVICE_ACCOUNT_JSON) {
-        const credentials = JSON.parse(SERVICE_ACCOUNT_JSON);
+      let credentials = null;
+
+      // 1. Check AppSettings
+      const settings = await base44.asServiceRole.entities.AppSettings.filter({ setting_key: 'google_service_account' });
+      if (settings && settings.length > 0) {
+         credentials = settings[0].value;
+      }
+
+      // 2. Check Env Var
+      if (!credentials) {
+        const SERVICE_ACCOUNT_JSON = Deno.env.get("GOOGLE_SERVICE_ACCOUNT_JSON");
+        if (SERVICE_ACCOUNT_JSON) {
+          try {
+            credentials = JSON.parse(SERVICE_ACCOUNT_JSON);
+          } catch (e) {
+            console.error("Failed to parse GOOGLE_SERVICE_ACCOUNT_JSON", e);
+          }
+        }
+      }
+
+      if (credentials) {
         auth = new google.auth.GoogleAuth({
           credentials,
           scopes: ['https://www.googleapis.com/auth/spreadsheets'],
@@ -38,13 +101,11 @@ Deno.serve(async (req) => {
     if (!auth) {
       return Response.json({ 
         success: false, 
-        error: 'No authentication method available. Please connect Google Sheets.' 
+        error: 'No authentication method available. Please connect Google Sheets or upload Service Account JSON.' 
       }, { status: 400 });
     }
 
     const sheets = google.sheets({ version: 'v4', auth });
-    const payload = await req.json();
-    const { action, spreadsheetId, sheetName, range, values, headers, title } = payload;
 
     if (action === 'create') {
       const resource = {
