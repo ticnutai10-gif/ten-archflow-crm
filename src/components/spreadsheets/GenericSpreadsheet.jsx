@@ -2434,7 +2434,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
 
               <Button onClick={() => setShowSyncDialog(true)} size="sm" variant="outline" className="gap-2 hover:bg-green-50 border-green-200">
                 <FileSpreadsheet className="w-4 h-4 text-green-600" />
-                סנכרון Google
+                {spreadsheet.google_sheet_id ? 'סנכרון Google' : 'חבר ל-Google Sheets'}
               </Button>
               
               <Popover>
