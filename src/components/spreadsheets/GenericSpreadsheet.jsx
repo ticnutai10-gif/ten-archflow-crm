@@ -23,8 +23,6 @@ import { useAccessControl } from "@/components/access/AccessValidator";
 import ColumnsManagerDialog from "./ColumnsManagerDialog";
 import BulkColumnsDialog from "./BulkColumnsDialog";
 import StageOptionsManager from "./StageOptionsManager";
-import SpreadsheetSyncDialog from "./SpreadsheetSyncDialog";
-import { FileSpreadsheet } from "lucide-react";
 
 // Default stage options with colors - MUST BE OUTSIDE COMPONENT
 const DEFAULT_STAGE_OPTIONS = [
@@ -229,7 +227,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const [showBulkColumnsDialog, setShowBulkColumnsDialog] = useState(false);
   const [showStageManager, setShowStageManager] = useState(false);
   const [customStageOptions, setCustomStageOptions] = useState(DEFAULT_STAGE_OPTIONS);
-  const [showSyncDialog, setShowSyncDialog] = useState(false);
   // When using categories/children, allow selecting either parent or child
   const [viewMode, setViewMode] = useState('table');
   const [cellContextMenu, setCellContextMenu] = useState(null);
@@ -1898,94 +1895,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     setPopoverOpen(null);
   };
 
-  const handleExportToGoogle = async (spreadsheetId, sheetName, syncMode = 'overwrite') => {
-    const visibleCols = columns.filter(col => col.visible !== false);
-    const headers = visibleCols.map(col => col.title);
-    const rows = filteredAndSortedData.map(row => {
-      return visibleCols.map(col => {
-        const val = row[col.key];
-        // Clean value if needed
-        return val === undefined || val === null ? '' : String(val);
-      });
-    });
-
-    await base44.functions.invoke('googleSheets', {
-      action: 'update',
-      spreadsheetId,
-      sheetName,
-      headers,
-      values: rows,
-      mode: syncMode // 'overwrite', 'append', 'update_existing'
-    });
-  };
-
-  const handleImportFromGoogle = async (spreadsheetId, sheetName) => {
-    const { data } = await base44.functions.invoke('googleSheets', {
-      action: 'read',
-      spreadsheetId,
-      sheetName
-    });
-
-    if (data.success) {
-      // Map headers to existing columns or create new ones
-      const importedHeaders = data.headers || [];
-      const importedRows = data.rows || [];
-      
-      // Update columns if needed (optional - or just map by index/name)
-      // For now, let's assume we map by title if exists, or create new cols
-      let newColumns = [...columns];
-      const colMapping = []; // index in sheet -> colKey in system
-
-      importedHeaders.forEach((header, index) => {
-        const existingCol = newColumns.find(c => c.title === header);
-        if (existingCol) {
-          colMapping[index] = existingCol.key;
-        } else {
-          const newKey = `col_${Date.now()}_${index}`;
-          newColumns.push({
-            key: newKey,
-            title: header,
-            width: '150px',
-            type: 'text',
-            visible: true
-          });
-          colMapping[index] = newKey;
-        }
-      });
-
-      const newRowsData = importedRows.map((row, rIndex) => {
-        const newRow = { id: `row_${Date.now()}_${rIndex}` };
-        row.forEach((cellVal, cIndex) => {
-          const key = colMapping[cIndex];
-          if (key) newRow[key] = cellVal;
-        });
-        return newRow;
-      });
-
-      setColumns(newColumns);
-      setRowsData(newRowsData);
-      
-      setTimeout(() => {
-        saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current, cellNotesRef.current);
-        saveToBackend();
-      }, 100);
-    } else {
-      throw new Error(data.error || 'Import failed');
-    }
-  };
-
-  const handleSaveGoogleLink = async (spreadsheetId, sheetName, syncConfig) => {
-    const updateData = {
-      google_sheet_id: spreadsheetId,
-      google_sheet_name: sheetName
-    };
-    if (syncConfig) {
-      updateData.sync_config = syncConfig;
-    }
-    await base44.entities.CustomSpreadsheet.update(spreadsheet.id, updateData);
-    if (onUpdate) onUpdate();
-  };
-
   const splitColumn = async (columnKey) => {
     const col = columns.find(c => c.key === columnKey);
     if (!col) return;
@@ -2431,11 +2340,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                 <Circle className="w-4 h-4 text-purple-600" />
                 ניהול שלבים
               </Button>
-
-              <Button onClick={() => setShowSyncDialog(true)} size="sm" variant="outline" className="gap-2 hover:bg-green-50 border-green-200">
-                <FileSpreadsheet className="w-4 h-4 text-green-600" />
-                {spreadsheet.google_sheet_id ? 'סנכרון Google' : 'חבר ל-Google Sheets'}
-              </Button>
               
               <Popover>
                 <PopoverTrigger asChild>
@@ -2786,7 +2690,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                   borderWidth: isSeparateBorders ? '0' : borderStyle.width,
                                   borderStyle: borderStyle.style,
                                   borderColor: palette.border,
-                                  borderBottomWidth: borderStyle.width,
+                                  borderBottomWidth: !isSeparateBorders ? '0' : undefined,
                                   borderRightWidth: (isFirstInMerge || headerMerge) && !isSeparateBorders ? '3px' : undefined,
                                   borderRightColor: (isFirstInMerge || headerMerge) ? palette.border : undefined,
                                   borderLeftWidth: (isLastInMerge || headerMerge) && !isSeparateBorders ? '3px' : undefined,
@@ -2890,7 +2794,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                   borderStyle: borderStyle.style,
                                   borderColor: palette.border,
                                   borderRadius: isSeparateBorders ? tableBorderRadius : '0',
-                                  borderTopWidth: (hasParentMerge && showSubHeaders && !isSeparateBorders) ? borderStyle.width : undefined,
+                                  borderTopWidth: (hasParentMerge && showSubHeaders && !isSeparateBorders) ? '0' : undefined,
                                   borderRightWidth: isFirstInMerge && !isSeparateBorders ? '3px' : undefined,
                                   borderRightColor: isFirstInMerge ? palette.border : undefined,
                                   borderLeftWidth: isLastInMerge && !isSeparateBorders ? '3px' : undefined,
@@ -3672,15 +3576,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
           }, 50);
           toast.success('✓ אפשרויות שלבים עודכנו');
         }}
-      />
-
-      <SpreadsheetSyncDialog 
-        open={showSyncDialog} 
-        onClose={() => setShowSyncDialog(false)} 
-        spreadsheet={spreadsheet}
-        onImport={handleImportFromGoogle}
-        onExport={handleExportToGoogle}
-        onSaveLink={handleSaveGoogleLink}
       />
 
       {editingCell && (() => {
