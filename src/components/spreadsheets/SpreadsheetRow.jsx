@@ -96,7 +96,7 @@ const SpreadsheetRow = memo(({
               minWidth: '48px'
             }}
           >
-            <div className="w-full h-full flex items-center justify-center cursor-grab active:cursor-grabbing opacity-40 group-hover:opacity-100 transition-opacity">
+            <div className="w-full h-full flex items-center justify-center cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity">
               <span className="text-[10px] text-slate-400 font-mono absolute top-1 right-1">{rowIndex + 1}</span>
               <GripVertical className="w-3 h-3 text-slate-400" />
             </div>
