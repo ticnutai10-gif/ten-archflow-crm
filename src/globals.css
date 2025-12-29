@@ -55,6 +55,20 @@ body {
   -webkit-overflow-scrolling: touch;
 }
 
+/* Utility Classes */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.mask-fade-right {
+  mask-image: linear-gradient(to left, transparent, black 20px);
+  -webkit-mask-image: linear-gradient(to left, transparent, black 20px);
+}
+
 /* Mobile-First Responsive Design */
 @media (max-width: 768px) {
   html, body, #root {
