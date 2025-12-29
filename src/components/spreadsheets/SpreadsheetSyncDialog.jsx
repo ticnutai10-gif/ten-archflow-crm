@@ -350,9 +350,22 @@ export default function SpreadsheetSyncDialog({ open, onClose, spreadsheet, onIm
     }
   };
 
+  const handleSaveSettings = async () => {
+    try {
+      await onSaveLink(spreadsheetId, sheetName, syncConfig);
+      toast.success('ההגדרות נשמרו בהצלחה');
+    } catch (e) {
+      console.error(e);
+      toast.error('שגיאה בשמירת הגדרות');
+    }
+  };
+
   const handleSync = async () => {
     setLoading(true);
     try {
+      // Save settings first
+      await onSaveLink(spreadsheetId, sheetName, syncConfig);
+
       if (syncDirection === 'export') {
         await onExport(spreadsheetId, sheetName, syncConfig.sync_mode);
         toast.success('יוצא ל-Google Sheets בהצלחה');
@@ -360,7 +373,7 @@ export default function SpreadsheetSyncDialog({ open, onClose, spreadsheet, onIm
         await onImport(spreadsheetId, sheetName, syncConfig.sync_mode);
         toast.success('יובא מ-Google Sheets בהצלחה');
       }
-      onSaveLink(spreadsheetId, sheetName, syncConfig);
+      
       onClose();
     } catch (e) {
       console.error(e);
@@ -688,12 +701,17 @@ export default function SpreadsheetSyncDialog({ open, onClose, spreadsheet, onIm
 
         </div>
 
-        <DialogFooter className="px-6 py-4 border-t bg-slate-50 mt-auto shrink-0">
+        <DialogFooter className="px-6 py-4 border-t bg-slate-50 mt-auto shrink-0 flex justify-between">
           <Button variant="ghost" onClick={onClose} size="lg">ביטול</Button>
           {step === 'sync' && (
-            <Button onClick={handleSync} disabled={loading} size="lg" className="bg-green-600 hover:bg-green-700 min-w-[120px]">
-              {loading ? <Loader2 className="w-5 h-5 ml-2 animate-spin" /> : 'בצע סנכרון'}
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={handleSaveSettings} disabled={loading} variant="outline" size="lg">
+                שמור הגדרות
+              </Button>
+              <Button onClick={handleSync} disabled={loading} size="lg" className="bg-green-600 hover:bg-green-700 min-w-[120px]">
+                {loading ? <Loader2 className="w-5 h-5 ml-2 animate-spin" /> : 'שמור וסנכרן'}
+              </Button>
+            </div>
           )}
         </DialogFooter>
       </DialogContent>
