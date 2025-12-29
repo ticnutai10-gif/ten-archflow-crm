@@ -23,6 +23,8 @@ import { useAccessControl } from "@/components/access/AccessValidator";
 import ColumnsManagerDialog from "./ColumnsManagerDialog";
 import BulkColumnsDialog from "./BulkColumnsDialog";
 import StageOptionsManager from "./StageOptionsManager";
+import SpreadsheetSyncDialog from "./SpreadsheetSyncDialog";
+import { FileSpreadsheet } from "lucide-react";
 
 // Default stage options with colors - MUST BE OUTSIDE COMPONENT
 const DEFAULT_STAGE_OPTIONS = [
