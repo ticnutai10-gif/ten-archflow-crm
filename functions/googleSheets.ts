@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.3';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 import { google } from 'npm:googleapis';
 
 Deno.serve(async (req) => {
@@ -21,26 +21,7 @@ Deno.serve(async (req) => {
     }
     log('User authenticated', { email: user.email });
 
-    // Try to get OAuth token first (App Connector)
-    let auth = null;
-    let authMethod = 'none';
-    
-    try {
-      log('Trying OAuth App Connector for googlesheets...');
-      const accessToken = await base44.asServiceRole.connectors.getAccessToken("googlesheets");
-      if (accessToken) {
-        log('OAuth token received from App Connector', { tokenLength: accessToken?.length });
-        const oauth2Client = new google.auth.OAuth2();
-        oauth2Client.setCredentials({ access_token: accessToken });
-        auth = oauth2Client;
-        authMethod = 'oauth_connector';
-      } else {
-        log('OAuth token is null/empty');
-      }
-    } catch (e) {
-      log('OAuth connector failed', { error: e.message });
-    }
-
+    // Parse payload first
     const payload = await req.json();
     log('Received payload', { action: payload.action, spreadsheetId: payload.spreadsheetId });
     const { action, spreadsheetId, sheetName, range, values, headers, title } = payload;
@@ -67,13 +48,11 @@ Deno.serve(async (req) => {
 
     if (action === 'getServiceAccountEmail') {
          let email = null;
-         // 1. Check AppSettings
          const settings = await base44.asServiceRole.entities.AppSettings.filter({ setting_key: 'google_service_account' });
          if (settings.length > 0) {
              email = settings[0].value.client_email;
          }
          
-         // 2. Check Env Var if not found
          if (!email) {
             const envVar = Deno.env.get("GOOGLE_SERVICE_ACCOUNT_JSON");
             if (envVar) {
@@ -85,6 +64,26 @@ Deno.serve(async (req) => {
          }
          
          return Response.json({ success: true, email });
+    }
+
+    // Get authentication - Try OAuth App Connector FIRST (this is the authorized one)
+    let auth = null;
+    let authMethod = 'none';
+    
+    try {
+      log('Trying OAuth App Connector for googlesheets...');
+      const accessToken = await base44.asServiceRole.connectors.getAccessToken("googlesheets");
+      if (accessToken) {
+        log('OAuth token received from App Connector', { tokenLength: accessToken?.length });
+        const oauth2Client = new google.auth.OAuth2();
+        oauth2Client.setCredentials({ access_token: accessToken });
+        auth = oauth2Client;
+        authMethod = 'oauth_connector';
+      } else {
+        log('OAuth token is null/empty');
+      }
+    } catch (e) {
+      log('OAuth connector failed', { error: e.message });
     }
 
     // Fallback to Service Account if no OAuth
@@ -138,7 +137,7 @@ Deno.serve(async (req) => {
       log('No authentication method available!');
       return Response.json({ 
         success: false, 
-        error: 'No authentication method available. Please connect Google Sheets or upload Service Account JSON.',
+        error: 'לא התקבל קוד אישור מ-Google. נא לחבר את חשבון Google Sheets דרך הגדרות האפליקציה.',
         debug: debugLogs
       }, { status: 400 });
     }
@@ -157,7 +156,7 @@ Deno.serve(async (req) => {
         resource,
         fields: 'spreadsheetId,spreadsheetUrl',
       });
-      return Response.json({ success: true, ...response.data });
+      return Response.json({ success: true, ...response.data, debug: debugLogs });
     }
 
     if (action === 'getSheets') {
@@ -187,17 +186,16 @@ Deno.serve(async (req) => {
     if (action === 'getHeaders') {
       const response = await sheets.spreadsheets.values.get({
         spreadsheetId,
-        range: `${sheetName}!A1:Z1`, // Assuming headers are in the first row
+        range: `${sheetName}!A1:Z1`,
       });
-      const headers = response.data.values ? response.data.values[0] : [];
-      return Response.json({ success: true, headers });
+      const headersResult = response.data.values ? response.data.values[0] : [];
+      return Response.json({ success: true, headers: headersResult, debug: debugLogs });
     }
 
     if (action === 'read') {
-      // If sheetName is provided, read that sheet. Otherwise read first sheet or provided range.
       let readRange = range;
       if (!readRange && sheetName) {
-        readRange = sheetName; // Read whole sheet
+        readRange = sheetName;
       }
 
       const response = await sheets.spreadsheets.values.get({
@@ -213,23 +211,21 @@ Deno.serve(async (req) => {
         success: true,
         headers: headerRow,
         rows: dataRows,
-        totalRows: dataRows.length
+        totalRows: dataRows.length,
+        debug: debugLogs
       });
     }
 
     if (action === 'update') {
-      const mode = payload.mode || 'overwrite'; // 'overwrite', 'append', 'update_existing'
+      const mode = payload.mode || 'overwrite';
 
       if (mode === 'overwrite') {
-        // Full sync mode: Clear and write
         if (!range && sheetName) {
-          // 1. Clear
           await sheets.spreadsheets.values.clear({
             spreadsheetId,
             range: sheetName,
           });
 
-          // 2. Write headers + rows
           const allValues = headers ? [headers, ...values] : values;
           
           const response = await sheets.spreadsheets.values.update({
@@ -241,37 +237,31 @@ Deno.serve(async (req) => {
             }
           });
           
-          return Response.json({ success: true, updatedCells: response.data.updatedCells });
+          return Response.json({ success: true, updatedCells: response.data.updatedCells, debug: debugLogs });
         }
       } 
       
       else if (mode === 'append') {
-        // Append rows to the end of the sheet
         const response = await sheets.spreadsheets.values.append({
           spreadsheetId,
           range: sheetName,
           valueInputOption: 'USER_ENTERED',
           resource: {
-            values: values // Just the data rows
+            values: values
           }
         });
-        return Response.json({ success: true, updates: response.data.updates });
+        return Response.json({ success: true, updates: response.data.updates, debug: debugLogs });
       } 
       
       else if (mode === 'update_existing') {
-        // Smart update: Read existing data, match by first column (ID/Key), update if exists, append if new
-        
-        // 1. Read existing data
         const readResponse = await sheets.spreadsheets.values.get({
           spreadsheetId,
           range: sheetName,
         });
         
         const existingRows = readResponse.data.values || [];
-        const existingHeaders = existingRows[0] || [];
         const existingData = existingRows.slice(1);
         
-        // If sheet is empty, treat as overwrite
         if (existingRows.length === 0) {
            const allValues = headers ? [headers, ...values] : values;
            const response = await sheets.spreadsheets.values.update({
@@ -280,34 +270,30 @@ Deno.serve(async (req) => {
             valueInputOption: 'USER_ENTERED',
             resource: { values: allValues }
           });
-          return Response.json({ success: true, updatedCells: response.data.updatedCells, note: 'Sheet was empty, performed full write' });
+          return Response.json({ success: true, updatedCells: response.data.updatedCells, note: 'Sheet was empty, performed full write', debug: debugLogs });
         }
 
-        // Map existing rows by first column (assuming it's a unique key)
         const existingMap = new Map();
         existingData.forEach((row, index) => {
-          if (row[0]) existingMap.set(String(row[0]), index + 2); // Store 1-based row index (header is 1, so data starts at 2)
+          if (row[0]) existingMap.set(String(row[0]), index + 2);
         });
 
-        const updates = []; // Batch updates
-        const newRows = []; // Rows to append
+        const updates = [];
+        const newRows = [];
 
         values.forEach(row => {
           const key = String(row[0]);
           if (existingMap.has(key)) {
-            // Update existing row
             const rowIndex = existingMap.get(key);
             updates.push({
               range: `${sheetName}!A${rowIndex}`,
               values: [row]
             });
           } else {
-            // Append new row
             newRows.push(row);
           }
         });
 
-        // Perform batch updates
         if (updates.length > 0) {
           await sheets.spreadsheets.values.batchUpdate({
             spreadsheetId,
@@ -318,7 +304,6 @@ Deno.serve(async (req) => {
           });
         }
 
-        // Perform append for new rows
         if (newRows.length > 0) {
           await sheets.spreadsheets.values.append({
             spreadsheetId,
@@ -333,11 +318,11 @@ Deno.serve(async (req) => {
         return Response.json({ 
           success: true, 
           updatedRows: updates.length, 
-          addedRows: newRows.length 
+          addedRows: newRows.length,
+          debug: debugLogs
         });
       }
 
-      // Fallback for simple update with range
       if (range) {
         const response = await sheets.spreadsheets.values.update({
           spreadsheetId,
@@ -347,7 +332,7 @@ Deno.serve(async (req) => {
             values: values
           }
         });
-        return Response.json({ success: true, updatedCells: response.data.updatedCells });
+        return Response.json({ success: true, updatedCells: response.data.updatedCells, debug: debugLogs });
       }
     }
     
@@ -360,7 +345,7 @@ Deno.serve(async (req) => {
           values: values
         }
       });
-      return Response.json({ success: true, updates: response.data.updates });
+      return Response.json({ success: true, updates: response.data.updates, debug: debugLogs });
     }
 
     if (action === 'addSheet') {
@@ -376,11 +361,10 @@ Deno.serve(async (req) => {
           }]
         }
       });
-      return Response.json({ success: true, sheetName: sheetName });
+      return Response.json({ success: true, sheetName: sheetName, debug: debugLogs });
     }
 
     if (action === 'updateHeaders') {
-      // Updates the first row of the sheet (headers)
       const response = await sheets.spreadsheets.values.update({
         spreadsheetId,
         range: `${sheetName}!A1`,
@@ -389,10 +373,10 @@ Deno.serve(async (req) => {
           values: [headers]
         }
       });
-      return Response.json({ success: true, updatedCells: response.data.updatedCells });
+      return Response.json({ success: true, updatedCells: response.data.updatedCells, debug: debugLogs });
     }
 
-    return Response.json({ success: false, error: 'Unknown action' });
+    return Response.json({ success: false, error: 'Unknown action', debug: debugLogs });
 
   } catch (error) {
     console.error('Google Sheets error:', error);
