@@ -91,7 +91,7 @@ export default function SpreadsheetSyncDialog({ open, onClose, spreadsheet, onIm
     setLoading(true);
     try {
       toast.info('מריץ בדיקות אבחון...');
-      const { data } = await base44.functions.invoke('testGoogleSheets', {});
+      const { data } = await base44.functions.invoke('testGoogleSheets', { spreadsheetId });
       console.log('=== DIAGNOSTICS RESULTS ===');
       console.log(JSON.stringify(data, null, 2));
       data.steps?.forEach(step => {
@@ -120,10 +120,17 @@ export default function SpreadsheetSyncDialog({ open, onClose, spreadsheet, onIm
       
       if (data.success) {
         setAvailableSheets(data.sheets);
-        const targetSheet = sheetName || data.sheets[0]?.title;
-        if (!sheetName && data.sheets.length > 0) {
-          setSheetName(data.sheets[0].title);
+        
+        // Smart sheet selection
+        let targetSheet = sheetName;
+        const sheetTitles = data.sheets.map(s => s.title);
+        
+        // If no sheet selected or selected sheet doesn't exist, pick the first one
+        if (!targetSheet || !sheetTitles.includes(targetSheet)) {
+            targetSheet = sheetTitles[0];
+            setSheetName(targetSheet);
         }
+        
         setStep('sync');
         onSaveLink(id, targetSheet);
         

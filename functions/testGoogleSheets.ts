@@ -78,7 +78,10 @@ Deno.serve(async (req) => {
         
         // Test the auth
         const sheets = google.sheets({ version: 'v4', auth });
-        const testSpreadsheetId = '1cIEznO_7ko00wROvIA376tPCrp4G_7-pOTZ9SakJkBA';
+        
+        // Use ID from payload or default to the known sheet
+        const payload = await req.json().catch(() => ({}));
+        const testSpreadsheetId = payload.spreadsheetId || '1cIEznO_7ko00wROvIA376tPCrp4G_7-pOTZ9SakJkBA';
         
         try {
           const response = await sheets.spreadsheets.get({
@@ -111,7 +114,9 @@ Deno.serve(async (req) => {
         log('google_auth_service_account', 'created');
         
         const sheets = google.sheets({ version: 'v4', auth: saAuth });
-        const testSpreadsheetId = '1cIEznO_7ko00wROvIA376tPCrp4G_7-pOTZ9SakJkBA';
+        
+        const payload = await req.json().catch(() => ({}));
+        const testSpreadsheetId = payload.spreadsheetId || '1cIEznO_7ko00wROvIA376tPCrp4G_7-pOTZ9SakJkBA';
         
         try {
           const response = await sheets.spreadsheets.get({

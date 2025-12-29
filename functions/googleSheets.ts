@@ -133,7 +133,8 @@ Deno.serve(async (req) => {
         } catch (e) {
           const msg = `Failed to parse GOOGLE_SERVICE_ACCOUNT_JSON (Length: ${SERVICE_ACCOUNT_JSON.length}). Possibly truncated. Error: ${e.message}`;
           log(msg);
-          authErrors.push(msg);
+          // Don't add to authErrors if we already have other methods to try or failed, to reduce noise
+          // authErrors.push(msg); 
         }
       } else {
         log('GOOGLE_SERVICE_ACCOUNT_JSON env var not found');
