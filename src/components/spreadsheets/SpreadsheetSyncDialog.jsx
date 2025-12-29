@@ -188,7 +188,11 @@ export default function SpreadsheetSyncDialog({ open, onClose, spreadsheet, onIm
         
         // If no sheet selected or selected sheet doesn't exist, pick the first one
         if (!targetSheet || !sheetTitles.includes(targetSheet)) {
-            targetSheet = sheetTitles[0];
+            const defaultSheet = sheetTitles[0];
+            if (targetSheet && !sheetTitles.includes(targetSheet)) {
+                 toast.warning(`הגיליון "${targetSheet}" לא נמצא ב-Google Sheets. נבחר אוטומטית "${defaultSheet}".`);
+            }
+            targetSheet = defaultSheet;
             setSheetName(targetSheet);
         }
         
@@ -372,12 +376,15 @@ export default function SpreadsheetSyncDialog({ open, onClose, spreadsheet, onIm
   };
 
   const handleSaveSettings = async () => {
+    setLoading(true);
     try {
       await onSaveLink(spreadsheetId, sheetName, syncConfig);
       toast.success('ההגדרות נשמרו בהצלחה');
     } catch (e) {
       console.error(e);
       toast.error('שגיאה בשמירת הגדרות');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -580,17 +587,6 @@ export default function SpreadsheetSyncDialog({ open, onClose, spreadsheet, onIm
                       <div>
                         <div className="font-semibold text-sm">ייבוא מגוגל</div>
                         <div className="text-[10px] opacity-70">Google Sheets ← לכאן</div>
-                      </div>
-                    </Button>
-                    <Button 
-                      variant={syncDirection === 'two_way' ? 'default' : 'outline'}
-                      onClick={() => setSyncDirection('two_way')}
-                      className="justify-start gap-2 col-span-2 bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-800"
-                    >
-                      <ArrowLeftRight className="w-4 h-4" />
-                      <div>
-                        <div className="font-semibold text-sm">סנכרון דו-כיווני (Smart Sync)</div>
-                        <div className="text-[10px] opacity-70">מיזוג חכם של שינויים משני הצדדים</div>
                       </div>
                     </Button>
                     <Button 
