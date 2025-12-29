@@ -13,13 +13,16 @@ export default function SpreadsheetDetailsPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    loadSpreadsheet();
-  }, []);
+    const urlParams = new URLSearchParams(window.location.search);
+    const spreadsheetId = urlParams.get('id');
+    loadSpreadsheet(spreadsheetId);
+  }, [window.location.search]);
 
-  const loadSpreadsheet = async () => {
+  const loadSpreadsheet = async (spreadsheetId) => {
+    setLoading(true);
     try {
-      const urlParams = new URLSearchParams(window.location.search);
-      const spreadsheetId = urlParams.get('id');
+      // const urlParams = new URLSearchParams(window.location.search); // Removed as passed in arg
+      // const spreadsheetId = urlParams.get('id'); // Removed as passed in arg
 
       if (!spreadsheetId) {
         toast.error('לא נמצא מזהה טבלה');
