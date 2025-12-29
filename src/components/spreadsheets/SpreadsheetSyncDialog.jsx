@@ -325,14 +325,17 @@ export default function SpreadsheetSyncDialog({ open, onClose, spreadsheet, onIm
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent dir="rtl" className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <FileSpreadsheet className="w-5 h-5 text-green-600" />
+      <DialogContent dir="rtl" className="sm:max-w-2xl h-[85vh] flex flex-col p-0 gap-0">
+        <DialogHeader className="px-6 py-4 border-b bg-slate-50/50 shrink-0">
+          <DialogTitle className="flex items-center gap-2 text-xl">
+            <div className="p-2 bg-green-100 rounded-lg">
+              <FileSpreadsheet className="w-6 h-6 text-green-700" />
+            </div>
             סנכרון עם Google Sheets
           </DialogTitle>
         </DialogHeader>
 
+        <div className="flex-1 overflow-y-auto px-6 py-4">
         {step === 'auth_needed' && (
            <div className="space-y-4 py-4 text-center">
              <AlertCircle className="w-12 h-12 text-yellow-500 mx-auto" />
@@ -447,62 +450,64 @@ export default function SpreadsheetSyncDialog({ open, onClose, spreadsheet, onIm
                 </div>
               </TabsContent>
 
-              <TabsContent value="settings" className="space-y-4 pt-4 h-[400px]">
-                <ScrollArea className="h-full pr-4">
+              <TabsContent value="settings" className="space-y-6 pt-6">
                 
                 {/* Field Mapping UI */}
-                <div className="space-y-3 mb-6">
+                <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-bold flex items-center gap-2">
-                        <ArrowLeftRight className="w-4 h-4 text-slate-500" />
+                    <h4 className="font-bold flex items-center gap-2 text-slate-800">
+                        <div className="p-1.5 bg-blue-100 rounded text-blue-700">
+                          <ArrowLeftRight className="w-4 h-4" />
+                        </div>
                         מיפוי שדות
                     </h4>
-                    <Button variant="ghost" size="sm" onClick={handleAutoMap} className="text-blue-600 text-xs h-7">
-                        <RefreshCw className="w-3 h-3 ml-1" />
+                    <Button variant="ghost" size="sm" onClick={handleAutoMap} className="text-blue-600 hover:bg-blue-50">
+                        <RefreshCw className="w-4 h-4 ml-2" />
                         מיפוי אוטומטי
                     </Button>
                   </div>
 
-                  <div className="border rounded-lg overflow-hidden text-sm">
-                      <div className="grid grid-cols-2 bg-slate-50 p-2 font-medium border-b">
+                  <div className="border rounded-xl overflow-hidden shadow-sm bg-white">
+                      <div className="grid grid-cols-2 bg-slate-50/80 p-3 font-semibold text-slate-700 border-b text-sm">
                           <div>שדה במערכת</div>
                           <div>עמודה ב-Google Sheet</div>
                       </div>
-                      <div className="divide-y max-h-[200px] overflow-y-auto">
+                      <div className="divide-y max-h-[300px] overflow-y-auto custom-scrollbar">
                           {syncConfig.field_mapping.map((mapping, idx) => (
-                              <div key={idx} className="grid grid-cols-2 p-2 items-center gap-2">
-                                  <div className="truncate" title={mapping.entity_field}>
+                              <div key={idx} className="grid grid-cols-2 p-3 items-center gap-4 hover:bg-slate-50 transition-colors">
+                                  <div className="truncate font-medium text-slate-700" title={mapping.entity_field}>
                                       {SYSTEM_FIELDS.find(f => f.value === mapping.entity_field)?.label || 
                                        customFields.find(f => `custom_data.${f.key}` === mapping.entity_field)?.label ||
                                        mapping.entity_field}
                                   </div>
-                                  <div className="flex items-center gap-2">
+                                  <div className="flex items-center gap-3">
                                       {mapping.is_new ? (
-                                          <span className="text-green-600 text-xs bg-green-50 px-2 py-1 rounded flex-1 truncate">
+                                          <span className="text-green-700 text-sm bg-green-50 border border-green-100 px-3 py-1.5 rounded-lg flex-1 truncate font-medium">
                                               + {mapping.sheet_column} (חדש)
                                           </span>
                                       ) : (
-                                          <span className="text-slate-700 bg-slate-50 px-2 py-1 rounded flex-1 truncate">
+                                          <span className="text-slate-700 text-sm bg-slate-100 px-3 py-1.5 rounded-lg flex-1 truncate">
                                               {mapping.sheet_column}
                                           </span>
                                       )}
                                       <Button 
                                         variant="ghost" 
                                         size="icon" 
-                                        className="h-6 w-6 text-red-400 hover:text-red-600"
+                                        className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-full"
                                         onClick={() => {
                                             const newMapping = [...syncConfig.field_mapping];
                                             newMapping.splice(idx, 1);
                                             setSyncConfig({ ...syncConfig, field_mapping: newMapping });
                                         }}
                                       >
-                                          <Trash2 className="w-3 h-3" />
+                                          <Trash2 className="w-4 h-4" />
                                       </Button>
                                   </div>
                               </div>
                           ))}
                           {syncConfig.field_mapping.length === 0 && (
-                              <div className="p-4 text-center text-slate-400 text-xs">
+                              <div className="p-8 text-center text-slate-400">
+                                  <div className="mb-2">👻</div>
                                   לא הוגדר מיפוי. לחץ על "מיפוי אוטומטי" או הוסף ידנית.
                               </div>
                           )}
@@ -529,7 +534,7 @@ export default function SpreadsheetSyncDialog({ open, onClose, spreadsheet, onIm
                             }));
                         }}
                       >
-                          <SelectTrigger className="flex-1 h-8 text-xs">
+                          <SelectTrigger className="flex-1 h-10">
                               <SelectValue placeholder="הוסף שדה למיפוי..." />
                           </SelectTrigger>
                           <SelectContent>
@@ -615,11 +620,13 @@ export default function SpreadsheetSyncDialog({ open, onClose, spreadsheet, onIm
           </div>
         )}
 
-        <DialogFooter>
-          <Button variant="ghost" onClick={onClose}>ביטול</Button>
+        </div>
+
+        <DialogFooter className="px-6 py-4 border-t bg-slate-50 mt-auto shrink-0">
+          <Button variant="ghost" onClick={onClose} size="lg">ביטול</Button>
           {step === 'sync' && (
-            <Button onClick={handleSync} disabled={loading} className="bg-green-600 hover:bg-green-700">
-              {loading ? <Loader2 className="w-4 h-4 ml-2 animate-spin" /> : 'בצע סנכרון'}
+            <Button onClick={handleSync} disabled={loading} size="lg" className="bg-green-600 hover:bg-green-700 min-w-[120px]">
+              {loading ? <Loader2 className="w-5 h-5 ml-2 animate-spin" /> : 'בצע סנכרון'}
             </Button>
           )}
         </DialogFooter>
