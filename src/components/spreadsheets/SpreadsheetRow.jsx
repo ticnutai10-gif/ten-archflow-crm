@@ -160,8 +160,8 @@ const SpreadsheetRow = memo(({
               className="p-0 relative border-b border-slate-100 group-hover:bg-slate-50 transition-colors"
               style={{ 
                 height: `${rowHeight}px`, 
-                zIndex: 15, 
-                backgroundColor: palette.headerBg, 
+                zIndex: 35, 
+                backgroundColor: palette.headerBg || '#f1f5f9', 
                 borderWidth: isSeparateBorders ? '0' : borderStyle.width, 
                 borderStyle: borderStyle.style, 
                 borderColor: borderColor || palette.border,
