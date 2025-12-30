@@ -729,7 +729,7 @@ function LayoutInner({ children, currentPageName }) {
 
 
         <div className="order-2 flex-1" style={{ backgroundColor: 'var(--bg-cream)', overflow: 'visible', width: '100%', touchAction: 'pan-y' }} dir="rtl">
-          {user && !isMobile && (
+          {user && !isMobile && currentPageName === 'Dashboard' && (
             <div className="px-6 py-3" dir="rtl" style={{ backgroundColor: 'var(--bg-cream)' }}>
               <div className="max-w-7xl mx-auto">
                 <motion.div 

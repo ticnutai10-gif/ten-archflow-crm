@@ -2904,12 +2904,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         className={`${isFullScreen ? 'fixed inset-0 z-[100] h-screen w-screen overflow-hidden p-4 bg-slate-100/90 backdrop-blur' : (fullScreenMode ? 'flex-1 min-h-0' : '')}`}
         style={isFullScreen ? { touchAction: 'none' } : {}}
       >
-      <Card 
-        className={`shadow-lg bg-white/80 backdrop-blur-sm transition-all duration-300 ${isFullScreen || fullScreenMode ? 'h-full flex flex-col' : ''}`}
-        style={{ border: outerBorderStyle }}
-      >
-        <CardHeader className="border-b px-4 py-2 flex-shrink-0 space-y-0">
-          <div className="flex items-center justify-between gap-4 flex-wrap lg:flex-nowrap">
+          <div className="flex items-center justify-between gap-4 flex-wrap lg:flex-nowrap mb-3 px-1">
             {/* Left Side: Title & Icon */}
             <div className="flex items-center gap-3">
               {(onBack || (!fullScreenMode && !isFullScreen)) && (
@@ -3382,9 +3377,12 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                />
             </div>
           </div>
-        </CardHeader>
-        
-        <CardContent className="p-0">
+      
+      <Card 
+        className={`shadow-lg bg-white/80 backdrop-blur-sm transition-all duration-300 ${isFullScreen || fullScreenMode ? 'flex-1 min-h-0 flex flex-col' : ''}`}
+        style={{ border: outerBorderStyle }}
+      >
+        <CardContent className="p-0 flex-1 flex flex-col min-h-0">
           {viewMode === 'cards' && (
             <div className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
