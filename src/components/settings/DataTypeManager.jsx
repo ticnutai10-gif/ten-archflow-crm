@@ -471,8 +471,19 @@ function AdvancedSettingsDialog({ open, onClose, onSave, option, title }) {
                 </div>
               </div>
 
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm text-slate-600 block mb-1">תאריך מינימום</label>
+                  <Input type="date" value={validation.min_date || ''} onChange={(e) => setValidation({...validation, min_date: e.target.value})} />
+                </div>
+                <div>
+                  <label className="text-sm text-slate-600 block mb-1">תאריך מקסימום</label>
+                  <Input type="date" value={validation.max_date || ''} onChange={(e) => setValidation({...validation, max_date: e.target.value})} />
+                </div>
+              </div>
+
               <div>
-                <label className="text-sm text-slate-600 block mb-1">Regex (ביטוי רגולרי)</label>
+                <label className="text-sm text-slate-600 block mb-1">Regex (ביטוי רגולרי) - פורמט ייחודי</label>
                 <Input value={validation.regex || ''} onChange={(e) => setValidation({...validation, regex: e.target.value})} placeholder="e.g. ^[A-Z0-9]+$" dir="ltr" />
               </div>
             </div>
@@ -528,7 +539,15 @@ function AdvancedSettingsDialog({ open, onClose, onSave, option, title }) {
                           onChange={(e) => updateAutoColorRule(idx, 'color', e.target.value)} 
                           className="w-12 h-8 p-0 cursor-pointer"
                         />
-                        <span className="text-xs text-slate-500">צבע</span>
+                        <Select value={rule.color_target || 'cell'} onValueChange={(val) => updateAutoColorRule(idx, 'color_target', val)}>
+                          <SelectTrigger className="h-8 w-20 px-1 text-xs">
+                            <SelectValue placeholder="יעד" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="cell">תא</SelectItem>
+                            <SelectItem value="row">שורה</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
                     <Button size="icon" variant="ghost" onClick={() => removeAutoColorRule(idx)} className="h-8 w-8 text-red-500"><Trash2 className="w-4 h-4" /></Button>

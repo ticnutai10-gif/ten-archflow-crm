@@ -216,6 +216,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const [selectedHeaders, setSelectedHeaders] = useState(new Set());
   const [cellStyles, setCellStyles] = useState({});
   const [cellNotes, setCellNotes] = useState({});
+  const [cellMetadata, setCellMetadata] = useState({});
   const [subHeaders, setSubHeaders] = useState({});
   const [showSubHeaders, setShowSubHeaders] = useState(false);
   const [headerStyles, setHeaderStyles] = useState({});
@@ -322,6 +323,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const rowsDataRef = useRef(rowsData);
   const cellStylesRef = useRef(cellStyles);
   const cellNotesRef = useRef(cellNotes);
+  const cellMetadataRef = useRef(cellMetadata);
   const subHeadersRef = useRef(subHeaders);
   const headerStylesRef = useRef(headerStyles);
   const rowHeightsRef = useRef(rowHeights);
@@ -342,6 +344,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   useEffect(() => { rowsDataRef.current = rowsData; }, [rowsData]);
   useEffect(() => { cellStylesRef.current = cellStyles; }, [cellStyles]);
   useEffect(() => { cellNotesRef.current = cellNotes; }, [cellNotes]);
+  useEffect(() => { cellMetadataRef.current = cellMetadata; }, [cellMetadata]);
   useEffect(() => { subHeadersRef.current = subHeaders; }, [subHeaders]);
   useEffect(() => { headerStylesRef.current = headerStyles; }, [headerStyles]);
   useEffect(() => { rowHeightsRef.current = rowHeights; }, [rowHeights]);
@@ -609,11 +612,13 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       const initialRows = spreadsheet.rows_data || [];
       const initialStyles = spreadsheet.cell_styles || {};
       const initialNotes = spreadsheet.cell_notes || {};
+      const initialMetadata = spreadsheet.cell_metadata || {};
 
       setColumns(initialColumns);
       setRowsData(initialRows);
       setCellStyles(initialStyles);
       setCellNotes(initialNotes);
+      setCellMetadata(initialMetadata);
       setSubHeaders(spreadsheet.sub_headers || {});
       setShowSubHeaders(spreadsheet.show_sub_headers || false);
       setHeaderStyles(spreadsheet.header_styles || {});
@@ -671,6 +676,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         rows: initialRows, 
         styles: initialStyles, 
         notes: initialNotes,
+        metadata: initialMetadata,
         subHeaders: spreadsheet.sub_headers || {},
         mergedHeaders: spreadsheet.merged_headers || {},
         headerStyles: spreadsheet.header_styles || {}
@@ -777,6 +783,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         rows_data: rowsDataRef.current,
         cell_styles: cellStylesRef.current,
         cell_notes: cellNotesRef.current,
+        cell_metadata: cellMetadataRef.current,
         sub_headers: subHeadersRef.current,
         show_sub_headers: showSubHeaders,
         header_styles: headerStylesRef.current,
@@ -821,6 +828,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     setRowsData(prevState.rows);
     setCellStyles(prevState.styles);
     setCellNotes(prevState.notes || {});
+    setCellMetadata(prevState.metadata || {});
     setSubHeaders(prevState.subHeaders || {});
     setMergedHeaders(prevState.mergedHeaders || {});
     setHeaderStyles(prevState.headerStyles || {});
@@ -846,6 +854,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     setRowsData(nextState.rows);
     setCellStyles(nextState.styles);
     setCellNotes(nextState.notes || {});
+    setCellMetadata(nextState.metadata || {});
     setSubHeaders(nextState.subHeaders || {});
     setMergedHeaders(nextState.mergedHeaders || {});
     setHeaderStyles(nextState.headerStyles || {});
@@ -3867,6 +3876,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                               currentUser={currentUser}
                               cellStyles={cellStyles}
                               cellNotes={cellNotes}
+                              cellMetadata={cellMetadata}
                               commentCounts={commentCounts}
                               mergedCells={mergedCells}
                               customStageOptions={customStageOptions}
@@ -3897,13 +3907,8 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                               editInputRef={editInputRef}
                               validateCell={validateCell}
                               
-                              onDirectSaveStage={async (stageValue, columnKey) => {
-                                // Simplified Direct Save Logic passed as callback
-                                // Re-implemented inline in row component, but we can pass the heavy logic here if needed
-                                // Or better: The row component calls this prop with stageValue
-                                
-                                console.log('🟣 [STAGE SAVE] Direct save called with:', stageValue);
-                                const column = columns.find(c => c.key === columnKey); // We need columnKey passed back
+                              onDirectSaveStage={async (stageValue, columnKey, newMetadata) => {
+                                const column = columns.find(c => c.key === columnKey);
                                 const updatedRows = rowsData.map(r => 
                                   r.id === row.id ? { ...r, [columnKey]: stageValue } : r
                                 );
@@ -3912,6 +3917,13 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                 setEditValue("");
                                 rowsDataRef.current = updatedRows;
                                 
+                                // Update metadata if provided (custom fields)
+                                if (newMetadata) {
+                                  const updatedMetadata = { ...cellMetadataRef.current, [`${row.id}_${columnKey}`]: newMetadata };
+                                  setCellMetadata(updatedMetadata);
+                                  cellMetadataRef.current = updatedMetadata;
+                                }
+
                                 // Client update logic
                                 const clientColumns = columnsRef.current.filter(col => 
                                   col.type === 'client' || col.key.toLowerCase().includes('client') || col.title?.toLowerCase().includes('לקוח')
@@ -3932,10 +3944,10 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                 }
                                 
                                 setTimeout(() => {
-                                  saveToHistory(columnsRef.current, updatedRows, cellStylesRef.current, cellNotesRef.current);
+                                  saveToHistory(columnsRef.current, updatedRows, cellStylesRef.current, cellNotesRef.current, subHeadersRef.current, mergedHeadersRef.current, headerStylesRef.current, cellMetadataRef.current);
                                   saveToBackend();
                                 }, 50);
-                                toast.success('✓ שלב עודכן');
+                                toast.success('✓ עודכן בהצלחה');
                               }}
                             />
                           );
