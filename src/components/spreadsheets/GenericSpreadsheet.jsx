@@ -3543,7 +3543,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
 
                             // Only show sub headers with position 'above' in this row
                             if (!headerMerge && (!subHeaderTitle || subHeaderPos !== 'above')) {
-                              return <th key={`sub_empty_${col.key}`} className="text-center font-bold p-2" style={{ backgroundColor: palette.headerBg, borderWidth: isSeparateBorders ? '0' : borderStyle.width, borderStyle: borderStyle.style, borderColor: palette.border }}></th>;
+                              return <th key={`sub_empty_${col.key}`} className="text-center font-bold p-2" style={{ backgroundColor: palette.headerBg, borderWidth: isSeparateBorders ? '0' : borderStyle.width, borderStyle: borderStyle.style, borderColor: outerBorderColor }}></th>;
                             }
                             
                             return (
@@ -3559,12 +3559,12 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                   fontSize: headerFontSize,
                                   borderWidth: isSeparateBorders ? '0' : borderStyle.width,
                                   borderStyle: borderStyle.style,
-                                  borderColor: palette.border,
+                                  borderColor: outerBorderColor,
                                   borderBottomWidth: borderStyle.width,
                                   borderRightWidth: (isFirstInMerge || headerMerge) && !isSeparateBorders ? '3px' : undefined,
-                                  borderRightColor: (isFirstInMerge || headerMerge) ? palette.border : undefined,
+                                  borderRightColor: (isFirstInMerge || headerMerge) ? outerBorderColor : undefined,
                                   borderLeftWidth: (isLastInMerge || headerMerge) && !isSeparateBorders ? '3px' : undefined,
-                                  borderLeftColor: (isLastInMerge || headerMerge) ? palette.border : undefined
+                                  borderLeftColor: (isLastInMerge || headerMerge) ? outerBorderColor : undefined
                                 }}
                                 onClick={(e) => {
                                   e.preventDefault();
@@ -3618,7 +3618,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                         </tr>
                       )}
                       <tr>
-                        <th className="p-3 w-12 sticky right-0 shadow-[2px_0_5px_rgba(0,0,0,0.1)]" style={{ zIndex: 35, backgroundColor: palette.headerBg, borderWidth: isSeparateBorders ? '0' : borderStyle.width, borderStyle: borderStyle.style, borderColor: palette.border, borderRadius: isSeparateBorders ? tableBorderRadius : '0' }}>
+                        <th className="p-3 w-12 sticky right-0 shadow-[2px_0_5px_rgba(0,0,0,0.1)]" style={{ zIndex: 35, backgroundColor: palette.headerBg, borderWidth: isSeparateBorders ? '0' : borderStyle.width, borderStyle: borderStyle.style, borderColor: outerBorderColor, borderRadius: isSeparateBorders ? tableBorderRadius : '0' }}>
                           <GripVertical className="w-4 h-4 mx-auto" style={{ color: palette.headerText }} />
                         </th>
                         {visibleColumns.map((col, colIndex) => {
@@ -3662,13 +3662,13 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                   padding: cellPadding,
                                   borderWidth: isSeparateBorders ? '0' : borderStyle.width,
                                   borderStyle: borderStyle.style,
-                                  borderColor: palette.border,
+                                  borderColor: outerBorderColor,
                                   borderRadius: isSeparateBorders ? tableBorderRadius : '0',
                                   borderTopWidth: (hasParentMerge && showSubHeaders && !isSeparateBorders) ? borderStyle.width : undefined,
                                   borderRightWidth: isFirstInMerge && !isSeparateBorders ? '3px' : undefined,
-                                  borderRightColor: isFirstInMerge ? palette.border : undefined,
+                                  borderRightColor: isFirstInMerge ? outerBorderColor : undefined,
                                   borderLeftWidth: isLastInMerge && !isSeparateBorders ? '3px' : undefined,
-                                  borderLeftColor: isLastInMerge ? palette.border : undefined,
+                                  borderLeftColor: isLastInMerge ? outerBorderColor : undefined,
                                   boxShadow: colIndex === freezeSettings.freeze_columns - 1 ? '-2px 0 5px rgba(0,0,0,0.05)' : 'none',
                                   ...provided.draggableProps.style
                                 }} onClick={(e) => !snapshot.isDragging && handleHeaderClick(col.key, e)}>
@@ -3719,11 +3719,11 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                           );
                         })}
                         {provided.placeholder}
-                        <th className="p-3" style={{ width: '120px', backgroundColor: palette.headerBg, color: palette.headerText, fontFamily: headerFont.value, fontSize: headerFontSize, borderWidth: isSeparateBorders ? '0' : borderStyle.width, borderStyle: borderStyle.style, borderColor: palette.border, borderRadius: isSeparateBorders ? tableBorderRadius : '0' }}>פעולות</th>
+                        <th className="p-3" style={{ width: '120px', backgroundColor: palette.headerBg, color: palette.headerText, fontFamily: headerFont.value, fontSize: headerFontSize, borderWidth: isSeparateBorders ? '0' : borderStyle.width, borderStyle: borderStyle.style, borderColor: outerBorderColor, borderRadius: isSeparateBorders ? tableBorderRadius : '0' }}>פעולות</th>
                       </tr>
                       {showSubHeaders && Object.values(subHeaders).some(sh => (typeof sh === 'object' ? sh.position : 'above') === 'below') && (
                         <tr>
-                          <th className="p-3 w-12 sticky right-0 shadow-[2px_0_5px_rgba(0,0,0,0.1)]" style={{ zIndex: 35, backgroundColor: palette.headerBg, borderWidth: isSeparateBorders ? '0' : borderStyle.width, borderStyle: borderStyle.style, borderColor: palette.border }}></th>
+                          <th className="p-3 w-12 sticky right-0 shadow-[2px_0_5px_rgba(0,0,0,0.1)]" style={{ zIndex: 35, backgroundColor: palette.headerBg, borderWidth: isSeparateBorders ? '0' : borderStyle.width, borderStyle: borderStyle.style, borderColor: outerBorderColor }}></th>
                           {visibleColumns.map((col) => {
                             const subHeaderTitle = getSubHeaderTitle(col.key);
                             const subHeaderPos = getSubHeaderPosition(col.key);
@@ -3748,7 +3748,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                   fontSize: headerFontSize,
                                   borderWidth: isSeparateBorders ? '0' : borderStyle.width,
                                   borderStyle: borderStyle.style,
-                                  borderColor: palette.border
+                                  borderColor: outerBorderColor
                                 }}
                                 onClick={(e) => {
                                   e.preventDefault();
@@ -3799,6 +3799,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                               cellFont={cellFont}
                               cellFontSize={cellFontSize}
                               cellPadding={cellPadding}
+                              borderColor={outerBorderColor}
                               isSeparateBorders={isSeparateBorders}
                               borderStyle={borderStyle}
                               tableBorderRadius={tableBorderRadius}
@@ -3894,70 +3895,66 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
           </div>
           )}
         </CardContent>
-        <div className="px-4 py-1 border-t bg-slate-50 text-[10px] text-slate-500 flex items-center justify-between h-8">
-          <div className="flex items-center gap-3">
+        <div className="px-2 py-1 border-t bg-slate-50 flex items-center justify-between min-h-[2rem] gap-2 overflow-hidden">
+          {/* Left Side: Stats & Selection (RTL -> Right) */}
+          <div className="flex items-center gap-3 text-[10px] text-slate-500 flex-shrink-0">
             <span>{filteredAndSortedData.length} שורות</span>
             {selectedCells.size > 0 && <span className="text-purple-600 font-medium">נבחרו {selectedCells.size}</span>}
           </div>
-          <div className="text-slate-400">
-            Ctrl+Click לניווט • Shift+גרירה לבחירה
+
+          {/* Center: Tabs (if exists) */}
+          {spreadsheet?.google_sheet_id ? (
+            <div className="flex-1 overflow-hidden flex items-center justify-center">
+              <ScrollArea className="w-full whitespace-nowrap" dir="rtl">
+                <div className="flex items-center gap-1 min-w-max px-2">
+                  <div className="p-1">
+                    <FileSpreadsheet className="w-3 h-3 text-green-700" />
+                  </div>
+                  {sheetTabs.map((sheet) => {
+                    const isActive = sheet.title === spreadsheet.google_sheet_name;
+                    const isMapped = relatedEntities.some(e => e.google_sheet_name === sheet.title);
+                    
+                    return (
+                      <button
+                        key={sheet.id}
+                        onClick={() => handleSheetTabClick(sheet.title)}
+                        disabled={loadingTabs}
+                        className={`
+                          px-2 py-0.5 text-[10px] font-medium rounded-md transition-all duration-200 flex items-center gap-1 border
+                          ${isActive 
+                            ? 'bg-green-100 text-green-800 border-green-200 shadow-sm' 
+                            : 'bg-white text-slate-600 border-transparent hover:bg-slate-100 hover:border-slate-200'
+                          }
+                          ${loadingTabs ? 'opacity-50 cursor-not-allowed' : ''}
+                        `}
+                      >
+                        {sheet.title}
+                        {loadingTabs && !isActive && sheet.title === loadingTabs && <RefreshCw className="w-2 h-2 animate-spin" />}
+                        {isMapped && !isActive && <span className="w-1 h-1 rounded-full bg-blue-400" title="מקושר"></span>}
+                      </button>
+                    );
+                  })}
+                  <button 
+                    onClick={handleAddGoogleSheet}
+                    className="ml-1 p-1 hover:bg-slate-200 rounded-full text-slate-400 hover:text-green-600 transition-colors"
+                    title="הוסף גיליון"
+                  >
+                    <PlusCircle className="w-3 h-3" />
+                  </button>
+                </div>
+              </ScrollArea>
+            </div>
+          ) : (
+            <div className="flex-1"></div>
+          )}
+
+          {/* Right Side: Hints (RTL -> Left) */}
+          <div className="text-[10px] text-slate-400 flex-shrink-0 hidden sm:block">
+            Ctrl+Click לניווט • Shift+גרירה
           </div>
         </div>
       </Card>
       </div>
-
-      {/* Google Sheets Tabs Bar */}
-      {spreadsheet?.google_sheet_id && (
-        <div className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden flex items-center">
-          <div className="bg-green-50 px-3 py-2 border-l border-green-100 flex items-center justify-center">
-             <FileSpreadsheet className="w-5 h-5 text-green-700" />
-          </div>
-          
-          <ScrollArea className="flex-1 w-full whitespace-nowrap overflow-x-auto" dir="rtl">
-            <div className="flex items-center p-1 gap-1 min-w-max">
-              {sheetTabs.length === 0 && !loadingTabs && (
-                 <div className="text-xs text-slate-400 px-2 italic">לא נמצאו גיליונות נוספים.</div>
-              )}
-              {sheetTabs.map((sheet) => {
-                const isActive = sheet.title === spreadsheet.google_sheet_name;
-                // Check if mapped
-                const isMapped = relatedEntities.some(e => e.google_sheet_name === sheet.title);
-                
-                return (
-                  <button
-                    key={sheet.id}
-                    onClick={() => handleSheetTabClick(sheet.title)}
-                    disabled={loadingTabs} // Disable while switching
-                    className={`
-                      px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 flex items-center gap-2 border
-                      ${isActive 
-                        ? 'bg-green-100 text-green-800 border-green-200 shadow-sm' 
-                        : 'bg-white text-slate-600 border-transparent hover:bg-slate-50 hover:border-slate-200'
-                      }
-                      ${loadingTabs ? 'opacity-50 cursor-not-allowed' : ''}
-                    `}
-                  >
-                    {sheet.title}
-                    {loadingTabs && !isActive && sheet.title === loadingTabs && <RefreshCw className="w-3 h-3 animate-spin" />}
-                    {isMapped && !isActive && <span className="w-1.5 h-1.5 rounded-full bg-blue-400" title="מקושר במערכת"></span>}
-                  </button>
-                );
-              })}
-              <button 
-                onClick={handleAddGoogleSheet}
-                className="ml-2 p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-green-600 transition-colors"
-                title="הוסף גיליון חדש"
-              >
-                <PlusCircle className="w-5 h-5" />
-              </button>
-            </div>
-          </ScrollArea>
-          
-          <div className="px-3 text-xs text-slate-400 border-r bg-slate-50 py-3">
-             {loadingTabs ? <RefreshCw className="w-3 h-3 animate-spin" /> : `${sheetTabs.length} גיליונות`}
-          </div>
-        </div>
-      )}
 
       {popoverOpen && (() => {
         const lastColIndex = popoverOpen.lastIndexOf('_col');

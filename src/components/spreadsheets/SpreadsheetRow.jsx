@@ -20,6 +20,7 @@ const SpreadsheetRow = memo(({
   cellFont,
   cellFontSize,
   cellPadding,
+  borderColor,
   isSeparateBorders,
   borderStyle,
   tableBorderRadius,
@@ -90,7 +91,7 @@ const SpreadsheetRow = memo(({
               backgroundColor: palette.headerBg, 
               borderWidth: isSeparateBorders ? '0' : borderStyle.width, 
               borderStyle: borderStyle.style, 
-              borderColor: palette.border,
+              borderColor: borderColor || palette.border,
               position: 'sticky',
               right: 0,
               width: '48px',
@@ -181,7 +182,7 @@ const SpreadsheetRow = memo(({
 
                   borderWidth: isSeparateBorders ? '0' : '0 0 1px 1px',
                   borderStyle: 'solid',
-                  borderColor: isSelected ? 'transparent' : `${palette.border}40`,
+                  borderColor: isSelected ? 'transparent' : (borderColor || `${palette.border}40`),
                   borderRadius: isSeparateBorders ? tableBorderRadius : '0'
                 }} 
                 onClick={(e) => !isEditing && (column.type === 'checkmark' ? onCheckmarkClick(row.id, column.key, e) : onCellClick(row.id, column.key, e))} 
