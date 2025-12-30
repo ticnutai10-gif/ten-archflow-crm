@@ -1391,7 +1391,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       if (!resizeStartRef.current) return;
       if (resizeStartRef.current.type === 'column') {
         const diff = e.clientX - resizeStartRef.current.startX;
-        const newWidth = Math.max(50, resizeStartRef.current.startWidth + diff);
+        const newWidth = Math.max(50, resizeStartRef.current.startWidth - diff);
         const updated = columns.map(col => col.key === resizeStartRef.current.key ? { ...col, width: `${newWidth}px` } : col);
         setColumns(updated);
       }
@@ -3839,7 +3839,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                       )}
                                     </div>
                                   )}
-                                  <div onMouseDown={(e) => handleColumnResizeStart(e, col.key)} className="absolute top-0 bottom-0 cursor-col-resize" style={{ right: '-6px', width: '12px', zIndex: 999 }}>
+                                  <div onMouseDown={(e) => handleColumnResizeStart(e, col.key)} className="absolute top-0 bottom-0 cursor-col-resize" style={{ left: '-6px', width: '12px', zIndex: 999 }}>
                                     <div className="absolute inset-y-0 right-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity" style={{ width: resizingColumn === col.key ? '4px' : '2px', backgroundColor: resizingColumn === col.key ? '#3b82f6' : '#cbd5e1' }} />
                                   </div>
                                 </th>
