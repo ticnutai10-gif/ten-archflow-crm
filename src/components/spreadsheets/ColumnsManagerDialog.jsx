@@ -140,7 +140,7 @@ export default function ColumnsManagerDialog({ open, onClose, columns, onSave, h
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-5xl max-h-[90vh] overflow-hidden flex flex-col" dir="rtl">
+      <DialogContent className="sm:max-w-5xl max-h-[90vh] flex flex-col" dir="rtl">
         <DialogHeader>
           <DialogTitle className="text-xl flex items-center gap-2">
             <Table className="w-6 h-6 text-purple-600" />
