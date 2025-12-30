@@ -29,6 +29,7 @@ import SpreadsheetImporter from "./SpreadsheetImporter";
 import ExportDialog from "./ExportDialog";
 import Collaborators from "./Collaborators";
 import CommentsSidebar from "./CommentsSidebar";
+import DocumentGenerator from "@/components/documents/DocumentGenerator";
 import SpreadsheetRow from "./SpreadsheetRow"; // IMPORT NEW COMPONENT
 import ColumnFilter from "./ColumnFilter"; // Import Advanced Filter
 import SmartSplitDialog from "./SmartSplitDialog"; // Import Smart Split
@@ -273,6 +274,8 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const [showSyncDialog, setShowSyncDialog] = useState(false);
   const [showImporterDialog, setShowImporterDialog] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
+  const [showDocGenerator, setShowDocGenerator] = useState(false);
+  const [docGeneratorTargetRow, setDocGeneratorTargetRow] = useState(null);
   const navigate = useNavigate();
 
   // Load Global Data Types
@@ -3985,6 +3988,11 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                               onDeleteRow={deleteRow}
                               onRowResizeStart={handleRowResizeStart}
                               
+                              onGenerateDoc={(row) => {
+                                setDocGeneratorTargetRow(row);
+                                setShowDocGenerator(true);
+                              }}
+
                               setEditingCell={setEditingCell}
                               setEditValue={setEditValue}
                               saveEdit={saveEdit}
@@ -4583,6 +4591,17 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         column={splitTargetColumn}
         rowsData={rowsData}
         onSplit={handleSmartSplit}
+      />
+
+      <DocumentGenerator
+        open={showDocGenerator}
+        onClose={() => {
+          setShowDocGenerator(false);
+          setDocGeneratorTargetRow(null);
+        }}
+        spreadsheetId={spreadsheet.id}
+        rowData={docGeneratorTargetRow}
+        columns={columns}
       />
 
       <CommentsSidebar 

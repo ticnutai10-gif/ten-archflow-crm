@@ -2,7 +2,7 @@ import React, { memo, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Draggable } from '@hello-pangea/dnd';
-import { Copy, Trash2, Palette, Bold, MessageSquare, GripVertical, Users, MoreHorizontal, Eye } from "lucide-react";
+import { Copy, Trash2, Palette, Bold, MessageSquare, GripVertical, Users, MoreHorizontal, Eye, FileText } from "lucide-react";
 import { StageDisplay } from "./GenericSpreadsheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -63,6 +63,7 @@ const SpreadsheetRow = memo(({
   onDuplicateRow,
   onDeleteRow,
   onRowResizeStart,
+  onGenerateDoc,
   setEditingCell,
   setEditValue,
   saveEdit,
@@ -348,12 +349,14 @@ const SpreadsheetRow = memo(({
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => {
                         // View logic - e.g. open details if possible
-                        // Assuming we can trigger cell click or similar
-                        // Just a placeholder for "View"
                         alert('צפייה בפרטים (למימוש עתידי)');
                     }}>
                         <Eye className="w-4 h-4 ml-2" />
                         צפה בפרטים
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onGenerateDoc(row)}>
+                        <FileText className="w-4 h-4 ml-2" />
+                        צור מסמך
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => onDeleteRow(row.id)} className="text-red-600">
