@@ -3822,6 +3822,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                           </PopoverContent>
                                         </Popover>
                                       </div>
+                                      )}
                                     </div>
                                   )}
                                   <div onMouseDown={(e) => handleColumnResizeStart(e, col.key)} className="absolute top-0 bottom-0 cursor-col-resize" style={{ right: '-6px', width: '12px', zIndex: 999 }}>
