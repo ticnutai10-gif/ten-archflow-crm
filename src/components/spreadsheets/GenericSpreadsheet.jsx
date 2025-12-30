@@ -15,6 +15,7 @@ import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
 import { createPageUrl } from "@/utils";
+import { useNavigate } from "react-router-dom";
 import ThemeSelector, { COLOR_PALETTES, BORDER_STYLES, FONT_OPTIONS } from "./ThemeSelector";
 import ViewManager from "./ViewManager";
 import ChartBuilder from "./ChartBuilder";
