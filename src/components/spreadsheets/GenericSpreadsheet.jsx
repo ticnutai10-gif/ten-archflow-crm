@@ -106,18 +106,30 @@ export function StageSelector({ options = [], onSelect }) {
 }
 
 // Export StageDisplay for use in other components
-export function StageDisplay({ value, column, isEditing, onEdit, editValue, onSave, onCancel, stageOptions = DEFAULT_STAGE_OPTIONS, compact = false, onDirectSave }) {
+export function StageDisplay({ value, column, isEditing, onEdit, editValue, onSave, onCancel, stageOptions = DEFAULT_STAGE_OPTIONS, globalDataTypes, compact = false, onDirectSave }) {
+  
+  // Determine options based on column type
+  const actualOptions = React.useMemo(() => {
+    if (column?.type && ['taba', 'transfer_rights', 'purchase_rights'].includes(column.type)) {
+      return globalDataTypes?.[column.type] || [];
+    }
+    if (column?.type === 'stage' && globalDataTypes?.['stages']) {
+      return globalDataTypes['stages'];
+    }
+    return stageOptions;
+  }, [stageOptions, globalDataTypes, column?.type]);
+
   // Flatten for lookup only
   const FLAT_OPTIONS = React.useMemo(() => {
     const flat = [];
-    (stageOptions || []).forEach(p => {
+    (actualOptions || []).forEach(p => {
       flat.push({ ...p });
       if (Array.isArray(p.children)) {
         p.children.forEach(ch => flat.push({ ...ch, parentLabel: p.label }));
       }
     });
     return flat;
-  }, [stageOptions]);
+  }, [actualOptions]);
 
   const currentStage = FLAT_OPTIONS.find(s => s.value === value);
   
@@ -247,7 +259,33 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const [showBulkColumnsDialog, setShowBulkColumnsDialog] = useState(false);
   const [showStageManager, setShowStageManager] = useState(false);
   const [customStageOptions, setCustomStageOptions] = useState(DEFAULT_STAGE_OPTIONS);
+  const [globalDataTypes, setGlobalDataTypes] = useState({});
   const [showSyncDialog, setShowSyncDialog] = useState(false);
+  const navigate = useNavigate();
+
+  // Load Global Data Types
+  useEffect(() => {
+    const loadGlobalTypes = async () => {
+      try {
+        const types = await base44.entities.GlobalDataType.list();
+        const map = {};
+        types.forEach(t => {
+          map[t.type_key] = t.options;
+        });
+        setGlobalDataTypes(map);
+      } catch (e) {
+        console.error("Failed to load global data types", e);
+      }
+    };
+    loadGlobalTypes();
+    
+    const handleGlobalUpdate = (e) => {
+      const { typeKey, options } = e.detail;
+      setGlobalDataTypes(prev => ({ ...prev, [typeKey]: options }));
+    };
+    window.addEventListener('global-data-type:updated', handleGlobalUpdate);
+    return () => window.removeEventListener('global-data-type:updated', handleGlobalUpdate);
+  }, []);
   const [showSplitDialog, setShowSplitDialog] = useState(false);
   const [splitTargetColumn, setSplitTargetColumn] = useState(null);
   // When using categories/children, allow selecting either parent or child
@@ -1902,8 +1940,8 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     // Update presence
     setCurrentFocusedCell(`${rowId}_${column.key}`);
 
-    // Stage columns have their own click handler
-    if (column.type === 'stage') {
+    // Stage/Category columns have their own click handler
+    if (['stage', 'taba', 'transfer_rights', 'purchase_rights'].includes(column.type)) {
       setEditingCell(`${rowId}_${column.key}`);
       setEditValue(String(row[column.key] || ''));
       return;
@@ -3101,9 +3139,9 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                 <Settings className="w-4 h-4" />
                 ניהול עמודות + צבעים
               </Button>
-              <Button onClick={() => React.startTransition(() => setShowStageManager(true))} size="sm" variant="outline" className="gap-2 hover:bg-purple-50">
-                <Circle className="w-4 h-4 text-purple-600" />
-                ניהול שלבים
+              <Button onClick={() => navigate(createPageUrl("DataTypes"))} size="sm" variant="outline" className="gap-2 hover:bg-purple-50">
+                <Layers className="w-4 h-4 text-purple-600" />
+                ניהול סוגי נתונים
               </Button>
               <Button 
                 onClick={() => { setCommentsTargetCell(null); setShowCommentsSidebar(true); }} 
@@ -3816,6 +3854,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                               commentCounts={commentCounts}
                               mergedCells={mergedCells}
                               customStageOptions={customStageOptions}
+                              globalDataTypes={globalDataTypes}
                               allClients={allClients}
                               editValue={editValue}
                               getConditionalStyle={getConditionalStyle}

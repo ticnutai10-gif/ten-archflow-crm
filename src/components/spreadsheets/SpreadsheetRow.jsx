@@ -269,12 +269,20 @@ const SpreadsheetRow = memo(({
                         )}
                       </div>
                     )
-                  ) : column.type === 'stage' ? (
+                  ) : ['stage', 'taba', 'transfer_rights', 'purchase_rights'].includes(column.type) ? (
                     <div className="w-full flex justify-center">
-                      {/* Render stage display component (passed as prop would be better but we assume simple rendering here or duplicate logic for performance) */}
-                      {/* Using a simplified version for performance in large tables */}
                       {(() => {
-                         const currentStage = (customStageOptions || []).flatMap(g => [g, ...(g.children || [])]).find(s => s.value === cellValue);
+                         // Determine options source: Global for new types, customStageOptions fallback for stage
+                         let options = [];
+                         if (column.type === 'stage') {
+                           options = globalDataTypes?.['stages'] || customStageOptions;
+                         } else {
+                           options = globalDataTypes?.[column.type] || [];
+                         }
+                         
+                         const flatOptions = (options || []).flatMap(g => [g, ...(g.children || [])]);
+                         const currentStage = flatOptions.find(s => s.value === cellValue);
+                         
                          if (!currentStage) return <span className="text-slate-300 text-xs">-</span>;
                          return (
                            <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-xs font-medium transition-transform hover:scale-105"
