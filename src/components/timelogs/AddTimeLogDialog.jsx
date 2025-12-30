@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +34,9 @@ export default function AddTimeLogDialog({
   });
   const [isSaving, setIsSaving] = useState(false);
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  
+  const hoursRef = useRef(null);
+  const minutesRef = useRef(null);
   
   // Client selection state
   const [isClientOpen, setIsClientOpen] = useState(false);
@@ -342,48 +345,105 @@ export default function AddTimeLogDialog({
               </div>
             </div>
 
-            {/* Duration (Swapped order: Hours on Left, Minutes on Right in RTL flow means Minutes first then Hours) */}
+            {/* Duration */}
             <div>
               <label className="text-sm font-semibold text-slate-700 mb-2 block">
                 משך זמן <span className="text-red-500">*</span>
               </label>
+              
+              {/* Presets Grid */}
+              <div className="grid grid-cols-4 gap-2 mb-4" dir="rtl">
+                {[
+                  { label: "15 דק'", h: 0, m: 15 },
+                  { label: "30 דק'", h: 0, m: 30 },
+                  { label: "45 דק'", h: 0, m: 45 },
+                  { label: "1 שעה", h: 1, m: 0 },
+                  { label: "1.5 שעות", h: 1, m: 30 },
+                  { label: "2 שעות", h: 2, m: 0 },
+                  { label: "3 שעות", h: 3, m: 0 },
+                  { label: "5 שעות", h: 5, m: 0 },
+                ].map((preset) => (
+                  <Button
+                    key={preset.label}
+                    size="sm"
+                    variant="outline"
+                    className="text-xs h-9 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200"
+                    onClick={() => {
+                      setFormData(prev => ({ 
+                        ...prev, 
+                        hours: preset.h.toString(), 
+                        minutes: preset.m.toString() 
+                      }));
+                      
+                      // Auto-focus logic
+                      setTimeout(() => {
+                        if (preset.h > 0 && preset.m === 0) {
+                          // Selected hours -> focus minutes
+                          minutesRef.current?.focus();
+                          minutesRef.current?.select();
+                        } else if (preset.h === 0 && preset.m > 0) {
+                          // Selected minutes -> focus hours
+                          hoursRef.current?.focus();
+                          hoursRef.current?.select();
+                        } else {
+                          // Mixed -> focus minutes (default flow)
+                          minutesRef.current?.focus();
+                          minutesRef.current?.select();
+                        }
+                      }, 50);
+                    }}
+                  >
+                    {preset.label}
+                  </Button>
+                ))}
+              </div>
+
               <div className="flex items-center gap-3 justify-center" dir="rtl">
                  {/* Right Side (Start in RTL) - Minutes */}
                  <div className="flex flex-col items-center">
                   <Input
+                    ref={minutesRef}
                     value={formData.minutes}
-                    onChange={(e) => setFormData({ ...formData, minutes: e.target.value.replace(/\D/g, '').slice(0, 2) })}
-                    className="w-20 h-12 text-center text-lg font-bold"
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '').slice(0, 2);
+                      setFormData(prev => ({ ...prev, minutes: val }));
+                      // Auto-move to hours if 2 digits entered
+                      if (val.length === 2) {
+                        hoursRef.current?.focus();
+                        hoursRef.current?.select();
+                      }
+                    }}
+                    onFocus={(e) => e.target.select()}
+                    className="w-24 h-14 text-center text-2xl font-bold tracking-widest bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                     placeholder="00"
                     maxLength={2}
                   />
-                  <span className="text-xs text-slate-600 mt-1 font-medium">דקות</span>
+                  <span className="text-xs text-slate-500 mt-1.5 font-medium">דקות</span>
                 </div>
                 
-                <span className="text-2xl font-bold text-blue-600">:</span>
+                <span className="text-3xl font-light text-slate-300 -mt-6">:</span>
 
                 {/* Left Side (End in RTL) - Hours */}
                 <div className="flex flex-col items-center">
                   <Input
+                    ref={hoursRef}
                     value={formData.hours}
-                    onChange={(e) => setFormData({ ...formData, hours: e.target.value.replace(/\D/g, '').slice(0, 2) })}
-                    className="w-20 h-12 text-center text-lg font-bold"
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '').slice(0, 2);
+                      setFormData(prev => ({ ...prev, hours: val }));
+                      // Auto-move to minutes if 2 digits entered
+                      if (val.length === 2) {
+                        minutesRef.current?.focus();
+                        minutesRef.current?.select();
+                      }
+                    }}
+                    onFocus={(e) => e.target.select()}
+                    className="w-24 h-14 text-center text-2xl font-bold tracking-widest bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                     placeholder="00"
                     maxLength={2}
                   />
-                  <span className="text-xs text-slate-600 mt-1 font-medium">שעות</span>
+                  <span className="text-xs text-slate-500 mt-1.5 font-medium">שעות</span>
                 </div>
-              </div>
-              <div className="flex gap-2 mt-2 justify-center">
-                <Button size="sm" variant="outline" onClick={() => setFormData({ ...formData, hours: '1', minutes: '0' })}>
-                  1 שעה
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => setFormData({ ...formData, hours: '2', minutes: '0' })}>
-                  2 שעות
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => setFormData({ ...formData, hours: '0', minutes: '30' })}>
-                  30 דק'
-                </Button>
               </div>
             </div>
 
