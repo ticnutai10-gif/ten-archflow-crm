@@ -37,6 +37,7 @@ const SpreadsheetRow = memo(({
   commentCounts, // New prop
   mergedCells,
   customStageOptions,
+  globalDataTypes,
   allClients,
   editValue,
   getConditionalStyle,
