@@ -1940,7 +1940,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     // Update presence
     setCurrentFocusedCell(`${rowId}_${column.key}`);
 
-    // Stage/Category columns have their own click handler
+    // Stage columns have their own click handler
     if (['stage', 'taba', 'transfer_rights', 'purchase_rights'].includes(column.type)) {
       setEditingCell(`${rowId}_${column.key}`);
       setEditValue(String(row[column.key] || ''));
