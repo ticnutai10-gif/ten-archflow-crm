@@ -304,9 +304,9 @@ export default function ViewManager({
                 <strong>התצוגה תכלול:</strong>
               </p>
               <ul className="text-xs text-blue-700 mt-2 space-y-1 mr-4">
-                <li>• סדר העמודות הנוכחי</li>
-                <li>• רוחב כל עמודה</li>
-                <li>• אילו עמודות מוצגות/מוסתרות</li>
+                <li>• סינונים פעילים (כולל טווחים וחיפוש מתקדם)</li>
+                <li>• מיון הנתונים וסדר העמודות</li>
+                <li>• הגדרות תצוגה, רוחב ונראות עמודות</li>
               </ul>
             </div>
           </div>

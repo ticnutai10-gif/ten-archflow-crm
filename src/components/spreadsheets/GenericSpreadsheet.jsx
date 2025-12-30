@@ -3465,20 +3465,24 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
             {/* Right Side: Search & Collab */}
             <div className="flex items-center gap-2 flex-shrink-0">
               <div className="relative">
-                <div className={`transition-all duration-300 ease-in-out overflow-hidden flex items-center ${globalFilter ? 'w-48' : 'w-8 hover:w-48 focus-within:w-48'}`}>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="absolute right-0 top-0 h-8 w-8 z-10 pointer-events-none"
-                  >
-                    <Search className="w-4 h-4 text-slate-500" />
-                  </Button>
+                <div className="flex items-center w-64 bg-white border border-slate-200 rounded-lg shadow-sm focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all">
+                  <Search className="w-4 h-4 text-slate-400 mr-2 flex-shrink-0" />
                   <Input 
-                    placeholder="חיפוש..." 
+                    placeholder="חיפוש מהיר בכל הטבלה..." 
                     value={globalFilter} 
                     onChange={(e) => setGlobalFilter(e.target.value)} 
-                    className="h-8 pr-8 pl-2 bg-slate-50 border-slate-200 focus:bg-white text-sm w-full" 
+                    className="h-9 border-none focus:ring-0 bg-transparent text-sm w-full placeholder:text-slate-400" 
                   />
+                  {globalFilter && (
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-7 w-7 text-slate-400 hover:text-slate-600 ml-1"
+                      onClick={() => setGlobalFilter('')}
+                    >
+                      <X className="w-3 h-3" />
+                    </Button>
+                  )}
                 </div>
               </div>
               
@@ -3807,7 +3811,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                       )}
                                       
                                       {!col.collapsed && (
-                                      <div className="absolute left-0 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white/95 backdrop-blur-sm shadow-sm border border-slate-100 rounded-md px-1 py-0.5 z-20">
+                                      <div className={`absolute left-0 top-1/2 -translate-y-1/2 flex items-center gap-1 transition-opacity bg-white/95 backdrop-blur-sm shadow-sm border border-slate-100 rounded-md px-1 py-0.5 z-20 ${columnFilters[col.key] ? 'opacity-100 shadow-md border-blue-200' : 'opacity-0 group-hover:opacity-100'}`}>
                                         {/* Advanced Filter Button */}
                                         <ColumnFilter 
                                           column={col} 
