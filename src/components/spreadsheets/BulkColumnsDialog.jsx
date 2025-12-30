@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Zap, Table } from "lucide-react";
 import { toast } from "sonner";
 
-const COLUMN_TYPES = [
+const STATIC_COLUMN_TYPES = [
   { value: 'text', label: 'טקסט', icon: '📝' },
   { value: 'number', label: 'מספר', icon: '🔢' },
   { value: 'date', label: 'תאריך', icon: '📅' },
@@ -18,10 +18,29 @@ const COLUMN_TYPES = [
   { value: 'select', label: 'בחירה', icon: '📋' }
 ];
 
-export default function BulkColumnsDialog({ open, onClose, onAdd }) {
+export default function BulkColumnsDialog({ open, onClose, onAdd, globalTypesList = [] }) {
   const [count, setCount] = useState(5);
   const [columnType, setColumnType] = useState('text');
   const [columnWidth, setColumnWidth] = useState('150px');
+
+  // Merge static types with dynamic global types
+  const availableColumnTypes = React.useMemo(() => {
+    const dynamicTypes = globalTypesList.map(type => ({
+      value: type.type_key,
+      label: type.name,
+      icon: '📑' // Generic icon for custom types
+    }));
+    
+    // Filter out duplicates if static list already has them
+    const combined = [...STATIC_COLUMN_TYPES];
+    dynamicTypes.forEach(dt => {
+      if (!combined.find(st => st.value === dt.value)) {
+        combined.splice(5, 0, dt); // Insert after 'stage'
+      }
+    });
+    
+    return combined;
+  }, [globalTypesList]);
 
   const handleCreate = () => {
     if (count < 1) {
@@ -102,7 +121,7 @@ export default function BulkColumnsDialog({ open, onClose, onAdd }) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {COLUMN_TYPES.map(type => (
+                  {availableColumnTypes.map(type => (
                     <SelectItem key={type.value} value={type.value}>
                       <div className="flex items-center gap-2 py-1">
                         <span className="text-lg">{type.icon}</span>
@@ -142,7 +161,7 @@ export default function BulkColumnsDialog({ open, onClose, onAdd }) {
               </div>
               <div className="space-y-1 text-sm text-blue-800">
                 <div>✓ יווצרו: <strong>{count}</strong> עמודות חדשות</div>
-                <div>✓ סוג: <strong>{COLUMN_TYPES.find(t => t.value === columnType)?.label}</strong></div>
+                <div>✓ סוג: <strong>{availableColumnTypes.find(t => t.value === columnType)?.label}</strong></div>
                 <div>✓ שמות: <strong>עמודה 1, עמודה 2, עמודה 3...</strong></div>
                 <div className="text-xs text-blue-600 mt-2 pt-2 border-t border-blue-200">
                   💡 ניתן לערוך את שמות העמודות אחר כך דרך "ניהול עמודות"

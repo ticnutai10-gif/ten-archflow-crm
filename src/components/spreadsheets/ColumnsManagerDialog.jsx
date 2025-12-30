@@ -10,24 +10,40 @@ import { Plus, Trash2, GripVertical, Eye, EyeOff, Edit2, Save, X, Table, Palette
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { toast } from "sonner";
 
-const COLUMN_TYPES = [
+const STATIC_COLUMN_TYPES = [
   { value: 'text', label: 'טקסט', icon: '📝' },
   { value: 'number', label: 'מספר', icon: '🔢' },
   { value: 'date', label: 'תאריך', icon: '📅' },
   { value: 'client', label: 'לקוח (מקושר)', icon: '👤' },
   { value: 'stage', label: 'שלבים (מואר)', icon: '🔵' },
-  { value: 'taba', label: 'תב״ע', icon: '📑' },
-  { value: 'transfer_rights', label: 'העברת זכויות', icon: '↔️' },
-  { value: 'purchase_rights', label: 'רכישת זכויות', icon: '🛒' },
   { value: 'checkmark', label: 'סימון ✓/✗ בלבד', icon: '✓' },
   { value: 'mixed_check', label: '✓/✗ + טקסט/מספר', icon: '✔️' },
   { value: 'boolean', label: 'כן/לא', icon: '⚡' },
   { value: 'select', label: 'בחירה', icon: '📋' }
 ];
 
-export default function ColumnsManagerDialog({ open, onClose, columns, onSave, headerStyles = {}, onHeaderStyleChange }) {
+export default function ColumnsManagerDialog({ open, onClose, columns, onSave, headerStyles = {}, onHeaderStyleChange, globalTypesList = [] }) {
   const [editedColumns, setEditedColumns] = useState(columns);
   const [editingIndex, setEditingIndex] = useState(null);
+
+  // Merge static types with dynamic global types
+  const availableColumnTypes = React.useMemo(() => {
+    const dynamicTypes = globalTypesList.map(type => ({
+      value: type.type_key,
+      label: type.name,
+      icon: '📑' // Generic icon for custom types
+    }));
+    
+    // Filter out duplicates if static list already has them (like 'stage')
+    const combined = [...STATIC_COLUMN_TYPES];
+    dynamicTypes.forEach(dt => {
+      if (!combined.find(st => st.value === dt.value)) {
+        combined.splice(5, 0, dt); // Insert after 'stage' or appropriate position
+      }
+    });
+    
+    return combined;
+  }, [globalTypesList]);
   const [newColumnData, setNewColumnData] = useState({
     title: '',
     type: 'text',
@@ -161,7 +177,7 @@ export default function ColumnsManagerDialog({ open, onClose, columns, onSave, h
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {COLUMN_TYPES.map(type => (
+                    {availableColumnTypes.map(type => (
                       <SelectItem key={type.value} value={type.value}>
                         <span className="flex items-center gap-2">
                           <span>{type.icon}</span>
@@ -249,7 +265,7 @@ export default function ColumnsManagerDialog({ open, onClose, columns, onSave, h
                                             <SelectValue />
                                           </SelectTrigger>
                                           <SelectContent>
-                                            {COLUMN_TYPES.map(type => (
+                                            {availableColumnTypes.map(type => (
                                               <SelectItem key={type.value} value={type.value}>
                                                 {type.icon} {type.label}
                                               </SelectItem>
@@ -295,7 +311,7 @@ export default function ColumnsManagerDialog({ open, onClose, columns, onSave, h
                                           {column.title}
                                         </span>
                                         <Badge variant="outline" className="text-xs">
-                                          {COLUMN_TYPES.find(t => t.value === column.type)?.icon} {COLUMN_TYPES.find(t => t.value === column.type)?.label}
+                                          {availableColumnTypes.find(t => t.value === column.type)?.icon} {availableColumnTypes.find(t => t.value === column.type)?.label || column.type}
                                         </Badge>
                                         {column.required && (
                                           <Badge className="text-xs bg-red-100 text-red-700 border-red-300">

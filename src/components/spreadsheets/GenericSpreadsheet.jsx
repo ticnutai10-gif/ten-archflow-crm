@@ -261,6 +261,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const [showStageManager, setShowStageManager] = useState(false);
   const [customStageOptions, setCustomStageOptions] = useState(DEFAULT_STAGE_OPTIONS);
   const [globalDataTypes, setGlobalDataTypes] = useState({});
+  const [globalTypesList, setGlobalTypesList] = useState([]);
   const [showSyncDialog, setShowSyncDialog] = useState(false);
   const navigate = useNavigate();
 
@@ -269,6 +270,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     const loadGlobalTypes = async () => {
       try {
         const types = await base44.entities.GlobalDataType.list();
+        setGlobalTypesList(types);
         const map = {};
         types.forEach(t => {
           map[t.type_key] = t.options;
@@ -283,6 +285,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     const handleGlobalUpdate = (e) => {
       const { typeKey, options } = e.detail;
       setGlobalDataTypes(prev => ({ ...prev, [typeKey]: options }));
+      // Also update list if needed, though usually just options change
     };
     window.addEventListener('global-data-type:updated', handleGlobalUpdate);
     return () => window.removeEventListener('global-data-type:updated', handleGlobalUpdate);
@@ -4453,6 +4456,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         onClose={() => setShowColumnsManager(false)}
         columns={columns}
         headerStyles={headerStyles}
+        globalTypesList={globalTypesList}
         onHeaderStyleChange={(columnKey, style) => {
           const newHeaderStyles = { 
             ...headerStyles, 
@@ -4478,6 +4482,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         open={showBulkColumnsDialog}
         onClose={() => setShowBulkColumnsDialog(false)}
         onAdd={addBulkColumns}
+        globalTypesList={globalTypesList}
       />
 
       <StageOptionsManager
