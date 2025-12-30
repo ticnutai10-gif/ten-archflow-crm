@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Table, Copy, Settings, Palette, Eye, EyeOff, Edit2, X, Download, Grid, Search, Filter, ArrowUp, ArrowDown, ArrowUpDown, XCircle, Undo, Redo, GripVertical, BarChart3, Calculator, Layers, Bookmark, Users, Zap, MessageSquare, Bold, Scissors, Merge, Type, Circle, ChevronRight, ChevronLeft, ChevronDown, Snowflake, RefreshCw, PlusCircle, FileSpreadsheet, Maximize, Minimize } from "lucide-react";
+import { Plus, Trash2, Table, Copy, Settings, Palette, Eye, EyeOff, Edit2, X, Download, Upload, Grid, Search, Filter, ArrowUp, ArrowDown, ArrowUpDown, XCircle, Undo, Redo, GripVertical, BarChart3, Calculator, Layers, Bookmark, Users, Zap, MessageSquare, Bold, Scissors, Merge, Type, Circle, ChevronRight, ChevronLeft, ChevronDown, Snowflake, RefreshCw, PlusCircle, FileSpreadsheet, Maximize, Minimize } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -25,6 +25,7 @@ import ColumnsManagerDialog from "./ColumnsManagerDialog";
 import BulkColumnsDialog from "./BulkColumnsDialog";
 import StageOptionsManager from "./StageOptionsManager";
 import SpreadsheetSyncDialog from "./SpreadsheetSyncDialog";
+import SpreadsheetImporter from "./SpreadsheetImporter";
 import Collaborators from "./Collaborators";
 import CommentsSidebar from "./CommentsSidebar";
 import SpreadsheetRow from "./SpreadsheetRow"; // IMPORT NEW COMPONENT
@@ -269,6 +270,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const [globalDataTypes, setGlobalDataTypes] = useState({});
   const [globalTypesList, setGlobalTypesList] = useState([]);
   const [showSyncDialog, setShowSyncDialog] = useState(false);
+  const [showImporterDialog, setShowImporterDialog] = useState(false);
   const navigate = useNavigate();
 
   // Load Global Data Types
@@ -3457,6 +3459,10 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                 </>
               )}
               <div className="ml-auto flex items-center gap-2">
+                <Button onClick={() => setShowImporterDialog(true)} size="sm" variant="outline" className="gap-2 hover:bg-green-50 text-green-700 border-green-200">
+                  <Upload className="w-4 h-4" />
+                  ייבוא
+                </Button>
                 <Popover><PopoverTrigger asChild><Button size="sm" variant="outline" className="gap-2"><Download className="w-4 h-4" />ייצוא</Button></PopoverTrigger><PopoverContent className="w-48" align="end" dir="rtl"><div className="space-y-2"><Button variant="outline" size="sm" className="w-full justify-start gap-2" onClick={exportToCSV}><Download className="w-4 h-4" />CSV</Button><Button variant="outline" size="sm" className="w-full justify-start gap-2" onClick={exportToPDF}><Download className="w-4 h-4" />PDF</Button></div></PopoverContent></Popover>
                 <Button onClick={clearAllFilters} size="sm" variant={hasActiveFilters ? "default" : "outline"} className="gap-2">{hasActiveFilters ? <><XCircle className="w-4 h-4" />נקה סינון</> : <><Filter className="w-4 h-4" />סינון</>}</Button>
               </div>
@@ -4534,6 +4540,24 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         onExport={handleExportToGoogle}
         onSaveLink={handleSaveGoogleLink}
       />
+
+      {showImporterDialog && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <SpreadsheetImporter 
+            spreadsheet={spreadsheet}
+            columns={columns}
+            onImportComplete={(newRows) => {
+              setRowsData(newRows);
+              setTimeout(() => {
+                saveToHistory(columnsRef.current, newRows, cellStylesRef.current, cellNotesRef.current);
+                saveToBackend();
+              }, 50);
+              setShowImporterDialog(false);
+            }}
+            onClose={() => setShowImporterDialog(false)}
+          />
+        </div>
+      )}
 
       <SmartSplitDialog 
         open={showSplitDialog}

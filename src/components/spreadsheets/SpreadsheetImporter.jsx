@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
+import { base44 } from "@/api/base44Client";
 import {
   Upload,
   FileSpreadsheet,
@@ -43,24 +44,6 @@ export default function SpreadsheetImporter({ spreadsheet, columns, onImportComp
   const [importProgress, setImportProgress] = useState(0);
   const [importResults, setImportResults] = useState(null);
 
-  // Parse CSV file
-  const parseCSV = (text) => {
-    const lines = text.split('\n').filter(line => line.trim());
-    if (lines.length === 0) return { headers: [], rows: [] };
-
-    const headers = lines[0].split(',').map(h => h.trim().replace(/^["']|["']$/g, ''));
-    const rows = lines.slice(1).map(line => {
-      const values = line.split(',').map(v => v.trim().replace(/^["']|["']$/g, ''));
-      const row = {};
-      headers.forEach((header, index) => {
-        row[header] = values[index] || '';
-      });
-      return row;
-    });
-
-    return { headers, rows };
-  };
-
   // Handle file upload
   const handleFileUpload = async (e) => {
     const uploadedFile = e.target.files?.[0];
@@ -73,13 +56,24 @@ export default function SpreadsheetImporter({ spreadsheet, columns, onImportComp
     }
 
     setFile(uploadedFile);
+    setIsProcessing(true);
+    toast.info('מעלה ומעבד קובץ...');
     
     try {
-      const text = await uploadedFile.text();
-      const { headers, rows } = parseCSV(text);
+      // 1. Upload file
+      const { file_url } = await base44.integrations.Core.UploadFile({ file: uploadedFile });
+      
+      // 2. Parse file using backend function (supports Excel & Hebrew CSV)
+      const { data } = await base44.functions.invoke('parseSpreadsheet', { file_url });
+      
+      if (data.error) throw new Error(data.error);
+      
+      const rows = data.rows || [];
+      const headers = data.headers || [];
       
       if (rows.length === 0) {
-        toast.error('הקובץ ריק');
+        toast.error('הקובץ ריק או לא תקין');
+        setIsProcessing(false);
         return;
       }
 
@@ -88,7 +82,7 @@ export default function SpreadsheetImporter({ spreadsheet, columns, onImportComp
       // Auto-map columns based on similar names
       const autoMapping = {};
       headers.forEach(header => {
-        const normalizedHeader = header.toLowerCase().trim();
+        const normalizedHeader = String(header).toLowerCase().trim();
         const matchedColumn = columns.find(col => 
           col.title.toLowerCase().includes(normalizedHeader) ||
           normalizedHeader.includes(col.title.toLowerCase())
@@ -102,8 +96,10 @@ export default function SpreadsheetImporter({ spreadsheet, columns, onImportComp
       setCurrentStep(STEP.MAP_COLUMNS);
       toast.success(`✓ נטענו ${rows.length} שורות`);
     } catch (error) {
-      console.error('Error parsing file:', error);
-      toast.error('שגיאה בקריאת הקובץ');
+      console.error('Error uploading/parsing file:', error);
+      toast.error('שגיאה בטעינת הקובץ: ' + (error.message || 'שגיאה לא ידועה'));
+    } finally {
+      setIsProcessing(false);
     }
   };
 
