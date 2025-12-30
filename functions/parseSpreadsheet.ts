@@ -234,6 +234,33 @@ Deno.serve(async (req) => {
       console.log(`CSV parsed: ${rows.length} rows, ${headers.length} headers`);
       console.log('Headers:', headers);
       console.log('First row sample:', rows[0]);
+    } else if (ext === 'json') {
+      console.log('Processing JSON file');
+      const text = await res.text();
+      try {
+        const jsonData = JSON.parse(text);
+        if (Array.isArray(jsonData)) {
+          rows = jsonData;
+        } else if (typeof jsonData === 'object' && Array.isArray(jsonData.data)) {
+          rows = jsonData.data; // Handle { data: [...] } format
+        } else if (typeof jsonData === 'object') {
+          // Single object or unknown structure - wrap in array
+          rows = [jsonData];
+        } else {
+          return Response.json({ error: 'Invalid JSON format. Expected an array of objects.' }, { status: 400 });
+        }
+        
+        // Normalize rows to flat objects if needed (simple implementation)
+        rows = rows.map(r => {
+          if (typeof r !== 'object' || r === null) return { value: r };
+          return r;
+        });
+
+        headers = Array.from(new Set(rows.flatMap((r) => Object.keys(r || {}))));
+        console.log(`JSON parsed: ${rows.length} rows, ${headers.length} headers`);
+      } catch (e) {
+        return Response.json({ error: 'Invalid JSON file' }, { status: 400 });
+      }
     } else {
       return Response.json({ error: `Unsupported file type: .${ext}` }, { status: 400 });
     }

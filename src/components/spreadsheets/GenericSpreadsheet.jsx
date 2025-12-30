@@ -26,6 +26,7 @@ import BulkColumnsDialog from "./BulkColumnsDialog";
 import StageOptionsManager from "./StageOptionsManager";
 import SpreadsheetSyncDialog from "./SpreadsheetSyncDialog";
 import SpreadsheetImporter from "./SpreadsheetImporter";
+import ExportDialog from "./ExportDialog";
 import Collaborators from "./Collaborators";
 import CommentsSidebar from "./CommentsSidebar";
 import SpreadsheetRow from "./SpreadsheetRow"; // IMPORT NEW COMPONENT
@@ -271,6 +272,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const [globalTypesList, setGlobalTypesList] = useState([]);
   const [showSyncDialog, setShowSyncDialog] = useState(false);
   const [showImporterDialog, setShowImporterDialog] = useState(false);
+  const [showExportDialog, setShowExportDialog] = useState(false);
   const navigate = useNavigate();
 
   // Load Global Data Types
@@ -3463,7 +3465,10 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                   <Upload className="w-4 h-4" />
                   ייבוא
                 </Button>
-                <Popover><PopoverTrigger asChild><Button size="sm" variant="outline" className="gap-2"><Download className="w-4 h-4" />ייצוא</Button></PopoverTrigger><PopoverContent className="w-48" align="end" dir="rtl"><div className="space-y-2"><Button variant="outline" size="sm" className="w-full justify-start gap-2" onClick={exportToCSV}><Download className="w-4 h-4" />CSV</Button><Button variant="outline" size="sm" className="w-full justify-start gap-2" onClick={exportToPDF}><Download className="w-4 h-4" />PDF</Button></div></PopoverContent></Popover>
+                <Button onClick={() => setShowExportDialog(true)} size="sm" variant="outline" className="gap-2 hover:bg-blue-50 text-blue-700 border-blue-200">
+                  <Download className="w-4 h-4" />
+                  ייצוא
+                </Button>
                 <Button onClick={clearAllFilters} size="sm" variant={hasActiveFilters ? "default" : "outline"} className="gap-2">{hasActiveFilters ? <><XCircle className="w-4 h-4" />נקה סינון</> : <><Filter className="w-4 h-4" />סינון</>}</Button>
               </div>
             </div>
@@ -4539,6 +4544,19 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         onImport={handleImportFromGoogle}
         onExport={handleExportToGoogle}
         onSaveLink={handleSaveGoogleLink}
+      />
+
+      <ExportDialog 
+        open={showExportDialog}
+        onClose={() => setShowExportDialog(false)}
+        spreadsheetName={spreadsheet.name}
+        columns={columns}
+        rowsData={filteredAndSortedData}
+        cellStyles={cellStyles}
+        onExportToGoogle={() => {
+          // Open Sync Dialog for Google Export
+          setShowSyncDialog(true);
+        }}
       />
 
       {showImporterDialog && (

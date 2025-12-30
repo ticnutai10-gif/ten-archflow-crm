@@ -50,8 +50,8 @@ export default function SpreadsheetImporter({ spreadsheet, columns, onImportComp
     if (!uploadedFile) return;
 
     const fileName = uploadedFile.name.toLowerCase();
-    if (!fileName.endsWith('.csv') && !fileName.endsWith('.xlsx') && !fileName.endsWith('.xls')) {
-      toast.error('נא להעלות קובץ CSV או Excel');
+    if (!fileName.endsWith('.csv') && !fileName.endsWith('.xlsx') && !fileName.endsWith('.xls') && !fileName.endsWith('.json')) {
+      toast.error('נא להעלות קובץ CSV, Excel או JSON');
       return;
     }
 
@@ -262,7 +262,7 @@ export default function SpreadsheetImporter({ spreadsheet, columns, onImportComp
           <div className="space-y-6">
             <div className="text-center py-12 border-2 border-dashed border-blue-300 rounded-xl bg-blue-50/30 hover:bg-blue-50/50 transition-all">
               <FileSpreadsheet className="w-16 h-16 mx-auto mb-4 text-blue-600" />
-              <h3 className="text-lg font-semibold text-slate-900 mb-2">העלה קובץ CSV או Excel</h3>
+              <h3 className="text-lg font-semibold text-slate-900 mb-2">העלה קובץ CSV, Excel או JSON</h3>
               <p className="text-sm text-slate-600 mb-4">גרור קובץ לכאן או לחץ לבחירה</p>
               
               <label htmlFor="file-upload" className="cursor-pointer">
@@ -271,11 +271,11 @@ export default function SpreadsheetImporter({ spreadsheet, columns, onImportComp
                   בחר קובץ
                 </div>
                 <input
-                  id="file-upload"
-                  type="file"
-                  accept=".csv,.xlsx,.xls"
-                  onChange={handleFileUpload}
-                  className="hidden"
+                id="file-upload"
+                type="file"
+                accept=".csv,.xlsx,.xls,.json"
+                onChange={handleFileUpload}
+                className="hidden"
                 />
               </label>
             </div>
@@ -288,6 +288,7 @@ export default function SpreadsheetImporter({ spreadsheet, columns, onImportComp
                   <ul className="list-disc list-inside space-y-1 text-blue-800">
                     <li>קבצי CSV (UTF-8)</li>
                     <li>Microsoft Excel (.xlsx, .xls)</li>
+                    <li>קבצי JSON</li>
                     <li>השורה הראשונה חייבת להכיל כותרות עמודות</li>
                   </ul>
                 </div>
