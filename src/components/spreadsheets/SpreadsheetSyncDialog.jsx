@@ -461,7 +461,7 @@ export default function SpreadsheetSyncDialog({ open, onClose, spreadsheet, onIm
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto px-6 py-4">
+        <div className="flex-1 overflow-y-auto p-6">
         {step === 'auth_needed' && (
            <div className="space-y-4 py-4 text-center">
              <AlertCircle className="w-12 h-12 text-yellow-500 mx-auto" />

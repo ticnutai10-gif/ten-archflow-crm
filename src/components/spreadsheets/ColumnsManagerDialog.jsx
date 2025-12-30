@@ -148,9 +148,9 @@ export default function ColumnsManagerDialog({ open, onClose, columns, onSave, h
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 overflow-hidden flex flex-col gap-4">
+        <div className="flex-1 overflow-hidden flex flex-col gap-6 p-6 pb-0">
           {/* הוספת עמודה חדשה */}
-          <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-xl border-2 border-blue-200">
+          <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-xl border-2 border-blue-200">
             <h3 className="font-bold text-sm mb-3 flex items-center gap-2">
               <Plus className="w-4 h-4 text-blue-600" />
               הוסף עמודה חדשה
@@ -213,7 +213,7 @@ export default function ColumnsManagerDialog({ open, onClose, columns, onSave, h
           </div>
 
           {/* רשימת עמודות קיימות */}
-          <div className="flex-1 overflow-hidden flex flex-col">
+          <div className="flex-1 overflow-hidden flex flex-col pb-4">
             <h3 className="font-bold text-sm mb-3 flex items-center gap-2">
               <Table className="w-4 h-4 text-slate-600" />
               עמודות קיימות ({editedColumns.length})

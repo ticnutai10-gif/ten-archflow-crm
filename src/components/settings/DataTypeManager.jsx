@@ -188,7 +188,7 @@ export default function DataTypeManager({ open, onClose, typeKey, typeName }) {
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto py-4">
+        <div className="flex-1 overflow-y-auto p-6">
           {loading ? (
             <div className="text-center py-8">טוען...</div>
           ) : (
@@ -396,7 +396,7 @@ function AdvancedSettingsDialog({ open, onClose, onSave, option, title }) {
             <TabsTrigger value="auto_color" className="gap-2"><Palette className="w-4 h-4" /> צבעים דינמיים</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="fields" className="space-y-4 pt-4">
+          <TabsContent value="fields" className="space-y-4 p-1">
             <div className="flex justify-between items-center">
               <h3 className="text-sm font-semibold">שדות מידע נוספים</h3>
               <Button size="sm" onClick={addField} variant="outline" className="gap-2"><Plus className="w-4 h-4" /> הוסף שדה</Button>
@@ -448,7 +448,7 @@ function AdvancedSettingsDialog({ open, onClose, onSave, option, title }) {
             )}
           </TabsContent>
 
-          <TabsContent value="validation" className="space-y-4 pt-4">
+          <TabsContent value="validation" className="space-y-4 p-1">
             <h3 className="text-sm font-semibold mb-4">כללי וולידציה לקטגוריה זו</h3>
             
             <div className="grid gap-4 p-4 border rounded-lg">
@@ -489,7 +489,7 @@ function AdvancedSettingsDialog({ open, onClose, onSave, option, title }) {
             </div>
           </TabsContent>
 
-          <TabsContent value="auto_color" className="space-y-4 pt-4">
+          <TabsContent value="auto_color" className="space-y-4 p-1">
             <div className="flex justify-between items-center">
               <h3 className="text-sm font-semibold">כללי צבע אוטומטיים</h3>
               <Button size="sm" onClick={addAutoColorRule} variant="outline" className="gap-2"><Plus className="w-4 h-4" /> הוסף כלל</Button>

@@ -80,7 +80,7 @@ export default function BulkColumnsDialog({ open, onClose, onAdd, globalTypesLis
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6 py-4 flex-1 overflow-y-auto px-1">
+        <div className="space-y-6 p-6 flex-1 overflow-y-auto">
           <div className="bg-gradient-to-r from-orange-50 to-yellow-50 border-2 border-orange-200 rounded-xl p-4">
             <div className="flex items-start gap-3">
               <div className="text-3xl">⚡</div>
