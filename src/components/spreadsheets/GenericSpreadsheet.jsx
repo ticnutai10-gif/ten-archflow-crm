@@ -201,7 +201,7 @@ export function StageDisplay({ value, column, isEditing, onEdit, editValue, onSa
   return Badge;
 }
 
-export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMode = false, filterByClient = null, onBack = null, onNavigate = null }) {
+export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMode = false, filterByClient = null, onBack = null, onNavigate = null, customSaveHandler = null }) {
   // Premium Scrollbar Styles
   React.useEffect(() => {
     const style = document.createElement('style');
@@ -434,7 +434,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
 
   // Polling for spreadsheet data updates (Real-time sync)
   useEffect(() => {
-    if (!spreadsheet?.id) return;
+    if (!spreadsheet?.id || customSaveHandler) return;
     
     const checkForUpdates = async () => {
       // Don't pull updates if user is currently editing a cell to avoid conflicts
@@ -742,6 +742,42 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   }, [historyIndex, isUndoRedoAction]);
 
   const saveToBackend = useCallback(async () => {
+    const dataToSave = {
+        columns: columnsRef.current,
+        rows_data: rowsDataRef.current,
+        cell_styles: cellStylesRef.current,
+        cell_notes: cellNotesRef.current,
+        cell_metadata: cellMetadataRef.current,
+        sub_headers: subHeadersRef.current,
+        show_sub_headers: showSubHeaders,
+        header_styles: headerStylesRef.current,
+        row_heights: rowHeightsRef.current,
+        validation_rules: validationRulesRef.current,
+        conditional_formats: conditionalFormatsRef.current,
+        freeze_settings: freezeSettingsRef.current,
+        custom_cell_types: customCellTypesRef.current,
+        merged_cells: mergedCellsRef.current,
+        merged_headers: mergedHeadersRef.current,
+        theme_settings: themeSettingsRef.current,
+        saved_views: savedViewsRef.current,
+        active_view_id: activeViewIdRef.current,
+        charts: chartsRef.current,
+        custom_stage_options: customStageOptionsRef.current,
+        client_id: spreadsheet?.client_id,
+        client_name: spreadsheet?.client_name
+    };
+
+    if (customSaveHandler) {
+      try {
+        await customSaveHandler(dataToSave);
+        if (onUpdate) await onUpdate();
+      } catch (error) {
+        console.error('❌ [SAVE] Custom save error:', error);
+        toast.error('שגיאה בשמירה: ' + (error.message || 'לא ידוע'));
+      }
+      return;
+    }
+
     if (!spreadsheet?.id) {
       console.warn('⚠️ No spreadsheet ID');
       return;
@@ -797,30 +833,8 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         }
       }
       
-      const dataToSave = {
-        columns: columnsRef.current,
-        rows_data: rowsDataRef.current,
-        cell_styles: cellStylesRef.current,
-        cell_notes: cellNotesRef.current,
-        cell_metadata: cellMetadataRef.current,
-        sub_headers: subHeadersRef.current,
-        show_sub_headers: showSubHeaders,
-        header_styles: headerStylesRef.current,
-        row_heights: rowHeightsRef.current,
-        validation_rules: validationRulesRef.current,
-        conditional_formats: conditionalFormatsRef.current,
-        freeze_settings: freezeSettingsRef.current,
-        custom_cell_types: customCellTypesRef.current,
-        merged_cells: mergedCellsRef.current,
-        merged_headers: mergedHeadersRef.current,
-        theme_settings: themeSettingsRef.current,
-        saved_views: savedViewsRef.current,
-        active_view_id: activeViewIdRef.current,
-        charts: chartsRef.current,
-        custom_stage_options: customStageOptionsRef.current,
-        client_id: detectedClientId,
-        client_name: detectedClientName
-      };
+      dataToSave.client_id = detectedClientId;
+      dataToSave.client_name = detectedClientName;
 
       await base44.entities.CustomSpreadsheet.update(spreadsheet.id, dataToSave);
 
@@ -831,7 +845,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       console.error('❌ [SAVE] Error:', error);
       toast.error('שגיאה בשמירה: ' + (error.message || 'לא ידוע'));
     }
-  }, [spreadsheet?.id, spreadsheet?.client_id, spreadsheet?.client_name, onUpdate, showSubHeaders]);
+  }, [spreadsheet?.id, spreadsheet?.client_id, spreadsheet?.client_name, onUpdate, showSubHeaders, customSaveHandler]);
 
   const handleUndo = useCallback(() => {
     console.log('⏪ [handleUndo] Called!', { historyIndex, historyLength: history.length });

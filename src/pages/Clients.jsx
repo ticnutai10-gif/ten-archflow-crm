@@ -72,6 +72,7 @@ import ClientImporter from "../components/clients/ClientImporter";
 import GoogleSheetsManager from "../components/clients/GoogleSheetsManager";
 import ClientMerger from "../components/clients/ClientMerger";
 import GoogleSheetsImporter from "../components/clients/GoogleSheetsImporter";
+import ClientsExcelView from "../components/clients/ClientsExcelView";
 import { useAccessControl, autoAssignToCreator } from "../components/access/AccessValidator";
 import { toast } from "sonner";
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
@@ -881,12 +882,20 @@ export default function ClientsPage() {
               <DropdownMenuItem
                 onClick={() => {
                   setViewMode("spreadsheet");
-                  setActiveSpreadsheetId(null); // Clear active so it shows list
+                  setActiveSpreadsheetId(null);
                 }}
                 className={`flex items-center gap-3 cursor-pointer ${viewMode === "spreadsheet" ? "bg-blue-50 text-blue-700" : ""}`}>
                 <FileSpreadsheet className="w-4 h-4" style={{ color: viewMode === "spreadsheet" ? undefined : iconColor }} />
-                <span className="flex-1">טבלאות (Spreadsheets)</span>
+                <span className="flex-1">ניהול טבלאות</span>
                 {viewMode === "spreadsheet" && <Eye className="w-4 h-4 text-blue-600" />}
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                onClick={() => setViewMode("clients_excel")}
+                className={`flex items-center gap-3 cursor-pointer ${viewMode === "clients_excel" ? "bg-blue-50 text-blue-700" : ""}`}>
+                <TableIcon className="w-4 h-4" style={{ color: viewMode === "clients_excel" ? undefined : iconColor }} />
+                <span className="flex-1">טבלת אקסל (לקוחות)</span>
+                {viewMode === "clients_excel" && <Eye className="w-4 h-4 text-blue-600" />}
               </DropdownMenuItem>
 
               <div className="my-1 h-px bg-slate-200"></div>
@@ -1283,6 +1292,13 @@ export default function ClientsPage() {
             <ClientSpreadsheet
               initialSpreadsheetId={activeSpreadsheetId}
               onPinToggle={handlePinToggle}
+            />
+          </div>
+        ) : viewMode === "clients_excel" ? (
+          <div key="clients-excel-view" style={{ width: '100%', height: 'calc(100vh - 200px)', overflow: 'hidden' }}>
+            <ClientsExcelView
+              clients={filteredAndSortedClients}
+              onRefresh={loadClients}
             />
           </div>
         ) : viewMode === "table" ? (
