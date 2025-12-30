@@ -74,6 +74,7 @@ const MENU_ITEMS = [
   { name: "אוטומציות תקשורת", icon: Zap, path: "ClientAutomations" },
   { name: "יצוא", icon: Archive, path: "Exports" },
   { name: "גיבוי", icon: Archive, path: "Backup" },
+  { name: "ניהול סוגי נתונים", icon: Layers, path: "DataTypes" },
   { name: "הגדרות", icon: Settings, path: "Settings" }
 ];
 

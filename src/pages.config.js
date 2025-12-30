@@ -35,6 +35,7 @@ import TimeLogs from './pages/TimeLogs';
 import TimerShowcase from './pages/TimerShowcase';
 import UserApprovals from './pages/UserApprovals';
 import WorkflowBuilder from './pages/WorkflowBuilder';
+import DataTypes from './pages/DataTypes';
 import __Layout from './Layout.jsx';
 
 
@@ -76,6 +77,7 @@ export const PAGES = {
     "TimerShowcase": TimerShowcase,
     "UserApprovals": UserApprovals,
     "WorkflowBuilder": WorkflowBuilder,
+    "DataTypes": DataTypes,
 }
 
 export const pagesConfig = {
