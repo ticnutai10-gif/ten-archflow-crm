@@ -78,6 +78,7 @@ import { toast } from "sonner";
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { useIsMobile } from "../components/utils/useMediaQuery";
 import SwipeableCard from "../components/mobile/SwipeableCard";
+import ResizableTableContainer from "../components/ui/ResizableTableContainer";
 
 // Default stage options
 const DEFAULT_STAGE_OPTIONS = [
@@ -660,14 +661,7 @@ export default function ClientsPage() {
 
       {/* כותרת העמוד וקיצורי דרך לטבלאות */}
       {!isMobile && (
-      <div className="flex flex-col gap-4 mb-4">
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-          <div className="text-right">
-            <h1 className="text-3xl font-bold text-slate-900 mb-2">ניהול לקוחות</h1>
-            <p className="text-slate-600">ניהול מאגר הלקוחות והפרויקטים שלהם</p>
-          </div>
-        </div>
-        
+      <div className="flex flex-col gap-2 mb-2">
         {/* Pinned Spreadsheets Bar */}
         {pinnedSpreadsheets.length > 0 && (
           <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin">
@@ -691,15 +685,149 @@ export default function ClientsPage() {
       </div>
       )}
 
-      {/* סטטיסטיקות */}
+      {/* כפתורי הפעולה (Toolbar) */}
       {!isMobile && (
-      <div className="mb-6">
-        <ClientStats clients={clients} isLoading={isLoading} />
+      <div className="flex flex-col gap-3 mb-3">
+        {/* שורה עליונה: חיפוש, פילטרים ופעולות */}
+        <div className="flex flex-wrap items-center justify-between gap-2 bg-white p-2 rounded-xl shadow-sm border border-slate-200">
+          
+          {/* צד ימין: חיפוש ופילטרים מהירים */}
+          <div className="flex items-center gap-2 flex-1 min-w-[300px]">
+             <div className="relative w-64">
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+              <Input
+                placeholder="חיפוש לקוח..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pr-9 h-9 text-sm bg-slate-50 border-slate-200 focus:bg-white transition-all"
+              />
+            </div>
+            
+            <div className="h-6 w-px bg-slate-200 mx-1"></div>
+
+            {/* Compact Icon Filters Row */}
+            <div className="flex items-center gap-1">
+               <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-9 h-9 p-0 bg-transparent border-transparent hover:bg-slate-100 rounded-lg" title="סטטוס">
+                  <Circle className="w-4 h-4 text-slate-600" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">כל הסטטוסים</SelectItem>
+                  <SelectItem value="פוטנציאלי">פוטנציאלי</SelectItem>
+                  <SelectItem value="פעיל">פעיל</SelectItem>
+                  <SelectItem value="לא פעיל">לא פעיל</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={stageFilter} onValueChange={setStageFilter}>
+                <SelectTrigger className="w-9 h-9 p-0 bg-transparent border-transparent hover:bg-slate-100 rounded-lg" title="שלב">
+                  <BarChart className="w-4 h-4 text-slate-600" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">כל השלבים</SelectItem>
+                  <SelectItem value="__UNCLASSIFIED__">ללא שלב</SelectItem>
+                  {stageOptions.map(stage => (
+                    <SelectItem key={stage.value} value={stage.value}>
+                      <div className="flex items-center gap-2">
+                        <Circle className="w-3 h-3 fill-current" style={{ color: stage.color }} />
+                        {stage.label}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-9 h-9 p-0 bg-transparent border-transparent hover:bg-slate-100 rounded-lg" title="מיון">
+                  <ArrowUpDown className="w-4 h-4 text-slate-600" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="name">לפי שם</SelectItem>
+                  <SelectItem value="created_date">לפי תאריך</SelectItem>
+                  <SelectItem value="status">לפי סטטוס</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* צד שמאל: כפתורי פעולה */}
+          <div className="flex items-center gap-2">
+             <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-9 gap-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100">
+                <FileSpreadsheet className="w-4 h-4" />
+                נתונים
+                <ChevronDown className="w-3 h-3 opacity-50" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64" dir="rtl">
+              <DropdownMenuItem onClick={openGoogleSheet} className="gap-2">
+                <FileSpreadsheet className="w-4 h-4 text-green-600" />
+                פתח Google Sheets
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setShowSheetsImporter(true)} className="gap-2">
+                <Upload className="w-4 h-4" />
+                ייבא מ-Google Sheets
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => exportToCSV()} className="gap-2">
+                <Download className="w-4 h-4" />
+                ייצא ל-CSV
+              </DropdownMenuItem>
+              <div className="my-1 h-px bg-slate-100"></div>
+              <DropdownMenuItem onClick={deleteUnnamedClients} className="gap-2 text-red-600">
+                <Eraser className="w-4 h-4" />
+                נקה לקוחות ריקים
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <div className="h-6 w-px bg-slate-200 mx-1"></div>
+
+          {/* View Mode Selector */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-9 gap-2 text-slate-600 hover:bg-slate-100">
+                <Eye className="w-4 h-4" />
+                <span className="text-sm">תצוגה</span>
+                <ChevronDown className="w-3 h-3 opacity-50" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56" dir="rtl">
+              <DropdownMenuItem onClick={() => setViewMode("table")} className="gap-2">
+                <TableIcon className="w-4 h-4" /> טבלה
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setViewMode("clients_excel")} className="gap-2">
+                <FileSpreadsheet className="w-4 h-4 text-green-600" /> Excel View
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setViewMode("grid")} className="gap-2">
+                <LayoutGrid className="w-4 h-4" /> כרטיסים
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setViewMode("kanban")} className="gap-2">
+                <CheckSquare className="w-4 h-4" /> קנבן
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setViewMode("timeline")} className="gap-2">
+                <Clock className="w-4 h-4" /> ציר זמן
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {canCreateClient && (
+            <Button
+              onClick={() => setShowForm(true)}
+              size="sm"
+              className="bg-[#2C3A50] hover:bg-[#1f2937] text-white h-9 px-4 rounded-lg shadow-sm"
+            >
+              <Plus className="w-4 h-4 ml-1.5" />
+              חדש
+            </Button>
+          )}
+          </div>
+        </div>
       </div>
       )}
 
-      {/* כפתורי הפעולה (Toolbar) */}
-      {!isMobile && (
+      {/* Hidden legacy filters block to prevent duplicates */}
+      {false && (
       <div className={`flex flex-col lg:flex-row justify-between items-start lg:items-center mb-4 gap-3`}>
         {/* Left group of buttons */}
         <div className="flex flex-wrap gap-2">
@@ -957,159 +1085,55 @@ export default function ClientsPage() {
       )}
 
 
-      {/* Compact Search and Filters */}
-      <Card className={`${isMobile ? 'mb-3' : 'mb-6'} shadow-lg border-0 bg-white/80 backdrop-blur-sm`}>
-        <CardContent className={isMobile ? "p-3" : "p-4"}>
-          <div className={`flex items-center gap-2 ${isMobile ? 'flex-col' : 'flex-wrap'}`} dir="rtl">
+      {/* Original Filters Card - Hidden on Desktop since we moved it to top bar */}
+      {isMobile && (
+      <Card className="mb-3 shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+        <CardContent className="p-3">
+          <div className="flex flex-col gap-2" dir="rtl">
             {/* Search */}
-            <div className={`relative ${isMobile ? 'w-full' : 'flex-1 min-w-[250px]'}`}>
+            <div className="relative w-full">
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
               <Input
                 placeholder="חיפוש לקוח..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className={`pr-9 bg-white ${isMobile ? 'h-12 text-base rounded-xl' : 'h-9 text-sm'}`}
+                className="pr-9 h-12 text-base rounded-xl bg-white"
               />
             </div>
 
             {/* Mobile Filters Row */}
-            {isMobile && (
-              <div className="flex items-center gap-2 w-full">
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="flex-1 h-10 bg-white border-slate-200 rounded-lg text-sm">
-                    <SelectValue placeholder="כל הסטטוסים" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">כל הסטטוסים</SelectItem>
-                    <SelectItem value="פוטנציאלי">פוטנציאלי</SelectItem>
-                    <SelectItem value="פעיל">פעיל</SelectItem>
-                    <SelectItem value="לא פעיל">לא פעיל</SelectItem>
-                  </SelectContent>
-                </Select>
+            <div className="flex items-center gap-2 w-full">
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="flex-1 h-10 bg-white border-slate-200 rounded-lg text-sm">
+                  <SelectValue placeholder="סטטוס" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">כל הסטטוסים</SelectItem>
+                  <SelectItem value="פוטנציאלי">פוטנציאלי</SelectItem>
+                  <SelectItem value="פעיל">פעיל</SelectItem>
+                  <SelectItem value="לא פעיל">לא פעיל</SelectItem>
+                </SelectContent>
+              </Select>
 
-                <Select value={stageFilter} onValueChange={setStageFilter}>
-                  <SelectTrigger className="flex-1 h-10 bg-white border-slate-200 rounded-lg text-sm">
-                    <SelectValue placeholder="כל השלבים" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">כל השלבים</SelectItem>
-                    <SelectItem value="__UNCLASSIFIED__">ללא שלב</SelectItem>
-                    {stageOptions.map(stage => (
-                     <SelectItem key={stage.value} value={stage.value}>
-                       {stage.label}
-                     </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Select value={sortBy} onValueChange={setSortBy}>
-                  <SelectTrigger className="w-20 h-10 bg-white border-slate-200 rounded-lg text-sm">
-                    <ArrowUpDown className="w-4 h-4" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="name">שם</SelectItem>
-                    <SelectItem value="created_date">תאריך</SelectItem>
-                    <SelectItem value="status">סטטוס</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {/* Desktop Icon Filters */}
-            {!isMobile && (
-              <>
-
-            {/* Compact Icon Filters */}
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-9 h-9 p-0 bg-white border-slate-300" title="סטטוס">
-                <div className="flex items-center justify-center w-full">
-                  <Circle className="w-4 h-4 text-slate-600" />
-                </div>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">כל הסטטוסים</SelectItem>
-                <SelectItem value="פוטנציאלי">פוטנציאלי</SelectItem>
-                <SelectItem value="פעיל">פעיל</SelectItem>
-                <SelectItem value="לא פעיל">לא פעיל</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select value={sourceFilter} onValueChange={setSourceFilter}>
-              <SelectTrigger className="w-9 h-9 p-0 bg-white border-slate-300" title="מקור">
-                <div className="flex items-center justify-center w-full">
-                  <Users className="w-4 h-4 text-slate-600" />
-                </div>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">כל המקורות</SelectItem>
-                <SelectItem value="הפניה">הפניה</SelectItem>
-                <SelectItem value="אתר אינטרנט">אתר אינטרנט</SelectItem>
-                <SelectItem value="מדיה חברתית">מדיה חברתית</SelectItem>
-                <SelectItem value="פרסומת">פרסומת</SelectItem>
-                <SelectItem value="אחר">אחר</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select value={budgetFilter} onValueChange={setBudgetFilter}>
-              <SelectTrigger className="w-9 h-9 p-0 bg-white border-slate-300" title="תקציב">
-                <div className="flex items-center justify-center w-full">
-                  <DollarSign className="w-4 h-4 text-slate-600" />
-                </div>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">כל התקציבים</SelectItem>
-                <SelectItem value="עד 5,000 ש״ח">עד 5,000 ש״ח</SelectItem>
-                <SelectItem value="5,000 - 10,000 ש״ח">5,000 - 10,000 ש״ח</SelectItem>
-                <SelectItem value="10,000 - 20,000 ש״ח">10,000 - 20,000 ש״ח</SelectItem>
-                <SelectItem value="מעל 20,000 ש״ח">מעל 20,000 ש״ח</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-9 h-9 p-0 bg-white border-slate-300" title="מיון">
-                <div className="flex items-center justify-center w-full">
-                  <ArrowUpDown className="w-4 h-4 text-slate-600" />
-                </div>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="name">לפי שם</SelectItem>
-                <SelectItem value="created_date">לפי תאריך</SelectItem>
-                <SelectItem value="status">לפי סטטוס</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select value={stageFilter} onValueChange={setStageFilter}>
-              <SelectTrigger className="w-9 h-9 p-0 bg-white border-slate-300" title="שלב">
-                <div className="flex items-center justify-center w-full">
-                  <Circle className="w-4 h-4 text-slate-600" />
-                </div>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">כל השלבים</SelectItem>
-                <SelectItem value="__UNCLASSIFIED__">
-                  <div className="flex items-center gap-2">
-                    <Circle className="w-3 h-3 fill-current text-slate-300" />
-                    ללא שלב
-                  </div>
-                </SelectItem>
-                {stageOptions.map(stage => (
-                  <SelectItem key={stage.value} value={stage.value}>
-                    <div className="flex items-center gap-2">
-                      <Circle 
-                        className="w-3 h-3 fill-current" 
-                        style={{ color: stage.color }}
-                      />
+              <Select value={stageFilter} onValueChange={setStageFilter}>
+                <SelectTrigger className="flex-1 h-10 bg-white border-slate-200 rounded-lg text-sm">
+                  <SelectValue placeholder="שלב" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">כל השלבים</SelectItem>
+                  <SelectItem value="__UNCLASSIFIED__">ללא שלב</SelectItem>
+                  {stageOptions.map(stage => (
+                    <SelectItem key={stage.value} value={stage.value}>
                       {stage.label}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            </>
-            )}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardContent>
       </Card>
+      )}
 
       {/* Dialogs and imports */}
       {showImporter &&
@@ -1288,19 +1312,19 @@ export default function ClientsPage() {
             isLoading={isLoading}
           />
         ) : viewMode === "spreadsheet" ? (
-          <div key="spreadsheet-view" style={{ width: '100%', overflow: 'visible' }} className="bg-white rounded-xl shadow-lg p-6 min-h-[600px]">
+          <ResizableTableContainer initialHeight={800}>
             <ClientSpreadsheet
               initialSpreadsheetId={activeSpreadsheetId}
               onPinToggle={handlePinToggle}
             />
-          </div>
+          </ResizableTableContainer>
         ) : viewMode === "clients_excel" ? (
-          <div key="clients-excel-view" style={{ width: '100%', height: 'calc(100vh - 200px)', overflow: 'hidden' }}>
+          <ResizableTableContainer initialHeight={800}>
             <ClientsExcelView
               clients={filteredAndSortedClients}
               onRefresh={loadClients}
             />
-          </div>
+          </ResizableTableContainer>
         ) : viewMode === "table" ? (
           <ClientTable
             clients={filteredAndSortedClients}
