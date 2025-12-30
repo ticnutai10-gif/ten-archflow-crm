@@ -291,22 +291,36 @@ export default function AddTimeLogDialog({
                 <Input
                   value={dateInputValue}
                   onChange={(e) => {
-                    const val = e.target.value;
+                    // Auto-format date input (DD/MM/YYYY)
+                    let val = e.target.value.replace(/\D/g, ''); // Keep only numbers
+                    if (val.length > 8) val = val.slice(0, 8);
+                    
+                    if (val.length >= 5) {
+                      val = `${val.slice(0, 2)}/${val.slice(2, 4)}/${val.slice(4)}`;
+                    } else if (val.length >= 3) {
+                      val = `${val.slice(0, 2)}/${val.slice(2)}`;
+                    }
+                    
                     setDateInputValue(val);
+
                     // Try parse dd/MM/yyyy
-                    const parts = val.split('/');
-                    if (parts.length === 3) {
-                      const d = parseInt(parts[0]);
-                      const m = parseInt(parts[1]) - 1;
-                      const y = parseInt(parts[2]);
-                      const newDate = new Date(y, m, d);
-                      if (!isNaN(newDate.getTime()) && newDate.getFullYear() > 2000) {
-                        setSelectedDate(newDate);
+                    if (val.length === 10) {
+                      const parts = val.split('/');
+                      if (parts.length === 3) {
+                        const d = parseInt(parts[0]);
+                        const m = parseInt(parts[1]) - 1;
+                        const y = parseInt(parts[2]);
+                        const newDate = new Date(y, m, d);
+                        if (!isNaN(newDate.getTime()) && newDate.getFullYear() > 2000) {
+                          setSelectedDate(newDate);
+                        }
                       }
                     }
                   }}
+                  onFocus={(e) => e.target.select()} // Select all text on click to avoid manual deletion
                   className="w-full h-12 text-lg text-center tracking-wider"
                   placeholder="DD/MM/YYYY"
+                  inputMode="numeric"
                 />
                 <Popover>
                   <PopoverTrigger className="w-full h-10 flex gap-2 items-center justify-center rounded-md border border-slate-200 bg-slate-50 text-slate-600 text-sm font-medium hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
