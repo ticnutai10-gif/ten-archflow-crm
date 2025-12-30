@@ -1283,7 +1283,9 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const addColumn = async () => {
     const columnName = prompt('שם העמודה החדשה:');
     if (!columnName) return;
-    const newColumn = { key: `col_${Date.now()}`, title: columnName, width: '150px', type: 'text', visible: true };
+    // Calculate width based on title length (approx 12px per char + padding), min 120px
+    const calculatedWidth = Math.max(120, columnName.length * 15 + 40);
+    const newColumn = { key: `col_${Date.now()}`, title: columnName, width: `${calculatedWidth}px`, type: 'text', visible: true };
     const updated = [...columns, newColumn];
     setColumns(updated);
     setTimeout(() => {
