@@ -30,6 +30,7 @@ import CommentsSidebar from "./CommentsSidebar";
 import SpreadsheetRow from "./SpreadsheetRow"; // IMPORT NEW COMPONENT
 import ColumnFilter from "./ColumnFilter"; // Import Advanced Filter
 import SmartSplitDialog from "./SmartSplitDialog"; // Import Smart Split
+import DataTypesListDialog from "@/components/settings/DataTypesListDialog";
 
 // Default stage options with colors - MUST BE OUTSIDE COMPONENT
 const DEFAULT_STAGE_OPTIONS = [
@@ -260,6 +261,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const [showColumnsManager, setShowColumnsManager] = useState(false);
   const [showBulkColumnsDialog, setShowBulkColumnsDialog] = useState(false);
   const [showStageManager, setShowStageManager] = useState(false);
+  const [showDataTypesManager, setShowDataTypesManager] = useState(false); // New state for dialog
   const [customStageOptions, setCustomStageOptions] = useState(DEFAULT_STAGE_OPTIONS);
   const [globalDataTypes, setGlobalDataTypes] = useState({});
   const [globalTypesList, setGlobalTypesList] = useState([]);
@@ -3177,7 +3179,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                 <Settings className="w-4 h-4" />
                 ניהול עמודות + צבעים
               </Button>
-              <Button onClick={() => navigate(createPageUrl("DataTypes"))} size="sm" variant="outline" className="gap-2 hover:bg-purple-50">
+              <Button onClick={() => setShowDataTypesManager(true)} size="sm" variant="outline" className="gap-2 hover:bg-purple-50">
                 <Layers className="w-4 h-4 text-purple-600" />
                 ניהול סוגי נתונים
               </Button>
@@ -4487,6 +4489,11 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         onClose={() => setShowBulkColumnsDialog(false)}
         onAdd={addBulkColumns}
         globalTypesList={globalTypesList}
+      />
+
+      <DataTypesListDialog 
+        open={showDataTypesManager}
+        onClose={() => setShowDataTypesManager(false)}
       />
 
       <StageOptionsManager
