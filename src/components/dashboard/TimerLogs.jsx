@@ -114,25 +114,34 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
 
         if (uniqueCreatedBys.length === 0) return;
 
-        const users = await base44.entities.User.list();
+        const [users, teamMembers] = await Promise.all([
+          base44.entities.User.list().catch(() => []),
+          base44.entities.TeamMember.list().catch(() => [])
+        ]);
         
-        // יצירת מיפוי - גם לפי ID וגם לפי מייל
         const mapping = {};
+
+        // Helper to add/merge data
+        const addToMapping = (key, data) => {
+          if (!key) return;
+          mapping[key] = { ...(mapping[key] || {}), ...data };
+        };
+
+        // Populate from TeamMembers first (accessible to all)
+        teamMembers.forEach(tm => {
+          const data = { email: tm.email, full_name: tm.full_name };
+          addToMapping(tm.email, data);
+        });
+
+        // Populate from Users (might overwrite with auth data if available)
         users.forEach(user => {
           const userData = {
             email: user.email || null,
-            full_name: user.full_name || null
+            full_name: user.full_name || user.display_name || null
           };
           
-          // מיפוי לפי ID
-          if (user.id) {
-            mapping[user.id] = userData;
-          }
-          
-          // מיפוי גם לפי מייל
-          if (user.email) {
-            mapping[user.email] = userData;
-          }
+          if (user.id) addToMapping(user.id, userData);
+          if (user.email) addToMapping(user.email, userData);
         });
         
         setUserIdToDataMap(mapping);
