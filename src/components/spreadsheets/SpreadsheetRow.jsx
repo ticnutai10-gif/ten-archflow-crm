@@ -363,7 +363,7 @@ const SpreadsheetRow = memo(({
           <DialogHeader>
             <DialogTitle>השלמת פרטים: {customFieldsDialog?.option?.label}</DialogTitle>
           </DialogHeader>
-          <div className="py-4 space-y-4">
+          <div className="p-6 space-y-4">
             {customFieldsDialog?.option?.fields?.map(field => (
               <div key={field.key} className="space-y-1">
                 <label className="text-sm font-medium text-slate-700">

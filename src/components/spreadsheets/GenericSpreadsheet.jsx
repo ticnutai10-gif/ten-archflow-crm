@@ -4277,7 +4277,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
               {cellNotes[noteDialogCell] ? 'ערוך הערה' : 'הוסף הערה'}
             </DialogTitle>
           </DialogHeader>
-          <div className="py-4">
+          <div className="p-6">
             <Textarea
               value={noteText}
               onChange={(e) => setNoteText(e.target.value)}
@@ -4312,7 +4312,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
               בחר צבע לתא
             </DialogTitle>
           </DialogHeader>
-          <div className="py-4">
+          <div className="p-6">
             <ColorPicker 
               currentStyle={colorPickerTargetCell ? cellStyles[colorPickerTargetCell] : {}}
               onApply={(style) => {
@@ -4341,7 +4341,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
               בחר צבע לכותרת
             </DialogTitle>
           </DialogHeader>
-          <div className="py-4">
+          <div className="p-6">
             <ColorPicker 
               currentStyle={colorPickerTargetHeader ? headerStyles[colorPickerTargetHeader] : {}}
               onApply={(style) => {
@@ -4413,7 +4413,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 p-6">
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
               💡 <strong>טיפ:</strong> בחר לקוח והמערכת תמלא אוטומטית את השדות
             </div>

@@ -191,7 +191,7 @@ export default function DataTypesListDialog({ open, onClose }) {
                 <DialogHeader>
                     <DialogTitle>הוספת סוג נתונים חדש</DialogTitle>
                 </DialogHeader>
-                <div className="space-y-4 py-4">
+                <div className="space-y-4 p-6">
                     <div>
                         <label className="text-sm font-medium mb-1 block">שם הסוג (למשל: סטטוס רישוי)</label>
                         <Input 
