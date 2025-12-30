@@ -3789,7 +3789,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                   {isEditing ? (
                                     <Input ref={columnEditRef} value={editingColumnTitle} onChange={(e) => setEditingColumnTitle(e.target.value)} onBlur={saveColumnTitle} onKeyDown={(e) => { if (e.key === 'Enter') saveColumnTitle(); if (e.key === 'Escape') { setEditingColumnKey(null); setEditingColumnTitle(""); } }} className="h-8" autoFocus />
                                   ) : (
-                                    <div className="flex items-center justify-between overflow-hidden">
+                                    <div className="relative flex items-center justify-center w-full h-full min-h-[32px]">
                                       {col.collapsed ? (
                                         <div className="flex justify-center w-full" title={col.title}>
                                           <Button size="icon" variant="ghost" className="h-6 w-6 rounded-full" onClick={() => toggleColumnCollapse(col.key)}>
@@ -3797,15 +3797,15 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                           </Button>
                                         </div>
                                       ) : (
-                                        <div className="flex items-center gap-2 truncate">
-                                          <div {...provided.dragHandleProps} className="opacity-0 group-hover:opacity-100 cursor-grab p-1 hover:bg-blue-100 rounded transition-opacity flex-shrink-0"><GripVertical className="w-4 h-4 text-slate-400" /></div>
-                                          <span className="truncate" title={col.title}>{col.title}</span>
-                                          {hasSubHeader && <Type className="w-3 h-3 text-blue-500 flex-shrink-0" title={hasSubHeader} />}
+                                        <div className="flex items-center justify-center w-full px-2">
+                                          <div {...provided.dragHandleProps} className="absolute right-0 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 cursor-grab p-1 hover:bg-blue-100 rounded transition-opacity z-10"><GripVertical className="w-4 h-4 text-slate-400" /></div>
+                                          <span className="truncate w-full text-center px-4" title={col.title}>{col.title}</span>
+                                          {hasSubHeader && <Type className="absolute top-0 left-0 w-3 h-3 text-blue-500" title={hasSubHeader} />}
                                         </div>
                                       )}
                                       
                                       {!col.collapsed && (
-                                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                                      <div className="absolute left-0 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white/95 backdrop-blur-sm shadow-sm border border-slate-100 rounded-md px-1 py-0.5 z-20">
                                         {/* Advanced Filter Button */}
                                         <ColumnFilter 
                                           column={col} 
