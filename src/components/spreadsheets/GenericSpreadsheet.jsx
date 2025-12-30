@@ -118,6 +118,9 @@ export function StageDisplay({ value, column, isEditing, onEdit, editValue, onSa
     if (column?.type === 'stage' && globalDataTypes?.['stages']) {
       return globalDataTypes['stages'];
     }
+    if (globalDataTypes?.[column?.type]) {
+      return globalDataTypes[column.type];
+    }
     return stageOptions;
   }, [stageOptions, globalDataTypes, column?.type]);
 
@@ -1099,7 +1102,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       result = result.filter(row => columns.some(col => {
         const val = row[col.key];
         // For stage/category columns, search in the label
-        if (['stage', 'taba', 'transfer_rights', 'purchase_rights'].includes(col.type)) {
+        if ((['stage', 'taba', 'transfer_rights', 'purchase_rights'].includes(col.type) || globalDataTypes?.[col.type])) {
           let options = customStageOptions;
           if (col.type !== 'stage') options = globalDataTypes?.[col.type] || [];
           else options = globalDataTypes?.['stages'] || customStageOptions;
@@ -1507,6 +1510,8 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       options = globalDataTypes?.[columnType] || [];
     } else if (columnType === 'stage') {
       options = globalDataTypes?.['stages'] || customStageOptions;
+    } else if (globalDataTypes?.[columnType]) {
+      options = globalDataTypes[columnType];
     }
 
     // search parent first
@@ -1981,7 +1986,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     setCurrentFocusedCell(`${rowId}_${column.key}`);
 
     // Stage columns have their own click handler
-    if (['stage', 'taba', 'transfer_rights', 'purchase_rights'].includes(column.type)) {
+    if ((['stage', 'taba', 'transfer_rights', 'purchase_rights'].includes(column.type) || globalDataTypes?.[column.type])) {
       setEditingCell(`${rowId}_${column.key}`);
       setEditValue(String(row[column.key] || ''));
       return;
@@ -3525,7 +3530,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                               {col.type === 'checkmark' || col.type === 'mixed_check' ? (
                                 value === '✓' ? <span className="text-green-600 text-lg">✓</span> : 
                                 value === '✗' ? <span className="text-red-600 text-lg">✗</span> : value
-                              ) : ['stage', 'taba', 'transfer_rights', 'purchase_rights'].includes(col.type) ? (
+                              ) : (['stage', 'taba', 'transfer_rights', 'purchase_rights'].includes(col.type) || globalDataTypes?.[col.type]) ? (
                                 getStageLabel(value, col.type)
                               ) : String(value)}
                             </span>
@@ -3556,7 +3561,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                             <span className="font-medium text-slate-900">
                               {col.type === 'checkmark' || col.type === 'mixed_check' ? (
                                 value === '✓' ? '✓' : value === '✗' ? '✗' : '-'
-                              ) : ['stage', 'taba', 'transfer_rights', 'purchase_rights'].includes(col.type) ? (
+                              ) : (['stage', 'taba', 'transfer_rights', 'purchase_rights'].includes(col.type) || globalDataTypes?.[col.type]) ? (
                                 getStageLabel(value, col.type) || '-'
                               ) : value || '-'}
                             </span>

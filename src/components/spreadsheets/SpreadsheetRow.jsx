@@ -77,7 +77,7 @@ const SpreadsheetRow = memo(({
   let rowAutoStyle = {};
   
   visibleColumns.forEach(col => {
-    if (['stage', 'taba', 'transfer_rights', 'purchase_rights'].includes(col.type)) {
+    if ((['stage', 'taba', 'transfer_rights', 'purchase_rights'].includes(col.type) || (globalDataTypes && globalDataTypes[col.type]))) {
       const cellKey = `${row.id}_${col.key}`;
       const val = row[col.key];
       const meta = cellMetadata?.[cellKey] || {};
@@ -268,7 +268,7 @@ const SpreadsheetRow = memo(({
                           {cellValue === '✓' ? '✓' : cellValue === '✗' ? '✗' : '•'}
                         </div>
                       </div>
-                    ) : ['stage', 'taba', 'transfer_rights', 'purchase_rights'].includes(column.type) ? (
+                    ) : (['stage', 'taba', 'transfer_rights', 'purchase_rights'].includes(column.type) || (globalDataTypes && globalDataTypes[column.type])) ? (
                       <StageDisplay 
                         value={cellValue}
                         column={column}
@@ -317,7 +317,7 @@ const SpreadsheetRow = memo(({
                       </TooltipProvider>
                     )}
                   </div>
-                  {isEditing && !isClientColumn(column) && !['stage', 'taba', 'transfer_rights', 'purchase_rights'].includes(column.type) && <datalist id={`ac-${column.key}`}>{getAutoCompleteSuggestions(column.key).map((s, i) => <option key={i} value={s} />)}</datalist>}
+                  {isEditing && !isClientColumn(column) && !(['stage', 'taba', 'transfer_rights', 'purchase_rights'].includes(column.type) || (globalDataTypes && globalDataTypes[column.type])) && <datalist id={`ac-${column.key}`}>{getAutoCompleteSuggestions(column.key).map((s, i) => <option key={i} value={s} />)}</datalist>}
                 </td>
               );
             })}
