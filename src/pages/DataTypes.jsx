@@ -62,17 +62,19 @@ export default function DataTypesPage() {
         const typeKey = `custom_${Date.now()}`;
         console.log("Creating new type:", { name: newTypeName, key: typeKey });
         
-        await base44.entities.GlobalDataType.create({
+        const newType = await base44.entities.GlobalDataType.create({
             name: newTypeName,
             type_key: typeKey,
-            options: [], // Empty options initially
-            // We can store description in the entity if schema allows, or just ignore it for now as schema doesn't seem to have description field in summary
-            // Assuming description is not in schema based on summary, but let's check. 
-            // Summary says: type_key, name, options. No description.
-            // So we won't save description to DB unless we update schema.
+            options: [],
         });
 
         toast.success("סוג נתונים חדש נוצר בהצלחה");
+        
+        // Dispatch event for other components
+        window.dispatchEvent(new CustomEvent('global-data-type:updated', { 
+            detail: { typeKey: newType.type_key, options: [] } 
+        }));
+
         setShowAddDialog(false);
         setNewTypeName("");
         setNewTypeDescription("");

@@ -267,30 +267,33 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const navigate = useNavigate();
 
   // Load Global Data Types
+  const loadGlobalTypes = useCallback(async () => {
+    try {
+      console.log("🔄 [GENERIC SPREADSHEET] Loading Global Data Types...");
+      const types = await base44.entities.GlobalDataType.list();
+      console.log("✅ [GENERIC SPREADSHEET] Global Data Types Loaded:", types);
+      setGlobalTypesList(types);
+      const map = {};
+      types.forEach(t => {
+        map[t.type_key] = t.options;
+      });
+      setGlobalDataTypes(map);
+    } catch (e) {
+      console.error("❌ [GENERIC SPREADSHEET] Failed to load global data types", e);
+    }
+  }, []);
+
   useEffect(() => {
-    const loadGlobalTypes = async () => {
-      try {
-        const types = await base44.entities.GlobalDataType.list();
-        setGlobalTypesList(types);
-        const map = {};
-        types.forEach(t => {
-          map[t.type_key] = t.options;
-        });
-        setGlobalDataTypes(map);
-      } catch (e) {
-        console.error("Failed to load global data types", e);
-      }
-    };
     loadGlobalTypes();
     
     const handleGlobalUpdate = (e) => {
-      const { typeKey, options } = e.detail;
-      setGlobalDataTypes(prev => ({ ...prev, [typeKey]: options }));
-      // Also update list if needed, though usually just options change
+      console.log("📬 [GENERIC SPREADSHEET] Received global-data-type:updated event", e.detail);
+      // Reload full list to ensure we have new types/names correctly
+      loadGlobalTypes();
     };
     window.addEventListener('global-data-type:updated', handleGlobalUpdate);
     return () => window.removeEventListener('global-data-type:updated', handleGlobalUpdate);
-  }, []);
+  }, [loadGlobalTypes]);
   const [showSplitDialog, setShowSplitDialog] = useState(false);
   const [splitTargetColumn, setSplitTargetColumn] = useState(null);
   // When using categories/children, allow selecting either parent or child
