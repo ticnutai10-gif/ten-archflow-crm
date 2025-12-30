@@ -229,11 +229,21 @@ const SpreadsheetRow = memo(({
                   className={`relative outline-none focus:outline-none ${selectionClass} ${hoverClass} ${isClientPicker ? 'ring-2 ring-blue-500 z-30 shadow-lg' : ''} ${mergeInfo ? 'bg-white shadow-sm' : ''} overflow-hidden`}
                   style={{
                     ...((activeUserOnCell) ? { borderColor: activeUserOnCell.color } : {}),
-                    backgroundColor: isSelected ? `${palette.selected}40` : (
-                      (column.type === 'checkmark' || column.type === 'mixed_check') && cellValue === '✓' ? '#f0fdf4' : 
-                      (column.type === 'checkmark' || column.type === 'mixed_check') && cellValue === '✗' ? '#fef2f2' :
-                      finalStyle.backgroundColor || 'transparent'
-                    ),
+                    background: (() => {
+                      const isFrozen = colIndex < freezeSettings.freeze_columns || rowIndex < freezeSettings.freeze_rows;
+                      const baseColor = rowIndex % 2 === 0 ? (palette.cellBg || '#ffffff') : (palette.cellAltBg || '#f8fafc');
+                      let activeColor = null;
+                      if (isSelected) activeColor = `${palette.selected}40`;
+                      else if ((column.type === 'checkmark' || column.type === 'mixed_check') && cellValue === '✓') activeColor = '#f0fdf4';
+                      else if ((column.type === 'checkmark' || column.type === 'mixed_check') && cellValue === '✗') activeColor = '#fef2f2';
+                      else activeColor = finalStyle.backgroundColor;
+
+                      if (isFrozen) {
+                        const effectiveOverlay = activeColor || rowAutoStyle.backgroundColor;
+                        return effectiveOverlay ? `linear-gradient(0deg, ${effectiveOverlay}, ${effectiveOverlay}), ${baseColor}` : baseColor;
+                      }
+                      return activeColor || 'transparent';
+                    })(),
                     color: finalStyle.color || palette.cellText,
                     opacity: finalStyle.opacity ? finalStyle.opacity / 100 : 1,
                     fontWeight: finalStyle.fontWeight || 'normal',
