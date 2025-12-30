@@ -104,10 +104,17 @@ export default function ClientsPage() {
     try {
       // Always default to spreadsheet unless user explicitly changed it
       const savedMode = localStorage.getItem('clients-view-mode');
-      return savedMode || "spreadsheet";
+      return savedMode || "table"; // Default changed to table to avoid confusion with new spreadsheet manager
     } catch {
-      return "spreadsheet";
+      return "table";
     }
+  });
+  const [activeSpreadsheetId, setActiveSpreadsheetId] = useState(null);
+  const [pinnedSpreadsheets, setPinnedSpreadsheets] = useState(() => {
+    try {
+      const saved = localStorage.getItem('pinned-spreadsheets');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
   });
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
@@ -552,6 +559,27 @@ export default function ClientsPage() {
     }
   };
 
+  const handlePinToggle = (spreadsheet) => {
+    setPinnedSpreadsheets(prev => {
+      const exists = prev.find(p => p.id === spreadsheet.id);
+      let newPinned;
+      if (exists) {
+        newPinned = prev.filter(p => p.id !== spreadsheet.id);
+        toast.success('הטבלה הוסרה מהקיצורים');
+      } else {
+        newPinned = [...prev, { id: spreadsheet.id, name: spreadsheet.name }];
+        toast.success('הטבלה נוספה לקיצורים');
+      }
+      localStorage.setItem('pinned-spreadsheets', JSON.stringify(newPinned));
+      return newPinned;
+    });
+  };
+
+  const openSpreadsheet = (id) => {
+    setActiveSpreadsheetId(id);
+    setViewMode("spreadsheet");
+  };
+
   // Drag & Drop handler
   const onDragEnd = (result) => {
     if (!result.destination) return;
@@ -629,13 +657,36 @@ export default function ClientsPage() {
         width: '100%'
       }}>
 
-      {/* כותרת העמוד */}
+      {/* כותרת העמוד וקיצורי דרך לטבלאות */}
       {!isMobile && (
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-4 gap-4">
-        <div className="text-right">
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">ניהול לקוחות</h1>
-          <p className="text-slate-600">ניהול מאגר הלקוחות והפרויקטים שלהם</p>
+      <div className="flex flex-col gap-4 mb-4">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+          <div className="text-right">
+            <h1 className="text-3xl font-bold text-slate-900 mb-2">ניהול לקוחות</h1>
+            <p className="text-slate-600">ניהול מאגר הלקוחות והפרויקטים שלהם</p>
+          </div>
         </div>
+        
+        {/* Pinned Spreadsheets Bar */}
+        {pinnedSpreadsheets.length > 0 && (
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin">
+            <div className="text-xs font-semibold text-slate-500 pl-2 ml-2 border-l border-slate-300">
+              טבלאות מהירות:
+            </div>
+            {pinnedSpreadsheets.map(sheet => (
+              <Button
+                key={sheet.id}
+                variant="outline"
+                size="sm"
+                onClick={() => openSpreadsheet(sheet.id)}
+                className="gap-2 bg-white hover:bg-blue-50 border-slate-200 shadow-sm"
+              >
+                <FileSpreadsheet className="w-3 h-3 text-blue-600" />
+                {sheet.name}
+              </Button>
+            ))}
+          </div>
+        )}
       </div>
       )}
 
@@ -828,10 +879,13 @@ export default function ClientsPage() {
               </DropdownMenuItem>
 
               <DropdownMenuItem
-                onClick={() => setViewMode("spreadsheet")}
+                onClick={() => {
+                  setViewMode("spreadsheet");
+                  setActiveSpreadsheetId(null); // Clear active so it shows list
+                }}
                 className={`flex items-center gap-3 cursor-pointer ${viewMode === "spreadsheet" ? "bg-blue-50 text-blue-700" : ""}`}>
                 <FileSpreadsheet className="w-4 h-4" style={{ color: viewMode === "spreadsheet" ? undefined : iconColor }} />
-                <span className="flex-1">Excel</span>
+                <span className="flex-1">טבלאות (Spreadsheets)</span>
                 {viewMode === "spreadsheet" && <Eye className="w-4 h-4 text-blue-600" />}
               </DropdownMenuItem>
 
@@ -1225,12 +1279,10 @@ export default function ClientsPage() {
             isLoading={isLoading}
           />
         ) : viewMode === "spreadsheet" ? (
-          <div key="spreadsheet-view" style={{ width: '100%', overflow: 'visible' }}>
+          <div key="spreadsheet-view" style={{ width: '100%', overflow: 'visible' }} className="bg-white rounded-xl shadow-lg p-6 min-h-[600px]">
             <ClientSpreadsheet
-              clients={filteredAndSortedClients}
-              onEdit={handleEdit}
-              onView={handleViewDetails}
-              isLoading={isLoading}
+              initialSpreadsheetId={activeSpreadsheetId}
+              onPinToggle={handlePinToggle}
             />
           </div>
         ) : viewMode === "table" ? (
