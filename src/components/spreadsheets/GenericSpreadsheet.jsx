@@ -186,7 +186,7 @@ export function StageDisplay({ value, column, isEditing, onEdit, editValue, onSa
           <div>{Badge}</div>
         </PopoverTrigger>
         <PopoverContent className="p-0 w-auto overflow-visible" align="center" side="bottom">
-          <StageSelector options={stageOptions} onSelect={handleSelect} />
+          <StageSelector options={actualOptions} onSelect={handleSelect} />
         </PopoverContent>
       </Popover>
     );
