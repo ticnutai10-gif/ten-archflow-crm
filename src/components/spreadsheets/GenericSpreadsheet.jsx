@@ -2901,7 +2901,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       )}
 
       <div 
-        className={`${isFullScreen ? 'fixed inset-0 z-[100] h-screen w-screen overflow-hidden p-4 bg-slate-100/90 backdrop-blur' : (fullScreenMode ? 'flex-1 min-h-0' : '')}`}
+        className={`${isFullScreen ? 'fixed inset-0 z-[100] h-screen w-screen overflow-hidden p-4 bg-slate-100/90 backdrop-blur flex flex-col' : (fullScreenMode ? 'flex-1 min-h-0 flex flex-col' : '')}`}
         style={isFullScreen ? { touchAction: 'none' } : {}}
       >
           <div className="flex items-center justify-between gap-4 flex-wrap lg:flex-nowrap mb-3 px-1">
