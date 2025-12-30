@@ -3791,13 +3791,13 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                   ) : (
                                     <div className="relative flex items-center justify-center w-full h-full min-h-[32px]">
                                       {col.collapsed ? (
-                                        <div className="flex justify-center w-full" title={col.title}>
+                                        <div className="flex justify-center w-full select-none" title={col.title}>
                                           <Button size="icon" variant="ghost" className="h-6 w-6 rounded-full" onClick={() => toggleColumnCollapse(col.key)}>
                                             <span className="text-xs font-bold">{col.title.charAt(0)}</span>
                                           </Button>
                                         </div>
                                       ) : (
-                                        <div className="flex items-center justify-center w-full px-2">
+                                        <div className="flex items-center justify-center w-full px-2 select-none">
                                           <div {...provided.dragHandleProps} className="absolute right-0 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 cursor-grab p-1 hover:bg-blue-100 rounded transition-opacity z-10"><GripVertical className="w-4 h-4 text-slate-400" /></div>
                                           <span className="truncate w-full text-center px-4" title={col.title}>{col.title}</span>
                                           {hasSubHeader && <Type className="absolute top-0 left-0 w-3 h-3 text-blue-500" title={hasSubHeader} />}
