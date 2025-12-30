@@ -95,7 +95,7 @@ function StageMenuItem({ option, onSelect, depth = 0 }) {
 
 export function StageSelector({ options = [], onSelect }) {
   return (
-    <div className="p-1 bg-white rounded-lg shadow-xl border border-slate-200 min-w-[200px] overflow-visible">
+    <div className="p-1 min-w-[200px] overflow-visible">
       {options.map(option => (
         <StageMenuItem 
           key={option.value} 
