@@ -5,17 +5,22 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { 
-  Cloud, 
-  Calendar, 
-  MessageSquare, 
-  CheckCircle2, 
-  XCircle,
-  Settings,
-  ExternalLink,
-  Zap,
-  Link as LinkIcon,
-  Loader2,
-  RefreshCw
+Cloud, 
+Calendar, 
+MessageSquare, 
+CheckCircle2, 
+XCircle,
+Settings,
+ExternalLink,
+Zap,
+Link as LinkIcon,
+Loader2,
+RefreshCw,
+Key,
+Shield,
+Eye,
+EyeOff,
+Lock
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
@@ -62,8 +67,10 @@ const INTEGRATIONS = [
 
 export default function IntegrationsPage() {
   const [connectedIntegrations, setConnectedIntegrations] = useState({});
+  const [appSecrets, setAppSecrets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCalendarSync, setShowCalendarSync] = useState(false);
+  const [showSecrets, setShowSecrets] = useState(false);
 
   useEffect(() => {
     loadIntegrationStatus();
@@ -73,6 +80,16 @@ export default function IntegrationsPage() {
     try {
       setLoading(true);
       const user = await base44.auth.me();
+      
+      // Load secrets
+      try {
+        const { data } = await base44.functions.invoke('getIntegrationStatus');
+        if (data && data.secrets) {
+          setAppSecrets(data.secrets);
+        }
+      } catch (e) {
+        console.error("Failed to load secrets status", e);
+      }
       
       // Google Calendar is now connected via OAuth connector (always available)
       setConnectedIntegrations({
@@ -240,6 +257,98 @@ export default function IntegrationsPage() {
             );
           })
         )}
+
+        {/* Secrets & Config Section */}
+        <div className="mb-8 mt-12">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <Shield className="w-6 h-6 text-slate-700" />
+              <h2 className="text-xl font-bold text-slate-800">הגדרות אבטחה וחיבורים</h2>
+            </div>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowSecrets(!showSecrets)}
+              className="gap-2"
+            >
+              {showSecrets ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              {showSecrets ? 'הסתר פרטים' : 'הצג פרטים'}
+            </Button>
+          </div>
+
+          <Card className="bg-white shadow-md border-slate-200">
+            <CardHeader className="bg-slate-50 border-b border-slate-100">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Key className="w-5 h-5 text-amber-500" />
+                משתני סביבה וסיסמאות מוגדרות (Secrets)
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              {appSecrets.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-right">
+                    <thead className="bg-slate-50 text-slate-600 text-sm">
+                      <tr>
+                        <th className="px-6 py-3 font-semibold border-b">שם המפתח</th>
+                        <th className="px-6 py-3 font-semibold border-b">סוג</th>
+                        <th className="px-6 py-3 font-semibold border-b">ערך</th>
+                        <th className="px-6 py-3 font-semibold border-b">סטטוס</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-sm">
+                      {appSecrets.map((secret, index) => (
+                        <tr key={index} className="border-b last:border-0 hover:bg-slate-50 transition-colors">
+                          <td className="px-6 py-4 font-mono text-slate-700 dir-ltr text-left">
+                            {secret.name}
+                          </td>
+                          <td className="px-6 py-4">
+                            <Badge variant="outline" className="bg-slate-100 font-normal">
+                              {secret.type}
+                            </Badge>
+                          </td>
+                          <td className="px-6 py-4 font-mono text-slate-500 dir-ltr text-left">
+                            {showSecrets ? (
+                              <span className="bg-slate-100 px-2 py-1 rounded">
+                                {secret.name.includes('KEY') || secret.name.includes('SECRET') ? '••••••••••••••••' : 'מוגדר'}
+                              </span>
+                            ) : (
+                              '••••••••'
+                            )}
+                          </td>
+                          <td className="px-6 py-4">
+                            {secret.isSet ? (
+                              <div className="flex items-center gap-1.5 text-green-600 font-medium">
+                                <CheckCircle2 className="w-4 h-4" />
+                                <span>פעיל</span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1.5 text-slate-400">
+                                <XCircle className="w-4 h-4" />
+                                <span>לא מוגדר</span>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="p-8 text-center text-slate-500">
+                  לא נמצאו משתני סביבה מוגדרים
+                </div>
+              )}
+            </CardContent>
+          </Card>
+          
+          <div className="mt-4 bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
+             <Lock className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+             <div className="text-sm text-amber-800">
+               <strong>הערת אבטחה:</strong> מטעמי אבטחה, לא ניתן לצפות בערכים המלאים של הסיסמאות והמפתחות דרך הממשק.
+               <br />
+               הטבלה מציגה רק את שמות המפתחות המוגדרים במערכת והאם הם פעילים.
+             </div>
+          </div>
+        </div>
 
         <Card className="bg-gradient-to-br from-blue-50 to-purple-50 border-2 border-blue-200">
           <CardHeader>

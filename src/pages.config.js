@@ -11,6 +11,7 @@ import CommunicationHub from './pages/CommunicationHub';
 import CustomSpreadsheets from './pages/CustomSpreadsheets';
 import DailyReports from './pages/DailyReports';
 import Dashboard from './pages/Dashboard';
+import DataTypes from './pages/DataTypes';
 import Decisions from './pages/Decisions';
 import Documents from './pages/Documents';
 import Exports from './pages/Exports';
@@ -35,7 +36,6 @@ import TimeLogs from './pages/TimeLogs';
 import TimerShowcase from './pages/TimerShowcase';
 import UserApprovals from './pages/UserApprovals';
 import WorkflowBuilder from './pages/WorkflowBuilder';
-import DataTypes from './pages/DataTypes';
 import __Layout from './Layout.jsx';
 
 
@@ -53,6 +53,7 @@ export const PAGES = {
     "CustomSpreadsheets": CustomSpreadsheets,
     "DailyReports": DailyReports,
     "Dashboard": Dashboard,
+    "DataTypes": DataTypes,
     "Decisions": Decisions,
     "Documents": Documents,
     "Exports": Exports,
@@ -77,7 +78,6 @@ export const PAGES = {
     "TimerShowcase": TimerShowcase,
     "UserApprovals": UserApprovals,
     "WorkflowBuilder": WorkflowBuilder,
-    "DataTypes": DataTypes,
 }
 
 export const pagesConfig = {
