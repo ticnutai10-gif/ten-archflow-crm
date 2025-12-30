@@ -110,10 +110,20 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
     const loadUserMapping = async () => {
       try {
         const allCreatedBys = safeTimeLogs.map(log => getCreatedBy(log)).filter(Boolean);
-        const uniqueCreatedBys = [...new Set(allCreatedBys)];
+        if (allCreatedBys.length === 0) return;
 
-        if (uniqueCreatedBys.length === 0) return;
+        // Try to fetch mapping from backend function (works for all roles)
+        try {
+            const res = await base44.functions.invoke('getUsersMap');
+            if (res.data && res.data.mapping) {
+                setUserIdToDataMap(res.data.mapping);
+                return;
+            }
+        } catch (e) {
+            console.warn('Backend mapping fetch failed, falling back to frontend lists', e);
+        }
 
+        // Fallback logic
         const [users, teamMembers] = await Promise.all([
           base44.entities.User.list().catch(() => []),
           base44.entities.TeamMember.list().catch(() => [])
@@ -146,7 +156,7 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
         
         setUserIdToDataMap(mapping);
       } catch (error) {
-        // Error loading user mapping
+        console.error('Error loading user mapping:', error);
       }
     };
 

@@ -269,7 +269,8 @@ export default function Dashboard() {
       if (!canSeeAllTimeLogs && currentUser?.email) {
         const rows = await base44.entities.AccessControl.filter({ email: currentUser.email, active: true }).catch(() => []);
         const validRows = Array.isArray(rows) ? rows : [];
-        canSeeAllTimeLogs = !!validRows?.[0] && validRows[0].role === 'manager_plus';
+        // Check if ANY active permission grants manager_plus or higher
+        canSeeAllTimeLogs = validRows.some(row => ['manager_plus', 'admin', 'super_admin'].includes(row.role));
       }
 
       const timeLogsPromise = canSeeAllTimeLogs ?
