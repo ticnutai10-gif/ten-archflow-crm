@@ -1080,10 +1080,14 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       const searchLower = globalFilter.toLowerCase();
       result = result.filter(row => columns.some(col => {
         const val = row[col.key];
-        // For stage columns, search in the label
-        if (col.type === 'stage') {
-          const stage = STAGE_OPTIONS.find(s => s.value === val);
-          return stage?.label?.toLowerCase().includes(searchLower) || stage?.parent?.toLowerCase().includes(searchLower);
+        // For stage/category columns, search in the label
+        if (['stage', 'taba', 'transfer_rights', 'purchase_rights'].includes(col.type)) {
+          let options = customStageOptions;
+          if (col.type !== 'stage') options = globalDataTypes?.[col.type] || [];
+          else options = globalDataTypes?.['stages'] || customStageOptions;
+
+          const stage = (options || []).flatMap(g => [g, ...(g.children || [])]).find(s => s.value === val);
+          return stage?.label?.toLowerCase().includes(searchLower);
         }
         return String(val || '').toLowerCase().includes(searchLower);
       }));
@@ -1100,8 +1104,12 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
           if (filter.type === 'text') {
             const searchLower = (filter.value || '').toLowerCase();
             const col = columns.find(c => c.key === columnKey);
-            if (col?.type === 'stage') {
-              const stage = (customStageOptions || []).flatMap(g => [g, ...(g.children || [])]).find(s => s.value === val);
+            if (['stage', 'taba', 'transfer_rights', 'purchase_rights'].includes(col?.type)) {
+              let options = customStageOptions;
+              if (col.type !== 'stage') options = globalDataTypes?.[col.type] || [];
+              else options = globalDataTypes?.['stages'] || customStageOptions;
+
+              const stage = (options || []).flatMap(g => [g, ...(g.children || [])]).find(s => s.value === val);
               return stage?.label?.toLowerCase().includes(searchLower);
             }
             return String(val || '').toLowerCase().includes(searchLower);
@@ -1467,20 +1475,28 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     return Array.from(values).sort();
   };
 
-  const getStageLabel = useCallback((val) => {
+  const getStageLabel = useCallback((val, columnType = 'stage') => {
     if (!val) return '';
+    
+    let options = customStageOptions;
+    if (['taba', 'transfer_rights', 'purchase_rights'].includes(columnType)) {
+      options = globalDataTypes?.[columnType] || [];
+    } else if (columnType === 'stage') {
+      options = globalDataTypes?.['stages'] || customStageOptions;
+    }
+
     // search parent first
-    const parent = (customStageOptions || []).find(s => s.value === val);
+    const parent = (options || []).find(s => s.value === val);
     if (parent) return parent.label || val;
     // search children
-    for (const p of (customStageOptions || [])) {
+    for (const p of (options || [])) {
       if (Array.isArray(p.children)) {
         const ch = p.children.find(c => c.value === val);
         if (ch) return p.label ? `${p.label} › ${ch.label}` : (ch.label || val);
       }
     }
     return val;
-  }, [customStageOptions]);
+  }, [customStageOptions, globalDataTypes]);
 
   const mergeCells = () => {
     if (selectedCells.size < 2) { 
@@ -3454,8 +3470,8 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                               {col.type === 'checkmark' || col.type === 'mixed_check' ? (
                                 value === '✓' ? <span className="text-green-600 text-lg">✓</span> : 
                                 value === '✗' ? <span className="text-red-600 text-lg">✗</span> : value
-                              ) : col.type === 'stage' ? (
-                                getStageLabel(value)
+                              ) : ['stage', 'taba', 'transfer_rights', 'purchase_rights'].includes(col.type) ? (
+                                getStageLabel(value, col.type)
                               ) : String(value)}
                             </span>
                           </div>
@@ -3485,8 +3501,8 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                             <span className="font-medium text-slate-900">
                               {col.type === 'checkmark' || col.type === 'mixed_check' ? (
                                 value === '✓' ? '✓' : value === '✗' ? '✗' : '-'
-                              ) : col.type === 'stage' ? (
-                                getStageLabel(value) || '-'
+                              ) : ['stage', 'taba', 'transfer_rights', 'purchase_rights'].includes(col.type) ? (
+                                getStageLabel(value, col.type) || '-'
                               ) : value || '-'}
                             </span>
                           </div>
