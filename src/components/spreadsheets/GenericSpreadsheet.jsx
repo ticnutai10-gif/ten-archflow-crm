@@ -1323,6 +1323,12 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     toast.success('✓ נראות עמודה שונתה');
   };
 
+  const toggleColumnCollapse = async (columnKey) => {
+    const updated = columns.map(col => col.key === columnKey ? { ...col, collapsed: !col.collapsed } : col);
+    setColumns(updated);
+    setTimeout(() => saveToBackend(), 50);
+  };
+
   const renameColumn = async (columnKey, newTitle) => {
     if (!newTitle.trim()) return;
     const updated = columns.map(col => col.key === columnKey ? { ...col, title: newTitle.trim() } : col);
@@ -3305,12 +3311,12 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                 <PopoverTrigger asChild>
                   <Button size="sm" variant="outline" className="gap-2">
                     <Eye className="w-4 h-4" />
-                    תצוגה: {viewMode === 'table' ? 'טבלה' : viewMode === 'cards' ? 'כרטיסים' : viewMode === 'compact' ? 'קומפקטי' : 'גלריה'}
+                    תצוגה
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-56" align="end" dir="rtl">
                   <div className="space-y-1">
-                    <div className="text-xs font-semibold text-slate-500 mb-2 px-2">בחר תצוגה</div>
+                    <div className="text-xs font-semibold text-slate-500 mb-2 px-2">מצב תצוגה</div>
                     <Button 
                       variant={viewMode === 'table' ? 'default' : 'ghost'} 
                       size="sm" 
@@ -3329,14 +3335,45 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                       <Grid className="w-4 h-4" />
                       כרטיסים
                     </Button>
+                    
+                    <Separator className="my-2" />
+                    
+                    <div className="text-xs font-semibold text-slate-500 mb-2 px-2">צפיפות (בטבלה)</div>
                     <Button 
-                      variant={viewMode === 'compact' ? 'default' : 'ghost'} 
+                      variant={currentTheme.density === 'compact' ? 'default' : 'ghost'} 
                       size="sm" 
                       className="w-full justify-start gap-2"
-                      onClick={() => setViewMode('compact')}
+                      onClick={() => {
+                        setThemeSettings(prev => ({ ...prev, density: 'compact' }));
+                        setTimeout(() => saveToBackend(), 50);
+                      }}
                     >
-                      <Layers className="w-4 h-4" />
-                      תצוגה קומפקטית
+                      <Minimize className="w-4 h-4" />
+                      צפוף (Compact)
+                    </Button>
+                    <Button 
+                      variant={currentTheme.density === 'comfortable' ? 'default' : 'ghost'} 
+                      size="sm" 
+                      className="w-full justify-start gap-2"
+                      onClick={() => {
+                        setThemeSettings(prev => ({ ...prev, density: 'comfortable' }));
+                        setTimeout(() => saveToBackend(), 50);
+                      }}
+                    >
+                      <Table className="w-4 h-4" />
+                      רגיל (Standard)
+                    </Button>
+                    <Button 
+                      variant={currentTheme.density === 'spacious' ? 'default' : 'ghost'} 
+                      size="sm" 
+                      className="w-full justify-start gap-2"
+                      onClick={() => {
+                        setThemeSettings(prev => ({ ...prev, density: 'spacious' }));
+                        setTimeout(() => saveToBackend(), 50);
+                      }}
+                    >
+                      <Maximize className="w-4 h-4" />
+                      מרווח (Spacious)
                     </Button>
                   </div>
                 </PopoverContent>
@@ -3709,9 +3746,9 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                             <Draggable key={col.key} draggableId={col.key} index={colIndex} type="column">
                               {(provided, snapshot) => (
                                 <th ref={provided.innerRef} {...provided.draggableProps} className={`text-right font-semibold cursor-pointer group ${snapshot.isDragging ? 'opacity-50 shadow-2xl' : ''} ${isHeaderSelected ? 'ring-2 ring-blue-500' : ''}`} style={{
-                                  width: col.width,
-                                  minWidth: col.width,
-                                  maxWidth: col.width,
+                                  width: col.collapsed ? '40px' : col.width,
+                                  minWidth: col.collapsed ? '40px' : col.width,
+                                  maxWidth: col.collapsed ? '40px' : col.width,
                                   // Freeze Columns Logic for Header
                                   position: colIndex < freezeSettings.freeze_columns ? 'sticky' : 'relative',
                                   right: colIndex < freezeSettings.freeze_columns ? `${stickyColumnOffsets[colIndex]}px` : 'auto',
@@ -3738,13 +3775,23 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                   {isEditing ? (
                                     <Input ref={columnEditRef} value={editingColumnTitle} onChange={(e) => setEditingColumnTitle(e.target.value)} onBlur={saveColumnTitle} onKeyDown={(e) => { if (e.key === 'Enter') saveColumnTitle(); if (e.key === 'Escape') { setEditingColumnKey(null); setEditingColumnTitle(""); } }} className="h-8" autoFocus />
                                   ) : (
-                                    <div className="flex items-center justify-between">
-                                      <div className="flex items-center gap-2">
-                                        <div {...provided.dragHandleProps} className="opacity-0 group-hover:opacity-100 cursor-grab p-1 hover:bg-blue-100 rounded transition-opacity"><GripVertical className="w-4 h-4 text-slate-400" /></div>
-                                        <span>{col.title}</span>
-                                        {hasSubHeader && <Type className="w-3 h-3 text-blue-500" title={hasSubHeader} />}
-                                      </div>
-                                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <div className="flex items-center justify-between overflow-hidden">
+                                      {col.collapsed ? (
+                                        <div className="flex justify-center w-full" title={col.title}>
+                                          <Button size="icon" variant="ghost" className="h-6 w-6 rounded-full" onClick={() => toggleColumnCollapse(col.key)}>
+                                            <span className="text-xs font-bold">{col.title.charAt(0)}</span>
+                                          </Button>
+                                        </div>
+                                      ) : (
+                                        <div className="flex items-center gap-2 truncate">
+                                          <div {...provided.dragHandleProps} className="opacity-0 group-hover:opacity-100 cursor-grab p-1 hover:bg-blue-100 rounded transition-opacity flex-shrink-0"><GripVertical className="w-4 h-4 text-slate-400" /></div>
+                                          <span className="truncate" title={col.title}>{col.title}</span>
+                                          {hasSubHeader && <Type className="w-3 h-3 text-blue-500 flex-shrink-0" title={hasSubHeader} />}
+                                        </div>
+                                      )}
+                                      
+                                      {!col.collapsed && (
+                                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
                                         {/* Advanced Filter Button */}
                                         <ColumnFilter 
                                           column={col} 
@@ -3765,6 +3812,10 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                               <Button variant="outline" size="sm" className="w-full justify-start gap-2 bg-purple-50 hover:bg-purple-100" onClick={() => { handleOpenHeaderColorDialog(col.key); }}><Palette className="w-4 h-4 text-purple-600" />צבע כותרת</Button>
                                               <Button variant="outline" size="sm" className="w-full justify-start gap-2 bg-blue-50" onClick={() => { addOrEditSubHeader(col.key); setPopoverOpen(null); }}><Type className="w-4 h-4 text-blue-600" />{hasSubHeader ? 'ערוך' : 'הוסף'} כותרת משנה</Button>
                                               <Button variant="outline" size="sm" className="w-full justify-start gap-2 bg-orange-50 hover:bg-orange-100" onClick={() => { openSmartSplit(col.key); setPopoverOpen(null); }}><Scissors className="w-4 h-4 text-orange-600" />פצל עמודה חכם</Button>
+                                              <Button variant="outline" size="sm" className="w-full justify-start gap-2" onClick={() => { toggleColumnCollapse(col.key); setPopoverOpen(null); }}>
+                                                {col.collapsed ? <Maximize className="w-4 h-4" /> : <Minimize className="w-4 h-4" />}
+                                                {col.collapsed ? 'הרחב' : 'קפל'}
+                                              </Button>
                                               <Button variant="outline" size="sm" className="w-full justify-start gap-2" onClick={() => { toggleColumnVisibility(col.key); setPopoverOpen(null); }}><EyeOff className="w-4 h-4" />הסתר</Button>
                                               <Button variant="outline" size="sm" className="w-full justify-start gap-2 text-red-600" onClick={() => { deleteColumn(col.key); setPopoverOpen(null); }}><Trash2 className="w-4 h-4" />מחק</Button>
                                             </div>
@@ -3858,6 +3909,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                               rowIndex={rowIndex}
                               visibleColumns={visibleColumns}
                               rowHeight={rowHeight}
+                              density={currentTheme.density} // Pass density
                               palette={palette}
                               cellFont={cellFont}
                               cellFontSize={cellFontSize}

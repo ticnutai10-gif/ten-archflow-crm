@@ -2,17 +2,26 @@ import React, { memo, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Draggable } from '@hello-pangea/dnd';
-import { Copy, Trash2, Palette, Bold, MessageSquare, GripVertical, Users } from "lucide-react";
+import { Copy, Trash2, Palette, Bold, MessageSquare, GripVertical, Users, MoreHorizontal, Eye } from "lucide-react";
 import { StageDisplay } from "./GenericSpreadsheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const SpreadsheetRow = memo(({
   row,
   rowIndex,
   visibleColumns,
   rowHeight,
+  density, // 'compact', 'comfortable', 'spacious'
   palette,
   cellFont,
   cellFontSize,
@@ -190,12 +199,34 @@ const SpreadsheetRow = memo(({
               const selectionClass = isSelected ? 'ring-[2px] ring-blue-600 ring-inset z-20 bg-blue-50/30' : 'border-b border-r border-slate-200/50';
               const hoverClass = !isEditing && !isSelected && !mergeInfo ? 'group-hover:bg-black/[0.015] hover:!bg-black/[0.03] transition-colors duration-100' : '';
 
+              // Collapsed state logic
+              if (column.collapsed) {
+                return (
+                  <td
+                    key={column.key}
+                    className={`relative px-1 py-1 bg-slate-50 border-r border-slate-200`}
+                    style={{
+                      width: '40px',
+                      maxWidth: '40px',
+                      minWidth: '40px',
+                      overflow: 'hidden',
+                      height: `${rowHeight}px`,
+                      borderBottomWidth: '1px',
+                      borderBottomColor: borderColor || palette.border,
+                    }}
+                  >
+                    {/* Optionally show a dot or color indicator if cell has value */}
+                    {cellValue && <div className="w-1.5 h-1.5 rounded-full bg-slate-300 mx-auto" />}
+                  </td>
+                );
+              }
+
               return (
                 <td 
                   key={column.key}
                   rowSpan={mergeInfo?.rowspan || 1}
                   colSpan={mergeInfo?.colspan || 1}
-                  className={`relative px-3 py-1.5 outline-none focus:outline-none ${selectionClass} ${hoverClass} ${isClientPicker ? 'ring-2 ring-blue-500 z-30 shadow-lg' : ''} ${mergeInfo ? 'bg-white shadow-sm' : ''} overflow-hidden`}
+                  className={`relative outline-none focus:outline-none ${selectionClass} ${hoverClass} ${isClientPicker ? 'ring-2 ring-blue-500 z-30 shadow-lg' : ''} ${mergeInfo ? 'bg-white shadow-sm' : ''} overflow-hidden`}
                   style={{
                     ...((activeUserOnCell) ? { borderColor: activeUserOnCell.color } : {}),
                     backgroundColor: isSelected ? `${palette.selected}40` : (
@@ -252,8 +283,15 @@ const SpreadsheetRow = memo(({
                       />
                     ) : isClientColumn(column) ? (
                       isEditing ? <Input ref={editInputRef} value={editValue} onChange={(e) => setEditValue(e.target.value)} onBlur={() => setTimeout(saveEdit, 200)} onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') setEditingCell(null); }} className="h-full w-full border-none shadow-none focus:ring-0 bg-transparent p-0 text-inherit" autoFocus dir="rtl" /> : (
-                        <div className="flex items-center gap-2 truncate group/cell">
-                          {cellValue ? <><div className="w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-bold">{cellValue.substring(0,1)}</div><span className="truncate font-medium">{cellValue}</span></> : <span className="text-slate-300 text-xs italic">בחר לקוח...</span>}
+                        <div className="flex items-center gap-2 truncate group/cell w-full">
+                          {cellValue ? (
+                            <>
+                              <div className="w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-bold flex-shrink-0">{cellValue.substring(0,1)}</div>
+                              <span className="truncate font-medium w-full" title={cellValue}>{cellValue}</span>
+                            </>
+                          ) : (
+                            <span className="text-slate-300 text-xs italic">בחר לקוח...</span>
+                          )}
                         </div>
                       )
                     ) : isEditing ? (
@@ -263,16 +301,57 @@ const SpreadsheetRow = memo(({
                           {validateCell && validateCell(column.key, editValue) && <div className="absolute bottom-full left-0 mb-1 z-[60] bg-red-600 text-white text-[10px] px-2 py-1 rounded shadow-md whitespace-nowrap pointer-events-none animate-in fade-in slide-in-from-bottom-1">{validateCell(column.key, editValue)}<div className="absolute top-full left-2 border-4 border-transparent border-t-red-600"></div></div>}
                         </>
                       )
-                    ) : <div className="truncate w-full" title={String(cellValue).length > 20 ? String(cellValue) : ''}>{String(cellValue)}</div>}
+                    ) : (
+                      // SMART TEXT TRUNCATION
+                      <TooltipProvider>
+                        <Tooltip delayDuration={500}>
+                          <TooltipTrigger asChild>
+                            <div className="truncate w-full cursor-default">
+                              {String(cellValue)}
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom" align="start" className="max-w-[300px] break-words">
+                            <p>{String(cellValue)}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
                   </div>
                   {isEditing && !isClientColumn(column) && !['stage', 'taba', 'transfer_rights', 'purchase_rights'].includes(column.type) && <datalist id={`ac-${column.key}`}>{getAutoCompleteSuggestions(column.key).map((s, i) => <option key={i} value={s} />)}</datalist>}
                 </td>
               );
             })}
+            
+            {/* Grouped Actions */}
             <td className="p-0 text-center relative border-b border-slate-100 bg-white" style={{ height: `${rowHeight}px`, borderWidth: isSeparateBorders ? '0' : borderStyle.width, borderStyle: borderStyle.style, borderColor: palette.border }}>
-              <div className="w-full h-full flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                <Button size="icon" variant="ghost" className="h-6 w-6 hover:bg-blue-50 text-slate-400 hover:text-blue-600 rounded-full" onClick={() => onDuplicateRow(row)} title="שכפל"><Copy className="w-3 h-3" /></Button>
-                <Button size="icon" variant="ghost" className="h-6 w-6 hover:bg-red-50 text-slate-400 hover:text-red-600 rounded-full" onClick={() => onDeleteRow(row.id)} title="מחק"><Trash2 className="w-3 h-3" /></Button>
+              <div className="w-full h-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full hover:bg-slate-100">
+                      <MoreHorizontal className="w-4 h-4 text-slate-500" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" dir="rtl">
+                    <DropdownMenuItem onClick={() => onDuplicateRow(row)}>
+                      <Copy className="w-4 h-4 ml-2" />
+                      שכפל שורה
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => {
+                        // View logic - e.g. open details if possible
+                        // Assuming we can trigger cell click or similar
+                        // Just a placeholder for "View"
+                        alert('צפייה בפרטים (למימוש עתידי)');
+                    }}>
+                        <Eye className="w-4 h-4 ml-2" />
+                        צפה בפרטים
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => onDeleteRow(row.id)} className="text-red-600">
+                      <Trash2 className="w-4 h-4 ml-2" />
+                      מחק שורה
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </td>
           </tr>
@@ -336,16 +415,15 @@ const SpreadsheetRow = memo(({
   const isPrevEditing = prev.editingCell?.startsWith(prev.row.id);
   const isNextEditing = next.editingCell?.startsWith(next.row.id);
   if (isPrevEditing || isNextEditing) return false;
-  // Metadata check for re-render
-  const prevMeta = prev.cellMetadata; // We need to check if ANY metadata related to this row changed
+  
+  const prevMeta = prev.cellMetadata;
   const nextMeta = next.cellMetadata;
-  // Deep checking metadata for all cells in row is expensive. 
-  // Optimization: Just check reference equality of the metadata object or allow re-render if metadata prop changed.
   if (prevMeta !== nextMeta) return false;
 
   return (
     prev.visibleColumns === next.visibleColumns &&
     prev.rowHeight === next.rowHeight &&
+    prev.density === next.density && // Check density
     prev.palette === next.palette &&
     prev.cellStyles === next.cellStyles &&
     prev.cellNotes === next.cellNotes &&
