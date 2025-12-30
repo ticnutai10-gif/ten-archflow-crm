@@ -2,7 +2,10 @@ import React, { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Edit2, Trash2, Circle, Save, GripVertical, Upload, FileJson, FileSpreadsheet, FileText, ArrowRight } from "lucide-react";
+import { Plus, Edit2, Trash2, Circle, Save, GripVertical, Upload, FileJson, FileSpreadsheet, FileText, ArrowRight, Settings, List, CheckSquare, Palette } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { base44 } from "@/api/base44Client";
@@ -11,6 +14,8 @@ export default function DataTypeManager({ open, onClose, typeKey, typeName }) {
   const [options, setOptions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingIndex, setEditingIndex] = useState(null);
+  const [settingsIndex, setSettingsIndex] = useState(null); // Index of option being configured
+  const [settingsChildIndex, setSettingsChildIndex] = useState(null); // Index of child option being configured (if any)
   const [entityId, setEntityId] = useState(null);
 
   // Load data from GlobalDataType entity
@@ -244,6 +249,10 @@ export default function DataTypeManager({ open, onClose, typeKey, typeName }) {
                                             }} 
                                             className="w-16 h-10 cursor-pointer" 
                                           />
+                                          <Button size="icon" variant="ghost" className="h-9 w-9 text-slate-600" onClick={() => {
+                                            setSettingsIndex(index);
+                                            setSettingsChildIndex(cIdx);
+                                          }}><Settings className="w-4 h-4" /></Button>
                                           <Button size="icon" variant="ghost" className="h-9 w-9 text-red-600" onClick={() => {
                                             const updated = [...options];
                                             updated[index].children = updated[index].children.filter((_, i) => i !== cIdx);
@@ -274,6 +283,7 @@ export default function DataTypeManager({ open, onClose, typeKey, typeName }) {
                                   </div>
                                   <div className="flex gap-1">
                                     <Button size="icon" variant="ghost" onClick={() => setEditingIndex(index)}><Edit2 className="w-4 h-4 text-blue-600" /></Button>
+                                    <Button size="icon" variant="ghost" onClick={() => setSettingsIndex(index)}><Settings className="w-4 h-4 text-slate-600" /></Button>
                                     <Button size="icon" variant="ghost" onClick={() => handleDeleteOption(index)}><Trash2 className="w-4 h-4 text-red-600" /></Button>
                                   </div>
                                 </div>
@@ -304,6 +314,234 @@ export default function DataTypeManager({ open, onClose, typeKey, typeName }) {
         <DialogFooter className="gap-2 border-t pt-4">
           <Button variant="outline" onClick={onClose}>סגור</Button>
           <Button onClick={handleSave} className="bg-purple-600 hover:bg-purple-700 gap-2"><Save className="w-4 h-4" />שמור שינויים</Button>
+        </DialogFooter>
+      </DialogContent>
+
+      {/* Advanced Settings Dialog */}
+      {settingsIndex !== null && (
+        <AdvancedSettingsDialog
+          open={true}
+          onClose={() => { setSettingsIndex(null); setSettingsChildIndex(null); }}
+          option={settingsChildIndex !== null ? options[settingsIndex].children[settingsChildIndex] : options[settingsIndex]}
+          onSave={(updatedOption) => {
+            const newOptions = [...options];
+            if (settingsChildIndex !== null) {
+              newOptions[settingsIndex].children[settingsChildIndex] = updatedOption;
+            } else {
+              newOptions[settingsIndex] = updatedOption;
+            }
+            setOptions(newOptions);
+            setSettingsIndex(null);
+            setSettingsChildIndex(null);
+          }}
+          title={settingsChildIndex !== null 
+            ? `הגדרות מתקדמות: ${options[settingsIndex].children[settingsChildIndex].label}`
+            : `הגדרות מתקדמות: ${options[settingsIndex].label}`
+          }
+        />
+      )}
+    </Dialog>
+  );
+}
+
+function AdvancedSettingsDialog({ open, onClose, onSave, option, title }) {
+  const [fields, setFields] = useState(option.fields || []);
+  const [validation, setValidation] = useState(option.validation || {});
+  const [autoColor, setAutoColor] = useState(option.auto_color || []);
+  const [activeTab, setActiveTab] = useState("fields");
+
+  const handleSave = () => {
+    onSave({ ...option, fields, validation, auto_color: autoColor });
+  };
+
+  const addField = () => {
+    setFields([...fields, { key: `field_${Date.now()}`, label: 'שדה חדש', type: 'text', required: false }]);
+  };
+
+  const updateField = (index, key, value) => {
+    const newFields = [...fields];
+    newFields[index] = { ...newFields[index], [key]: value };
+    setFields(newFields);
+  };
+
+  const removeField = (index) => {
+    setFields(fields.filter((_, i) => i !== index));
+  };
+
+  const addAutoColorRule = () => {
+    setAutoColor([...autoColor, { condition_field: '', operator: 'equals', value: '', color: '#000000' }]);
+  };
+
+  const updateAutoColorRule = (index, key, value) => {
+    const newRules = [...autoColor];
+    newRules[index] = { ...newRules[index], [key]: value };
+    setAutoColor(newRules);
+  };
+
+  const removeAutoColorRule = (index) => {
+    setAutoColor(autoColor.filter((_, i) => i !== index));
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto" dir="rtl">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
+        
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="fields" className="gap-2"><List className="w-4 h-4" /> שדות מותאמים</TabsTrigger>
+            <TabsTrigger value="validation" className="gap-2"><CheckSquare className="w-4 h-4" /> וולידציה</TabsTrigger>
+            <TabsTrigger value="auto_color" className="gap-2"><Palette className="w-4 h-4" /> צבעים דינמיים</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="fields" className="space-y-4 pt-4">
+            <div className="flex justify-between items-center">
+              <h3 className="text-sm font-semibold">שדות מידע נוספים</h3>
+              <Button size="sm" onClick={addField} variant="outline" className="gap-2"><Plus className="w-4 h-4" /> הוסף שדה</Button>
+            </div>
+            
+            {fields.length === 0 ? (
+              <div className="text-center py-8 text-slate-500 bg-slate-50 rounded-lg">אין שדות מותאמים אישית</div>
+            ) : (
+              <div className="space-y-3">
+                {fields.map((field, idx) => (
+                  <div key={idx} className="flex gap-2 items-start p-3 bg-slate-50 rounded-lg border border-slate-200">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 flex-1">
+                      <div>
+                        <label className="text-[10px] text-slate-500">שם השדה (Label)</label>
+                        <Input value={field.label} onChange={(e) => updateField(idx, 'label', e.target.value)} className="h-8" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-slate-500">מפתח (Key - אנגלית)</label>
+                        <Input value={field.key} onChange={(e) => updateField(idx, 'key', e.target.value)} className="h-8" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-slate-500">סוג</label>
+                        <Select value={field.type} onValueChange={(val) => updateField(idx, 'type', val)}>
+                          <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="text">טקסט</SelectItem>
+                            <SelectItem value="number">מספר</SelectItem>
+                            <SelectItem value="date">תאריך</SelectItem>
+                            <SelectItem value="boolean">כן/לא</SelectItem>
+                            <SelectItem value="select">בחירה</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-slate-500">ברירת מחדל</label>
+                        <Input value={field.default_value || ''} onChange={(e) => updateField(idx, 'default_value', e.target.value)} className="h-8" />
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-2 pt-4">
+                      <div className="flex items-center gap-2">
+                        <label className="text-xs">חובה?</label>
+                        <Switch checked={field.required} onCheckedChange={(checked) => updateField(idx, 'required', checked)} className="scale-75" />
+                      </div>
+                      <Button size="icon" variant="ghost" onClick={() => removeField(idx)} className="h-6 w-6 text-red-500"><Trash2 className="w-3 h-3" /></Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="validation" className="space-y-4 pt-4">
+            <h3 className="text-sm font-semibold mb-4">כללי וולידציה לקטגוריה זו</h3>
+            
+            <div className="grid gap-4 p-4 border rounded-lg">
+              <div className="flex items-center justify-between">
+                <label>שדה חובה (חייב לבחור תת-קטגוריה אם יש?)</label>
+                <Switch 
+                  checked={validation.required} 
+                  onCheckedChange={(c) => setValidation({...validation, required: c})} 
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm text-slate-600 block mb-1">מינימום מספרי (אם רלוונטי)</label>
+                  <Input type="number" value={validation.numeric_min || ''} onChange={(e) => setValidation({...validation, numeric_min: e.target.value})} />
+                </div>
+                <div>
+                  <label className="text-sm text-slate-600 block mb-1">מקסימום מספרי</label>
+                  <Input type="number" value={validation.numeric_max || ''} onChange={(e) => setValidation({...validation, numeric_max: e.target.value})} />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm text-slate-600 block mb-1">Regex (ביטוי רגולרי)</label>
+                <Input value={validation.regex || ''} onChange={(e) => setValidation({...validation, regex: e.target.value})} placeholder="e.g. ^[A-Z0-9]+$" dir="ltr" />
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="auto_color" className="space-y-4 pt-4">
+            <div className="flex justify-between items-center">
+              <h3 className="text-sm font-semibold">כללי צבע אוטומטיים</h3>
+              <Button size="sm" onClick={addAutoColorRule} variant="outline" className="gap-2"><Plus className="w-4 h-4" /> הוסף כלל</Button>
+            </div>
+
+            {autoColor.length === 0 ? (
+              <div className="text-center py-8 text-slate-500 bg-slate-50 rounded-lg">אין כללי צבע מוגדרים</div>
+            ) : (
+              <div className="space-y-3">
+                {autoColor.map((rule, idx) => (
+                  <div key={idx} className="flex gap-2 items-center p-3 bg-slate-50 rounded-lg border border-slate-200">
+                    <div className="grid grid-cols-4 gap-2 flex-1">
+                      <Select value={rule.condition_field} onValueChange={(val) => updateAutoColorRule(idx, 'condition_field', val)}>
+                        <SelectTrigger className="h-8">
+                          <SelectValue placeholder="בחר שדה" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="value">ערך הקטגוריה</SelectItem>
+                          {fields.map(f => (
+                            <SelectItem key={f.key} value={f.key}>{f.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+
+                      <Select value={rule.operator} onValueChange={(val) => updateAutoColorRule(idx, 'operator', val)}>
+                        <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="equals">שווה ל-</SelectItem>
+                          <SelectItem value="not_equals">שונה מ-</SelectItem>
+                          <SelectItem value="greater_than">גדול מ-</SelectItem>
+                          <SelectItem value="less_than">קטן מ-</SelectItem>
+                          <SelectItem value="contains">מכיל</SelectItem>
+                        </SelectContent>
+                      </Select>
+
+                      <Input 
+                        value={rule.value} 
+                        onChange={(e) => updateAutoColorRule(idx, 'value', e.target.value)} 
+                        placeholder="ערך"
+                        className="h-8"
+                      />
+
+                      <div className="flex gap-2 items-center">
+                        <Input 
+                          type="color" 
+                          value={rule.color} 
+                          onChange={(e) => updateAutoColorRule(idx, 'color', e.target.value)} 
+                          className="w-12 h-8 p-0 cursor-pointer"
+                        />
+                        <span className="text-xs text-slate-500">צבע</span>
+                      </div>
+                    </div>
+                    <Button size="icon" variant="ghost" onClick={() => removeAutoColorRule(idx)} className="h-8 w-8 text-red-500"><Trash2 className="w-4 h-4" /></Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+
+        <DialogFooter className="mt-6">
+          <Button variant="outline" onClick={onClose}>ביטול</Button>
+          <Button onClick={handleSave}>שמור הגדרות</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
