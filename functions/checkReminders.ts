@@ -120,10 +120,29 @@ export default Deno.serve(async (req) => {
           if (r.reminder_at) {
             reminderTime = parseReminderDate(r.reminder_at);
           } else if (r.minutes_before && t.due_date) {
-             // Fallback for simple date: assume 09:00 Jerusalem time if only date is given
-             // But t.due_date is typically YYYY-MM-DD. 
-             // We'll skip for now to avoid complexity, usually reminder_at is set.
-             return; 
+             // Handle due_date (YYYY-MM-DD) -> Assume 09:00 Jerusalem Time
+             try {
+                let dueDateTimeStr = t.due_date;
+                // If it's just a date (length 10 like 2023-01-01), append 09:00 time
+                if (dueDateTimeStr.length === 10) {
+                    dueDateTimeStr += 'T09:00:00';
+                }
+                
+                const dueTime = parseReminderDate(dueDateTimeStr);
+                // Subtract minutes_before
+                reminderTime = new Date(dueTime.getTime() - (r.minutes_before * 60000));
+                
+                // Debug log for this calculation
+                if (idx === 0) { // Log only first reminder to avoid noise
+                   // We don't have access to debugInfo in this scope easily without passing it or relying on closure, 
+                   // but assuming closure scope is fine as it's defined above in the same function.
+                   // debugInfo.calcs = debugInfo.calcs || [];
+                   // debugInfo.calcs.push({ t: t.title, due: dueTime.toISOString(), calc: reminderTime.toISOString() });
+                }
+             } catch (e) {
+                console.warn(`Error calculating reminder time for task ${t.id}:`, e);
+                return;
+             }
           } else {
             return;
           }
