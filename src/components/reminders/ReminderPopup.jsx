@@ -6,7 +6,7 @@ import { BellRing, Clock, X } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
 
-export default function ReminderPopup({ open, reminders = [], onClose, onSnooze, onDismiss }) {
+export default function ReminderPopup({ open, reminders = [], onClose, onSnooze, onDismiss, onComplete }) {
   // בדיקה שהפרמטרים קיימים
   if (!Array.isArray(reminders)) {
     console.warn('[ReminderPopup] reminders is not an array:', reminders);
@@ -42,6 +42,13 @@ export default function ReminderPopup({ open, reminders = [], onClose, onSnooze,
                     </div>
                   </div>
                   <div className="flex flex-col gap-2">
+                    <Button 
+                      size="sm" 
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white w-full"
+                      onClick={() => onComplete && onComplete(t)}
+                    >
+                      סמן כהושלם
+                    </Button>
                     <div className="flex gap-2">
                       <Button 
                         size="sm" 

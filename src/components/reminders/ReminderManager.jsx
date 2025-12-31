@@ -189,6 +189,22 @@ export default function ReminderManager() {
     }
   };
 
+  const handleComplete = async (item) => {
+    handleDismiss(item);
+    try {
+      if (item.type === 'task') {
+        await base44.entities.Task.update(item.entityId, { status: 'הושלמה' });
+        toast.success("המשימה סומנה כהושלמה");
+      } else if (item.type === 'meeting') {
+        await base44.entities.Meeting.update(item.entityId, { status: 'בוצעה' });
+        toast.success("הפגישה סומנה כבוצעה");
+      }
+    } catch (error) {
+      console.error("Complete failed:", error);
+      toast.error("שגיאה בעדכון הסטטוס");
+    }
+  };
+
   const handleSnooze = async (item, duration) => {
     // Optimistic UI update
     handleDismiss(item);
@@ -253,6 +269,7 @@ export default function ReminderManager() {
       onClose={() => setOpen(false)}
       onSnooze={handleSnooze}
       onDismiss={handleDismiss}
+      onComplete={handleComplete}
     />
   );
 }
