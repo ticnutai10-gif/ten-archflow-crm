@@ -59,6 +59,7 @@ const AnalyticsView = React.lazy(() => import("../components/dashboard/Analytics
 const HeatmapView = React.lazy(() => import("../components/dashboard/HeatmapView"));
 const TrendsView = React.lazy(() => import("../components/dashboard/TrendsView"));
 const AIInsightsPanel = React.lazy(() => import("../components/ai/AIInsightsPanel"));
+import QuickCreationTabs from "../components/dashboard/QuickCreationTabs";
 import { useIsMobile } from "../components/utils/useMediaQuery";
 import { useAccessControl } from "../components/access/AccessValidator";
 
@@ -547,6 +548,11 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Quick Creation Tabs */}
+        <div className="mb-6">
+          <QuickCreationTabs clients={allClients} onUpdate={loadDashboardData} />
         </div>
 
         {/* Stats Cards */}
