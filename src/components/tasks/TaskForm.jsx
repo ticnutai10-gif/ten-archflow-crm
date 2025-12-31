@@ -394,6 +394,17 @@ export default function TaskForm({ task, clients, projects, onSubmit, onCancel, 
                       />
                     </div>
                   )}
+
+                  {formData.notify_whatsapp && (
+                    <div className="mt-2 space-y-2">
+                      <Label>נמענים לוואטסאפ</Label>
+                      <MultiPhoneSelector
+                        recipients={formData.whatsapp_recipients || []}
+                        onChange={(newRecipients) => updateField('whatsapp_recipients', newRecipients)}
+                        clients={clients}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             )}
