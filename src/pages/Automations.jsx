@@ -12,9 +12,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { 
   Plus, Save, Trash2, Edit2, Play, Zap, 
   Mail, CheckSquare, AlertCircle, Clock, User, 
-  Briefcase, Calendar, X, ArrowRight, Sparkles
+  Briefcase, Calendar, X, ArrowRight, Sparkles,
+  History, TestTube
 } from "lucide-react";
 import { toast } from "sonner";
+import VisualRuleFlow from "@/components/automations/VisualRuleFlow";
+import AutomationHistory from "@/components/automations/AutomationHistory";
+import DryRunDialog from "@/components/automations/DryRunDialog";
 
 const TRIGGERS = [
   { 
@@ -140,6 +144,7 @@ export default function AutomationsPage() {
   const [rules, setRules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
+  const [showDryRun, setShowDryRun] = useState(false);
   const [editingRule, setEditingRule] = useState(null);
   
   const [formData, setFormData] = useState({
@@ -329,7 +334,12 @@ export default function AutomationsPage() {
           <TabsList>
             <TabsTrigger value="rules">חוקים וטריגרים</TabsTrigger>
             <TabsTrigger value="templates">תבניות הודעה</TabsTrigger>
+            <TabsTrigger value="history" className="gap-2"><History className="w-4 h-4"/> היסטוריית הפעלות</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="history">
+            <AutomationHistory />
+          </TabsContent>
 
           <TabsContent value="templates">
             <MessageTemplatesManager />
@@ -515,6 +525,14 @@ export default function AutomationsPage() {
 
           <div className="flex-1 overflow-y-auto px-6">
             <div className="space-y-6 py-6">
+              {/* Visual Flow Visualization (Top of Dialog) */}
+              <div className="mb-6">
+                 <VisualRuleFlow 
+                    rule={formData} 
+                    triggerInfo={getTriggerInfo(formData.trigger)} 
+                 />
+              </div>
+
               {/* Basic Info */}
               <div className="space-y-4">
                 <div>
@@ -922,25 +940,43 @@ export default function AutomationsPage() {
           </div>
 
           <DialogFooter className="border-t pt-4 px-6">
-            <div className="flex gap-2 w-full justify-end">
-              <Button
-                variant="outline"
-                onClick={() => setShowDialog(false)}
-              >
-                ביטול
-              </Button>
-              <Button
-                onClick={handleSave}
-                className="gap-2"
-                style={{ backgroundColor: ICON_COLOR }}
-              >
-                <Save className="w-4 h-4" />
-                {editingRule ? 'עדכן חוק' : 'צור חוק'}
-              </Button>
+            <div className="flex gap-2 w-full justify-between">
+              <div className="flex gap-2">
+                 {editingRule && (
+                   <Button variant="outline" className="gap-2 border-blue-200 text-blue-700 hover:bg-blue-50" onClick={() => setShowDryRun(true)}>
+                     <TestTube className="w-4 h-4" /> בדיקה יבשה
+                   </Button>
+                 )}
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowDialog(false)}
+                >
+                  ביטול
+                </Button>
+                <Button
+                  onClick={handleSave}
+                  className="gap-2"
+                  style={{ backgroundColor: ICON_COLOR }}
+                >
+                  <Save className="w-4 h-4" />
+                  {editingRule ? 'עדכן חוק' : 'צור חוק'}
+                </Button>
+              </div>
             </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      {/* Dry Run Dialog */}
+      {showDryRun && editingRule && (
+        <DryRunDialog 
+          open={showDryRun} 
+          onOpenChange={setShowDryRun} 
+          rule={editingRule} 
+        />
+      )}
     </div>
   );
 }

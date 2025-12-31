@@ -142,10 +142,6 @@ Deno.serve(async (req) => {
     }
 
     // Load active rules that match these triggers
-    // Note: We scan all rules for now as filter by array is tricky, or we iterate triggers
-    // Optimisation: Filter by one common trigger if possible
-    
-    // Simple approach: Fetch active rules and filter in memory (assuming low count of rules)
     const allRules = await base44.asServiceRole.entities.AutomationRule.filter({ active: true });
     
     for (const rule of allRules) {
@@ -153,11 +149,40 @@ Deno.serve(async (req) => {
         // Check extra conditions
         if (matchConditions(newData, rule.conditions)) {
           // Execute Actions
+          const executionDetails = [];
+          let ruleStatus = 'success';
+          let ruleError = null;
+
           if (rule.actions && Array.isArray(rule.actions)) {
             for (const action of rule.actions) {
-              await executeAction(base44, action, { ...newData, entity_type: entityType, entity_id: entityId });
+               try {
+                  const res = await executeAction(base44, action, { ...newData, entity_type: entityType, entity_id: entityId });
+                  executionDetails.push({ 
+                      action: action.type, 
+                      status: res?.skipped ? 'skipped' : 'ok', 
+                      result: res 
+                  });
+               } catch (e) {
+                  executionDetails.push({ action: action.type, status: 'error', error: e.message });
+                  ruleStatus = 'failure';
+                  ruleError = e.message;
+               }
             }
           }
+
+          // Log Execution
+          try {
+            await base44.asServiceRole.entities.AutomationLog.create({
+                rule_id: rule.id,
+                rule_name: rule.name,
+                trigger: rule.trigger,
+                status: ruleStatus,
+                execution_details: executionDetails,
+                error_message: ruleError,
+                triggered_at: new Date().toISOString(),
+                is_dry_run: false
+            });
+          } catch(e) { console.error("Failed log", e); }
         }
       }
     }
