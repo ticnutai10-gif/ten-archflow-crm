@@ -758,7 +758,7 @@ export default function MeetingsPage() {
                   const isTodayDate = isToday(date);
 
                   return (
-                    <button
+                    <div
                       key={i}
                       onClick={() => handleDateClick(date)}
                       className={`
@@ -827,7 +827,7 @@ export default function MeetingsPage() {
                       <div className="absolute bottom-1 left-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <Plus className="w-4 h-4 text-blue-500" />
                       </div>
-                    </button>
+                    </div>
                   );
                 })}
               </div>
