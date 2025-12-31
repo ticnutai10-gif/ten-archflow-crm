@@ -7,7 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { base44 } from "@/api/base44Client";
-import { Clock } from "lucide-react";
+import { Clock, Play } from "lucide-react";
+import { playRingtone } from '@/components/utils/audio';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -308,13 +309,15 @@ export default function TaskForm({ task, clients, projects, onSubmit, onCancel, 
                 
                 <div className="space-y-2">
                   <Label>רינגטון</Label>
-                  <Select
-                    value={formData.reminder_ringtone}
-                    onValueChange={(v) => updateField('reminder_ringtone', v)}
-                  >
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ding">🔔 צלצול קלאסי</SelectItem>
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <Select
+                        value={formData.reminder_ringtone}
+                        onValueChange={(v) => updateField('reminder_ringtone', v)}
+                      >
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="ding">🔔 צלצול קלאסי</SelectItem>
                       <SelectItem value="chime">🔔 פעמונים</SelectItem>
                       <SelectItem value="alarm">🚨 אזעקה</SelectItem>
                       
@@ -342,6 +345,18 @@ export default function TaskForm({ task, clients, projects, onSubmit, onCancel, 
                       )}
                     </SelectContent>
                   </Select>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => playRingtone(formData.reminder_ringtone)}
+                      title="השמע דוגמה"
+                      className="shrink-0"
+                    >
+                      <Play className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
                 
                 <div className="space-y-3">

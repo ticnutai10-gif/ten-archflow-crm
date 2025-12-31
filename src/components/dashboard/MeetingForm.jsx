@@ -7,7 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Plus, X, Bell, Mail, Smartphone, Sparkles } from "lucide-react";
+import { Plus, X, Bell, Mail, Smartphone, Sparkles, Play } from "lucide-react";
+import { playRingtone } from '@/components/utils/audio';
 import SmartAgendaGenerator from "../ai/SmartAgendaGenerator";
 import { toast } from "sonner";
 
@@ -410,24 +411,42 @@ export default function MeetingForm({ meeting, clients, projects, initialDate, o
                       </div>
                       
                       {reminder.notify_audio && (
-                        <div className="mt-2">
-                          <Select 
-                            value={reminder.audio_ringtone || 'ding'} 
-                            onValueChange={(v) => updateReminder(idx, 'audio_ringtone', v)}
+                        <div className="mt-2 flex gap-2">
+                          <div className="flex-1">
+                            <Select 
+                              value={reminder.audio_ringtone || 'ding'} 
+                              onValueChange={(v) => updateReminder(idx, 'audio_ringtone', v)}
+                            >
+                              <SelectTrigger className="h-8 text-xs">
+                                <SelectValue placeholder="בחר רינגטון" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="ding">🔔 צלצול קלאסי</SelectItem>
+                                <SelectItem value="chime">🔔 פעמונים</SelectItem>
+                                <div className="p-1 px-2 text-xs font-semibold text-slate-500 bg-slate-50">מוזיקה קלאסית</div>
+                                <SelectItem value="beethoven_5th">🎼 בטהובן - הסימפוניה ה-5</SelectItem>
+                                <SelectItem value="vivaldi_spring">🎼 ויוואלדי - אביב</SelectItem>
+                                <SelectItem value="mozart_night">🎼 מוצרט - מוזיקת לילה</SelectItem>
+                                <SelectItem value="bach_cello">🎼 באך - סוויטת צ'לו</SelectItem>
+                                <SelectItem value="tchaikovsky_sugar">🎼 צ'ייקובסקי - מפצח האגוזים</SelectItem>
+                                <SelectItem value="brahms_lullaby">🎼 ברהמס - שיר ערש</SelectItem>
+                                <SelectItem value="chopin_nocturne">🎼 שופן - נוקטורן</SelectItem>
+                                <SelectItem value="debussy_clair">🎼 דביסי - לאור הירח</SelectItem>
+                                <SelectItem value="pachelbel_canon">🎼 פכלבל - קאנון ברה מז'ור</SelectItem>
+                                <SelectItem value="strauss_danube">🎼 שטראוס - הדנובה הכחולה</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => playRingtone(reminder.audio_ringtone || 'ding')}
+                            title="השמע דוגמה"
+                            className="h-8 w-8 shrink-0"
                           >
-                            <SelectTrigger className="h-8 text-xs">
-                              <SelectValue placeholder="בחר רינגטון" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="ding">🔔 צלצול קלאסי</SelectItem>
-                              <SelectItem value="chime">🔔 פעמונים</SelectItem>
-                              <SelectItem value="beethoven_5th">🎼 בטהובן - ה-5</SelectItem>
-                              <SelectItem value="vivaldi_spring">🎼 ויוואלדי - אביב</SelectItem>
-                              <SelectItem value="mozart_night">🎼 מוצרט - לילה</SelectItem>
-                              <SelectItem value="bach_cello">🎼 באך - צ'לו</SelectItem>
-                              <SelectItem value="pachelbel_canon">🎼 פכלבל - קאנון</SelectItem>
-                            </SelectContent>
-                          </Select>
+                            <Play className="w-3 h-3" />
+                          </Button>
                         </div>
                       )}
                     </div>
