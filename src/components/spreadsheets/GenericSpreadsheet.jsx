@@ -4115,14 +4115,14 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       )}
 
       <Dialog open={!!noteDialogCell} onOpenChange={(open) => !open && setNoteDialogCell(null)}>
-        <DialogContent className="sm:max-w-md" dir="rtl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <MessageSquare className="w-5 h-5 text-amber-600" />
-              {cellNotes[noteDialogCell] ? 'ערוך הערה' : 'הוסף הערה'}
+        <DialogContent className="sm:max-w-md p-0 overflow-hidden" dir="rtl">
+          <DialogHeader className="px-8 py-6 border-b border-[#D4AF37]/20 bg-gradient-to-r from-amber-50/50 to-transparent">
+            <DialogTitle className="flex items-center gap-2 text-2xl font-serif text-[#8B6E15]">
+              <MessageSquare className="w-5 h-5 text-[#D4AF37]" />
+              {cellNotes[noteDialogCell] ? 'ערוך פתקית' : 'הוסף פתקית'}
             </DialogTitle>
           </DialogHeader>
-          <div className="p-6">
+          <div className="px-8 py-6 bg-white/50">
             <Textarea
               value={noteText}
               onChange={(e) => setNoteText(e.target.value)}
@@ -4132,11 +4132,11 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
               dir="rtl"
             />
           </div>
-          <DialogFooter>
+          <DialogFooter className="px-8 py-5 border-t border-[#D4AF37]/20 bg-gradient-to-l from-amber-50/30 to-transparent">
             <Button variant="outline" onClick={() => setNoteDialogCell(null)}>
               ביטול
             </Button>
-            <Button onClick={handleSaveNote} className="bg-amber-600 hover:bg-amber-700">
+            <Button onClick={handleSaveNote} className="bg-[#D4AF37] hover:bg-[#B59028] text-white shadow-md">
               שמור הערה
             </Button>
           </DialogFooter>
@@ -4150,14 +4150,14 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
           setSelectedCells(new Set()); // Clear selection when color picker closes
         }
       }}>
-        <DialogContent className="sm:max-w-md" dir="rtl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Palette className="w-5 h-5 text-purple-600" />
+        <DialogContent className="sm:max-w-md p-0 overflow-hidden" dir="rtl">
+          <DialogHeader className="px-8 py-6 border-b border-[#D4AF37]/20 bg-gradient-to-r from-amber-50/50 to-transparent">
+            <DialogTitle className="flex items-center gap-2 text-2xl font-serif text-[#8B6E15]">
+              <Palette className="w-5 h-5 text-[#D4AF37]" />
               בחר צבע לתא
             </DialogTitle>
           </DialogHeader>
-          <div className="p-6">
+          <div className="px-8 py-6 bg-white/50">
             <ColorPicker 
               currentStyle={colorPickerTargetCell ? cellStyles[colorPickerTargetCell] : {}}
               onApply={(style) => {
@@ -4179,14 +4179,14 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
           setColorPickerTargetHeader(null);
         }
       }}>
-        <DialogContent className="sm:max-w-md" dir="rtl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Palette className="w-5 h-5 text-purple-600" />
+        <DialogContent className="sm:max-w-md p-0 overflow-hidden" dir="rtl">
+          <DialogHeader className="px-8 py-6 border-b border-[#D4AF37]/20 bg-gradient-to-r from-amber-50/50 to-transparent">
+            <DialogTitle className="flex items-center gap-2 text-2xl font-serif text-[#8B6E15]">
+              <Palette className="w-5 h-5 text-[#D4AF37]" />
               בחר צבע לכותרת
             </DialogTitle>
           </DialogHeader>
-          <div className="p-6">
+          <div className="px-8 py-6 bg-white/50">
             <ColorPicker 
               currentStyle={colorPickerTargetHeader ? headerStyles[colorPickerTargetHeader] : {}}
               onApply={(style) => {
@@ -4250,15 +4250,15 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       />
 
       <Dialog open={showAddFromClientDialog} onOpenChange={setShowAddFromClientDialog}>
-        <DialogContent className="sm:max-w-2xl" dir="rtl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Users className="w-6 h-6 text-blue-600" />
+        <DialogContent className="sm:max-w-2xl p-0 overflow-hidden" dir="rtl">
+          <DialogHeader className="px-8 py-6 border-b border-[#D4AF37]/20 bg-gradient-to-r from-amber-50/50 to-transparent">
+            <DialogTitle className="flex items-center gap-2 text-2xl font-serif text-[#8B6E15]">
+              <Users className="w-6 h-6 text-[#D4AF37]" />
               בחר לקוח להוספת שורה
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4 p-6">
+          <div className="space-y-4 px-8 py-6 bg-white/50">
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
               💡 <strong>טיפ:</strong> בחר לקוח והמערכת תמלא אוטומטית את השדות
             </div>
@@ -4294,7 +4294,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
             </ScrollArea>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="px-8 py-5 border-t border-[#D4AF37]/20 bg-gradient-to-l from-amber-50/30 to-transparent">
             <Button variant="outline" onClick={() => { setShowAddFromClientDialog(false); setClientSearchQuery(""); }}>ביטול</Button>
           </DialogFooter>
         </DialogContent>
@@ -4429,14 +4429,14 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       />
 
       <Dialog open={showReminderDialog} onOpenChange={setShowReminderDialog}>
-        <DialogContent className="sm:max-w-md" dir="rtl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Zap className="w-5 h-5 text-yellow-500" />
+        <DialogContent className="sm:max-w-md p-0 overflow-hidden" dir="rtl">
+          <DialogHeader className="px-8 py-6 border-b border-[#D4AF37]/20 bg-gradient-to-r from-amber-50/50 to-transparent">
+            <DialogTitle className="flex items-center gap-2 text-2xl font-serif text-[#8B6E15]">
+              <Zap className="w-5 h-5 text-[#D4AF37]" />
               הגדרת תזכורת
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 px-8 py-6 bg-white/50">
             <div className="space-y-2">
               <Label>מועד התזכורת</Label>
               <Input
@@ -4457,9 +4457,9 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
               <p>📧 התזכורת תישלח למייל שלך ולמייל המשרד באופן אוטומטי.</p>
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="px-8 py-5 border-t border-[#D4AF37]/20 bg-gradient-to-l from-amber-50/30 to-transparent">
             <Button variant="outline" onClick={() => setShowReminderDialog(false)}>ביטול</Button>
-            <Button onClick={handleSetReminder} className="bg-yellow-500 hover:bg-yellow-600 text-white">
+            <Button onClick={handleSetReminder} className="bg-[#D4AF37] hover:bg-[#B59028] text-white shadow-md transition-all hover:scale-105">
               קבע תזכורת
             </Button>
           </DialogFooter>
