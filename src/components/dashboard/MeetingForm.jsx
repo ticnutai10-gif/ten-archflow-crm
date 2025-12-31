@@ -428,7 +428,6 @@ export default function MeetingForm({ meeting, clients, projects, initialDate, o
           </div>
         </div>
 
-        </div>
         <DialogFooter className="px-6 py-4 border-t border-slate-100 shrink-0 bg-slate-50/50 rounded-b-2xl">
           <Button variant="outline" onClick={onCancel}>ביטול</Button>
           <Button onClick={() => onSubmit(formData)}>
