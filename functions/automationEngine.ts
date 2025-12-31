@@ -73,12 +73,17 @@ async function actionSendWhatsApp(base44, payload, params = {}) {
   const message = applyTemplate(params.message || '', payload);
   if (!phone || !message) return { type: 'send_whatsapp', skipped: true, reason: 'missing_params' };
   
-  // Format phone number (remove spaces, dashes)
-  const cleanPhone = phone.replace(/[\s\-]/g, '');
-  const encodedMessage = encodeURIComponent(message);
-  const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
-  
-  return { type: 'send_whatsapp', ok: true, url: whatsappUrl, phone: cleanPhone };
+  // Invoke the Twilio backend function
+  try {
+    const res = await base44.functions.invoke('sendWhatsApp', {
+      to: phone,
+      message: message
+    });
+    return { type: 'send_whatsapp', ok: true, sid: res?.data?.sid };
+  } catch (error) {
+    console.error('WhatsApp send failed:', error);
+    return { type: 'send_whatsapp', ok: false, error: error.message };
+  }
 }
 
 async function actionSendNotification(base44, payload, params = {}) {

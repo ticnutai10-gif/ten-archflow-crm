@@ -78,9 +78,13 @@ async function executeAction(base44, action, payload) {
       
       if (!phone || !message) return { skipped: true, reason: 'missing params' };
       
-      // Ideally call a whatsapp sending function or create a message entity
-      // For now, logging as this requires a specific integration setup
-      console.log("Sending WhatsApp to", phone, applyTemplate(message, payload));
+      const finalMessage = applyTemplate(message, payload);
+      console.log("Sending WhatsApp to", phone, finalMessage);
+      
+      await base44.functions.invoke('sendWhatsApp', {
+        to: phone,
+        message: finalMessage
+      });
       break;
   }
 }
