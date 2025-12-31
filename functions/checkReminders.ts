@@ -83,6 +83,21 @@ export default Deno.serve(async (req) => {
           if (r.sent) return;
           
           let reminderTime;
+          // Skip if already fully processed
+          if (r.sent) return;
+
+          // Check if specific channels were already handled to avoid duplicates
+          // If we are just checking for email/wa, and they are done, skip.
+          const needsEmail = r.notify_email && !r.email_sent;
+          const needsWA = r.notify_whatsapp && !r.whatsapp_sent;
+          const needsSMS = r.notify_sms && !r.sms_sent;
+          
+          // If all required "remote" channels are sent, and we are only waiting for popup (handled by frontend), 
+          // we should skip processing here to avoid re-sending or doing nothing.
+          // BUT: we might need to set 'sent=true' if popup is also done? 
+          // No, frontend handles popup. Backend just ensures remote stuff is sent.
+          if (!needsEmail && !needsWA && !needsSMS) return;
+
           if (r.reminder_at) {
             reminderTime = parseReminderDate(r.reminder_at);
           } else if (r.minutes_before && t.due_date) {
@@ -101,15 +116,19 @@ export default Deno.serve(async (req) => {
               target_name: t.title,
               reminder_date: reminderTime.toISOString(),
               created_by: t.created_by,
-              notify_email: r.notify_email,
-              notify_whatsapp: r.notify_whatsapp,
-              notify_sms: r.notify_sms,
+              // Only request sending if not already sent
+              notify_email: needsEmail,
+              notify_whatsapp: needsWA,
+              notify_sms: needsSMS,
               message: `תזכורת למשימה: ${t.title}`,
               email_recipients: t.email_recipients,
               whatsapp_recipients: t.whatsapp_recipients,
               sms_recipients: t.sms_recipients,
               reminderIndex: idx,
-              isLegacy: false
+              isLegacy: false,
+              // Pass original config to know if we should close the loop
+              original_notify_popup: r.notify_popup,
+              original_popup_shown: r.popup_shown
             });
           } else {
              if (reminderTime.getTime() - now.getTime() < 86400000) {
@@ -130,21 +149,29 @@ export default Deno.serve(async (req) => {
         if (r.sent) return;
         
         const reminderTime = new Date(meetingTime.getTime() - r.minutes_before * 60000);
-        if (reminderTime <= now) {
+        
+        // Check partial completion
+        const needsEmail = r.notify_email && !r.email_sent;
+        const needsWA = r.notify_whatsapp && !r.whatsapp_sent;
+        const needsSMS = r.notify_sms && !r.sms_sent;
+
+        if (reminderTime <= now && (needsEmail || needsWA || needsSMS)) {
           dueMeetingReminders.push({
             type: 'meeting',
             entityId: m.id,
             target_name: m.title,
             reminder_date: reminderTime.toISOString(),
             created_by: m.created_by,
-            notify_email: r.notify_email,
-            notify_whatsapp: r.notify_whatsapp,
-            notify_sms: r.notify_sms,
+            notify_email: needsEmail,
+            notify_whatsapp: needsWA,
+            notify_sms: needsSMS,
             message: `תזכורת לפגישה: ${m.title} (${r.minutes_before} דקות לפני)`,
             email_recipients: m.email_recipients,
             whatsapp_recipients: m.whatsapp_recipients,
             sms_recipients: m.sms_recipients,
-            reminderIndex: idx
+            reminderIndex: idx,
+            original_notify_popup: r.notify_popup,
+            original_popup_shown: r.popup_shown
           });
         } else {
            if (reminderTime.getTime() - now.getTime() < 86400000) {
@@ -296,18 +323,30 @@ export default Deno.serve(async (req) => {
           } else {
             const task = await base44.asServiceRole.entities.Task.get(item.entityId);
             if (task && task.reminders && task.reminders[item.reminderIndex]) {
-              task.reminders[item.reminderIndex].sent = true;
+              const r = task.reminders[item.reminderIndex];
+              if (item.notify_email) r.email_sent = true;
+              if (item.notify_whatsapp) r.whatsapp_sent = true;
+              if (item.notify_sms) r.sms_sent = true;
+              
+              // Only mark fully sent if popup is not required OR popup already shown
+              if (!item.original_notify_popup || item.original_popup_shown) {
+                r.sent = true;
+              }
               await base44.asServiceRole.entities.Task.update(item.entityId, { reminders: task.reminders });
             }
           }
         } else if (item.type === 'meeting') {
-          // We need to fetch the meeting again to ensure we don't overwrite other updates, 
-          // but for simplicity we assume race conditions are rare on the same second.
-          // Better: Use $set on specific array element if supported, but usually update needs full object or top level fields.
-          // We'll read, update specific index, and write back.
           const meeting = await base44.asServiceRole.entities.Meeting.get(item.entityId);
           if (meeting && meeting.reminders && meeting.reminders[item.reminderIndex]) {
-            meeting.reminders[item.reminderIndex].sent = true;
+            const r = meeting.reminders[item.reminderIndex];
+            if (item.notify_email) r.email_sent = true;
+            if (item.notify_whatsapp) r.whatsapp_sent = true;
+            if (item.notify_sms) r.sms_sent = true;
+            
+            // Only mark fully sent if popup is not required OR popup already shown
+            if (!item.original_notify_popup || item.original_popup_shown) {
+              r.sent = true;
+            }
             await base44.asServiceRole.entities.Meeting.update(item.entityId, { reminders: meeting.reminders });
           }
         }
