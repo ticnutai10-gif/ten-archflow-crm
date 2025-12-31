@@ -3008,530 +3008,207 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         className={`${isFullScreen ? 'fixed inset-0 z-[100] h-screen w-screen overflow-hidden p-4 bg-slate-100/90 backdrop-blur flex flex-col' : (fullScreenMode ? 'flex-1 min-h-0 flex flex-col' : '')}`}
         style={isFullScreen ? { touchAction: 'none' } : {}}
       >
-          <div className="flex items-center justify-between gap-4 flex-wrap lg:flex-nowrap mb-6 px-1 pt-2">
-            {/* Left Side: Title & Icon */}
-            <div className="flex items-center gap-3">
+          <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-3 mb-4 flex items-center justify-between gap-4">
+            
+            {/* RIGHT SIDE (RTL): Title + Count + Back */}
+            <div className="flex items-start gap-2 min-w-fit">
               {(onBack || (!fullScreenMode && !isFullScreen)) && (
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={() => onBack ? onBack() : window.history.back()}
-                  className="h-8 w-8 text-slate-500 hover:text-slate-800 -mr-2"
+                  className="h-8 w-8 text-slate-500 hover:text-slate-800 -mr-1 mt-1"
                   title="חזרה"
                 >
                   <ChevronRight className="w-5 h-5" />
                 </Button>
               )}
-              <div className="p-1.5 bg-purple-100 rounded-lg">
-                <Table className="w-5 h-5 text-purple-600" />
-              </div>
-              <div className="flex items-baseline gap-2">
-                <CardTitle className="text-lg font-bold text-slate-800 whitespace-nowrap">{spreadsheet.name}</CardTitle>
-                <span className="text-xs text-slate-400 font-medium hidden sm:inline-block">({filteredAndSortedData.length} שורות)</span>
+              <div className="flex flex-col items-start gap-0.5">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-purple-100 rounded-lg">
+                    <Table className="w-4 h-4 text-purple-600" />
+                  </div>
+                  <h1 className="text-base font-bold text-slate-800 leading-tight">{spreadsheet.name}</h1>
+                </div>
+                <span className="text-[10px] text-slate-400 font-medium pr-9 leading-none">({filteredAndSortedData.length} שורות)</span>
               </div>
             </div>
 
-            {/* Center: Toolbar Actions */}
-            <div className="flex flex-1 items-center gap-1 flex-wrap justify-start lg:justify-center py-1">
-              <Button onClick={handleUndo} size="sm" variant="ghost" className="h-8 w-8 p-0" disabled={!canUndo} title="בטל (Ctrl+Z)"><Undo className="w-4 h-4" /></Button>
-              <Button onClick={handleRedo} size="sm" variant="ghost" className="h-8 w-8 p-0" disabled={!canRedo} title="שחזר (Ctrl+Y)"><Redo className="w-4 h-4" /></Button>
-              
-              <div className="h-4 w-px bg-slate-200 mx-1"></div>
+            {/* MIDDLE: Actions Grid - 2 Rows Equal Height */}
+            <div className="flex-1 overflow-x-auto no-scrollbar mx-2 flex justify-center">
+              <div className="grid grid-flow-col grid-rows-2 gap-x-2 gap-y-1 items-center">
+                
+                {/* Column 1 */}
+                <Button onClick={handleUndo} size="sm" variant="ghost" className="h-7 w-7 p-0" disabled={!canUndo} title="בטל"><Undo className="w-3.5 h-3.5" /></Button>
+                <Button onClick={handleRedo} size="sm" variant="ghost" className="h-7 w-7 p-0" disabled={!canRedo} title="שחזר"><Redo className="w-3.5 h-3.5" /></Button>
 
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button size="sm" className="gap-1 h-8 bg-blue-600 text-white hover:bg-blue-700 border-none shadow-sm"><Plus className="w-3.5 h-3.5" /> שורה</Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-64" align="end" dir="rtl">
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-semibold">הצג כותרות משנה</span>
-                      <Switch checked={showSubHeaders} onCheckedChange={(val) => {
-                        setShowSubHeaders(val);
-                        setTimeout(() => saveToBackend(), 50);
-                      }} />
+                {/* Column 2 */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button size="sm" className="h-7 gap-1.5 px-3 bg-blue-600 text-white hover:bg-blue-700 shadow-sm text-xs justify-start"><Plus className="w-3 h-3" /> שורה</Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-56" align="center" dir="rtl">
+                    <div className="space-y-2">
+                      <Button variant="outline" size="sm" className="w-full justify-start gap-2" onClick={addNewRow}>
+                        <Plus className="w-4 h-4" />שורה ריקה
+                      </Button>
+                      <Button variant="outline" size="sm" className="w-full justify-start gap-2 bg-blue-50 hover:bg-blue-100 border-blue-300" onClick={() => React.startTransition(() => setShowAddFromClientDialog(true))}>
+                        <Users className="w-4 h-4 text-blue-600" />
+                        <span className="text-blue-900">מלקוח קיים</span>
+                      </Button>
                     </div>
-                    <Separator />
-                    <div className="text-xs text-slate-600 bg-blue-50 p-2 rounded">
-                      💡 לחץ על כותרת עמודה כדי להוסיף כותרת משנה
+                  </PopoverContent>
+                </Popover>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button size="sm" variant="outline" className="h-7 gap-1.5 px-3 text-xs justify-start"><Plus className="w-3 h-3" /> עמודה</Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-56" align="center" dir="rtl">
+                    <div className="space-y-2">
+                      <Button variant="outline" size="sm" className="w-full justify-start gap-2" onClick={addColumn}>
+                        <Plus className="w-4 h-4" />עמודה בודדת
+                      </Button>
+                      <Button variant="outline" size="sm" className="w-full justify-start gap-2 bg-orange-50 hover:bg-orange-100 border-orange-300" onClick={() => React.startTransition(() => setShowBulkColumnsDialog(true))}>
+                        <Zap className="w-4 h-4 text-orange-600" />
+                        <span className="text-orange-900">יצירה מהירה</span>
+                      </Button>
                     </div>
-                    {(Object.keys(subHeaders).length > 0 || Object.keys(mergedHeaders).length > 0) && (
-                      <div className="space-y-1 max-h-48 overflow-y-auto">
-                        {visibleColumns.map(col => {
-                          const mergedHeader = getHeaderMergeInfo(col.key);
-                          const subHeaderTitle = getSubHeaderTitle(col.key);
-                          const subHeaderPos = getSubHeaderPosition(col.key);
+                  </PopoverContent>
+                </Popover>
 
-                          if (mergedHeader && !mergedHeader.isMaster) {
-                            return null;
-                          }
-                          
-                          const headerKeyForStyle = mergedHeader ? mergedHeader.mergeKey : col.key;
-                          const currentHeaderStyle = headerStyles[headerKeyForStyle] || {};
+                {/* Column 3 */}
+                <Button onClick={() => React.startTransition(() => setShowColumnsManager(true))} size="sm" variant="ghost" className="h-7 gap-1.5 px-2 hover:bg-orange-50 text-slate-600 text-xs justify-start">
+                  <Settings className="w-3.5 h-3.5" />
+                  עמודות
+                </Button>
+                <Button onClick={() => setShowDataTypesManager(true)} size="sm" variant="ghost" className="h-7 gap-1.5 px-2 hover:bg-purple-50 text-slate-600 text-xs justify-start">
+                  <Layers className="w-3.5 h-3.5 text-purple-600" />
+                  סוגי נתונים
+                </Button>
 
-                          if (mergedHeader) {
-                            return (
-                              <div key={mergedHeader.mergeKey} className="flex items-center justify-between p-2 bg-blue-50 rounded text-xs">
-                                <div className="flex items-center gap-2 flex-1">
-                                  <input
-                                    type="color"
-                                    value={currentHeaderStyle.backgroundColor || '#f1f5f9'}
-                                    onChange={(e) => {
-                                      const newHeaderStyles = { 
-                                        ...headerStyles, 
-                                        [headerKeyForStyle]: { 
-                                          ...(headerStyles[headerKeyForStyle] || {}), 
-                                          backgroundColor: e.target.value 
-                                        } 
-                                      };
-                                      setHeaderStyles(newHeaderStyles);
-                                      setTimeout(() => saveToBackend(), 100);
-                                    }}
-                                    className="h-6 w-6 cursor-pointer rounded border-2 border-slate-200"
-                                    title="צבע כותרת"
-                                  />
-                                  <div>
-                                    <div className="font-semibold text-blue-800">{mergedHeader.title}</div>
-                                    <div className="text-slate-500">מיזוג ({mergedHeader.colspan} עמודות)</div>
-                                  </div>
-                                </div>
-                                <div className="flex gap-1">
-                                  <Button size="icon" variant="ghost" className="h-6 w-6 bg-white/90 hover:bg-white" onClick={() => unmergeHeaders(col.key)}>
-                                    <Scissors className="w-3 h-3 text-orange-600" />
-                                  </Button>
-                                </div>
-                              </div>
-                            );
-                          } else if (subHeaderTitle) {
-                            return (
-                              <div key={col.key} className="flex items-center justify-between p-2 bg-slate-50 rounded text-xs">
-                                <div className="flex items-center gap-2 flex-1">
-                                  <input
-                                    type="color"
-                                    value={currentHeaderStyle.backgroundColor || '#f1f5f9'}
-                                    onChange={(e) => {
-                                      const newHeaderStyles = { 
-                                        ...headerStyles, 
-                                        [headerKeyForStyle]: { 
-                                          ...(headerStyles[headerKeyForStyle] || {}), 
-                                          backgroundColor: e.target.value 
-                                        } 
-                                      };
-                                      setHeaderStyles(newHeaderStyles);
-                                      setTimeout(() => saveToBackend(), 100);
-                                    }}
-                                    className="h-6 w-6 cursor-pointer rounded border-2 border-slate-200"
-                                    title="צבע כותרת"
-                                  />
-                                  <div>
-                                    <div className="font-semibold">{col.title}</div>
-                                    <div className="text-slate-500">{subHeaderTitle}</div>
-                                  </div>
-                                </div>
-                                <div className="flex gap-1 items-center">
-                                  <div className="flex gap-0.5 bg-white rounded border border-slate-200">
-                                    <button
-                                      className={`px-1.5 py-0.5 text-[10px] rounded-r ${subHeaderPos === 'above' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
-                                      onClick={() => changeSubHeaderPosition(col.key, 'above')}
-                                      title="מעל הכותרת"
-                                    >
-                                      מעל
-                                    </button>
-                                    <button
-                                      className={`px-1.5 py-0.5 text-[10px] rounded-l ${subHeaderPos === 'below' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
-                                      onClick={() => changeSubHeaderPosition(col.key, 'below')}
-                                      title="מתחת לכותרת"
-                                    >
-                                      מתחת
-                                    </button>
-                                  </div>
-                                  <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => addOrEditSubHeader(col.key)}>
-                                    <Edit2 className="w-3 h-3" />
-                                  </Button>
-                                </div>
-                              </div>
-                            );
-                          }
-                          return null;
-                        })}
+                {/* Column 4 */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button size="sm" variant="ghost" className="h-7 gap-1.5 px-2 text-slate-600 text-xs justify-start">
+                      <Eye className="w-3.5 h-3.5" />
+                      תצוגה
+                      <ChevronDown className="w-3 h-3 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-64" align="center" dir="rtl">
+                    <div className="space-y-1">
+                      <Button onClick={() => React.startTransition(() => setShowThemeSelector(true))} variant="ghost" className="w-full justify-start gap-2 h-8"><Palette className="w-4 h-4" /> עיצוב טבלה</Button>
+                      <Button onClick={() => setShowColumnStats(!showColumnStats)} variant="ghost" className="w-full justify-start gap-2 h-8"><BarChart3 className="w-4 h-4" /> {showColumnStats ? 'הסתר' : 'הצג'} סטטיסטיקות</Button>
+                      <Button onClick={() => React.startTransition(() => { setEditingChart(null); setShowChartBuilder(true); })} variant="ghost" className="w-full justify-start gap-2 h-8"><BarChart3 className="w-4 h-4" /> ניהול גרפים</Button>
+                      <Button onClick={() => React.startTransition(() => setShowViewManager(true))} variant="ghost" className="w-full justify-start gap-2 h-8"><Layers className="w-4 h-4" /> ניהול תצוגות שמורות</Button>
+                      <Separator className="my-1" />
+                      <div className="flex items-center justify-between px-2 py-1">
+                        <span className="text-sm">כותרות משנה</span>
+                        <Switch checked={showSubHeaders} onCheckedChange={(val) => { setShowSubHeaders(val); setTimeout(() => saveToBackend(), 50); }} />
                       </div>
-                    )}
-                  </div>
-                </PopoverContent>
-              </Popover>
-              {/* Old Buttons Removed - now in menu */}
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button size="sm" variant="outline" className="gap-1 h-8"><Plus className="w-3.5 h-3.5" /> עמודה</Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-56" align="end" dir="rtl">
-                  <div className="space-y-2">
-                    <Button variant="outline" size="sm" className="w-full justify-start gap-2" onClick={addColumn}>
-                      <Plus className="w-4 h-4" />עמודה בודדת
-                    </Button>
-                    <Button variant="outline" size="sm" className="w-full justify-start gap-2 bg-orange-50 hover:bg-orange-100 border-orange-300" onClick={() => React.startTransition(() => setShowBulkColumnsDialog(true))}>
-                      <Zap className="w-4 h-4 text-orange-600" />
-                      <span className="text-orange-900">יצירה מהירה</span>
-                    </Button>
-                  </div>
-                </PopoverContent>
-              </Popover>
-
-              <Button onClick={() => React.startTransition(() => setShowColumnsManager(true))} size="sm" variant="ghost" className="gap-2 h-8 hover:bg-orange-50 text-slate-600">
-                <Settings className="w-4 h-4" />
-                עמודות
-              </Button>
-
-              <Button onClick={() => setShowDataTypesManager(true)} size="sm" variant="ghost" className="gap-2 h-8 hover:bg-purple-50 text-slate-600">
-                <Layers className="w-4 h-4 text-purple-600" />
-                סוגי נתונים
-              </Button>
-
-              <div className="h-4 w-px bg-slate-200 mx-1"></div>
-
-              {/* View & Settings Menu */}
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button size="sm" variant="ghost" className="gap-2 h-8 text-slate-600">
-                    <Eye className="w-4 h-4" />
-                    תצוגה והגדרות
-                    <ChevronDown className="w-3 h-3 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-64" align="start" dir="rtl">
-                  <div className="space-y-1">
-                    <Button onClick={() => React.startTransition(() => setShowThemeSelector(true))} variant="ghost" className="w-full justify-start gap-2 h-8"><Palette className="w-4 h-4" /> עיצוב טבלה</Button>
-                    <Button onClick={() => setShowColumnStats(!showColumnStats)} variant="ghost" className="w-full justify-start gap-2 h-8"><BarChart3 className="w-4 h-4" /> {showColumnStats ? 'הסתר' : 'הצג'} סטטיסטיקות</Button>
-                    <Button onClick={() => React.startTransition(() => { setEditingChart(null); setShowChartBuilder(true); })} variant="ghost" className="w-full justify-start gap-2 h-8"><BarChart3 className="w-4 h-4" /> ניהול גרפים</Button>
-                    <Button onClick={() => React.startTransition(() => setShowViewManager(true))} variant="ghost" className="w-full justify-start gap-2 h-8"><Layers className="w-4 h-4" /> ניהול תצוגות שמורות</Button>
-                    
-                    <Separator className="my-1" />
-                    
-                    <div className="flex items-center justify-between px-2 py-1">
-                      <span className="text-sm">כותרות משנה</span>
-                      <Switch checked={showSubHeaders} onCheckedChange={(val) => { setShowSubHeaders(val); setTimeout(() => saveToBackend(), 50); }} />
                     </div>
-                    
-                    <Separator className="my-1" />
-                    
-                    <div className="px-2 py-1">
-                        <div className="text-xs font-medium text-slate-500 mb-1">הקפאה</div>
-                        <div className="flex items-center justify-between mb-1">
-                            <span className="text-sm">עמודות:</span>
-                            <Input type="number" min="0" max="5" value={freezeSettings.freeze_columns} onChange={(e) => { const val = parseInt(e.target.value)||0; setFreezeSettings(prev=>({...prev, freeze_columns:val})); setTimeout(()=>saveToBackend(),500); }} className="w-12 h-6 text-center" />
+                  </PopoverContent>
+                </Popover>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button size="sm" variant="ghost" className="h-7 gap-1.5 px-2 hover:bg-cyan-50 text-slate-600 text-xs justify-start">
+                      <Snowflake className="w-3.5 h-3.5 text-cyan-600" />
+                      הקפאה
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-64" align="center" dir="rtl">
+                    <div className="space-y-4">
+                      <h4 className="font-semibold text-sm flex items-center gap-2">
+                        <Snowflake className="w-4 h-4 text-cyan-600" />
+                        הגדרות הקפאה
+                      </h4>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-slate-600">עמודות (מימין):</span>
+                          <Input type="number" min="0" max="5" value={freezeSettings.freeze_columns} onChange={(e) => { const val = parseInt(e.target.value)||0; setFreezeSettings(prev=>({...prev, freeze_columns:val})); setTimeout(()=>saveToBackend(),500); }} className="w-12 h-7 text-center" />
                         </div>
                         <div className="flex items-center justify-between">
-                            <span className="text-sm">שורות:</span>
-                            <Input type="number" min="0" max="5" value={freezeSettings.freeze_rows} onChange={(e) => { const val = parseInt(e.target.value)||0; setFreezeSettings(prev=>({...prev, freeze_rows:val})); setTimeout(()=>saveToBackend(),500); }} className="w-12 h-6 text-center" />
+                          <span className="text-sm text-slate-600">שורות (מלמעלה):</span>
+                          <Input type="number" min="0" max="5" value={freezeSettings.freeze_rows} onChange={(e) => { const val = parseInt(e.target.value)||0; setFreezeSettings(prev=>({...prev, freeze_rows:val})); setTimeout(()=>saveToBackend(),500); }} className="w-12 h-7 text-center" />
                         </div>
+                      </div>
                     </div>
-                  </div>
-                </PopoverContent>
-              </Popover>
-              <Button 
-                onClick={() => { setCommentsTargetCell(null); setShowCommentsSidebar(true); }} 
-                size="sm" 
-                variant="outline" 
-                className="gap-2 hover:bg-blue-50"
-              >
-                <MessageSquare className="w-4 h-4 text-blue-600" />
-                תגובות
-              </Button>
+                  </PopoverContent>
+                </Popover>
 
-              <Button 
-                onClick={() => setIsFullScreen(!isFullScreen)} 
-                size="sm" 
-                variant="outline" 
-                className="gap-2 hover:bg-slate-100"
-                title={isFullScreen ? "צא ממסך מלא (Esc)" : "מסך מלא"}
-              >
-                {isFullScreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
-                {isFullScreen ? 'צא' : 'מסך מלא'}
-              </Button>
-
-              {/* Sync Status Indicators */}
-              {spreadsheet?.google_sheet_id ? (
-                <div className="flex items-center bg-white border border-slate-200 rounded-lg p-0.5 shadow-sm mr-2">
-                   <div className="flex items-center px-2 py-1 gap-1.5 border-l border-slate-100">
-                       <div className={`w-2 h-2 rounded-full ${
-                           spreadsheet.sync_config?.auto_sync_interval !== 'none' ? 'bg-green-500 animate-pulse' : 'bg-slate-300'
-                       }`} title={spreadsheet.sync_config?.auto_sync_interval !== 'none' ? 'סנכרון אוטומטי פעיל' : 'סנכרון ידני'} />
-                       
-                       {spreadsheet.sync_config?.sync_direction === 'two_way' ? (
-                           <ArrowUpDown className="w-3.5 h-3.5 text-blue-600" title="סנכרון דו-כיווני" />
-                       ) : spreadsheet.sync_config?.sync_direction === 'import_on_load' ? (
-                           <ArrowDown className="w-3.5 h-3.5 text-orange-600" title="ייבוא בלבד" />
-                       ) : (
-                           <ArrowUp className="w-3.5 h-3.5 text-green-600" title="ייצוא בלבד" />
-                       )}
-                   </div>
-   
+                {/* Column 5 */}
+                {spreadsheet?.google_sheet_id ? (
                    <Button
                        variant="ghost"
                        size="sm"
-                       className="h-7 px-2 hover:bg-slate-100 text-slate-600 gap-1.5 rounded-md"
+                       className="h-7 px-2 hover:bg-slate-100 text-slate-600 gap-1.5 rounded-md text-xs justify-start"
                        onClick={() => {
                            const mode = spreadsheet.sync_config?.sync_direction || 'export_only';
                            if (mode === 'import_on_load') handleImportFromGoogle(spreadsheet.google_sheet_id, spreadsheet.google_sheet_name);
                            else if (mode === 'two_way') handleImportFromGoogle(spreadsheet.google_sheet_id, spreadsheet.google_sheet_name, 'two_way');
                            else handleExportToGoogle(spreadsheet.google_sheet_id, spreadsheet.google_sheet_name);
                        }}
-                       title="סנכרון מהיר עכשיו"
+                       title="סנכרון"
                    >
-                       <RefreshCw className="w-3.5 h-3.5" />
+                       <RefreshCw className="w-3.5 h-3.5 text-green-600" />
+                       סנכרון
                    </Button>
-   
-                   <Button
-                       variant="ghost"
-                       size="sm"
-                       className="h-7 px-2 hover:bg-slate-100 text-slate-400 hover:text-slate-700 rounded-md"
-                       onClick={() => setShowSyncDialog(true)}
-                       title="הגדרות סנכרון"
-                   >
-                       <Settings className="w-3.5 h-3.5" />
-                   </Button>
-                </div>
-              ) : (
-                <Button
-                   variant="outline"
-                   size="sm"
-                   onClick={() => setShowSyncDialog(true)}
-                   className="gap-2"
-                 >
-                   <RefreshCw className="w-4 h-4" />
-                   חיבור ל-Google Sheets
-                 </Button>
-              )}
-              
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button size="sm" variant="outline" className="gap-2 hover:bg-cyan-50">
-                    <Snowflake className="w-4 h-4 text-cyan-600" />
-                    הקפאה
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-64" align="end" dir="rtl">
-                  <div className="space-y-4">
-                    <h4 className="font-semibold text-sm flex items-center gap-2">
-                      <Snowflake className="w-4 h-4 text-cyan-600" />
-                      הגדרות הקפאה
-                    </h4>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-slate-600">עמודות להקפאה (מימין):</span>
-                        <Input 
-                          type="number" 
-                          min="0" 
-                          max="5" 
-                          value={freezeSettings.freeze_columns} 
-                          onChange={(e) => {
-                            const val = parseInt(e.target.value) || 0;
-                            setFreezeSettings(prev => ({ ...prev, freeze_columns: val }));
-                            setTimeout(() => saveToBackend(), 500);
-                          }}
-                          className="w-16 h-8 text-center"
-                        />
-                      </div>
-                      <div className="text-xs text-slate-400 pr-1">
-                        * העמודה הראשונה (גרירה) תמיד מוקפאת
-                      </div>
-                    </div>
-                    <Separator />
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-slate-600">שורות להקפאה (מלמעלה):</span>
-                        <Input 
-                          type="number" 
-                          min="0" 
-                          max="5" 
-                          value={freezeSettings.freeze_rows} 
-                          onChange={(e) => {
-                            const val = parseInt(e.target.value) || 0;
-                            setFreezeSettings(prev => ({ ...prev, freeze_rows: val }));
-                            setTimeout(() => saveToBackend(), 500);
-                          }}
-                          className="w-16 h-8 text-center"
-                        />
-                      </div>
-                      <div className="text-xs text-slate-400 pr-1">
-                        * שורת הכותרת תמיד מוקפאת
-                      </div>
-                    </div>
-                  </div>
-                </PopoverContent>
-              </Popover>
+                ) : (
+                  <Button variant="ghost" size="sm" onClick={() => setShowSyncDialog(true)} className="h-7 gap-1.5 text-xs justify-start"><RefreshCw className="w-3.5 h-3.5" /> חיבור Sheets</Button>
+                )}
+                <Button onClick={() => setShowImporterDialog(true)} size="sm" variant="ghost" className="h-7 gap-1.5 text-green-700 hover:bg-green-50 text-xs justify-start">
+                  <Upload className="w-3.5 h-3.5" /> ייבוא
+                </Button>
 
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button size="sm" variant="outline" className="gap-2">
-                    <Eye className="w-4 h-4" />
-                    תצוגה
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-56" align="end" dir="rtl">
-                  <div className="space-y-1">
-                    <div className="text-xs font-semibold text-slate-500 mb-2 px-2">מצב תצוגה</div>
-                    <Button 
-                      variant={viewMode === 'table' ? 'default' : 'ghost'} 
-                      size="sm" 
-                      className="w-full justify-start gap-2"
-                      onClick={() => setViewMode('table')}
-                    >
-                      <Table className="w-4 h-4" />
-                      טבלה רגילה
-                    </Button>
-                    <Button 
-                      variant={viewMode === 'cards' ? 'default' : 'ghost'} 
-                      size="sm" 
-                      className="w-full justify-start gap-2"
-                      onClick={() => setViewMode('cards')}
-                    >
-                      <Grid className="w-4 h-4" />
-                      כרטיסים
-                    </Button>
-                    
-                    <Separator className="my-2" />
-                    
-                    <div className="text-xs font-semibold text-slate-500 mb-2 px-2">צפיפות (בטבלה)</div>
-                    <Button 
-                      variant={currentTheme.density === 'compact' ? 'default' : 'ghost'} 
-                      size="sm" 
-                      className="w-full justify-start gap-2"
-                      onClick={() => {
-                        setThemeSettings(prev => ({ ...prev, density: 'compact' }));
-                        setTimeout(() => saveToBackend(), 50);
-                      }}
-                    >
-                      <Minimize className="w-4 h-4" />
-                      צפוף (Compact)
-                    </Button>
-                    <Button 
-                      variant={currentTheme.density === 'comfortable' ? 'default' : 'ghost'} 
-                      size="sm" 
-                      className="w-full justify-start gap-2"
-                      onClick={() => {
-                        setThemeSettings(prev => ({ ...prev, density: 'comfortable' }));
-                        setTimeout(() => saveToBackend(), 50);
-                      }}
-                    >
-                      <Table className="w-4 h-4" />
-                      רגיל (Standard)
-                    </Button>
-                    <Button 
-                      variant={currentTheme.density === 'spacious' ? 'default' : 'ghost'} 
-                      size="sm" 
-                      className="w-full justify-start gap-2"
-                      onClick={() => {
-                        setThemeSettings(prev => ({ ...prev, density: 'spacious' }));
-                        setTimeout(() => saveToBackend(), 50);
-                      }}
-                    >
-                      <Maximize className="w-4 h-4" />
-                      מרווח (Spacious)
-                    </Button>
-                  </div>
-                </PopoverContent>
-              </Popover>
-              {selectedCells.size > 0 && (
-                <>
-                  <Badge variant="outline" className="bg-purple-50 px-3">נבחרו: {selectedCells.size} תאים</Badge>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button size="sm" variant="outline" className="gap-2">
-                        <Palette className="w-4 h-4" />צבע
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-80">
-                      <ColorPicker onApply={applyStyleToSelection} />
-                    </PopoverContent>
-                  </Popover>
-                  {selectedCells.size >= 2 && (
-                    <>
-                      <Button size="sm" variant="outline" onClick={mergeCells} className="gap-2 hover:bg-green-50">
-                        <Grid className="w-4 h-4 text-green-600" />
-                        מזג תאים
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => {
-                        // Unmerge all selected cells
-                        const cellsArray = Array.from(selectedCells);
-                        let unmergedCount = 0;
-                        
-                        cellsArray.forEach(cellKey => {
-                          const mergeKeyToDelete = Object.keys(mergedCells).find(key => 
-                            mergedCells[key].cells?.includes(cellKey)
-                          );
-                          if (mergeKeyToDelete) {
-                            const newMerged = { ...mergedCells };
-                            delete newMerged[mergeKeyToDelete];
-                            setMergedCells(newMerged);
-                            unmergedCount++;
-                          }
-                        });
-                        
-                        if (unmergedCount > 0) {
-                          setTimeout(() => {
-                            saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current, cellNotesRef.current, subHeadersRef.current, mergedHeadersRef.current, headerStylesRef.current);
-                            saveToBackend();
-                          }, 50);
-                          toast.success(`✓ ${unmergedCount} מיזוגים בוטלו`);
-                        } else {
-                          toast.error('אף תא נבחר אינו חלק ממיזוג');
-                        }
-                        setSelectedCells(new Set());
-                      }} className="gap-2 hover:bg-orange-50">
-                        <Scissors className="w-4 h-4 text-orange-600" />
-                        בטל מיזוג
-                      </Button>
-                    </>
-                  )}
-                  <Button size="sm" variant="ghost" onClick={() => setSelectedCells(new Set())} className="gap-2"><X className="w-4 h-4" /></Button>
-                </>
-              )}
-              {selectedHeaders.size > 0 && (
-                <>
-                  <Badge variant="outline" className="bg-blue-50 px-3">נבחרו: {selectedHeaders.size} כותרות</Badge>
-                  {selectedHeaders.size >= 2 && <Button size="sm" variant="outline" onClick={mergeHeaders} className="gap-2 hover:bg-blue-50"><Merge className="w-4 h-4 text-blue-600" />מזג כותרות</Button>}
-                  <Button size="sm" variant="ghost" onClick={() => setSelectedHeaders(new Set())} className="gap-2"><X className="w-4 h-4" /></Button>
-                </>
-              )}
-              <div className="ml-auto flex items-center gap-2">
-                <Button onClick={() => setShowImporterDialog(true)} size="sm" variant="outline" className="gap-2 hover:bg-green-50 text-green-700 border-green-200">
-                  <Upload className="w-4 h-4" />
-                  ייבוא
+                {/* Column 6 */}
+                <Button onClick={() => setShowExportDialog(true)} size="sm" variant="ghost" className="h-7 gap-1.5 text-blue-700 hover:bg-blue-50 text-xs justify-start">
+                  <Download className="w-3.5 h-3.5" /> ייצוא
                 </Button>
-                <Button onClick={() => setShowExportDialog(true)} size="sm" variant="outline" className="gap-2 hover:bg-blue-50 text-blue-700 border-blue-200">
-                  <Download className="w-4 h-4" />
-                  ייצוא
+                <Button onClick={clearAllFilters} size="sm" variant={hasActiveFilters ? "default" : "ghost"} className="h-7 gap-1.5 text-xs px-2 justify-start">
+                  {hasActiveFilters ? <><XCircle className="w-3.5 h-3.5" /> נקה סינון</> : <><Filter className="w-3.5 h-3.5" /> סינון</>}
                 </Button>
-                <Button onClick={clearAllFilters} size="sm" variant={hasActiveFilters ? "default" : "outline"} className="gap-2">{hasActiveFilters ? <><XCircle className="w-4 h-4" />נקה סינון</> : <><Filter className="w-4 h-4" />סינון</>}</Button>
+
+                {/* Column 7 */}
+                <Button 
+                  onClick={() => { setCommentsTargetCell(null); setShowCommentsSidebar(true); }} 
+                  size="sm" 
+                  variant="ghost" 
+                  className="h-7 gap-1.5 hover:bg-blue-50 text-slate-600 text-xs justify-start"
+                >
+                  <MessageSquare className="w-3.5 h-3.5 text-blue-600" />
+                  תגובות
+                </Button>
+                <Button onClick={() => setIsFullScreen(!isFullScreen)} size="sm" variant="ghost" className="h-7 gap-1.5 hover:bg-slate-100 text-slate-600 text-xs justify-start" title={isFullScreen ? "צא ממסך מלא (Esc)" : "מסך מלא"}>
+                  {isFullScreen ? <Minimize className="w-3.5 h-3.5" /> : <Maximize className="w-3.5 h-3.5" />}
+                  {isFullScreen ? 'צא' : 'מלא'}
+                </Button>
+
               </div>
             </div>
 
-            {/* Right Side: Search & Collab */}
-            <div className="flex items-center gap-2 flex-shrink-0">
+            {/* LEFT SIDE (RTL): Search + Profile */}
+            <div className="flex items-center gap-3 min-w-fit flex-row-reverse">
               <div className="relative">
-                <div className="flex items-center w-32 bg-white border border-slate-200 rounded-lg shadow-sm focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all">
-                  <Search className="w-3 h-3 text-slate-400 mr-2 flex-shrink-0" />
-                  <Input 
-                    placeholder="חיפוש..." 
-                    value={globalFilter} 
-                    onChange={(e) => setGlobalFilter(e.target.value)} 
-                    className="h-8 border-none focus:ring-0 bg-transparent text-xs w-full placeholder:text-slate-400" 
-                  />
-                  {globalFilter && (
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-7 w-7 text-slate-400 hover:text-slate-600 ml-1"
-                      onClick={() => setGlobalFilter('')}
-                    >
-                      <X className="w-3 h-3" />
-                    </Button>
-                  )}
-                </div>
+                <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                <Input 
+                  placeholder="חיפוש..." 
+                  value={globalFilter} 
+                  onChange={(e) => setGlobalFilter(e.target.value)} 
+                  className="h-9 w-40 border-slate-200 bg-slate-50 focus:bg-white text-sm pr-8 pl-8 rounded-lg" 
+                />
+                {globalFilter && (
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="absolute left-1 top-1/2 -translate-y-1/2 h-6 w-6 text-slate-400 hover:text-slate-600"
+                    onClick={() => setGlobalFilter('')}
+                  >
+                    <X className="w-3 h-3" />
+                  </Button>
+                )}
               </div>
               
-              <div className="h-4 w-px bg-slate-200 mx-1"></div>
+              <div className="h-8 w-px bg-slate-200 mx-1"></div>
               
               <Collaborators 
                  spreadsheetId={spreadsheet.id} 
