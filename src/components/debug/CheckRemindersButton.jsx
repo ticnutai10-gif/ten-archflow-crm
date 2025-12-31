@@ -15,8 +15,10 @@ export default function CheckRemindersButton() {
     setResult(null);
     try {
       const response = await base44.functions.invoke('checkReminders');
+      console.log('🐞 [DEBUG_REMINDERS] Response:', response.data);
       setResult(response.data);
     } catch (error) {
+      console.error('🐞 [DEBUG_REMINDERS] Error:', error);
       setResult({ error: error.message, status: 'failed' });
     } finally {
       setLoading(false);
