@@ -167,6 +167,10 @@ export default Deno.serve(async (req) => {
     const dueItems = allItems; // already filtered
 
     console.log(`Found ${dueItems.length} due items.`);
+    
+    if (dueItems.length === 0) {
+       console.log("No due items found. Debug info:", JSON.stringify(debugInfo, null, 2));
+    }
 
     const results = [];
 
