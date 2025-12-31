@@ -3032,7 +3032,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
             </div>
 
             {/* Center: Toolbar Actions */}
-            <div className="flex flex-1 items-center gap-1 overflow-x-auto no-scrollbar mask-fade-right justify-start lg:justify-center">
+            <div className="flex flex-1 items-center gap-1 flex-wrap justify-start lg:justify-center py-1">
               <Button onClick={handleUndo} size="sm" variant="ghost" className="h-8 w-8 p-0" disabled={!canUndo} title="בטל (Ctrl+Z)"><Undo className="w-4 h-4" /></Button>
               <Button onClick={handleRedo} size="sm" variant="ghost" className="h-8 w-8 p-0" disabled={!canRedo} title="שחזר (Ctrl+Y)"><Redo className="w-4 h-4" /></Button>
               
