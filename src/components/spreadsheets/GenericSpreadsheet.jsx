@@ -3994,7 +3994,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       {cellContextMenu && (
         <div 
           ref={contextMenuRef}
-          className="fixed z-[60] bg-white border-2 border-slate-300 rounded-lg shadow-2xl"
+          className="fixed z-[60] bg-white/95 backdrop-blur-md border-2 border-[#D4AF37] rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.2)]"
           style={{
             top: '50%',
             left: '50%',
