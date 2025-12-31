@@ -390,6 +390,19 @@ export default function MeetingForm({ meeting, clients, projects, initialDate, o
                   placeholder="הוסף נמענים לוואטסאפ..."
                 />
               </div>
+
+              <div className="space-y-2 p-3 bg-white rounded border border-purple-100">
+                <div className="flex items-center gap-2 mb-2">
+                  <Smartphone className="w-4 h-4 text-purple-500" />
+                  <Label>נמענים לתזכורות SMS</Label>
+                </div>
+                <MultiPhoneSelector
+                  recipients={formData.sms_recipients || []}
+                  onChange={(newRecipients) => updateField('sms_recipients', newRecipients)}
+                  clients={clients}
+                  placeholder="הוסף נמענים ל-SMS..."
+                />
+              </div>
             </div>
             
             {(!formData.reminders || formData.reminders.length === 0) && (
