@@ -24,8 +24,8 @@ import InstallPrompt from "@/components/mobile/InstallPrompt";
 import { base44 } from "@/api/base44Client";
 import { useIsMobile } from "@/components/utils/useMediaQuery";
 
-const ACCENT_COLOR = "#2C3A50";
-const ICON_COLOR = "#2C3A50";
+const ACCENT_COLOR = "#C5A028";
+const ICON_COLOR = "#C5A028";
 
 const THEMES = {
   cream: { bg: '#FCF6E3', text: '#1e293b' },
@@ -634,7 +634,7 @@ function LayoutInner({ children, currentPageName }) {
           onMouseLeave={handleMouseLeave}
         >
           {(isExpanded || hovered || pinned) && (
-            <div className="h-full bg-white border border-[#D4AF37] shadow-lg relative group rounded-2xl overflow-hidden flex flex-col my-2 mr-2">
+            <div className="h-[calc(100vh-1rem)] bg-white border border-[#D4AF37] shadow-lg relative group rounded-2xl overflow-hidden flex flex-col my-2 mr-2">
               {/* Resize Handle */}
               <div
                 className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400 transition-colors z-50 flex flex-col justify-center items-center group/handle"
