@@ -6,7 +6,7 @@ import { BellRing, Clock, X } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
 
-export default function ReminderPopup({ open, reminders = [], onClose, onSnooze }) {
+export default function ReminderPopup({ open, reminders = [], onClose, onSnooze, onDismiss }) {
   // בדיקה שהפרמטרים קיימים
   if (!Array.isArray(reminders)) {
     console.warn('[ReminderPopup] reminders is not an array:', reminders);
@@ -42,19 +42,42 @@ export default function ReminderPopup({ open, reminders = [], onClose, onSnooze 
                     </div>
                   </div>
                   <div className="flex flex-col gap-2">
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      onClick={() => onSnooze && onSnooze(t, 10)}
-                    >
-                      דחה 10 דק׳
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      onClick={() => onSnooze && onSnooze(t, 60)}
-                    >
-                      דחה שעה
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={() => onSnooze && onSnooze(t, 10)}
+                        className="flex-1"
+                      >
+                        דחה 10 דק׳
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => onSnooze && onSnooze(t, 60)}
+                        className="flex-1"
+                      >
+                        דחה שעה
+                      </Button>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => onSnooze && onSnooze(t, 'tomorrow')}
+                        className="flex-1"
+                      >
+                        העבר למחר
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="ghost"
+                        onClick={() => onDismiss && onDismiss(t)}
+                        className="flex-1 text-slate-500 hover:text-slate-700 hover:bg-slate-100"
+                      >
+                        סגור
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>

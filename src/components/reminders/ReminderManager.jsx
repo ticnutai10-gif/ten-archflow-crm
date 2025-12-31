@@ -182,11 +182,57 @@ export default function ReminderManager() {
     }
   };
 
-  const handleSnooze = async (item, minutes) => {
-    // Implement snooze logic if needed, or just close for now
+  const handleDismiss = (item) => {
     setDueReminders(prev => prev.filter(x => x.id !== item.id));
     if (dueReminders.length <= 1) {
       setOpen(false);
+    }
+  };
+
+  const handleSnooze = async (item, duration) => {
+    // Optimistic UI update
+    handleDismiss(item);
+
+    try {
+      const now = new Date();
+      let snoozeTime;
+
+      if (duration === 'tomorrow') {
+        // Set to tomorrow at 09:00
+        snoozeTime = new Date();
+        snoozeTime.setDate(snoozeTime.getDate() + 1);
+        snoozeTime.setHours(9, 0, 0, 0);
+      } else {
+        // Duration in minutes
+        snoozeTime = new Date(now.getTime() + duration * 60000);
+      }
+
+      const entityType = item.type === 'task' ? 'Task' : 'Meeting';
+      // Fetch fresh entity to ensure we have latest reminders array
+      const entity = await base44.entities[entityType].get(item.entityId);
+      
+      if (entity && entity.reminders && entity.reminders[item.reminderIndex]) {
+        const reminders = [...entity.reminders];
+        const r = { ...reminders[item.reminderIndex] };
+        
+        // Update reminder to trigger again
+        r.popup_shown = false;
+        r.sent = false;
+        r.reminder_at = snoozeTime.toISOString();
+        
+        // Remove minutes_before to prioritize absolute time
+        delete r.minutes_before;
+        
+        reminders[item.reminderIndex] = r;
+        
+        await base44.entities[entityType].update(item.entityId, { reminders });
+        
+        const timeStr = duration === 'tomorrow' ? 'למחר ב-09:00' : `ב-${duration} דקות`;
+        toast.success(`התזכורת נדחתה ${timeStr}`);
+      }
+    } catch (error) {
+      console.error("Snooze failed:", error);
+      toast.error("שגיאה בדחיית התזכורת");
     }
   };
 
@@ -206,6 +252,7 @@ export default function ReminderManager() {
       reminders={dueReminders}
       onClose={() => setOpen(false)}
       onSnooze={handleSnooze}
+      onDismiss={handleDismiss}
     />
   );
 }
