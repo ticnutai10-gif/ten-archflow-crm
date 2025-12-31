@@ -16,6 +16,7 @@ import AIClientChatbot from '../components/communication/AIClientChatbot';
 import AIProgressSummary from '../components/communication/AIProgressSummary';
 import AIContentGenerator from '../components/communication/AIContentGenerator';
 import ProjectAIAssistant from '../components/communication/ProjectAIAssistant';
+import AuditLogViewer from '../components/common/AuditLogViewer';
 
 export default function ProjectDetails() {
   const navigate = useNavigate();
@@ -176,6 +177,9 @@ export default function ProjectDetails() {
             <TabsTrigger value="ai-assistant" className="gap-2">
               עוזר AI
             </TabsTrigger>
+            <TabsTrigger value="history" className="gap-2">
+              היסטוריה
+            </TabsTrigger>
           </TabsList>
 
           {/* Tasks List */}
@@ -283,6 +287,17 @@ export default function ProjectDetails() {
               client={client}
               subtasks={subtasks}
             />
+          </TabsContent>
+
+          <TabsContent value="history">
+            <Card>
+              <CardHeader>
+                <CardTitle>היסטוריית שינויים</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <AuditLogViewer entityType="Project" entityId={project.id} />
+              </CardContent>
+            </Card>
           </TabsContent>
           </Tabs>
 

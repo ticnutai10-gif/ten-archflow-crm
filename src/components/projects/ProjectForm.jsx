@@ -33,6 +33,28 @@ export default function ProjectForm({ project, clients, onSubmit, onCancel }) {
     
     setIsSubmitting(true);
     await onSubmit(formData);
+    
+    // Log change & Trigger Automation
+    try {
+      if (project) {
+        // Update
+        base44.functions.invoke('handleEntityEvents', {
+          entityType: 'Project',
+          entityId: project.id,
+          oldData: project,
+          newData: formData,
+          userEmail: (await base44.auth.me())?.email
+        });
+      } else {
+        // Create (we don't have the ID yet unless onSubmit returns it, which it might not)
+        // If onSubmit returns the created object, we can use it. 
+        // For now, let's assume create triggers are handled by the parent or we skip creation log here 
+        // to avoid complexity if onSubmit is void.
+      }
+    } catch (e) {
+      console.error("Automation Trigger Error", e);
+    }
+
     setIsSubmitting(false);
   };
 

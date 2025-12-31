@@ -136,6 +136,7 @@ const ACTIONS = [
 const ICON_COLOR = "#2C3A50";
 
 export default function AutomationsPage() {
+  const [activeTab, setActiveTab] = useState("rules");
   const [rules, setRules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
@@ -299,6 +300,13 @@ export default function AutomationsPage() {
     return ACTIONS.find(a => a.value === value) || ACTIONS[0];
   };
 
+  const [templates, setTemplates] = useState([]);
+  useEffect(() => {
+    if (showDialog) {
+      base44.entities.MessageTemplate.list().then(setTemplates).catch(() => {});
+    }
+  }, [showDialog]);
+
   return (
     <div className="p-6 lg:p-8 min-h-screen pl-24 lg:pl-12" dir="rtl" style={{ backgroundColor: '#FCF6E3' }}>
       <div className="max-w-7xl mx-auto">
@@ -311,19 +319,33 @@ export default function AutomationsPage() {
               </div>
               <div>
                 <h1 className="text-3xl font-bold text-slate-900">אוטומציות</h1>
-                <p className="text-slate-600 mt-1">הגדר פעולות אוטומטיות לייעול העבודה</p>
+                <p className="text-slate-600 mt-1">הגדר פעולות אוטומטיות ותבניות</p>
               </div>
             </div>
-            <Button 
-              onClick={openNewRule}
-              className="gap-2"
-              style={{ backgroundColor: ICON_COLOR }}
-            >
-              <Plus className="w-4 h-4" />
-              חוק חדש
-            </Button>
           </div>
         </div>
+
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="rules">חוקים וטריגרים</TabsTrigger>
+            <TabsTrigger value="templates">תבניות הודעה</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="templates">
+            <MessageTemplatesManager />
+          </TabsContent>
+
+          <TabsContent value="rules">
+            <div className="flex justify-end mb-4">
+              <Button 
+                onClick={openNewRule}
+                className="gap-2"
+                style={{ backgroundColor: ICON_COLOR }}
+              >
+                <Plus className="w-4 h-4" />
+                חוק חדש
+              </Button>
+            </div>
 
         {/* Info Cards */}
         <div className="grid md:grid-cols-2 gap-4 mb-6">
@@ -480,6 +502,9 @@ export default function AutomationsPage() {
         </Card>
       </div>
 
+      </TabsContent>
+      </Tabs>
+
       {/* Rule Editor Dialog */}
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col" dir="rtl">
@@ -622,12 +647,47 @@ export default function AutomationsPage() {
                                     value={action.params?.subject || ""}
                                     onChange={(e) => updateAction(index, 'subject', e.target.value)}
                                   />
-                                  <Textarea
-                                    placeholder="תוכן המייל (אפשר להשתמש ב-{{name}}, {{email}} וכו')"
-                                    value={action.params?.body || ""}
-                                    onChange={(e) => updateAction(index, 'body', e.target.value)}
-                                    rows={4}
-                                  />
+                                  <div className="space-y-2">
+                                    <Select 
+                                      value={action.template_id || "none"} 
+                                      onValueChange={(v) => {
+                                        if (v === 'none') {
+                                          const newAction = { ...action };
+                                          delete newAction.template_id;
+                                          setFormData(prev => {
+                                            const newActions = [...prev.actions];
+                                            newActions[index] = newAction;
+                                            return { ...prev, actions: newActions };
+                                          });
+                                        } else {
+                                          const newAction = { ...action, template_id: v };
+                                          setFormData(prev => {
+                                            const newActions = [...prev.actions];
+                                            newActions[index] = newAction;
+                                            return { ...prev, actions: newActions };
+                                          });
+                                        }
+                                      }}
+                                    >
+                                      <SelectTrigger className="h-8 text-xs bg-white">
+                                        <SelectValue placeholder="בחר תבנית (אופציונלי)" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="none">ללא תבנית</SelectItem>
+                                        {templates.filter(t => t.type === 'email').map(t => (
+                                          <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                    <Textarea
+                                      placeholder="תוכן המייל (אפשר להשתמש ב-{{name}}, {{email}} וכו')"
+                                      value={action.params?.body || ""}
+                                      onChange={(e) => updateAction(index, 'body', e.target.value)}
+                                      rows={4}
+                                      disabled={!!action.template_id}
+                                      className={action.template_id ? "bg-slate-100" : ""}
+                                    />
+                                  </div>
                                 </>
                               )}
 
@@ -749,12 +809,47 @@ export default function AutomationsPage() {
                                     value={action.params?.phone || ""}
                                     onChange={(e) => updateAction(index, 'phone', e.target.value)}
                                   />
-                                  <Textarea
-                                    placeholder="תוכן ההודעה (אפשר להשתמש ב-{{name}}, {{title}} וכו')"
-                                    value={action.params?.message || ""}
-                                    onChange={(e) => updateAction(index, 'message', e.target.value)}
-                                    rows={4}
-                                  />
+                                  <div className="space-y-2">
+                                    <Select 
+                                      value={action.template_id || "none"} 
+                                      onValueChange={(v) => {
+                                        if (v === 'none') {
+                                          const newAction = { ...action };
+                                          delete newAction.template_id;
+                                          setFormData(prev => {
+                                            const newActions = [...prev.actions];
+                                            newActions[index] = newAction;
+                                            return { ...prev, actions: newActions };
+                                          });
+                                        } else {
+                                          const newAction = { ...action, template_id: v };
+                                          setFormData(prev => {
+                                            const newActions = [...prev.actions];
+                                            newActions[index] = newAction;
+                                            return { ...prev, actions: newActions };
+                                          });
+                                        }
+                                      }}
+                                    >
+                                      <SelectTrigger className="h-8 text-xs bg-white">
+                                        <SelectValue placeholder="בחר תבנית (אופציונלי)" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="none">ללא תבנית</SelectItem>
+                                        {templates.filter(t => t.type === 'whatsapp' || t.type === 'sms').map(t => (
+                                          <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                    <Textarea
+                                      placeholder="תוכן ההודעה (אפשר להשתמש ב-{{name}}, {{title}} וכו')"
+                                      value={action.params?.message || ""}
+                                      onChange={(e) => updateAction(index, 'message', e.target.value)}
+                                      rows={4}
+                                      disabled={!!action.template_id}
+                                      className={action.template_id ? "bg-slate-100" : ""}
+                                    />
+                                  </div>
                                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800">
                                     💡 ההודעה תפתח את WhatsApp עם הטקסט מוכן לשליחה
                                   </div>
