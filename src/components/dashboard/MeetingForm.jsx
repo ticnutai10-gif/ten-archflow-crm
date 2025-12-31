@@ -12,6 +12,7 @@ import { playRingtone } from '@/components/utils/audio';
 import SmartAgendaGenerator from "../ai/SmartAgendaGenerator";
 import { toast } from "sonner";
 import { base44 } from "@/api/base44Client";
+import MultiRecipientSelector from "@/components/common/MultiRecipientSelector";
 
 export default function MeetingForm({ meeting, clients, projects, initialDate, onSubmit, onCancel }) {
   const [user, setUser] = useState(null);
