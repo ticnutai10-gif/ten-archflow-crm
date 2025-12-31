@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
-import { Settings, Bug, Bell, Palette, Terminal, AlertCircle, CheckCircle, XCircle, Shield, Play, LayoutDashboard, MessageCircle, Languages, Activity } from "lucide-react";
+import { Settings, Bug, Bell, Palette, Terminal, AlertCircle, CheckCircle, XCircle, Shield, Play, LayoutDashboard, MessageCircle, Languages, Activity, Clock } from "lucide-react";
 import AppSettings from "@/components/settings/AppSettings";
 import RingtoneManager from "@/components/settings/RingtoneManager";
 import ThemeManager from "@/components/settings/ThemeManager";
@@ -13,6 +13,7 @@ import DashboardCustomizer from "@/components/settings/DashboardCustomizer";
 import WhatsAppConnector from "@/components/settings/WhatsAppConnector";
 import LanguageSelector from "@/components/settings/LanguageSelector";
 import CustomFieldsEditor from "@/components/settings/CustomFieldsEditor";
+import AvailabilitySettings from "@/components/settings/AvailabilitySettings";
 import { toast } from "sonner";
 import { base44 } from "@/api/base44Client";
 import { Database } from "lucide-react";
@@ -372,6 +373,14 @@ export default function SettingsPage() {
                 </TabsTrigger>
 
                 <TabsTrigger 
+                  value="availability" 
+                  className="data-[state=active]:bg-[#2C3A50] data-[state=active]:text-white px-6 py-3"
+                >
+                  <Clock className="w-4 h-4 ml-2" />
+                  שעות פעילות
+                </TabsTrigger>
+
+                <TabsTrigger 
                   value="general" 
                   className="data-[state=active]:bg-[#2C3A50] data-[state=active]:text-white px-6 py-3"
                 >
@@ -420,6 +429,10 @@ export default function SettingsPage() {
 
               <TabsContent value="custom_fields" className="mt-0">
                 <CustomFieldsEditor />
+              </TabsContent>
+
+              <TabsContent value="availability" className="mt-0">
+                <AvailabilitySettings />
               </TabsContent>
 
               <TabsContent value="general" className="mt-0">
