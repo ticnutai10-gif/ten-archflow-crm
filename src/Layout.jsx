@@ -218,7 +218,7 @@ function LayoutInner({ children, currentPageName }) {
     opacity: 1,
     visibility: 'visible',
     transform: 'translateX(0)',
-    zIndex: 50
+    zIndex: 1000
   } : {
     width: '0px',
     opacity: 0,
