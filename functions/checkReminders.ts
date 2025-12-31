@@ -1,4 +1,22 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { zonedTimeToUtc } from 'npm:date-fns-tz@2.0.0';
+
+const TIMEZONE = 'Asia/Jerusalem';
+
+// Helper to safely parse date, treating timezone-less strings as Jerusalem time
+const parseReminderDate = (dateStr) => {
+  if (!dateStr) return null;
+  // If it ends in Z or has timezone offset, let standard Date handle it
+  if (dateStr.endsWith('Z') || dateStr.includes('+')) {
+    return new Date(dateStr);
+  }
+  // Otherwise treat as local Jerusalem time
+  try {
+    return zonedTimeToUtc(dateStr, TIMEZONE);
+  } catch (e) {
+    return new Date(dateStr); // Fallback
+  }
+};
 
 export default Deno.serve(async (req) => {
   try {
@@ -6,55 +24,71 @@ export default Deno.serve(async (req) => {
     
     // 1. Get all pending reminders that are due
     const now = new Date();
+    
+    // Debug info storage
+    const debugInfo = {
+      serverTime: now.toISOString(),
+      serverTimeLocalApprox: now.toLocaleString("en-US", {timeZone: TIMEZONE}),
+      checked: { tasks: 0, meetings: 0, reminders: 0 },
+      skipped: [],
+    };
+
     const pendingReminders = await base44.asServiceRole.entities.Reminder.filter({ 
       status: 'pending' 
     });
+    debugInfo.checked.reminders = pendingReminders.length;
 
-    // 1a. Fetch Tasks (Support both legacy single reminder and new multiple reminders)
-    // We fetch tasks that are not completed.
+    // 1a. Fetch Tasks
     const pendingTasks = await base44.asServiceRole.entities.Task.filter({ 
       status: { $ne: 'הושלמה' }
     });
+    debugInfo.checked.tasks = pendingTasks.length;
     
     // 1b. Fetch Meetings
     const pendingMeetings = await base44.asServiceRole.entities.Meeting.filter({
       status: { $in: ['מתוכננת', 'אושרה'] }
     });
+    debugInfo.checked.meetings = pendingMeetings.length;
 
     const dueTaskReminders = [];
     for (const t of pendingTasks) {
       // Legacy support
-      if (t.reminder_enabled && !t.reminder_sent && t.reminder_at && new Date(t.reminder_at) <= now) {
-        dueTaskReminders.push({
-          type: 'task',
-          entityId: t.id,
-          target_name: t.title,
-          reminder_date: t.reminder_at,
-          created_by: t.created_by,
-          notify_email: t.notify_email,
-          notify_whatsapp: t.notify_whatsapp,
-          message: `תזכורת למשימה: ${t.title}`,
-          email_recipients: t.email_recipients,
-          whatsapp_recipients: t.whatsapp_recipients,
-          isLegacy: true
-        });
+      if (t.reminder_enabled && !t.reminder_sent && t.reminder_at) {
+        const reminderTime = parseReminderDate(t.reminder_at);
+        if (reminderTime <= now) {
+          dueTaskReminders.push({
+            type: 'task',
+            entityId: t.id,
+            target_name: t.title,
+            reminder_date: reminderTime.toISOString(),
+            created_by: t.created_by,
+            notify_email: t.notify_email,
+            notify_whatsapp: t.notify_whatsapp,
+            message: `תזכורת למשימה: ${t.title}`,
+            email_recipients: t.email_recipients,
+            whatsapp_recipients: t.whatsapp_recipients,
+            isLegacy: true
+          });
+        } else {
+          // Log skipped nearby items for debugging (e.g. within next 24h)
+          if (reminderTime.getTime() - now.getTime() < 86400000) {
+            debugInfo.skipped.push({ type: 'task-legacy', id: t.id, title: t.title, time: reminderTime.toISOString(), reason: 'future' });
+          }
+        }
       }
 
       // New multiple reminders support
       if (t.reminders && Array.isArray(t.reminders)) {
         t.reminders.forEach((r, idx) => {
           if (r.sent) return;
-          // For tasks, reminder_at is explicit in the reminder object
-          // OR if minutes_before is set (relative to due_date/start_date?), usually explicit time for tasks.
+          
           let reminderTime;
           if (r.reminder_at) {
-            reminderTime = new Date(r.reminder_at);
+            reminderTime = parseReminderDate(r.reminder_at);
           } else if (r.minutes_before && t.due_date) {
-             // Assuming due_date is just date string YYYY-MM-DD, we treat it as 09:00 or end of day? 
-             // Tasks usually have specific reminder times. If only minutes_before, relative to due date at 9am?
-             // Let's assume task reminders usually have reminder_at. 
-             // If due_date is YYYY-MM-DD, new Date(due_date) is usually 00:00 UTC.
-             // We'll skip complex relative logic for tasks for now unless reminder_at is set.
+             // Fallback for simple date: assume 09:00 Jerusalem time if only date is given
+             // But t.due_date is typically YYYY-MM-DD. 
+             // We'll skip for now to avoid complexity, usually reminder_at is set.
              return; 
           } else {
             return;
@@ -77,6 +111,10 @@ export default Deno.serve(async (req) => {
               reminderIndex: idx,
               isLegacy: false
             });
+          } else {
+             if (reminderTime.getTime() - now.getTime() < 86400000) {
+                debugInfo.skipped.push({ type: 'task', id: t.id, title: t.title, time: reminderTime.toISOString(), reason: 'future', idx });
+             }
           }
         });
       }
@@ -86,7 +124,7 @@ export default Deno.serve(async (req) => {
     for (const m of pendingMeetings) {
       if (!m.reminders || !Array.isArray(m.reminders)) continue;
       
-      const meetingTime = new Date(m.meeting_date);
+      const meetingTime = parseReminderDate(m.meeting_date);
       
       m.reminders.forEach((r, idx) => {
         if (r.sent) return;
@@ -108,20 +146,27 @@ export default Deno.serve(async (req) => {
             sms_recipients: m.sms_recipients,
             reminderIndex: idx
           });
+        } else {
+           if (reminderTime.getTime() - now.getTime() < 86400000) {
+              debugInfo.skipped.push({ type: 'meeting', id: m.id, title: m.title, time: reminderTime.toISOString(), reason: 'future', idx });
+           }
         }
       });
     }
 
     // Combine all
     const allItems = [
-      ...pendingReminders.filter(r => new Date(r.reminder_date) <= now).map(r => ({ ...r, type: 'reminder', entityId: r.id })),
+      ...pendingReminders.filter(r => {
+        const rt = parseReminderDate(r.reminder_date);
+        return rt <= now;
+      }).map(r => ({ ...r, type: 'reminder', entityId: r.id })),
       ...dueTaskReminders,
       ...dueMeetingReminders
     ];
 
-    const dueItems = allItems.filter(item => new Date(item.reminder_date) <= now);
+    const dueItems = allItems; // already filtered
 
-    console.log(`Found ${dueItems.length} due items (Reminders + Tasks).`);
+    console.log(`Found ${dueItems.length} due items.`);
 
     const results = [];
 
@@ -265,7 +310,7 @@ export default Deno.serve(async (req) => {
       }
     }
 
-    return Response.json({ success: true, processed: results.length, results });
+    return Response.json({ success: true, processed: results.length, results, debugInfo });
 
   } catch (error) {
     console.error('Check Reminders Error:', error);
