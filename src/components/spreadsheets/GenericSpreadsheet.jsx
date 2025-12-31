@@ -3782,6 +3782,12 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                 setReminderTarget({ cellKey, value });
                                 setShowReminderDialog(true);
                               }}
+                              
+                              reminders={reminders}
+                              onSetReminder={(cellKey, value) => {
+                                setReminderTarget({ cellKey, value });
+                                setShowReminderDialog(true);
+                              }}
 
                               setEditingCell={setEditingCell}
                               setEditValue={setEditValue}
