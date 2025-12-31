@@ -500,8 +500,6 @@ export default function AutomationsPage() {
             )}
           </CardContent>
         </Card>
-      </div>
-
       </TabsContent>
       </Tabs>
 
