@@ -36,99 +36,16 @@ export default function ReminderManager() {
 
     checkingRef.current = true;
     try {
-      const now = new Date();
-      const popupReminders = [];
+      // Use backend function to check reminders efficiently
+      const response = await base44.functions.invoke('checkReminders');
+      const { popups } = response.data;
 
-      // 1. Fetch Tasks (Legacy + New)
-      // Filter locally for simplicity with complex array structures, though optimal to use backend filters
-      const tasks = await base44.entities.Task.filter({ 
-        status: { $ne: 'הושלמה' }
-      });
-
-      for (const t of tasks) {
-        // Legacy
-        if (t.reminder_enabled && !t.reminder_sent && t.reminder_at) {
-          const at = new Date(t.reminder_at);
-          if (at <= now) {
-            popupReminders.push({
-              id: t.id,
-              type: 'task',
-              title: t.title,
-              client_name: t.client_name,
-              message: `תזכורת למשימה: ${t.title}`,
-              ringtone: t.reminder_ringtone || 'ding',
-              isLegacy: true,
-              entity: t
-            });
-          }
-        }
-
-        // New Array
-        if (t.reminders && Array.isArray(t.reminders)) {
-          t.reminders.forEach((r, idx) => {
-            if (r.sent || r.popup_shown) return;
-            if (!r.notify_popup && !r.reminder_popup) return; // Support both naming conventions if any
-
-            let reminderTime;
-            if (r.reminder_at) reminderTime = new Date(r.reminder_at);
-            // Ignore minutes_before without base date logic for now in frontend to keep simple
-            
-            if (reminderTime && reminderTime <= now) {
-              popupReminders.push({
-                id: `${t.id}_${idx}`,
-                entityId: t.id,
-                type: 'task',
-                title: t.title,
-                client_name: t.client_name,
-                message: `תזכורת למשימה: ${t.title}`,
-                ringtone: r.audio_ringtone || 'ding',
-                reminderIndex: idx,
-                isLegacy: false,
-                entity: t
-              });
-            }
-          });
-        }
-      }
-
-      // 2. Fetch Meetings
-      const meetings = await base44.entities.Meeting.filter({
-        status: { $in: ['מתוכננת', 'אושרה'] }
-      });
-
-      for (const m of meetings) {
-        if (m.reminders && Array.isArray(m.reminders)) {
-          const meetingDate = new Date(m.meeting_date);
-          m.reminders.forEach((r, idx) => {
-            if (r.sent || r.popup_shown) return;
-            if (!r.notify_popup) return;
-
-            const reminderTime = new Date(meetingDate.getTime() - (r.minutes_before || 0) * 60000);
-            
-            if (reminderTime <= now) {
-              popupReminders.push({
-                id: `${m.id}_${idx}`,
-                entityId: m.id,
-                type: 'meeting',
-                title: m.title,
-                client_name: m.client_name,
-                message: `תזכורת לפגישה: ${m.title} (${r.minutes_before} דקות לפני)`,
-                ringtone: r.audio_ringtone || 'ding',
-                reminderIndex: idx,
-                type_label: 'פגישה',
-                entity: m
-              });
-            }
-          });
-        }
-      }
-
-      if (popupReminders.length > 0) {
+      if (popups && popups.length > 0) {
         // Play Audio
-        playRingtone(popupReminders[0].ringtone || 'ding');
+        playRingtone(popups[0].ringtone || 'ding');
         
         // Show Toasts
-        popupReminders.forEach(r => {
+        popups.forEach(r => {
           toast.info(r.message, {
             description: r.client_name ? `ללקוח: ${r.client_name}` : undefined,
             icon: <Bell className="w-4 h-4" />,
@@ -137,40 +54,41 @@ export default function ReminderManager() {
         });
 
         // Update State for Popup
-        setDueReminders(prev => [...prev, ...popupReminders]);
+        setDueReminders(prev => [...prev, ...popups]);
         setOpen(true);
 
         // Mark as Shown in Backend
-        for (const item of popupReminders) {
-          if (item.type === 'task') {
-            if (item.isLegacy) {
-              await base44.entities.Task.update(item.entityId || item.id, { reminder_sent: true });
-            } else {
-              const t = item.entity;
-              if (t.reminders[item.reminderIndex]) {
-                t.reminders[item.reminderIndex].popup_shown = true;
-                // If email/wa/sms not required OR already sent, we can mark fully sent
-                const r = t.reminders[item.reminderIndex];
-                if ((!r.notify_email || r.email_sent) && 
-                    (!r.notify_whatsapp || r.whatsapp_sent) && 
-                    (!r.notify_sms || r.sms_sent)) {
-                  r.sent = true;
+        for (const item of popups) {
+          try {
+            if (item.type === 'task') {
+                // Fetch fresh entity to update
+                const t = await base44.entities.Task.get(item.entityId);
+                if (t && t.reminders && t.reminders[item.reminderIndex]) {
+                    t.reminders[item.reminderIndex].popup_shown = true;
+                    // Check if fully sent
+                    const r = t.reminders[item.reminderIndex];
+                    if ((!r.notify_email || r.email_sent) && 
+                        (!r.notify_whatsapp || r.whatsapp_sent) && 
+                        (!r.notify_sms || r.sms_sent)) {
+                      r.sent = true;
+                    }
+                    await base44.entities.Task.update(t.id, { reminders: t.reminders });
                 }
-                await base44.entities.Task.update(t.id, { reminders: t.reminders });
-              }
+            } else if (item.type === 'meeting') {
+                const m = await base44.entities.Meeting.get(item.entityId);
+                if (m && m.reminders && m.reminders[item.reminderIndex]) {
+                    m.reminders[item.reminderIndex].popup_shown = true;
+                    const r = m.reminders[item.reminderIndex];
+                    if ((!r.notify_email || r.email_sent) && 
+                        (!r.notify_whatsapp || r.whatsapp_sent) && 
+                        (!r.notify_sms || r.sms_sent)) {
+                      r.sent = true;
+                    }
+                    await base44.entities.Meeting.update(m.id, { reminders: m.reminders });
+                }
             }
-          } else if (item.type === 'meeting') {
-            const m = item.entity;
-            if (m.reminders[item.reminderIndex]) {
-              m.reminders[item.reminderIndex].popup_shown = true;
-              const r = m.reminders[item.reminderIndex];
-              if ((!r.notify_email || r.email_sent) && 
-                  (!r.notify_whatsapp || r.whatsapp_sent) && 
-                  (!r.notify_sms || r.sms_sent)) {
-                r.sent = true;
-              }
-              await base44.entities.Meeting.update(m.id, { reminders: m.reminders });
-            }
+          } catch (e) {
+            console.error("Error marking popup as shown", e);
           }
         }
       }

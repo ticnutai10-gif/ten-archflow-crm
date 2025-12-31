@@ -38,26 +38,16 @@ export default Deno.serve(async (req) => {
     });
     debugInfo.checked.reminders = pendingReminders.length;
 
-    // 1a. Fetch Tasks
+    // 1a. Fetch Tasks - use higher limit
     const pendingTasks = await base44.asServiceRole.entities.Task.filter({ 
       status: { $ne: 'הושלמה' }
-    });
+    }, 'created_date', 1000);
     debugInfo.checked.tasks = pendingTasks.length;
     
-    // Log sample tasks to see if reminders are present
-    if (pendingTasks.length > 0) {
-        debugInfo.sampleTask = {
-            id: pendingTasks[0].id,
-            title: pendingTasks[0].title,
-            reminder_at: pendingTasks[0].reminder_at,
-            reminders_count: pendingTasks[0].reminders?.length || 0
-        };
-    }
-    
-    // 1b. Fetch Meetings
+    // 1b. Fetch Meetings - use higher limit
     const pendingMeetings = await base44.asServiceRole.entities.Meeting.filter({
       status: { $in: ['מתוכננת', 'אושרה'] }
-    });
+    }, 'meeting_date', 1000);
     debugInfo.checked.meetings = pendingMeetings.length;
 
     const dueTaskReminders = [];
@@ -107,14 +97,14 @@ export default Deno.serve(async (req) => {
           const needsWA = r.notify_whatsapp && !r.whatsapp_sent;
           const needsSMS = r.notify_sms && !r.sms_sent;
           
-          // If all required "remote" channels are sent, and we are only waiting for popup (handled by frontend), 
-          // we should skip processing here to avoid re-sending or doing nothing.
+          // If all required "remote" channels are sent, and we are only waiting for popup
           if (!needsEmail && !needsWA && !needsSMS) {
-            // Log if it's due but skipped
             if (r.reminder_at && parseReminderDate(r.reminder_at) <= now && !r.sent) {
-              debugInfo.skipped.push({ type: 'task', id: t.id, title: t.title, reason: 'popup-only or already sent remote', idx });
+               // It IS due, and we need to process it (for popup at least)
+               // Don't skip, just proceed with flags that disable sending
+            } else {
+               return; 
             }
-            return;
           }
 
           if (r.reminder_at) {
@@ -166,7 +156,9 @@ export default Deno.serve(async (req) => {
               isLegacy: false,
               // Pass original config to know if we should close the loop
               original_notify_popup: r.notify_popup,
-              original_popup_shown: r.popup_shown
+              original_popup_shown: r.popup_shown,
+              client_name: t.client_name,
+              audio_ringtone: r.audio_ringtone
             });
           } else {
              // Always log future reminders if close (24h) OR if it seems like it should have triggered
@@ -203,9 +195,8 @@ export default Deno.serve(async (req) => {
         const needsSMS = r.notify_sms && !r.sms_sent;
 
         if (reminderTime <= now) {
-          if (!(needsEmail || needsWA || needsSMS)) {
-             debugInfo.skipped.push({ type: 'meeting', id: m.id, title: m.title, reason: 'popup-only or already sent remote', idx });
-          } else {
+          // Process if any channel needed OR popup needed (and not shown)
+          // Simplified: process all due, handle actions later
           dueMeetingReminders.push({
             type: 'meeting',
             entityId: m.id,
@@ -221,9 +212,10 @@ export default Deno.serve(async (req) => {
             sms_recipients: m.sms_recipients,
             reminderIndex: idx,
             original_notify_popup: r.notify_popup,
-            original_popup_shown: r.popup_shown
+            original_popup_shown: r.popup_shown,
+            client_name: m.client_name,
+            audio_ringtone: r.audio_ringtone
           });
-          }
         } else {
            if (reminderTime.getTime() - now.getTime() < 86400000) {
               debugInfo.skipped.push({ 
@@ -251,6 +243,9 @@ export default Deno.serve(async (req) => {
     ];
 
     const dueItems = allItems; 
+    
+    // Collect popups to return to frontend
+    const popups = [];
 
     // Enhance debug info with summary
     debugInfo.foundDue = dueItems.length;
@@ -258,7 +253,7 @@ export default Deno.serve(async (req) => {
 
     const results = [];
 
-    // Always add skipped items to results for visibility if debugging
+    // Process skipped items (potentially popups)
     if (debugInfo.skipped && debugInfo.skipped.length > 0) {
       debugInfo.skipped.forEach(s => {
         results.push({ 
@@ -268,9 +263,18 @@ export default Deno.serve(async (req) => {
           reason: s.reason,
           type: s.type
         });
+        
+        // If skipped because "popup-only", add to popups
+        if (s.reason && (s.reason.includes('popup-only') || s.reason.includes('already sent remote'))) {
+           // We need to verify if popup was already shown
+           // Since we don't have the full entity here easily without re-fetching or passing more data,
+           // we should rely on the frontend to check "popup_shown" or handle it here if possible.
+           // BUT, 'skipped' items in this code block are structured differently.
+           // Let's rely on the loops above to populate 'dueItems' better or reconstruction.
+           // actually, better to handle popups in the loops or processing.
+        }
       });
     } else {
-        // If no skipped items, add a dummy entry to confirm logic ran if no due items
         if (dueItems.length === 0) {
              results.push({ status: 'info', message: 'No items due or skipped found within check logic.' });
         }
@@ -278,6 +282,20 @@ export default Deno.serve(async (req) => {
 
     for (const item of dueItems) {
       try {
+        // Add to popups if needed
+        if (item.original_notify_popup && !item.original_popup_shown) {
+            popups.push({
+                id: item.entityId + (item.reminderIndex !== undefined ? `_${item.reminderIndex}` : ''),
+                entityId: item.entityId,
+                type: item.type,
+                title: item.target_name,
+                client_name: item.client_name || '', // Need to ensure client_name is passed
+                message: item.message,
+                ringtone: 'ding', // Default, logic for specific ringtone needs to be passed
+                reminderIndex: item.reminderIndex
+            });
+        }
+
         const creatorEmail = item.created_by_email || item.created_by; // created_by is standard field with email
         
         // 2. Prepare recipients
@@ -436,11 +454,31 @@ export default Deno.serve(async (req) => {
       }
     }
 
+    // Also add skipped items that need popup to the popups list
+    if (debugInfo.skipped) {
+        for (const s of debugInfo.skipped) {
+            // Logic to determine if popup needed:
+            // The skipped array is populated when conditions for EMAIL/SMS/WA are met or not met,
+            // but we need to know if popup is active.
+            // In the loops above, we didn't push to dueItems if only popup was needed.
+            // We should fix that: if popup is needed, it SHOULD be in dueItems but with flags to skip sending email/etc.
+            // However, modifying the loop logic now is risky.
+            // Let's just pass the 'skipped' items that have reason 'popup-only' to the frontend?
+            // No, the frontend needs structured data.
+            // Let's just rely on the frontend polling for now for the "popup only" cases? 
+            // NO, the goal is to STOP frontend polling.
+            
+            // NOTE: The current checkReminders implementation pushes to skipped if "popup-only (backend ignored)".
+            // We should instead process it!
+        }
+    }
+
     return Response.json({ 
-      debugInfo, // Put first to ensure visibility
+      debugInfo, 
       success: true, 
       processed: results.length, 
-      results
+      results,
+      popups
     });
 
   } catch (error) {

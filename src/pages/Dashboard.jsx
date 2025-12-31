@@ -322,53 +322,22 @@ export default function Dashboard() {
       // Stop spinner here - user sees the dashboard
       setLoading(false);
 
-      // 2. Background load: Fetch counts and full lists if needed
-      // We do this silently without blocking the UI
-      Promise.all([
-        base44.entities.Client.list().catch(() => []),
-        base44.entities.Project.list().catch(() => []),
-        base44.entities.Quote.filter({ status: 'בהמתנה' }).catch(() => []),
-        base44.entities.Task.filter({ status: { $ne: 'הושלמה' } }).catch(() => [])
-      ]).then(([allClientsData, allProjectsData, pendingQuotesData, activeTasksData]) => {
-        let validAllClients = Array.isArray(allClientsData) ? allClientsData : [];
-        
-        // Filter by access control
-        validAllClients = filterClients(validAllClients);
-
-        // Deduplicate clients (same logic as Clients page)
-        const uniqueMap = new Map();
-        for (const client of validAllClients) {
-          if (!client) continue;
-          const cleanName = (client.name_clean || client.name || '').trim().toLowerCase().replace(/\s+/g, ' ');
-          if (!cleanName) continue;
+      // 2. Background load: Fetch counts and full lists via optimized backend function
+      base44.functions.invoke('getDashboardStats').then(({ data }) => {
+        if (data && !data.error) {
+          const { clients, projects, quotes, tasks, allClients, allProjects, allTasks } = data;
           
-          if (!uniqueMap.has(cleanName)) {
-            uniqueMap.set(cleanName, client);
-          } else {
-            const existing = uniqueMap.get(cleanName);
-            if (new Date(client.updated_date) > new Date(existing.updated_date)) {
-              uniqueMap.set(cleanName, client);
-            }
+          // Use stats from backend directly
+          setStats({ clients, projects, quotes, tasks });
+          
+          // Update full lists if provided (backend handles deduplication)
+          if (Array.isArray(allClients)) {
+             setAllClients(filterClients(allClients));
           }
+          if (Array.isArray(allProjects)) setAllProjects(allProjects);
+          if (Array.isArray(allTasks)) setAllTasks(allTasks);
         }
-        const dedupedClients = Array.from(uniqueMap.values());
-        
-        const validAllProjects = Array.isArray(allProjectsData) ? allProjectsData : [];
-        const validPendingQuotes = Array.isArray(pendingQuotesData) ? pendingQuotesData : [];
-        const validActiveTasks = Array.isArray(activeTasksData) ? activeTasksData : [];
-
-        setStats({
-          clients: dedupedClients.filter(c => c.status === 'פעיל').length,
-          projects: validAllProjects.filter(p => p?.status !== 'הושלם').length,
-          quotes: validPendingQuotes.length,
-          tasks: validActiveTasks.length
-        });
-        
-        // Update full lists for components that might need them (e.g. dropdowns)
-        setAllClients(dedupedClients);
-        setAllProjects(validAllProjects);
-        setAllTasks(validActiveTasks);
-      }).catch(e => console.warn("Background data fetch failed", e));
+      }).catch(e => console.warn("Background stats fetch failed", e));
 
     } catch (error) {
       console.error("Dashboard initial load failed", error);
