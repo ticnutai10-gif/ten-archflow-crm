@@ -59,6 +59,9 @@ const AnalyticsView = React.lazy(() => import("../components/dashboard/Analytics
 const HeatmapView = React.lazy(() => import("../components/dashboard/HeatmapView"));
 const TrendsView = React.lazy(() => import("../components/dashboard/TrendsView"));
 const AIInsightsPanel = React.lazy(() => import("../components/ai/AIInsightsPanel"));
+const StatsWidget = React.lazy(() => import("../components/dashboard/StatsWidget"));
+const UpcomingDeadlinesWidget = React.lazy(() => import("../components/dashboard/UpcomingDeadlinesWidget"));
+const ActivityFeedWidget = React.lazy(() => import("../components/dashboard/ActivityFeedWidget"));
 import QuickCreationTabs from "../components/dashboard/QuickCreationTabs";
 import { useIsMobile } from "../components/utils/useMediaQuery";
 import { useAccessControl } from "../components/access/AccessValidator";
@@ -121,8 +124,11 @@ export default function Dashboard() {
   });
   const [visibleCards, setVisibleCards] = useState(initialPrefs?.visibleCards || {
     stats: true,
+    quickActions: true,
     aiInsights: true,
     projectsOverview: true,
+    upcomingDeadlines: true,
+    activityFeed: true,
     recentProjects: true,
     recentClients: true,
     upcomingTasks: true,
@@ -132,7 +138,10 @@ export default function Dashboard() {
   });
   const [cardOrder, setCardOrder] = useState(initialPrefs?.cardOrder || [
     { id: 'stats', name: 'סטטיסטיקות' },
+    { id: 'quickActions', name: 'פעולות מהירות' },
     { id: 'aiInsights', name: 'תובנות AI' },
+    { id: 'upcomingDeadlines', name: 'מועדים קרובים' },
+    { id: 'activityFeed', name: 'פעילות אחרונה' },
     { id: 'projectsOverview', name: 'סקירת פרויקטים' },
     { id: 'recentProjects', name: 'פרויקטים אחרונים' },
     { id: 'recentClients', name: 'לקוחות אחרונים' },
@@ -550,169 +559,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Quick Creation Tabs */}
-        <div className="mb-6">
-          <QuickCreationTabs clients={allClients} onUpdate={loadDashboardData} />
-        </div>
-
-        {/* Stats Cards */}
-        {visibleCards.stats && (
-          isMobile ? (
-            /* Mobile Stats - Large Touch-Friendly Grid */
-            <div className="grid grid-cols-2 gap-3 mb-4" dir="rtl">
-              <Link to={createPageUrl("Clients")} className="block relative">
-                <Card className="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-lg hover:shadow-xl transition-all active:scale-95">
-                  <CardContent className="p-4 text-center relative">
-                    <div className="absolute top-0 left-0">
-                       <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <div className="p-2" onClick={(e) => e.preventDefault()}>
-                             <Filter className="w-4 h-4 text-white/70" />
-                          </div>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start">
-                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setClientFilter('all'); }}>כל הלקוחות</DropdownMenuItem>
-                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setClientFilter('active'); }}>לקוחות פעילים</DropdownMenuItem>
-                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setClientFilter('potential'); }}>לקוחות פוטנציאליים</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                    <div className="w-14 h-14 mx-auto mb-2 rounded-2xl bg-white/20 flex items-center justify-center">
-                      <Users className="w-7 h-7" />
-                    </div>
-                    <div className="text-3xl font-bold mb-1">{displayedClientCount}</div>
-                    <div className="text-xs text-white/80">{clientFilterLabel}</div>
-                  </CardContent>
-                </Card>
-              </Link>
-
-              <Link to={createPageUrl("Projects")} className="block">
-                <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white shadow-lg hover:shadow-xl transition-all active:scale-95">
-                  <CardContent className="p-4 text-center">
-                    <div className="w-14 h-14 mx-auto mb-2 rounded-2xl bg-white/20 flex items-center justify-center">
-                      <Briefcase className="w-7 h-7" />
-                    </div>
-                    <div className="text-3xl font-bold mb-1">{stats.projects}</div>
-                    <div className="text-xs text-white/80">פרויקטים פעילים</div>
-                  </CardContent>
-                </Card>
-              </Link>
-
-              <Link to={createPageUrl("Quotes")} className="block">
-                <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white shadow-lg hover:shadow-xl transition-all active:scale-95">
-                  <CardContent className="p-4 text-center">
-                    <div className="w-14 h-14 mx-auto mb-2 rounded-2xl bg-white/20 flex items-center justify-center">
-                      <DollarSign className="w-7 h-7" />
-                    </div>
-                    <div className="text-3xl font-bold mb-1">{stats.quotes}</div>
-                    <div className="text-xs text-white/80">הצעות בהמתנה</div>
-                  </CardContent>
-                </Card>
-              </Link>
-
-              <Link to={createPageUrl("Tasks")} className="block">
-                <Card className="bg-gradient-to-br from-yellow-500 to-yellow-600 text-white shadow-lg hover:shadow-xl transition-all active:scale-95">
-                  <CardContent className="p-4 text-center">
-                    <div className="w-14 h-14 mx-auto mb-2 rounded-2xl bg-white/20 flex items-center justify-center">
-                      <CheckSquare className="w-7 h-7" />
-                    </div>
-                    <div className="text-3xl font-bold mb-1">{stats.tasks}</div>
-                    <div className="text-xs text-white/80">משימות פתוחות</div>
-                  </CardContent>
-                </Card>
-              </Link>
-            </div>
-          ) : (
-            /* Desktop Stats */
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8" dir="rtl">
-              <Card className="bg-white shadow-md hover:shadow-lg transition-shadow relative overflow-visible">
-                <div className="absolute top-2 left-2 z-10">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-blue-600">
-                        <Filter className="h-3 w-3" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => setClientFilter('all')}>כל הלקוחות</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setClientFilter('active')}>לקוחות פעילים</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setClientFilter('potential')}>לקוחות פוטנציאליים</DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm text-slate-600 font-normal text-center">
-                    {clientFilterLabel}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="font-bold text-center mb-2 text-4xl">
-                    {displayedClientCount}
-                  </div>
-                  <Link to={createPageUrl("Clients")} className="block">
-                    <Button variant="link" className="w-full text-xs" style={{ color: '#2C3E50' }}>
-                      → כל הלקוחות
-                    </Button>
-                  </Link>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-white shadow-md hover:shadow-lg transition-shadow">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm text-slate-600 font-normal text-center">
-                    פרויקטים פעילים
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="font-bold text-center mb-2 text-4xl">
-                    {stats.projects}
-                  </div>
-                  <Link to={createPageUrl("Projects")} className="block">
-                    <Button variant="link" className="w-full text-xs" style={{ color: '#2C3E50' }}>
-                      → כל הפרויקטים
-                    </Button>
-                  </Link>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-white shadow-md hover:shadow-lg transition-shadow">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm text-slate-600 font-normal text-center">
-                    הצעות בהמתנה
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="font-bold text-center mb-2 text-4xl">
-                    {stats.quotes}
-                  </div>
-                  <Link to={createPageUrl("Quotes")} className="block">
-                    <Button variant="link" className="w-full text-xs" style={{ color: '#2C3E50' }}>
-                      → כל ההצעות
-                    </Button>
-                  </Link>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-white shadow-md hover:shadow-lg transition-shadow">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm text-slate-600 font-normal text-center">
-                    משימות פתוחות
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="font-bold text-center mb-2 text-4xl">
-                    {stats.tasks}
-                  </div>
-                  <Link to={createPageUrl("Tasks")} className="block">
-                    <Button variant="link" className="w-full text-xs" style={{ color: '#2C3E50' }}>
-                      → כל המשימות
-                    </Button>
-                  </Link>
-                </CardContent>
-              </Card>
-            </div>
-          )
-        )}
+        {/* Stats and Quick Actions handled in the grid */}
 
         {/* Cards Grid */}
         <Suspense fallback={<div className="text-center py-8"><div className="animate-spin w-8 h-8 border-4 border-slate-300 border-t-blue-600 rounded-full mx-auto"></div></div>}>
@@ -730,8 +577,56 @@ export default function Dashboard() {
           {cardOrder.map((cardDef) => {
             const cardId = cardDef.id;
             
-            // Skip stats - rendered separately
-            if (cardId === 'stats' || !visibleCards[cardId]) return null;
+            // Check visibility
+            if (!visibleCards[cardId]) return null;
+
+            // Stats Widget
+            if (cardId === 'stats') {
+              return (
+                <div key={cardId} className="h-full">
+                  <StatsWidget 
+                    stats={stats}
+                    displayedClientCount={displayedClientCount}
+                    clientFilter={clientFilter}
+                    setClientFilter={setClientFilter}
+                    clientFilterLabel={clientFilterLabel}
+                    isMobile={isMobile}
+                  />
+                </div>
+              );
+            }
+
+            // Quick Actions
+            if (cardId === 'quickActions') {
+              return (
+                <div key={cardId} className="h-full">
+                  <QuickCreationTabs clients={allClients} onUpdate={loadDashboardData} />
+                </div>
+              );
+            }
+
+            // Upcoming Deadlines
+            if (cardId === 'upcomingDeadlines') {
+              return (
+                <div key={cardId} className="h-full">
+                  <UpcomingDeadlinesWidget tasks={upcomingTasks} meetings={upcomingMeetings} />
+                </div>
+              );
+            }
+
+            // Activity Feed
+            if (cardId === 'activityFeed') {
+              return (
+                <div key={cardId} className="h-full">
+                  <ActivityFeedWidget 
+                    recentProjects={recentProjects}
+                    recentQuotes={quotes}
+                    upcomingTasks={upcomingTasks}
+                    recentClients={allClients.slice(0, 5)} // Pass some recent clients
+                  />
+                </div>
+              );
+            }
             
             // Skip non-focused cards in focus mode
             if (focusedCard && focusedCard !== cardId) return null;

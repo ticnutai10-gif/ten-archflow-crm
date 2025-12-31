@@ -16,7 +16,10 @@ const DEFAULT_CARD_ORDER = [
   { id: 'upcomingTasks', name: 'משימות קרובות', icon: '✅', desc: 'משימות שצריך לבצע בקרוב' },
   { id: 'quoteStatus', name: 'הצעות מחיר', icon: '💰', desc: 'סטטוס הצעות מחיר פתוחות' },
   { id: 'timerLogs', name: 'לוגי זמן', icon: '⏱️', desc: 'תיעוד שעות עבודה' },
-  { id: 'upcomingMeetings', name: 'פגישות קרובות', icon: '📅', desc: 'פגישות מתוכננות הקרובות' }
+  { id: 'upcomingMeetings', name: 'פגישות קרובות', icon: '📅', desc: 'פגישות מתוכננות הקרובות' },
+  { id: 'quickActions', name: 'פעולות מהירות', icon: '⚡', desc: 'יצירה מהירה של משימות ופגישות' },
+  { id: 'upcomingDeadlines', name: 'מועדים קרובים', icon: '⏰', desc: 'משימות ופגישות קרובות' },
+  { id: 'activityFeed', name: 'פעילות אחרונה', icon: '📝', desc: 'עדכונים אחרונים מהמערכת' }
 ];
 
 export default function DashboardCustomizer({ open, onClose, visibleCards, cardOrder, onSave }) {
@@ -62,7 +65,10 @@ export default function DashboardCustomizer({ open, onClose, visibleCards, cardO
         upcomingTasks: true,
         quoteStatus: true,
         timerLogs: true,
-        upcomingMeetings: true
+        upcomingMeetings: true,
+        quickActions: true,
+        upcomingDeadlines: true,
+        activityFeed: true
       });
     });
   };
