@@ -11,8 +11,24 @@ import { Plus, X, Bell, Mail, Smartphone, Sparkles, Play } from "lucide-react";
 import { playRingtone } from '@/components/utils/audio';
 import SmartAgendaGenerator from "../ai/SmartAgendaGenerator";
 import { toast } from "sonner";
+import { base44 } from "@/api/base44Client";
 
 export default function MeetingForm({ meeting, clients, projects, initialDate, onSubmit, onCancel }) {
+  const [user, setUser] = useState(null);
+  const [customRingtones, setCustomRingtones] = useState([]);
+
+  useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        const currentUser = await base44.auth.me();
+        setUser(currentUser);
+        setCustomRingtones(currentUser.custom_ringtones || []);
+      } catch (error) {
+        console.error('Error loading user data:', error);
+      }
+    };
+    loadUserData();
+  }, []);
   const getDefaultDate = () => {
     if (meeting?.meeting_date) return meeting.meeting_date;
     if (initialDate) {
