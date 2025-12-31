@@ -66,7 +66,7 @@ export default function MultiRecipientSelector({
     <div className="space-y-2">
       <div className="flex flex-wrap gap-2 p-2 border rounded-md bg-white min-h-[42px] focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 transition-all">
         {recipients.map((email, idx) => (
-          <Badge key={idx} variant="secondary" className="gap-1 pl-1 pr-2 py-1 text-sm font-normal bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200">
+          <Badge key={`${email}-${idx}`} variant="secondary" className="gap-1 pl-1 pr-2 py-1 text-sm font-normal bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200">
             <Mail className="w-3 h-3 opacity-50" />
             {email}
             <button
@@ -100,9 +100,9 @@ export default function MultiRecipientSelector({
             <div className="absolute top-full right-0 left-0 mt-1 bg-white border rounded-md shadow-lg z-50 max-h-60 overflow-auto">
               {filteredClients.length > 0 ? (
                 <ul className="py-1">
-                  {filteredClients.map((client) => (
+                  {filteredClients.map((client, idx) => (
                     <li
-                      key={client.email}
+                      key={`${client.email}-${idx}`}
                       className="px-3 py-2 text-sm hover:bg-slate-50 cursor-pointer flex items-center gap-2"
                       onMouseDown={(e) => {
                         e.preventDefault(); // Prevent blur
