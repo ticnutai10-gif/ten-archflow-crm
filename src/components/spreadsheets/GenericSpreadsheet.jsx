@@ -4028,6 +4028,25 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
             <Button 
               variant="ghost" 
               size="sm" 
+              className="w-full justify-start gap-2 hover:bg-yellow-50"
+              onClick={() => {
+                const cellKey = cellContextMenu;
+                const lastColIndex = cellKey.lastIndexOf('_col');
+                const rowId = cellKey.substring(0, lastColIndex);
+                const colKey = cellKey.substring(lastColIndex + 1);
+                const row = rowsData.find(r => r.id === rowId);
+                const value = row ? row[colKey] : '';
+                setReminderTarget({ cellKey, value });
+                setShowReminderDialog(true);
+                setCellContextMenu(null);
+              }}
+            >
+              <Zap className="w-4 h-4 text-yellow-600" />
+              הגדר תזכורת
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm" 
               className="w-full justify-start gap-2 hover:bg-purple-50"
               onClick={() => handleColorSingleCell(cellContextMenu)}
             >
