@@ -217,12 +217,14 @@ function LayoutInner({ children, currentPageName }) {
     width: '320px',
     opacity: 1,
     visibility: 'visible',
-    transform: 'translateX(0)'
+    transform: 'translateX(0)',
+    zIndex: 50
   } : {
     width: '0px',
     opacity: 0,
     visibility: 'hidden',
-    transform: 'translateX(100%)'
+    transform: 'translateX(100%)',
+    zIndex: 0
   };
 
   const getUserDisplayName = useCallback(() => {
