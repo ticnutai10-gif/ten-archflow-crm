@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { base44 } from "@/api/base44Client";
 import MultiRecipientSelector from "@/components/common/MultiRecipientSelector";
 import MultiPhoneSelector from "@/components/common/MultiPhoneSelector";
+import CheckRemindersButton from "@/components/debug/CheckRemindersButton";
 
 export default function MeetingForm({ meeting, clients, projects, initialDate, onSubmit, onCancel }) {
   const [user, setUser] = useState(null);
@@ -356,7 +357,10 @@ export default function MeetingForm({ meeting, clients, projects, initialDate, o
           {/* Reminders */}
           <div className="p-4 bg-slate-50 rounded-lg space-y-3">
             <div className="flex items-center justify-between">
-              <Label className="text-base font-semibold">תזכורות מותאמות</Label>
+              <div className="flex items-center gap-2">
+                <Label className="text-base font-semibold">תזכורות מותאמות</Label>
+                <CheckRemindersButton />
+              </div>
               <Button type="button" size="sm" onClick={addReminder} variant="outline">
                 <Plus className="w-4 h-4 ml-1" />
                 הוסף תזכורת
