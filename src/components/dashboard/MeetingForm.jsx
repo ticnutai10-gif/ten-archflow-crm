@@ -549,6 +549,46 @@ export default function MeetingForm({ meeting, clients, projects, initialDate, o
               ))}
             </div>
           </div>
+
+          {/* Recurrence */}
+          <div className="p-4 bg-slate-50 rounded-lg border border-indigo-100">
+            <div className="flex items-center gap-2 mb-2">
+              <Switch 
+                checked={formData.recurrence?.enabled} 
+                onCheckedChange={(v) => updateField('recurrence', { ...formData.recurrence, enabled: v })} 
+              />
+              <Label className="font-semibold">פגישה חוזרת</Label>
+            </div>
+            
+            {formData.recurrence?.enabled && (
+              <div className="grid grid-cols-2 gap-3 mt-2 bg-white p-3 rounded border">
+                <div>
+                  <Label className="text-xs">תדירות</Label>
+                  <Select 
+                    value={formData.recurrence?.frequency || 'weekly'} 
+                    onValueChange={(v) => updateField('recurrence', { ...formData.recurrence, frequency: v })}
+                  >
+                    <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="daily">יומי</SelectItem>
+                      <SelectItem value="weekly">שבועי</SelectItem>
+                      <SelectItem value="monthly">חודשי</SelectItem>
+                      <SelectItem value="yearly">שנתי</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs">תאריך סיום (אופציונלי)</Label>
+                  <Input 
+                    type="date" 
+                    className="h-8" 
+                    value={formData.recurrence?.end_date || ''}
+                    onChange={(e) => updateField('recurrence', { ...formData.recurrence, end_date: e.target.value })}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         <DialogFooter className="px-6 py-4 border-t border-slate-100 shrink-0 bg-slate-50/50 rounded-b-2xl">

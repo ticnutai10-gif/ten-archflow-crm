@@ -183,24 +183,66 @@ export default Deno.serve(async (req) => {
            // Send to each recipient
            for (const phone of whatsappRecipients) {
              try {
-               // Create a CommunicationMessage for the agent to pick up
                await base44.asServiceRole.entities.CommunicationMessage.create({
                  type: 'whatsapp',
                  direction: 'outbound',
                  content: `🔔 תזכורת: ${item.target_name}\n${item.message || ''}\nמועד: ${new Date(item.reminder_date).toLocaleString('he-IL')}`,
                  status: 'pending', 
-                 metadata: {
-                   target_phone: phone,
-                   source: 'reminder_system'
-                 }
+                 metadata: { target_phone: phone, source: 'reminder_system' }
                });
              } catch(e) { console.warn("Could not create WhatsApp message", e); }
            }
         }
 
-        // 4. Update status to sent
+        // 3c. Send SMS
+        if (item.notify_sms) {
+           const smsRecipients = [];
+           if (item.sms_recipients && Array.isArray(item.sms_recipients) && item.sms_recipients.length > 0) {
+             smsRecipients.push(...item.sms_recipients);
+           }
+           
+           for (const phone of smsRecipients) {
+             try {
+               await base44.asServiceRole.entities.CommunicationMessage.create({
+                 type: 'sms',
+                 direction: 'outbound',
+                 recipient: phone,
+                 content: `🔔 תזכורת: ${item.target_name}\n${item.message || ''}`,
+                 status: 'pending', 
+                 metadata: { source: 'reminder_system' }
+               });
+             } catch(e) { console.warn("Could not create SMS message", e); }
+           }
+        }
+
+        // 4. Update status to sent & Handle Recurrence
+        const getNextDate = (currentDate, recurrence) => {
+          const date = new Date(currentDate);
+          const { frequency, interval = 1 } = recurrence;
+          switch (frequency) {
+            case 'daily': date.setDate(date.getDate() + interval); break;
+            case 'weekly': date.setDate(date.getDate() + (interval * 7)); break;
+            case 'monthly': date.setMonth(date.getMonth() + interval); break;
+            case 'yearly': date.setFullYear(date.getFullYear() + interval); break;
+          }
+          return date;
+        };
+
         if (item.type === 'reminder') {
+          const r = await base44.asServiceRole.entities.Reminder.get(item.entityId);
           await base44.asServiceRole.entities.Reminder.update(item.entityId, { status: 'sent' });
+          
+          if (r && r.recurrence?.enabled && r.recurrence?.frequency) {
+             const nextDate = getNextDate(r.reminder_date, r.recurrence);
+             if (!r.recurrence.end_date || nextDate <= new Date(r.recurrence.end_date)) {
+               await base44.asServiceRole.entities.Reminder.create({
+                 ...r,
+                 id: undefined, created_date: undefined, updated_date: undefined,
+                 reminder_date: nextDate.toISOString(),
+                 status: 'pending'
+               });
+             }
+          }
         } else if (item.type === 'task') {
           await base44.asServiceRole.entities.Task.update(item.entityId, { reminder_sent: true });
         } else if (item.type === 'meeting') {

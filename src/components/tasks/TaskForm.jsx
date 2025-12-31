@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { base44 } from "@/api/base44Client";
-import { Clock, Play } from "lucide-react";
+import { Clock, Play, X } from "lucide-react";
 import { playRingtone } from '@/components/utils/audio';
 import {
   DropdownMenu,
