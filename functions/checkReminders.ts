@@ -164,13 +164,11 @@ export default Deno.serve(async (req) => {
       ...dueMeetingReminders
     ];
 
-    const dueItems = allItems; // already filtered
+    const dueItems = allItems; 
 
-    console.log(`Found ${dueItems.length} due items.`);
-    
-    if (dueItems.length === 0) {
-       console.log("No due items found. Debug info:", JSON.stringify(debugInfo, null, 2));
-    }
+    // Enhance debug info with summary
+    debugInfo.foundDue = dueItems.length;
+    debugInfo.summary = `Checked ${debugInfo.checked.tasks} tasks, ${debugInfo.checked.meetings} meetings. Found ${dueItems.length} due.`;
 
     const results = [];
 
@@ -293,7 +291,15 @@ export default Deno.serve(async (req) => {
              }
           }
         } else if (item.type === 'task') {
-          await base44.asServiceRole.entities.Task.update(item.entityId, { reminder_sent: true });
+          if (item.isLegacy) {
+            await base44.asServiceRole.entities.Task.update(item.entityId, { reminder_sent: true });
+          } else {
+            const task = await base44.asServiceRole.entities.Task.get(item.entityId);
+            if (task && task.reminders && task.reminders[item.reminderIndex]) {
+              task.reminders[item.reminderIndex].sent = true;
+              await base44.asServiceRole.entities.Task.update(item.entityId, { reminders: task.reminders });
+            }
+          }
         } else if (item.type === 'meeting') {
           // We need to fetch the meeting again to ensure we don't overwrite other updates, 
           // but for simplicity we assume race conditions are rare on the same second.
@@ -314,7 +320,12 @@ export default Deno.serve(async (req) => {
       }
     }
 
-    return Response.json({ success: true, processed: results.length, results, debugInfo });
+    return Response.json({ 
+      debugInfo, // Put first to ensure visibility
+      success: true, 
+      processed: results.length, 
+      results
+    });
 
   } catch (error) {
     console.error('Check Reminders Error:', error);
