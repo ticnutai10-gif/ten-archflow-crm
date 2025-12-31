@@ -89,7 +89,7 @@ DialogHeader.displayName = "DialogHeader"
 
 const DialogFooter = ({ className, ...props }) => (
   <div
-    className={cn("flex flex-row justify-end gap-2 px-6 py-4 border-t border-slate-200 bg-slate-50", className)}
+    className={cn("flex flex-row justify-end gap-3 px-8 py-5 border-t border-[#D4AF37]/20 bg-gradient-to-l from-amber-50/30 to-transparent", className)}
     {...props}
   />
 );
