@@ -3033,14 +3033,14 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
 
             {/* Center: Toolbar Actions */}
             <div className="flex flex-1 items-center gap-1 overflow-x-auto no-scrollbar mask-fade-right justify-start lg:justify-center">
-              <Button onClick={handleUndo} size="sm" variant="outline" disabled={!canUndo} title="בטל (Ctrl+Z)"><Undo className="w-4 h-4" /></Button>
-              <Button onClick={handleRedo} size="sm" variant="outline" disabled={!canRedo} title="שחזר (Ctrl+Y)"><Redo className="w-4 h-4" /></Button>
+              <Button onClick={handleUndo} size="sm" variant="ghost" className="h-8 w-8 p-0" disabled={!canUndo} title="בטל (Ctrl+Z)"><Undo className="w-4 h-4" /></Button>
+              <Button onClick={handleRedo} size="sm" variant="ghost" className="h-8 w-8 p-0" disabled={!canRedo} title="שחזר (Ctrl+Y)"><Redo className="w-4 h-4" /></Button>
+              
+              <div className="h-4 w-px bg-slate-200 mx-1"></div>
+
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button size="sm" variant="outline" className="gap-2">
-                    <Type className="w-4 h-4" />
-                    כותרות משנה
-                  </Button>
+                  <Button size="sm" className="gap-1 h-8 bg-blue-600 text-white hover:bg-blue-700 border-none shadow-sm"><Plus className="w-3.5 h-3.5" /> שורה</Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-64" align="end" dir="rtl">
                   <div className="space-y-3">
@@ -3159,35 +3159,10 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                   </div>
                 </PopoverContent>
               </Popover>
-              <Button onClick={() => setShowColumnStats(!showColumnStats)} size="sm" variant="outline" className="gap-2"><BarChart3 className="w-4 h-4" />סטטיסטיקות</Button>
-              <Button onClick={() => React.startTransition(() => setShowThemeSelector(true))} size="sm" variant="outline" className="gap-2"><Palette className="w-4 h-4" />עיצוב</Button>
-              <Button onClick={() => React.startTransition(() => setShowViewManager(true))} size="sm" variant="outline" className="gap-2">
-                <Layers className="w-4 h-4" />תצוגות
-                {savedViews.length > 0 && <Badge variant="outline" className="mr-1 h-5 px-1.5 text-xs">{savedViews.length}</Badge>}
-              </Button>
-              <Button onClick={() => React.startTransition(() => { setEditingChart(null); setShowChartBuilder(true); })} size="sm" variant="outline" className="gap-2 hover:bg-green-50">
-                <BarChart3 className="w-4 h-4" />גרפים
-                {charts.length > 0 && <Badge variant="outline" className="mr-1 h-5 px-1.5 text-xs bg-green-50 text-green-700">{charts.length}</Badge>}
-              </Button>
+              {/* Old Buttons Removed - now in menu */}
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button size="sm" className="gap-2"><Plus className="w-4 h-4" />שורה</Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-56" align="end" dir="rtl">
-                  <div className="space-y-2">
-                    <Button variant="outline" size="sm" className="w-full justify-start gap-2" onClick={addNewRow}>
-                      <Plus className="w-4 h-4" />שורה ריקה
-                    </Button>
-                    <Button variant="outline" size="sm" className="w-full justify-start gap-2 bg-blue-50 hover:bg-blue-100 border-blue-300" onClick={() => React.startTransition(() => setShowAddFromClientDialog(true))}>
-                      <Users className="w-4 h-4 text-blue-600" />
-                      <span className="text-blue-900">מלקוח קיים</span>
-                    </Button>
-                  </div>
-                </PopoverContent>
-              </Popover>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button size="sm" className="gap-2"><Plus className="w-4 h-4" />עמודה</Button>
+                  <Button size="sm" variant="outline" className="gap-1 h-8"><Plus className="w-3.5 h-3.5" /> עמודה</Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-56" align="end" dir="rtl">
                   <div className="space-y-2">
@@ -3201,14 +3176,58 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                   </div>
                 </PopoverContent>
               </Popover>
-              <Button onClick={() => React.startTransition(() => setShowColumnsManager(true))} size="sm" variant="outline" className="gap-2 hover:bg-orange-50">
+
+              <Button onClick={() => React.startTransition(() => setShowColumnsManager(true))} size="sm" variant="ghost" className="gap-2 h-8 hover:bg-orange-50 text-slate-600">
                 <Settings className="w-4 h-4" />
-                ניהול עמודות + צבעים
+                עמודות
               </Button>
-              <Button onClick={() => setShowDataTypesManager(true)} size="sm" variant="outline" className="gap-2 hover:bg-purple-50">
+
+              <Button onClick={() => setShowDataTypesManager(true)} size="sm" variant="ghost" className="gap-2 h-8 hover:bg-purple-50 text-slate-600">
                 <Layers className="w-4 h-4 text-purple-600" />
-                ניהול סוגי נתונים
+                סוגי נתונים
               </Button>
+
+              <div className="h-4 w-px bg-slate-200 mx-1"></div>
+
+              {/* View & Settings Menu */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button size="sm" variant="ghost" className="gap-2 h-8 text-slate-600">
+                    <Eye className="w-4 h-4" />
+                    תצוגה והגדרות
+                    <ChevronDown className="w-3 h-3 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-64" align="start" dir="rtl">
+                  <div className="space-y-1">
+                    <Button onClick={() => React.startTransition(() => setShowThemeSelector(true))} variant="ghost" className="w-full justify-start gap-2 h-8"><Palette className="w-4 h-4" /> עיצוב טבלה</Button>
+                    <Button onClick={() => setShowColumnStats(!showColumnStats)} variant="ghost" className="w-full justify-start gap-2 h-8"><BarChart3 className="w-4 h-4" /> {showColumnStats ? 'הסתר' : 'הצג'} סטטיסטיקות</Button>
+                    <Button onClick={() => React.startTransition(() => { setEditingChart(null); setShowChartBuilder(true); })} variant="ghost" className="w-full justify-start gap-2 h-8"><BarChart3 className="w-4 h-4" /> ניהול גרפים</Button>
+                    <Button onClick={() => React.startTransition(() => setShowViewManager(true))} variant="ghost" className="w-full justify-start gap-2 h-8"><Layers className="w-4 h-4" /> ניהול תצוגות שמורות</Button>
+                    
+                    <Separator className="my-1" />
+                    
+                    <div className="flex items-center justify-between px-2 py-1">
+                      <span className="text-sm">כותרות משנה</span>
+                      <Switch checked={showSubHeaders} onCheckedChange={(val) => { setShowSubHeaders(val); setTimeout(() => saveToBackend(), 50); }} />
+                    </div>
+                    
+                    <Separator className="my-1" />
+                    
+                    <div className="px-2 py-1">
+                        <div className="text-xs font-medium text-slate-500 mb-1">הקפאה</div>
+                        <div className="flex items-center justify-between mb-1">
+                            <span className="text-sm">עמודות:</span>
+                            <Input type="number" min="0" max="5" value={freezeSettings.freeze_columns} onChange={(e) => { const val = parseInt(e.target.value)||0; setFreezeSettings(prev=>({...prev, freeze_columns:val})); setTimeout(()=>saveToBackend(),500); }} className="w-12 h-6 text-center" />
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <span className="text-sm">שורות:</span>
+                            <Input type="number" min="0" max="5" value={freezeSettings.freeze_rows} onChange={(e) => { const val = parseInt(e.target.value)||0; setFreezeSettings(prev=>({...prev, freeze_rows:val})); setTimeout(()=>saveToBackend(),500); }} className="w-12 h-6 text-center" />
+                        </div>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
               <Button 
                 onClick={() => { setCommentsTargetCell(null); setShowCommentsSidebar(true); }} 
                 size="sm" 
