@@ -281,132 +281,172 @@ export default function TaskForm({ task, clients, projects, onSubmit, onCancel, 
             <Input type="date" value={formData.due_date} onChange={(e) => updateField('due_date', e.target.value)} />
           </div>
 
-          {/* תזכורות */}
-          <div className="mt-2 p-3 rounded-lg border bg-slate-50 space-y-3">
+          {/* תזכורות מרובות וחזרתיות */}
+          <div className="mt-2 p-3 rounded-lg border bg-slate-50 space-y-4">
             <div className="flex items-center justify-between">
-              <Label className="font-semibold">תזכורת</Label>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-slate-600">מופעל</span>
-                <Switch checked={!!formData.reminder_enabled} onCheckedChange={(v) => updateField('reminder_enabled', v)} />
-              </div>
+              <Label className="font-semibold text-base">תזכורות וחזרתיות</Label>
+              <Button type="button" variant="outline" size="sm" onClick={() => {
+                const newReminder = { 
+                  reminder_at: formData.due_date ? `${formData.due_date}T09:00` : new Date().toISOString(),
+                  notify_popup: true,
+                  notify_audio: true,
+                  notify_email: false, 
+                  notify_whatsapp: false,
+                  notify_sms: false
+                };
+                updateField('reminders', [...(formData.reminders || []), newReminder]);
+              }}>
+                <Clock className="w-4 h-4 ml-2" />
+                הוסף תזכורת
+              </Button>
             </div>
 
-            {formData.reminder_enabled && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label>מועד התזכורת</Label>
-                  {/* Replace absolute icon with inline button so it won't overlap ringtone section */}
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="datetime-local"
-                      value={formData.reminder_at || ''}
-                      onChange={(e) => updateField('reminder_at', e.target.value)}
-                      className="flex-1"
-                    />
-                    <ReminderTimePicker
-                      value={formData.reminder_at}
-                      baseDate={formData.due_date}
-                      onChange={(v) => updateField('reminder_at', v)}
-                    />
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>רינגטון</Label>
-                  <div className="flex gap-2">
-                    <div className="flex-1">
-                      <Select
-                        value={formData.reminder_ringtone}
-                        onValueChange={(v) => updateField('reminder_ringtone', v)}
-                      >
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="ding">🔔 צלצול קלאסי</SelectItem>
-                      <SelectItem value="chime">🔔 פעמונים</SelectItem>
-                      <SelectItem value="alarm">🚨 אזעקה</SelectItem>
-                      
-                      <div className="p-1 px-2 text-xs font-semibold text-slate-500 bg-slate-50">מוזיקה קלאסית</div>
-                      <SelectItem value="beethoven_5th">🎼 בטהובן - הסימפוניה ה-5</SelectItem>
-                      <SelectItem value="vivaldi_spring">🎼 ויוואלדי - אביב</SelectItem>
-                      <SelectItem value="mozart_night">🎼 מוצרט - מוזיקת לילה זעירה</SelectItem>
-                      <SelectItem value="bach_cello">🎼 באך - סוויטת צ'לו</SelectItem>
-                      <SelectItem value="tchaikovsky_sugar">🎼 צ'ייקובסקי - מפצח האגוזים</SelectItem>
-                      <SelectItem value="brahms_lullaby">🎼 ברהמס - שיר ערש</SelectItem>
-                      <SelectItem value="chopin_nocturne">🎼 שופן - נוקטורן</SelectItem>
-                      <SelectItem value="debussy_clair">🎼 דביסי - לאור הירח</SelectItem>
-                      <SelectItem value="pachelbel_canon">🎼 פכלבל - קאנון ברה מז'ור</SelectItem>
-                      <SelectItem value="strauss_danube">🎼 שטראוס - הדנובה הכחולה</SelectItem>
-
-                      {customRingtones.length > 0 && (
-                        <>
-                          <div className="p-1 px-2 text-xs font-semibold text-slate-500 bg-slate-50">מותאם אישית</div>
-                          {customRingtones.map(ringtone => (
-                            <SelectItem key={ringtone.id} value={`custom_${ringtone.id}`}>
-                              🎵 {ringtone.name}
-                            </SelectItem>
-                          ))}
-                        </>
-                      )}
-                    </SelectContent>
-                  </Select>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      onClick={() => playRingtone(formData.reminder_ringtone)}
-                      title="השמע דוגמה"
-                      className="shrink-0"
+            {/* Recurrence */}
+            <div className="bg-white p-3 rounded border border-indigo-100">
+              <div className="flex items-center gap-2 mb-2">
+                <Switch 
+                  checked={formData.recurrence?.enabled} 
+                  onCheckedChange={(v) => updateField('recurrence', { ...formData.recurrence, enabled: v })} 
+                />
+                <Label>משימה חוזרת</Label>
+              </div>
+              
+              {formData.recurrence?.enabled && (
+                <div className="grid grid-cols-2 gap-3 mt-2">
+                  <div>
+                    <Label className="text-xs">תדירות</Label>
+                    <Select 
+                      value={formData.recurrence?.frequency || 'weekly'} 
+                      onValueChange={(v) => updateField('recurrence', { ...formData.recurrence, frequency: v })}
                     >
-                      <Play className="w-4 h-4" />
-                    </Button>
+                      <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="daily">יומי</SelectItem>
+                        <SelectItem value="weekly">שבועי</SelectItem>
+                        <SelectItem value="monthly">חודשי</SelectItem>
+                        <SelectItem value="yearly">שנתי</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs">תאריך סיום (אופציונלי)</Label>
+                    <Input 
+                      type="date" 
+                      className="h-8" 
+                      value={formData.recurrence?.end_date || ''}
+                      onChange={(e) => updateField('recurrence', { ...formData.recurrence, end_date: e.target.value })}
+                    />
                   </div>
                 </div>
-                
-                <div className="space-y-3">
-                  <Label>ערוצי תזכורת</Label>
-                  <div className="flex flex-col gap-2">
-                    <div className="flex items-center justify-between bg-white p-2 rounded border">
-                      <span className="text-sm flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-500"></div>הודעה באתר</span>
-                      <Switch checked={!!formData.reminder_popup} onCheckedChange={(v) => updateField('reminder_popup', v)} />
-                    </div>
-                    <div className="flex items-center justify-between bg-white p-2 rounded border">
-                      <span className="text-sm flex items-center gap-2">📢 תזכורת קולית</span>
-                      <Switch checked={formData.notify_audio !== false} onCheckedChange={(v) => updateField('notify_audio', v)} />
-                    </div>
-                    <div className="flex items-center justify-between bg-white p-2 rounded border">
-                      <span className="text-sm flex items-center gap-2">💬 וואטסאפ</span>
-                      <Switch checked={!!formData.notify_whatsapp} onCheckedChange={(v) => updateField('notify_whatsapp', v)} />
-                    </div>
-                    <div className="flex items-center justify-between bg-white p-2 rounded border">
-                      <span className="text-sm flex items-center gap-2">📧 אימייל</span>
-                      <Switch checked={!!formData.notify_email} onCheckedChange={(v) => updateField('notify_email', v)} />
+              )}
+            </div>
+
+            {/* Reminders List */}
+            {formData.reminders?.length > 0 && (
+              <div className="space-y-3">
+                {formData.reminders.map((reminder, idx) => (
+                  <div key={idx} className="bg-white p-3 rounded border border-slate-200 shadow-sm relative group">
+                    <button 
+                      onClick={() => {
+                        const newReminders = formData.reminders.filter((_, i) => i !== idx);
+                        updateField('reminders', newReminders);
+                      }}
+                      className="absolute top-2 left-2 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-xs mb-1 block">זמן התזכורת</Label>
+                        <Input 
+                          type="datetime-local" 
+                          className="h-8 text-xs"
+                          value={reminder.reminder_at || ''}
+                          onChange={(e) => {
+                            const newReminders = [...formData.reminders];
+                            newReminders[idx] = { ...newReminders[idx], reminder_at: e.target.value };
+                            updateField('reminders', newReminders);
+                          }}
+                        />
+                      </div>
+                      
+                      <div>
+                        <Label className="text-xs mb-1 block">ערוצי שליחה</Label>
+                        <div className="flex gap-2">
+                          <div className={`p-1.5 rounded cursor-pointer border ${reminder.notify_popup ? 'bg-blue-50 border-blue-200' : 'bg-slate-50 border-transparent'}`}
+                               onClick={() => {
+                                 const newReminders = [...formData.reminders];
+                                 newReminders[idx].notify_popup = !newReminders[idx].notify_popup;
+                                 updateField('reminders', newReminders);
+                               }}>
+                            <span className="text-xs">פופ־אפ</span>
+                          </div>
+                          <div className={`p-1.5 rounded cursor-pointer border ${reminder.notify_whatsapp ? 'bg-green-50 border-green-200' : 'bg-slate-50 border-transparent'}`}
+                               onClick={() => {
+                                 const newReminders = [...formData.reminders];
+                                 newReminders[idx].notify_whatsapp = !newReminders[idx].notify_whatsapp;
+                                 updateField('reminders', newReminders);
+                               }}>
+                            <span className="text-xs">WhatsApp</span>
+                          </div>
+                          <div className={`p-1.5 rounded cursor-pointer border ${reminder.notify_email ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-transparent'}`}
+                               onClick={() => {
+                                 const newReminders = [...formData.reminders];
+                                 newReminders[idx].notify_email = !newReminders[idx].notify_email;
+                                 updateField('reminders', newReminders);
+                               }}>
+                            <span className="text-xs">מייל</span>
+                          </div>
+                          <div className={`p-1.5 rounded cursor-pointer border ${reminder.notify_sms ? 'bg-purple-50 border-purple-200' : 'bg-slate-50 border-transparent'}`}
+                               onClick={() => {
+                                 const newReminders = [...formData.reminders];
+                                 newReminders[idx].notify_sms = !newReminders[idx].notify_sms;
+                                 updateField('reminders', newReminders);
+                               }}>
+                            <span className="text-xs">SMS</span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  
-                  {formData.notify_email && (
-                    <div className="mt-2 space-y-2">
-                      <Label>נמענים למייל</Label>
+                ))}
+              </div>
+            )}
+            
+            {(formData.reminders?.some(r => r.notify_email) || formData.reminders?.some(r => r.notify_whatsapp) || formData.reminders?.some(r => r.notify_sms)) && (
+               <div className="space-y-3 pt-2 border-t mt-2">
+                 {formData.reminders.some(r => r.notify_email) && (
+                    <div>
+                      <Label className="text-xs mb-1">נמענים למייל</Label>
                       <MultiRecipientSelector
                         recipients={formData.email_recipients || []}
-                        onChange={(newRecipients) => updateField('email_recipients', newRecipients)}
+                        onChange={(v) => updateField('email_recipients', v)}
                         clients={clients}
                       />
                     </div>
-                  )}
-
-                  {formData.notify_whatsapp && (
-                    <div className="mt-2 space-y-2">
-                      <Label>נמענים לוואטסאפ</Label>
+                 )}
+                 {formData.reminders.some(r => r.notify_whatsapp) && (
+                    <div>
+                      <Label className="text-xs mb-1">נמענים ל-WhatsApp</Label>
                       <MultiPhoneSelector
                         recipients={formData.whatsapp_recipients || []}
-                        onChange={(newRecipients) => updateField('whatsapp_recipients', newRecipients)}
+                        onChange={(v) => updateField('whatsapp_recipients', v)}
                         clients={clients}
                       />
                     </div>
-                  )}
-                </div>
-              </div>
+                 )}
+                 {formData.reminders.some(r => r.notify_sms) && (
+                    <div>
+                      <Label className="text-xs mb-1">נמענים ל-SMS</Label>
+                      <MultiPhoneSelector
+                        recipients={formData.sms_recipients || []}
+                        onChange={(v) => updateField('sms_recipients', v)}
+                        clients={clients}
+                      />
+                    </div>
+                 )}
+               </div>
             )}
           </div>
 

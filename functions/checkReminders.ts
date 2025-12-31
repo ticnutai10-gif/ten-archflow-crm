@@ -5,40 +5,90 @@ export default Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     
     // 1. Get all pending reminders that are due
-    // Note: We filter for reminders where reminder_date is less than or equal to now
-    // Since we can't do complex date comparisons easily in filter sometimes, we'll fetch pending and filter in code or use available operators
-    // Assuming we can use $lte operator if supported, otherwise fetch pending
-    
     const now = new Date();
     const pendingReminders = await base44.asServiceRole.entities.Reminder.filter({ 
       status: 'pending' 
     });
 
-    // 1a. Also fetch Tasks
+    // 1a. Fetch Tasks (Support both legacy single reminder and new multiple reminders)
+    // We fetch tasks that are not completed.
     const pendingTasks = await base44.asServiceRole.entities.Task.filter({ 
-      reminder_enabled: true,
-      reminder_sent: false,
       status: { $ne: 'הושלמה' }
     });
     
-    // 1b. Also fetch Meetings with pending reminders
-    // This is heavier, so we fetch meetings in range or just all active ones.
-    // For optimization, we should probably add a 'next_reminder_at' field to Meeting, but for now we'll scan recent/upcoming meetings.
+    // 1b. Fetch Meetings
     const pendingMeetings = await base44.asServiceRole.entities.Meeting.filter({
       status: { $in: ['מתוכננת', 'אושרה'] }
     });
 
-    const dueTasks = pendingTasks.filter(t => t.reminder_at && new Date(t.reminder_at) <= now);
+    const dueTaskReminders = [];
+    for (const t of pendingTasks) {
+      // Legacy support
+      if (t.reminder_enabled && !t.reminder_sent && t.reminder_at && new Date(t.reminder_at) <= now) {
+        dueTaskReminders.push({
+          type: 'task',
+          entityId: t.id,
+          target_name: t.title,
+          reminder_date: t.reminder_at,
+          created_by: t.created_by,
+          notify_email: t.notify_email,
+          notify_whatsapp: t.notify_whatsapp,
+          message: `תזכורת למשימה: ${t.title}`,
+          email_recipients: t.email_recipients,
+          whatsapp_recipients: t.whatsapp_recipients,
+          isLegacy: true
+        });
+      }
+
+      // New multiple reminders support
+      if (t.reminders && Array.isArray(t.reminders)) {
+        t.reminders.forEach((r, idx) => {
+          if (r.sent) return;
+          // For tasks, reminder_at is explicit in the reminder object
+          // OR if minutes_before is set (relative to due_date/start_date?), usually explicit time for tasks.
+          let reminderTime;
+          if (r.reminder_at) {
+            reminderTime = new Date(r.reminder_at);
+          } else if (r.minutes_before && t.due_date) {
+             // Assuming due_date is just date string YYYY-MM-DD, we treat it as 09:00 or end of day? 
+             // Tasks usually have specific reminder times. If only minutes_before, relative to due date at 9am?
+             // Let's assume task reminders usually have reminder_at. 
+             // If due_date is YYYY-MM-DD, new Date(due_date) is usually 00:00 UTC.
+             // We'll skip complex relative logic for tasks for now unless reminder_at is set.
+             return; 
+          } else {
+            return;
+          }
+
+          if (reminderTime <= now) {
+            dueTaskReminders.push({
+              type: 'task',
+              entityId: t.id,
+              target_name: t.title,
+              reminder_date: reminderTime.toISOString(),
+              created_by: t.created_by,
+              notify_email: r.notify_email,
+              notify_whatsapp: r.notify_whatsapp,
+              notify_sms: r.notify_sms,
+              message: `תזכורת למשימה: ${t.title}`,
+              email_recipients: t.email_recipients,
+              whatsapp_recipients: t.whatsapp_recipients,
+              sms_recipients: t.sms_recipients,
+              reminderIndex: idx,
+              isLegacy: false
+            });
+          }
+        });
+      }
+    }
     
     const dueMeetingReminders = [];
     for (const m of pendingMeetings) {
       if (!m.reminders || !Array.isArray(m.reminders)) continue;
       
       const meetingTime = new Date(m.meeting_date);
-      let updated = false;
-      const newReminders = [...m.reminders];
       
-      newReminders.forEach((r, idx) => {
+      m.reminders.forEach((r, idx) => {
         if (r.sent) return;
         
         const reminderTime = new Date(meetingTime.getTime() - r.minutes_before * 60000);
@@ -51,13 +101,13 @@ export default Deno.serve(async (req) => {
             created_by: m.created_by,
             notify_email: r.notify_email,
             notify_whatsapp: r.notify_whatsapp,
+            notify_sms: r.notify_sms,
             message: `תזכורת לפגישה: ${m.title} (${r.minutes_before} דקות לפני)`,
-            email_recipients: m.email_recipients, // Use meeting-level recipients
+            email_recipients: m.email_recipients,
             whatsapp_recipients: m.whatsapp_recipients,
+            sms_recipients: m.sms_recipients,
             reminderIndex: idx
           });
-          // Mark as sent in memory (we'll update DB later)
-          // Actually we can't update DB easily in loop if we want to be safe, so we'll do it in the processing loop
         }
       });
     }
@@ -65,18 +115,7 @@ export default Deno.serve(async (req) => {
     // Combine all
     const allItems = [
       ...pendingReminders.filter(r => new Date(r.reminder_date) <= now).map(r => ({ ...r, type: 'reminder', entityId: r.id })),
-      ...dueTasks.map(t => ({
-        type: 'task',
-        entityId: t.id,
-        target_name: t.title,
-        reminder_date: t.reminder_at,
-        created_by: t.created_by,
-        notify_email: t.notify_email,
-        notify_whatsapp: t.notify_whatsapp,
-        message: `תזכורת למשימה: ${t.title}`,
-        email_recipients: t.email_recipients,
-        whatsapp_recipients: t.whatsapp_recipients
-      })),
+      ...dueTaskReminders,
       ...dueMeetingReminders
     ];
 
