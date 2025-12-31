@@ -131,8 +131,8 @@ export default function ClientForm({ client, onSubmit, onCancel }) {
         onPointerDownOutside={(e) => isSubmitting && e.preventDefault()}
         onEscapeKeyDown={(e) => isSubmitting && e.preventDefault()}
       >
-        <DialogHeader className="flex-shrink-0 px-6 py-4 border-b">
-          <DialogTitle className="text-xl font-bold">
+        <DialogHeader className="flex-shrink-0 px-8 py-6 border-b border-[#D4AF37]/20 bg-gradient-to-r from-amber-50/50 to-transparent">
+          <DialogTitle className="text-2xl font-serif text-[#8B6E15]">
             {client ? 'עריכת לקוח' : 'לקוח חדש'}
           </DialogTitle>
           {submitError && (
@@ -142,7 +142,7 @@ export default function ClientForm({ client, onSubmit, onCancel }) {
           )}
         </DialogHeader>
 
-        <div className="flex-1 px-6 overflow-y-auto" style={{ maxHeight: 'calc(95vh - 180px)' }}>
+        <div className="flex-1 px-8 py-6 overflow-y-auto scrollbar-thin scrollbar-thumb-[#D4AF37]/50 scrollbar-track-transparent" style={{ maxHeight: 'calc(95vh - 180px)' }}>
           <form onSubmit={handleSubmit} className="space-y-6 py-4">
             {/* מידע בסיסי */}
             <div className="space-y-4">
@@ -464,7 +464,7 @@ export default function ClientForm({ client, onSubmit, onCancel }) {
           </form>
         </div>
 
-        <DialogFooter className="flex-shrink-0 px-6 py-4 border-t bg-slate-50">
+        <DialogFooter className="flex-shrink-0 px-8 py-5 border-t border-[#D4AF37]/20 bg-gradient-to-l from-amber-50/30 to-transparent">
           <div className="flex gap-3 w-full">
             <Button 
               type="button" 
