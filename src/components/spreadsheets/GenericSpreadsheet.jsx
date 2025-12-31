@@ -274,6 +274,11 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [showDocGenerator, setShowDocGenerator] = useState(false);
   const [docGeneratorTargetRow, setDocGeneratorTargetRow] = useState(null);
+  const [reminders, setReminders] = useState([]);
+  const [showReminderDialog, setShowReminderDialog] = useState(false);
+  const [reminderTarget, setReminderTarget] = useState(null); // { cellKey, value }
+  const [reminderDate, setReminderDate] = useState("");
+  const [reminderMessage, setReminderMessage] = useState("");
   const navigate = useNavigate();
 
   // Load Global Data Types
@@ -381,10 +386,10 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     base44.auth.me().then(setCurrentUser).catch(() => {});
   }, []);
 
-  // Fetch comments count
+  // Fetch comments count and reminders
   useEffect(() => {
     if (!spreadsheet?.id) return;
-    const fetchCommentsCount = async () => {
+    const fetchData = async () => {
       try {
         // Fetch all comments for this spreadsheet
         const comments = await base44.entities.SheetComment.filter({ 
@@ -399,13 +404,21 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
           }
         });
         setCommentCounts(counts);
+
+        // Fetch reminders
+        const pendingReminders = await base44.entities.Reminder.filter({
+          spreadsheet_id: spreadsheet.id,
+          status: 'pending'
+        });
+        setReminders(pendingReminders || []);
+
       } catch (e) {
-        console.error("Failed to fetch comments count", e);
+        console.error("Failed to fetch data", e);
       }
     };
     
-    fetchCommentsCount();
-    const interval = setInterval(fetchCommentsCount, 10000); // Update every 10s
+    fetchData();
+    const interval = setInterval(fetchData, 10000); // Update every 10s
     return () => clearInterval(interval);
   }, [spreadsheet?.id]);
 
@@ -2722,6 +2735,46 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     if (onUpdate) onUpdate();
   };
 
+  const handleSetReminder = async () => {
+    if (!reminderTarget || !reminderDate) {
+      toast.error('אנא בחר תאריך ושעה');
+      return;
+    }
+
+    try {
+      const user = await base44.auth.me();
+      await base44.entities.Reminder.create({
+        target_type: 'cell',
+        target_id: spreadsheet.id,
+        target_sub_id: reminderTarget.cellKey,
+        target_name: reminderTarget.value || 'תא בטבלה',
+        reminder_date: new Date(reminderDate).toISOString(),
+        created_by_email: user.email,
+        additional_emails: ['office@tenenbaum.co.il'], // Default general email
+        message: reminderMessage,
+        status: 'pending',
+        spreadsheet_id: spreadsheet.id
+      });
+
+      toast.success('✓ תזכורת נקבעה בהצלחה');
+      setShowReminderDialog(false);
+      setReminderTarget(null);
+      setReminderDate("");
+      setReminderMessage("");
+      
+      // Refresh reminders immediately
+      const pendingReminders = await base44.entities.Reminder.filter({
+        spreadsheet_id: spreadsheet.id,
+        status: 'pending'
+      });
+      setReminders(pendingReminders || []);
+
+    } catch (error) {
+      console.error('Error setting reminder:', error);
+      toast.error('שגיאה ביצירת תזכורת');
+    }
+  };
+
   const openSmartSplit = (columnKey) => {
     const col = columns.find(c => c.key === columnKey);
     if (!col) return;
@@ -3723,6 +3776,12 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                 setDocGeneratorTargetRow(row);
                                 setShowDocGenerator(true);
                               }}
+                              
+                              reminders={reminders}
+                              onSetReminder={(cellKey, value) => {
+                                setReminderTarget({ cellKey, value });
+                                setShowReminderDialog(true);
+                              }}
 
                               setEditingCell={setEditingCell}
                               setEditValue={setEditValue}
@@ -4343,6 +4402,44 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         isOpen={showCommentsSidebar}
         onClose={() => setShowCommentsSidebar(false)}
       />
+
+      <Dialog open={showReminderDialog} onOpenChange={setShowReminderDialog}>
+        <DialogContent className="sm:max-w-md" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Zap className="w-5 h-5 text-yellow-500" />
+              הגדרת תזכורת
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>מועד התזכורת</Label>
+              <Input
+                type="datetime-local"
+                value={reminderDate}
+                onChange={(e) => setReminderDate(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>הודעה (אופציונלי)</Label>
+              <Textarea
+                value={reminderMessage}
+                onChange={(e) => setReminderMessage(e.target.value)}
+                placeholder="הוסף הערה לתזכורת..."
+              />
+            </div>
+            <div className="text-sm text-slate-500 bg-slate-50 p-3 rounded">
+              <p>📧 התזכורת תישלח למייל שלך ולמייל המשרד באופן אוטומטי.</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowReminderDialog(false)}>ביטול</Button>
+            <Button onClick={handleSetReminder} className="bg-yellow-500 hover:bg-yellow-600 text-white">
+              קבע תזכורת
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {editingCell && (() => {
         const lastColIndex = editingCell.lastIndexOf('_col');
