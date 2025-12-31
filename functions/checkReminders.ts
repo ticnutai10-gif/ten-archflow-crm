@@ -212,6 +212,19 @@ export default Deno.serve(async (req) => {
 
     const results = [];
 
+    // Add skipped items to results for visibility
+    if (debugInfo.skipped && debugInfo.skipped.length > 0) {
+      debugInfo.skipped.forEach(s => {
+        results.push({ 
+          id: s.id, 
+          target: s.title,
+          status: 'skipped', 
+          reason: s.reason,
+          type: s.type
+        });
+      });
+    }
+
     for (const item of dueItems) {
       try {
         const creatorEmail = item.created_by_email || item.created_by; // created_by is standard field with email

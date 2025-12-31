@@ -53,8 +53,22 @@ export default function CheckRemindersButton() {
                 <Loader2 className="w-4 h-4 animate-spin" />
                 Checking reminders...
               </div>
+            ) : result ? (
+              <>
+                <div className="mb-4 pb-4 border-b border-slate-800">
+                  <div className="text-green-400 font-bold mb-2">Summary:</div>
+                  <div>Processed (Sent): {result.processed}</div>
+                  <div>Found Due: {result.debugInfo?.foundDue || 0}</div>
+                  <div>Skipped: {result.results?.filter(r => r.status === 'skipped').length || 0}</div>
+                  <div>Server Time: {result.debugInfo?.serverTimeLocalApprox}</div>
+                </div>
+                <div>
+                  <div className="text-blue-400 font-bold mb-2">Details:</div>
+                  {JSON.stringify(result, null, 2)}
+                </div>
+              </>
             ) : (
-              JSON.stringify(result, null, 2)
+              "No result"
             )}
           </div>
 
