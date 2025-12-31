@@ -2,7 +2,7 @@ import React, { memo, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Draggable } from '@hello-pangea/dnd';
-import { Copy, Trash2, Palette, Bold, MessageSquare, GripVertical, Users, MoreHorizontal, Eye, FileText } from "lucide-react";
+import { Copy, Trash2, Palette, Bold, MessageSquare, GripVertical, Users, MoreHorizontal, Eye, FileText, Zap } from "lucide-react";
 import { StageDisplay } from "./GenericSpreadsheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -69,7 +69,9 @@ const SpreadsheetRow = memo(({
   saveEdit,
   editInputRef,
   validateCell,
-  onDirectSaveStage
+  onDirectSaveStage,
+  reminders,
+  onSetReminder
 }) => {
   const [customFieldsDialog, setCustomFieldsDialog] = useState(null);
   const [tempFields, setTempFields] = useState({});
@@ -197,6 +199,7 @@ const SpreadsheetRow = memo(({
               const finalStyle = { ...conditionalStyle, ...cellStyle };
               const hasNote = cellNotes[cellKey];
               const commentCount = commentCounts?.[cellKey] || 0;
+              const hasReminder = reminders?.some(r => r.target_sub_id === cellKey);
               const selectionClass = isSelected ? 'ring-[2px] ring-blue-600 ring-inset z-20 bg-blue-50/30' : 'border-b border-r border-slate-200/50';
               const hoverClass = !isEditing && !isSelected && !mergeInfo ? 'group-hover:bg-black/[0.015] hover:!bg-black/[0.03] transition-colors duration-100' : '';
 
@@ -270,6 +273,7 @@ const SpreadsheetRow = memo(({
                 >
                   {hasNote && <div className="absolute top-0 right-0 w-0 h-0 z-10 cursor-pointer hover:scale-110 transition-transform" style={{ borderTop: '8px solid #f59e0b', borderLeft: '8px solid transparent' }} title={cellNotes[cellKey]} onClick={(e) => onNoteTriangleClick(cellKey, e)} />}
                   {commentCount > 0 && <div className="absolute top-0 left-0 z-10 cursor-pointer hover:scale-110 transition-transform" title={`${commentCount} תגובות`}><div className="bg-blue-500 text-white text-[8px] font-bold px-1 rounded-br-md shadow-sm">{commentCount}</div></div>}
+                  {hasReminder && <div className="absolute bottom-0 right-0 z-10 p-0.5"><div className="bg-yellow-100 rounded-full p-0.5 shadow-sm" title="תזכורת פעילה"><Zap className="w-2.5 h-2.5 text-yellow-600 fill-yellow-600" /></div></div>}
                   {activeUserOnCell && <div className="absolute -top-4 right-0 z-30 text-[9px] px-1.5 py-0.5 rounded bg-slate-800 text-white shadow-md whitespace-nowrap opacity-90" style={{ backgroundColor: activeUserOnCell.color }}>{activeUserOnCell.user_name}</div>}
 
                   <div className="w-full h-full flex items-center overflow-hidden">
@@ -442,7 +446,8 @@ const SpreadsheetRow = memo(({
     prev.cellNotes === next.cellNotes &&
     prev.mergedCells === next.mergedCells &&
     prev.activeCollaborators === next.activeCollaborators &&
-    prev.freezeSettings === next.freezeSettings
+    prev.freezeSettings === next.freezeSettings &&
+    prev.reminders === next.reminders
   );
 });
 
