@@ -112,11 +112,11 @@ export default function MeetingForm({ meeting, clients, projects, initialDate, o
   return (
     <Dialog open={true} onOpenChange={onCancel}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] p-0 flex flex-col gap-0" dir="rtl">
-        <DialogHeader className="px-6 py-4 border-b border-slate-100 shrink-0">
-          <DialogTitle>{meeting ? 'עריכת' : 'יצירת'} פגישה</DialogTitle>
+        <DialogHeader className="px-8 py-6 border-b border-[#D4AF37]/20 shrink-0 bg-gradient-to-r from-amber-50/50 to-transparent">
+          <DialogTitle className="text-2xl font-serif text-[#8B6E15]">{meeting ? 'עריכת פגישה' : 'יצירת פגישה חדשה'}</DialogTitle>
         </DialogHeader>
         
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+        <div className="flex-1 overflow-y-auto px-8 py-6 space-y-5 scrollbar-thin scrollbar-thumb-[#D4AF37]/50 scrollbar-track-transparent">
           {/* Basic Info */}
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2 space-y-2">

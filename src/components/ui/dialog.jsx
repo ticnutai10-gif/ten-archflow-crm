@@ -62,7 +62,7 @@ const DialogContent = React.forwardRef(({ className, children, ...props }, ref) 
   <div
     ref={ref}
     className={cn(
-      "fixed z-[100] bg-white rounded-2xl border border-[#D4AF37] shadow-2xl w-full md:w-auto min-w-[300px] md:min-w-[450px] max-w-[95vw] md:max-w-4xl max-h-[90vh] flex flex-col",
+      "fixed z-[100] bg-white/95 backdrop-blur-md rounded-3xl border-2 border-[#D4AF37] shadow-[0_20px_50px_rgba(0,0,0,0.3)] w-full md:w-auto min-w-[300px] md:min-w-[500px] max-w-[95vw] md:max-w-4xl max-h-[85vh] flex flex-col overflow-hidden",
       className
     )}
     style={{
