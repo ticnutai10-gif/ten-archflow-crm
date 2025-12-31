@@ -38,6 +38,7 @@ import TimeLogView from "./TimeLogView";
 import ClientTasks from "./ClientTasks";
 import ClientTimeline from "../portal/ClientTimeline";
 import ClientSpreadsheets from "./ClientSpreadsheets";
+import AuditLogViewer from "../common/AuditLogViewer";
 
 const statusColors = {
   "פוטנציאלי": "bg-amber-100 text-amber-800 border-amber-200",
@@ -524,7 +525,7 @@ export default function ClientDetails({ client, onBack, onEdit }) {
           className="w-full" 
           dir="rtl"
         >
-          <TabsList className="grid w-full grid-cols-8 bg-white shadow-sm">
+          <TabsList className="grid w-full grid-cols-9 bg-white shadow-sm">
             <TabsTrigger value="timeline" className="gap-2">
               <Clock className="w-4 h-4" />
               ציר זמן
@@ -556,6 +557,10 @@ export default function ClientDetails({ client, onBack, onEdit }) {
             <TabsTrigger value="communication" className="gap-2">
               <MessageSquare className="w-4 h-4" />
               תקשורת
+            </TabsTrigger>
+            <TabsTrigger value="history" className="gap-2">
+              <Clock className="w-4 h-4" />
+              היסטוריה
             </TabsTrigger>
           </TabsList>
 
@@ -625,6 +630,17 @@ export default function ClientDetails({ client, onBack, onEdit }) {
 
           <TabsContent value="communication" className="mt-6">
             <ClientCommunication client={client} clientId={client.id} />
+          </TabsContent>
+
+          <TabsContent value="history" className="mt-6">
+            <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle>היסטוריית שינויים</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <AuditLogViewer entityType="Client" entityId={client.id} />
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>
