@@ -56,19 +56,24 @@ export default Deno.serve(async (req) => {
       if (t.reminder_enabled && !t.reminder_sent && t.reminder_at) {
         const reminderTime = parseReminderDate(t.reminder_at);
         if (reminderTime <= now) {
-          dueTaskReminders.push({
-            type: 'task',
-            entityId: t.id,
-            target_name: t.title,
-            reminder_date: reminderTime.toISOString(),
-            created_by: t.created_by,
-            notify_email: t.notify_email,
-            notify_whatsapp: t.notify_whatsapp,
-            message: `תזכורת למשימה: ${t.title}`,
-            email_recipients: t.email_recipients,
-            whatsapp_recipients: t.whatsapp_recipients,
-            isLegacy: true
-          });
+          // Check if only popup needed (backend ignores popup-only)
+          if (!t.notify_email && !t.notify_whatsapp && !t.notify_sms) {
+            debugInfo.skipped.push({ type: 'task-legacy', id: t.id, title: t.title, reason: 'popup-only (backend ignored)' });
+          } else {
+            dueTaskReminders.push({
+              type: 'task',
+              entityId: t.id,
+              target_name: t.title,
+              reminder_date: reminderTime.toISOString(),
+              created_by: t.created_by,
+              notify_email: t.notify_email,
+              notify_whatsapp: t.notify_whatsapp,
+              message: `תזכורת למשימה: ${t.title}`,
+              email_recipients: t.email_recipients,
+              whatsapp_recipients: t.whatsapp_recipients,
+              isLegacy: true
+            });
+          }
         } else {
           // Log skipped nearby items for debugging (e.g. within next 24h)
           if (reminderTime.getTime() - now.getTime() < 86400000) {
@@ -94,9 +99,13 @@ export default Deno.serve(async (req) => {
           
           // If all required "remote" channels are sent, and we are only waiting for popup (handled by frontend), 
           // we should skip processing here to avoid re-sending or doing nothing.
-          // BUT: we might need to set 'sent=true' if popup is also done? 
-          // No, frontend handles popup. Backend just ensures remote stuff is sent.
-          if (!needsEmail && !needsWA && !needsSMS) return;
+          if (!needsEmail && !needsWA && !needsSMS) {
+            // Log if it's due but skipped
+            if (r.reminder_at && parseReminderDate(r.reminder_at) <= now && !r.sent) {
+              debugInfo.skipped.push({ type: 'task', id: t.id, title: t.title, reason: 'popup-only or already sent remote', idx });
+            }
+            return;
+          }
 
           if (r.reminder_at) {
             reminderTime = parseReminderDate(r.reminder_at);
@@ -155,7 +164,10 @@ export default Deno.serve(async (req) => {
         const needsWA = r.notify_whatsapp && !r.whatsapp_sent;
         const needsSMS = r.notify_sms && !r.sms_sent;
 
-        if (reminderTime <= now && (needsEmail || needsWA || needsSMS)) {
+        if (reminderTime <= now) {
+          if (!(needsEmail || needsWA || needsSMS)) {
+             debugInfo.skipped.push({ type: 'meeting', id: m.id, title: m.title, reason: 'popup-only or already sent remote', idx });
+          } else {
           dueMeetingReminders.push({
             type: 'meeting',
             entityId: m.id,
@@ -173,6 +185,7 @@ export default Deno.serve(async (req) => {
             original_notify_popup: r.notify_popup,
             original_popup_shown: r.popup_shown
           });
+          }
         } else {
            if (reminderTime.getTime() - now.getTime() < 86400000) {
               debugInfo.skipped.push({ type: 'meeting', id: m.id, title: m.title, time: reminderTime.toISOString(), reason: 'future', idx });
