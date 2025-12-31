@@ -58,7 +58,8 @@ export default function MeetingForm({ meeting, clients, projects, initialDate, o
     ],
     notes: '',
     agenda: [],
-    color: 'blue'
+    color: 'blue',
+    email_recipients: []
   });
 
   const [newParticipant, setNewParticipant] = useState('');
@@ -357,6 +358,20 @@ export default function MeetingForm({ meeting, clients, projects, initialDate, o
                 <Plus className="w-4 h-4 ml-1" />
                 הוסף תזכורת
               </Button>
+            </div>
+            
+            {/* Email Recipients for all reminders */}
+            <div className="space-y-2 mb-4 p-3 bg-white rounded border border-blue-100">
+              <div className="flex items-center gap-2 mb-2">
+                <Mail className="w-4 h-4 text-blue-500" />
+                <Label>נמענים לתזכורות מייל</Label>
+              </div>
+              <MultiRecipientSelector
+                recipients={formData.email_recipients || []}
+                onChange={(newRecipients) => updateField('email_recipients', newRecipients)}
+                clients={clients}
+                placeholder="הוסף נמענים לתזכורות..."
+              />
             </div>
             
             {(!formData.reminders || formData.reminders.length === 0) && (

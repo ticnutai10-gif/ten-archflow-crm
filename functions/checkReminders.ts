@@ -14,33 +14,68 @@ export default Deno.serve(async (req) => {
       status: 'pending' 
     });
 
-    // 1a. Also fetch Tasks that have reminders enabled and not sent
-    // We only care about email/whatsapp here. Audio/Popup is client side.
+    // 1a. Also fetch Tasks
     const pendingTasks = await base44.asServiceRole.entities.Task.filter({ 
       reminder_enabled: true,
       reminder_sent: false,
       status: { $ne: 'הושלמה' }
     });
+    
+    // 1b. Also fetch Meetings with pending reminders
+    // This is heavier, so we fetch meetings in range or just all active ones.
+    // For optimization, we should probably add a 'next_reminder_at' field to Meeting, but for now we'll scan recent/upcoming meetings.
+    const pendingMeetings = await base44.asServiceRole.entities.Meeting.filter({
+      status: { $in: ['מתוכננת', 'אושרה'] }
+    });
 
     const dueTasks = pendingTasks.filter(t => t.reminder_at && new Date(t.reminder_at) <= now);
     
-    // Combine reminders and tasks
+    const dueMeetingReminders = [];
+    for (const m of pendingMeetings) {
+      if (!m.reminders || !Array.isArray(m.reminders)) continue;
+      
+      const meetingTime = new Date(m.meeting_date);
+      let updated = false;
+      const newReminders = [...m.reminders];
+      
+      newReminders.forEach((r, idx) => {
+        if (r.sent) return;
+        
+        const reminderTime = new Date(meetingTime.getTime() - r.minutes_before * 60000);
+        if (reminderTime <= now) {
+          dueMeetingReminders.push({
+            type: 'meeting',
+            entityId: m.id,
+            target_name: m.title,
+            reminder_date: reminderTime.toISOString(),
+            created_by: m.created_by,
+            notify_email: r.notify_email,
+            notify_whatsapp: r.notify_whatsapp,
+            message: `תזכורת לפגישה: ${m.title} (${r.minutes_before} דקות לפני)`,
+            email_recipients: m.email_recipients, // Use meeting-level recipients
+            reminderIndex: idx
+          });
+          // Mark as sent in memory (we'll update DB later)
+          // Actually we can't update DB easily in loop if we want to be safe, so we'll do it in the processing loop
+        }
+      });
+    }
+
+    // Combine all
     const allItems = [
-      ...dueReminders.map(r => ({ ...r, type: 'reminder', entityId: r.id })),
+      ...pendingReminders.filter(r => new Date(r.reminder_date) <= now).map(r => ({ ...r, type: 'reminder', entityId: r.id })),
       ...dueTasks.map(t => ({
         type: 'task',
         entityId: t.id,
         target_name: t.title,
         reminder_date: t.reminder_at,
-        created_by_email: null, // Need to find who to send to. For Task, it's assigned_to or creator? 
-                                // We'll use a lookup or just create generic message if we can't find email. 
-                                // Tasks usually don't store creator email directly on root unless 'created_by' field is standard (it is).
-                                // But base44 entities have created_by (email).
-        created_by: t.created_by, // Email
+        created_by: t.created_by,
         notify_email: t.notify_email,
         notify_whatsapp: t.notify_whatsapp,
-        message: `תזכורת למשימה: ${t.title}`
-      }))
+        message: `תזכורת למשימה: ${t.title}`,
+        email_recipients: t.email_recipients
+      })),
+      ...dueMeetingReminders
     ];
 
     const dueItems = allItems.filter(item => new Date(item.reminder_date) <= now);
@@ -55,7 +90,16 @@ export default Deno.serve(async (req) => {
         
         // 2. Prepare recipients
         const recipients = [];
-        if (creatorEmail) recipients.push(creatorEmail);
+        
+        // Priority: Explicit recipients list -> then creator/additional
+        if (item.email_recipients && Array.isArray(item.email_recipients) && item.email_recipients.length > 0) {
+          recipients.push(...item.email_recipients);
+        } else {
+          // Fallback to creator if no explicit recipients
+          if (creatorEmail) recipients.push(creatorEmail);
+        }
+
+        // Add additional emails from reminder entity if exists
         if (item.additional_emails && Array.isArray(item.additional_emails)) {
           recipients.push(...item.additional_emails);
         }
@@ -108,9 +152,17 @@ export default Deno.serve(async (req) => {
         if (item.type === 'reminder') {
           await base44.asServiceRole.entities.Reminder.update(item.entityId, { status: 'sent' });
         } else if (item.type === 'task') {
-          // Only update if it was actually due and processed. 
-          // Note: Client side audio polling also updates this. Race condition is acceptable (both set to true).
           await base44.asServiceRole.entities.Task.update(item.entityId, { reminder_sent: true });
+        } else if (item.type === 'meeting') {
+          // We need to fetch the meeting again to ensure we don't overwrite other updates, 
+          // but for simplicity we assume race conditions are rare on the same second.
+          // Better: Use $set on specific array element if supported, but usually update needs full object or top level fields.
+          // We'll read, update specific index, and write back.
+          const meeting = await base44.asServiceRole.entities.Meeting.get(item.entityId);
+          if (meeting && meeting.reminders && meeting.reminders[item.reminderIndex]) {
+            meeting.reminders[item.reminderIndex].sent = true;
+            await base44.asServiceRole.entities.Meeting.update(item.entityId, { reminders: meeting.reminders });
+          }
         }
 
         results.push({ id: item.entityId, status: 'sent', recipients: uniqueRecipients });

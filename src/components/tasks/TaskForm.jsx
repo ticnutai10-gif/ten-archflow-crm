@@ -15,7 +15,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import ReminderTimePicker from "./ReminderTimePicker"; // Added import
+import ReminderTimePicker from "./ReminderTimePicker";
+import MultiRecipientSelector from "@/components/common/MultiRecipientSelector";
 
 export default function TaskForm({ task, clients, projects, onSubmit, onCancel, initialData = {} }) {
   const [formData, setFormData] = useState(task || {
@@ -34,6 +35,7 @@ export default function TaskForm({ task, clients, projects, onSubmit, onCancel, 
     notify_whatsapp: false,
     notify_email: false,
     notify_audio: true,
+    email_recipients: [],
     ...initialData
   });
 
@@ -379,12 +381,20 @@ export default function TaskForm({ task, clients, projects, onSubmit, onCancel, 
                       <Switch checked={!!formData.notify_email} onCheckedChange={(v) => updateField('notify_email', v)} />
                     </div>
                   </div>
+                  
+                  {formData.notify_email && (
+                    <div className="mt-2 space-y-2">
+                      <Label>נמענים למייל</Label>
+                      <MultiRecipientSelector
+                        recipients={formData.email_recipients || []}
+                        onChange={(newRecipients) => updateField('email_recipients', newRecipients)}
+                        clients={clients}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             )}
-            <p className="text-xs text-slate-500">
-              טיפ: אפשר גם להדליק/לכבות תזכורת ישירות מכפתור התפריט בכל משימה (איקון פעמון).
-            </p>
           </div>
 
           {/* תגיות */}
