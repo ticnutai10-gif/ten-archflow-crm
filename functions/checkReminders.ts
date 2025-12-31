@@ -53,6 +53,7 @@ export default Deno.serve(async (req) => {
             notify_whatsapp: r.notify_whatsapp,
             message: `תזכורת לפגישה: ${m.title} (${r.minutes_before} דקות לפני)`,
             email_recipients: m.email_recipients, // Use meeting-level recipients
+            whatsapp_recipients: m.whatsapp_recipients,
             reminderIndex: idx
           });
           // Mark as sent in memory (we'll update DB later)
@@ -73,7 +74,8 @@ export default Deno.serve(async (req) => {
         notify_email: t.notify_email,
         notify_whatsapp: t.notify_whatsapp,
         message: `תזכורת למשימה: ${t.title}`,
-        email_recipients: t.email_recipients
+        email_recipients: t.email_recipients,
+        whatsapp_recipients: t.whatsapp_recipients
       })),
       ...dueMeetingReminders
     ];
@@ -129,18 +131,27 @@ export default Deno.serve(async (req) => {
 
         // 3b. Send WhatsApp
         if (item.notify_whatsapp) {
-           // Create a CommunicationMessage to trigger whatsapp agent or log it
-           // Since we don't have direct WhatsApp integration confirmed, we'll create a system message
-           // that might be picked up by another process or serve as log.
-           if (creatorEmail) {
+           // Prepare WhatsApp recipients
+           const whatsappRecipients = [];
+           if (item.whatsapp_recipients && Array.isArray(item.whatsapp_recipients) && item.whatsapp_recipients.length > 0) {
+             whatsappRecipients.push(...item.whatsapp_recipients);
+           } else {
+             // Fallback: If no explicit recipients, we don't have a phone number for the creator easily available (only email).
+             // We can only send if we have explicit recipients or if we can look up user phone.
+             // For now, if no recipients, we skip or maybe log for admin.
+           }
+
+           // Send to each recipient
+           for (const phone of whatsappRecipients) {
              try {
+               // Create a CommunicationMessage for the agent to pick up
                await base44.asServiceRole.entities.CommunicationMessage.create({
                  type: 'whatsapp',
                  direction: 'outbound',
-                 content: `🔔 תזכורת: ${item.target_name} - ${new Date(item.reminder_date).toLocaleString('he-IL')}`,
-                 status: 'pending', // Agent will pick this up hopefully
+                 content: `🔔 תזכורת: ${item.target_name}\n${item.message || ''}\nמועד: ${new Date(item.reminder_date).toLocaleString('he-IL')}`,
+                 status: 'pending', 
                  metadata: {
-                   target_email: creatorEmail,
+                   target_phone: phone,
                    source: 'reminder_system'
                  }
                });

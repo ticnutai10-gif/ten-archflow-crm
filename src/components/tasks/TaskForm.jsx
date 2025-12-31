@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import ReminderTimePicker from "./ReminderTimePicker";
 import MultiRecipientSelector from "@/components/common/MultiRecipientSelector";
+import MultiPhoneSelector from "@/components/common/MultiPhoneSelector";
 
 export default function TaskForm({ task, clients, projects, onSubmit, onCancel, initialData = {} }) {
   const [formData, setFormData] = useState(task || {
@@ -36,6 +37,7 @@ export default function TaskForm({ task, clients, projects, onSubmit, onCancel, 
     notify_email: false,
     notify_audio: true,
     email_recipients: [],
+    whatsapp_recipients: [],
     ...initialData
   });
 

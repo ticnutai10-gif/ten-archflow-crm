@@ -13,6 +13,7 @@ import SmartAgendaGenerator from "../ai/SmartAgendaGenerator";
 import { toast } from "sonner";
 import { base44 } from "@/api/base44Client";
 import MultiRecipientSelector from "@/components/common/MultiRecipientSelector";
+import MultiPhoneSelector from "@/components/common/MultiPhoneSelector";
 
 export default function MeetingForm({ meeting, clients, projects, initialDate, onSubmit, onCancel }) {
   const [user, setUser] = useState(null);
@@ -60,7 +61,8 @@ export default function MeetingForm({ meeting, clients, projects, initialDate, o
     notes: '',
     agenda: [],
     color: 'blue',
-    email_recipients: []
+    email_recipients: [],
+    whatsapp_recipients: []
   });
 
   const [newParticipant, setNewParticipant] = useState('');
@@ -362,17 +364,32 @@ export default function MeetingForm({ meeting, clients, projects, initialDate, o
             </div>
             
             {/* Email Recipients for all reminders */}
-            <div className="space-y-2 mb-4 p-3 bg-white rounded border border-blue-100">
-              <div className="flex items-center gap-2 mb-2">
-                <Mail className="w-4 h-4 text-blue-500" />
-                <Label>נמענים לתזכורות מייל</Label>
+            <div className="space-y-4 mb-4">
+              <div className="space-y-2 p-3 bg-white rounded border border-blue-100">
+                <div className="flex items-center gap-2 mb-2">
+                  <Mail className="w-4 h-4 text-blue-500" />
+                  <Label>נמענים לתזכורות מייל</Label>
+                </div>
+                <MultiRecipientSelector
+                  recipients={formData.email_recipients || []}
+                  onChange={(newRecipients) => updateField('email_recipients', newRecipients)}
+                  clients={clients}
+                  placeholder="הוסף נמענים לתזכורות..."
+                />
               </div>
-              <MultiRecipientSelector
-                recipients={formData.email_recipients || []}
-                onChange={(newRecipients) => updateField('email_recipients', newRecipients)}
-                clients={clients}
-                placeholder="הוסף נמענים לתזכורות..."
-              />
+
+              <div className="space-y-2 p-3 bg-white rounded border border-green-100">
+                <div className="flex items-center gap-2 mb-2">
+                  <Smartphone className="w-4 h-4 text-green-500" />
+                  <Label>נמענים לתזכורות וואטסאפ</Label>
+                </div>
+                <MultiPhoneSelector
+                  recipients={formData.whatsapp_recipients || []}
+                  onChange={(newRecipients) => updateField('whatsapp_recipients', newRecipients)}
+                  clients={clients}
+                  placeholder="הוסף נמענים לוואטסאפ..."
+                />
+              </div>
             </div>
             
             {(!formData.reminders || formData.reminders.length === 0) && (
