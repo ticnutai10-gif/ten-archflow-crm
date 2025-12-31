@@ -44,6 +44,16 @@ export default Deno.serve(async (req) => {
     });
     debugInfo.checked.tasks = pendingTasks.length;
     
+    // Log sample tasks to see if reminders are present
+    if (pendingTasks.length > 0) {
+        debugInfo.sampleTask = {
+            id: pendingTasks[0].id,
+            title: pendingTasks[0].title,
+            reminder_at: pendingTasks[0].reminder_at,
+            reminders_count: pendingTasks[0].reminders?.length || 0
+        };
+    }
+    
     // 1b. Fetch Meetings
     const pendingMeetings = await base44.asServiceRole.entities.Meeting.filter({
       status: { $in: ['מתוכננת', 'אושרה'] }
@@ -140,8 +150,17 @@ export default Deno.serve(async (req) => {
               original_popup_shown: r.popup_shown
             });
           } else {
+             // Always log future reminders if close (24h) OR if it seems like it should have triggered
              if (reminderTime.getTime() - now.getTime() < 86400000) {
-                debugInfo.skipped.push({ type: 'task', id: t.id, title: t.title, time: reminderTime.toISOString(), reason: 'future', idx });
+                debugInfo.skipped.push({ 
+                    type: 'task', 
+                    id: t.id, 
+                    title: t.title, 
+                    time: reminderTime.toISOString(), 
+                    reason: 'future', 
+                    diff_seconds: (reminderTime.getTime() - now.getTime()) / 1000,
+                    idx 
+                });
              }
           }
         });
@@ -188,7 +207,15 @@ export default Deno.serve(async (req) => {
           }
         } else {
            if (reminderTime.getTime() - now.getTime() < 86400000) {
-              debugInfo.skipped.push({ type: 'meeting', id: m.id, title: m.title, time: reminderTime.toISOString(), reason: 'future', idx });
+              debugInfo.skipped.push({ 
+                  type: 'meeting', 
+                  id: m.id, 
+                  title: m.title, 
+                  time: reminderTime.toISOString(), 
+                  reason: 'future', 
+                  diff_seconds: (reminderTime.getTime() - now.getTime()) / 1000,
+                  idx 
+              });
            }
         }
       });
@@ -212,7 +239,7 @@ export default Deno.serve(async (req) => {
 
     const results = [];
 
-    // Add skipped items to results for visibility
+    // Always add skipped items to results for visibility if debugging
     if (debugInfo.skipped && debugInfo.skipped.length > 0) {
       debugInfo.skipped.forEach(s => {
         results.push({ 
@@ -223,6 +250,11 @@ export default Deno.serve(async (req) => {
           type: s.type
         });
       });
+    } else {
+        // If no skipped items, add a dummy entry to confirm logic ran if no due items
+        if (dueItems.length === 0) {
+             results.push({ status: 'info', message: 'No items due or skipped found within check logic.' });
+        }
     }
 
     for (const item of dueItems) {
