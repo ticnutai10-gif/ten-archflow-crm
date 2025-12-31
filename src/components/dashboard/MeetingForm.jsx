@@ -465,6 +465,14 @@ export default function MeetingForm({ meeting, clients, projects, initialDate, o
                           />
                           <span className="text-xs">SMS</span>
                         </div>
+                        <div className="flex items-center gap-1.5">
+                          <Switch 
+                            checked={reminder.notify_sms} 
+                            onCheckedChange={(v) => updateReminder(idx, 'notify_sms', v)} 
+                            className="scale-75"
+                          />
+                          <span className="text-xs">SMS</span>
+                        </div>
                       </div>
                       
                       {reminder.notify_audio && (
