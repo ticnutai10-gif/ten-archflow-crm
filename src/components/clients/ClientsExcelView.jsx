@@ -38,7 +38,7 @@ export default function ClientsExcelView({ clients, onRefresh }) {
     // Create virtual spreadsheet object
     setVirtualSpreadsheet({
       id: 'virtual_clients_sheet',
-      name: 'טבלת לקוחות (Excel View)',
+      name: 'טבלת לקוחות',
       columns: columns,
       rows_data: rows,
       // Load saved preferences if available (mocked for now, could be loaded from UserPreferences)

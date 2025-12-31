@@ -784,32 +784,53 @@ export default function ClientsPage() {
           <div className="h-6 w-px bg-slate-200 mx-1"></div>
 
           {/* View Mode Selector */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-9 gap-2 text-slate-600 hover:bg-slate-100">
-                <Eye className="w-4 h-4" />
-                <span className="text-sm">תצוגה</span>
-                <ChevronDown className="w-3 h-3 opacity-50" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56" dir="rtl">
-              <DropdownMenuItem onClick={() => setViewMode("table")} className="gap-2">
-                <TableIcon className="w-4 h-4" /> טבלה
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setViewMode("clients_excel")} className="gap-2">
-                <FileSpreadsheet className="w-4 h-4 text-green-600" /> Excel View
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setViewMode("grid")} className="gap-2">
-                <LayoutGrid className="w-4 h-4" /> כרטיסים
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setViewMode("kanban")} className="gap-2">
-                <CheckSquare className="w-4 h-4" /> קנבן
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setViewMode("timeline")} className="gap-2">
-                <Clock className="w-4 h-4" /> ציר זמן
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex items-center bg-slate-100 rounded-lg p-0.5 border border-slate-200">
+             <Button 
+               variant={viewMode === 'clients_excel' ? 'white' : 'ghost'} 
+               size="sm" 
+               className={`h-8 px-3 rounded-md text-xs ${viewMode === 'clients_excel' ? 'bg-white shadow-sm text-green-700 font-medium' : 'text-slate-600 hover:text-slate-900'}`}
+               onClick={() => setViewMode("clients_excel")}
+             >
+               <FileSpreadsheet className="w-3.5 h-3.5 ml-1.5" />
+               אקסל
+             </Button>
+             <div className="w-px h-4 bg-slate-300 mx-0.5"></div>
+             <Button 
+               variant={viewMode === 'spreadsheet' ? 'white' : 'ghost'} 
+               size="sm" 
+               className={`h-8 px-3 rounded-md text-xs ${viewMode === 'spreadsheet' ? 'bg-white shadow-sm text-purple-700 font-medium' : 'text-slate-600 hover:text-slate-900'}`}
+               onClick={() => {
+                  setViewMode("spreadsheet");
+                  setActiveSpreadsheetId(null);
+               }}
+             >
+               <TableIcon className="w-3.5 h-3.5 ml-1.5" />
+               ניהול טבלאות
+             </Button>
+             <div className="w-px h-4 bg-slate-300 mx-0.5"></div>
+             <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 px-2 rounded-md text-xs text-slate-600 hover:text-slate-900">
+                  <Eye className="w-3.5 h-3.5 ml-1" />
+                  עוד
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40" dir="rtl">
+                <DropdownMenuItem onClick={() => setViewMode("table")} className="gap-2 text-xs">
+                  <TableIcon className="w-3.5 h-3.5" /> רשימה רגילה
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setViewMode("grid")} className="gap-2 text-xs">
+                  <LayoutGrid className="w-3.5 h-3.5" /> כרטיסים
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setViewMode("kanban")} className="gap-2 text-xs">
+                  <CheckSquare className="w-3.5 h-3.5" /> קנבן
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setViewMode("timeline")} className="gap-2 text-xs">
+                  <Clock className="w-3.5 h-3.5" /> ציר זמן
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
 
           {canCreateClient && (
             <Button

@@ -206,10 +206,8 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   React.useEffect(() => {
     const style = document.createElement('style');
     style.innerHTML = `
-      .fancy-scrollbar::-webkit-scrollbar { width: 10px; height: 10px; }
-      .fancy-scrollbar::-webkit-scrollbar-track { background: transparent; }
-      .fancy-scrollbar::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 5px; border: 2px solid transparent; background-clip: content-box; }
-      .fancy-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.2); border: 2px solid transparent; background-clip: content-box; }
+      .fancy-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      .fancy-scrollbar::-webkit-scrollbar { display: none; }
       .glass-header { backdrop-filter: blur(12px); background: rgba(255,255,255,0.85); border-bottom: 1px solid rgba(0,0,0,0.05); }
     `;
     document.head.appendChild(style);
@@ -3010,7 +3008,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         className={`${isFullScreen ? 'fixed inset-0 z-[100] h-screen w-screen overflow-hidden p-4 bg-slate-100/90 backdrop-blur flex flex-col' : (fullScreenMode ? 'flex-1 min-h-0 flex flex-col' : '')}`}
         style={isFullScreen ? { touchAction: 'none' } : {}}
       >
-          <div className="flex items-center justify-between gap-4 flex-wrap lg:flex-nowrap mb-3 px-1">
+          <div className="flex items-center justify-between gap-4 flex-wrap lg:flex-nowrap mb-6 px-1 pt-2">
             {/* Left Side: Title & Icon */}
             <div className="flex items-center gap-3">
               {(onBack || (!fullScreenMode && !isFullScreen)) && (
@@ -3493,13 +3491,13 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
             {/* Right Side: Search & Collab */}
             <div className="flex items-center gap-2 flex-shrink-0">
               <div className="relative">
-                <div className="flex items-center w-40 bg-white border border-slate-200 rounded-lg shadow-sm focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all">
-                  <Search className="w-4 h-4 text-slate-400 mr-2 flex-shrink-0" />
+                <div className="flex items-center w-32 bg-white border border-slate-200 rounded-lg shadow-sm focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all">
+                  <Search className="w-3 h-3 text-slate-400 mr-2 flex-shrink-0" />
                   <Input 
-                    placeholder="חיפוש מהיר בכל הטבלה..." 
+                    placeholder="חיפוש..." 
                     value={globalFilter} 
                     onChange={(e) => setGlobalFilter(e.target.value)} 
-                    className="h-9 border-none focus:ring-0 bg-transparent text-sm w-full placeholder:text-slate-400" 
+                    className="h-8 border-none focus:ring-0 bg-transparent text-xs w-full placeholder:text-slate-400" 
                   />
                   {globalFilter && (
                     <Button 
