@@ -3021,7 +3021,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         className={`${isFullScreen ? 'fixed inset-0 z-[100] h-screen w-screen overflow-hidden p-4 bg-slate-100/90 backdrop-blur flex flex-col' : (fullScreenMode ? 'flex-1 min-h-0 flex flex-col' : '')}`}
         style={isFullScreen ? { touchAction: 'none' } : {}}
       >
-          <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-3 mb-4 flex items-center justify-between gap-4">
+          <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-3 mb-4 flex flex-wrap items-center justify-between gap-4 pl-14">
             
             {/* RIGHT SIDE (RTL): Title + Count + Back */}
             <div className="flex items-start gap-2 min-w-fit">
@@ -3047,9 +3047,9 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
               </div>
             </div>
 
-            {/* MIDDLE: Actions Grid - 2 Rows Equal Height */}
-            <div className="flex-1 overflow-x-auto no-scrollbar mx-2 flex justify-center">
-              <div className="grid grid-flow-col grid-rows-2 gap-x-2 gap-y-1 items-center">
+            {/* MIDDLE: Actions - Flexible Wrap */}
+            <div className="flex-1 flex justify-center mx-2 min-w-[200px]">
+              <div className="flex flex-wrap gap-2 justify-center items-center">
                 
                 {/* Column 1 */}
                 <Button onClick={handleUndo} size="sm" variant="ghost" className="h-7 w-7 p-0" disabled={!canUndo} title="בטל"><Undo className="w-3.5 h-3.5" /></Button>
