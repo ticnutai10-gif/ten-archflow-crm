@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Plus, X, Bell, Mail, Smartphone, Sparkles, Play } from "lucide-react";
+import { Plus, X, Bell, Mail, Smartphone, Sparkles, Play, Settings, RotateCcw } from "lucide-react";
 import { playRingtone } from '@/components/utils/audio';
 import SmartAgendaGenerator from "../ai/SmartAgendaGenerator";
 import { toast } from "sonner";
@@ -19,6 +19,9 @@ import CheckRemindersButton from "@/components/debug/CheckRemindersButton";
 export default function MeetingForm({ meeting, clients, projects, initialDate, onSubmit, onCancel }) {
   const [user, setUser] = useState(null);
   const [customRingtones, setCustomRingtones] = useState([]);
+  const [durationPresets, setDurationPresets] = useState([15, 30, 45, 60, 90, 120, 180, 300]);
+  const [showDurationSettings, setShowDurationSettings] = useState(false);
+  const [editingPresets, setEditingPresets] = useState("");
 
   useEffect(() => {
     const loadUserData = async () => {
@@ -26,12 +29,57 @@ export default function MeetingForm({ meeting, clients, projects, initialDate, o
         const currentUser = await base44.auth.me();
         setUser(currentUser);
         setCustomRingtones(currentUser.custom_ringtones || []);
+        
+        // Load preferences
+        const prefs = await base44.entities.UserPreferences.filter({ user_email: currentUser.email });
+        if (prefs && prefs.length > 0 && prefs[0].meeting_duration_presets) {
+          setDurationPresets(prefs[0].meeting_duration_presets);
+        }
       } catch (error) {
         console.error('Error loading user data:', error);
       }
     };
     loadUserData();
   }, []);
+
+  const saveDurationPresets = async () => {
+    try {
+      const newPresets = editingPresets.split(',')
+        .map(p => parseInt(p.trim()))
+        .filter(p => !isNaN(p) && p > 0)
+        .sort((a, b) => a - b);
+        
+      if (newPresets.length === 0) {
+        toast.error("יש להזין לפחות זמן אחד");
+        return;
+      }
+
+      const currentUser = await base44.auth.me();
+      const prefs = await base44.entities.UserPreferences.filter({ user_email: currentUser.email });
+      
+      if (prefs && prefs.length > 0) {
+        await base44.entities.UserPreferences.update(prefs[0].id, { meeting_duration_presets: newPresets });
+      } else {
+        await base44.entities.UserPreferences.create({
+          user_email: currentUser.email,
+          meeting_duration_presets: newPresets
+        });
+      }
+      
+      setDurationPresets(newPresets);
+      setShowDurationSettings(false);
+      toast.success("הגדרות זמנים נשמרו");
+    } catch (error) {
+      console.error('Error saving presets:', error);
+      toast.error("שגיאה בשמירת הגדרות");
+    }
+  };
+
+  const formatDuration = (minutes) => {
+    if (minutes < 60) return `${minutes} דק'`;
+    const hours = minutes / 60;
+    return Number.isInteger(hours) ? `${hours} שעות` : `${hours} שעות`;
+  };
   const getDefaultDate = () => {
     if (meeting?.meeting_date) return meeting.meeting_date;
     if (initialDate) {
@@ -202,14 +250,84 @@ export default function MeetingForm({ meeting, clients, projects, initialDate, o
               />
             </div>
 
-            <div className="space-y-2">
-              <Label>משך (בדקות)</Label>
-              <Input 
-                type="number"
-                value={formData.duration_minutes} 
-                onChange={(e) => updateField('duration_minutes', parseInt(e.target.value))}
-              />
+            <div className="space-y-2 col-span-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1">
+                  <Label>משך זמן *</Label>
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      setEditingPresets(durationPresets.join(", "));
+                      setShowDurationSettings(true);
+                    }}
+                    className="text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100 transition-colors"
+                    title="ערוך זמני ברירת מחדל"
+                  >
+                    <Settings className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-4 gap-2 mb-2">
+                {durationPresets.map((minutes) => (
+                  <Button
+                    key={minutes}
+                    type="button"
+                    variant={formData.duration_minutes === minutes ? "default" : "outline"}
+                    className={`h-9 text-sm ${formData.duration_minutes === minutes ? 'bg-[#2C3A50] text-white hover:bg-[#2C3A50]/90' : 'bg-white hover:bg-slate-50'}`}
+                    onClick={() => updateField('duration_minutes', minutes)}
+                  >
+                    {formatDuration(minutes)}
+                  </Button>
+                ))}
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <Input 
+                  type="number"
+                  value={formData.duration_minutes} 
+                  onChange={(e) => updateField('duration_minutes', parseInt(e.target.value))}
+                  className="w-full text-center font-medium bg-slate-50 border-slate-200"
+                  placeholder="זמן מותאם אישית (דקות)"
+                />
+                <span className="text-sm text-slate-500 whitespace-nowrap">דקות</span>
+              </div>
             </div>
+
+            {/* Duration Settings Dialog */}
+            <Dialog open={showDurationSettings} onOpenChange={setShowDurationSettings}>
+              <DialogContent className="sm:max-w-sm" dir="rtl">
+                <DialogHeader>
+                  <DialogTitle>הגדרת זמני ברירת מחדל</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label>הזן זמנים בדקות (מופרדים בפסיק)</Label>
+                    <Input 
+                      value={editingPresets}
+                      onChange={(e) => setEditingPresets(e.target.value)}
+                      placeholder="15, 30, 45, 60..."
+                    />
+                    <p className="text-xs text-slate-500">
+                      לדוגמה: 15, 30, 60 ייצור כפתורים עבור 15 דקות, 30 דקות ושעה.
+                    </p>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full gap-2"
+                    onClick={() => setEditingPresets("15, 30, 45, 60, 90, 120, 180, 300")}
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    שחזר ברירת מחדל
+                  </Button>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setShowDurationSettings(false)}>ביטול</Button>
+                  <Button onClick={saveDurationPresets}>שמור</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
 
             <div className="space-y-2">
               <Label>מיקום</Label>
