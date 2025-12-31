@@ -2500,7 +2500,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
           // metadata.headerStyles = ...
       }
 
-      await base44.functions.invoke('googleSheets', {
+      const { data } = await base44.functions.invoke('googleSheets', {
         action: 'update',
         spreadsheetId,
         sheetName,
@@ -2509,6 +2509,15 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         mode: syncMode, // 'overwrite', 'append', 'update_existing'
         metadata: metadata // New: Send formatting data
       });
+
+      if (data.success) {
+        toast.success('✓ סנכרון לגוגל הושלם בהצלחה');
+      } else {
+        const errorMsg = data.error 
+          ? (typeof data.error === 'object' ? JSON.stringify(data.error) : String(data.error)) 
+          : 'Sync failed';
+        throw new Error(errorMsg);
+      }
     }
   };
 
@@ -2690,7 +2699,10 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       
       toast.success(`✓ יובאו נתונים, עיצובים ומיזוגים בהצלחה!`);
     } else {
-      throw new Error(data.error || 'Import failed');
+      const errorMsg = data.error 
+        ? (typeof data.error === 'object' ? JSON.stringify(data.error) : String(data.error)) 
+        : 'Import failed';
+      throw new Error(errorMsg);
     }
   };
 
@@ -3143,11 +3155,17 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                        variant="ghost"
                        size="sm"
                        className="h-7 px-2 hover:bg-slate-100 text-slate-600 gap-1.5 rounded-md text-xs justify-start"
-                       onClick={() => {
-                           const mode = spreadsheet.sync_config?.sync_direction || 'export_only';
-                           if (mode === 'import_on_load') handleImportFromGoogle(spreadsheet.google_sheet_id, spreadsheet.google_sheet_name);
-                           else if (mode === 'two_way') handleImportFromGoogle(spreadsheet.google_sheet_id, spreadsheet.google_sheet_name, 'two_way');
-                           else handleExportToGoogle(spreadsheet.google_sheet_id, spreadsheet.google_sheet_name);
+                       onClick={async () => {
+                           try {
+                               const mode = spreadsheet.sync_config?.sync_direction || 'export_only';
+                               if (mode === 'import_on_load') await handleImportFromGoogle(spreadsheet.google_sheet_id, spreadsheet.google_sheet_name);
+                               else if (mode === 'two_way') await handleImportFromGoogle(spreadsheet.google_sheet_id, spreadsheet.google_sheet_name, 'two_way');
+                               else await handleExportToGoogle(spreadsheet.google_sheet_id, spreadsheet.google_sheet_name);
+                           } catch (error) {
+                               console.error('Sync error:', error);
+                               const errorMsg = error?.message || (typeof error === 'object' ? JSON.stringify(error) : String(error)) || 'שגיאה לא ידועה';
+                               toast.error('שגיאה בסנכרון: ' + errorMsg);
+                           }
                        }}
                        title="סנכרון"
                    >
