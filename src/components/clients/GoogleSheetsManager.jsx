@@ -88,10 +88,14 @@ export default function GoogleSheetsManager({ clients = [], onRefresh }) {
             setServiceAccountEmail(data.email);
             setJsonInput("");
         } else {
-            toast.error(data.error || "שגיאה בשמירה");
+            const errorMsg = data.error 
+              ? (typeof data.error === 'object' ? JSON.stringify(data.error) : String(data.error)) 
+              : "שגיאה בשמירה";
+            toast.error(errorMsg);
         }
     } catch (e) {
-        toast.error("שגיאה בשמירה: " + e.message);
+        const errorMsg = e?.message || (typeof e === 'object' ? JSON.stringify(e) : String(e)) || 'שגיאה לא ידועה';
+        toast.error("שגיאה בשמירה: " + errorMsg);
     } finally {
         setIsSaving(false);
     }

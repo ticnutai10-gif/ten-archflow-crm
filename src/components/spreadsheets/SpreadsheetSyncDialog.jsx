@@ -230,15 +230,19 @@ export default function SpreadsheetSyncDialog({ open, onClose, spreadsheet, onIm
           // Show last debug message to user
           const lastLog = data.debug[data.debug.length - 1];
           toast.error(`שגיאה: ${data.error}\n\nפרטים: ${lastLog?.msg || 'לא זמין'}`);
-        } else if (data.error && data.error.includes('No authentication')) {
+        } else if (data.error && String(data.error).includes('No authentication')) {
            setStep('auth_needed');
         } else {
-           toast.error(`לא ניתן לטעון גיליונות: ${data.error || 'שגיאה לא ידועה'}`);
+           const errorMsg = data.error 
+             ? (typeof data.error === 'object' ? JSON.stringify(data.error) : String(data.error)) 
+             : 'שגיאה לא ידועה';
+           toast.error(`לא ניתן לטעון גיליונות: ${errorMsg}`);
         }
       }
     } catch (e) {
       console.error(e);
-      toast.error('שגיאה בחיבור ל-Google Sheets');
+      const errorMsg = e?.message || (typeof e === 'object' ? JSON.stringify(e) : String(e)) || 'שגיאה לא ידועה';
+      toast.error('שגיאה בחיבור ל-Google Sheets: ' + errorMsg);
     } finally {
       setLoading(false);
     }
@@ -443,7 +447,8 @@ export default function SpreadsheetSyncDialog({ open, onClose, spreadsheet, onIm
       onClose();
     } catch (e) {
       console.error(e);
-      toast.error('שגיאה בסנכרון: ' + e.message);
+      const errorMsg = e?.message || (typeof e === 'object' ? JSON.stringify(e) : String(e)) || 'שגיאה לא ידועה';
+      toast.error('שגיאה בסנכרון: ' + errorMsg);
     } finally {
       setLoading(false);
     }

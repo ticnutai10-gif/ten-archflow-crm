@@ -615,11 +615,15 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         // 2. Refresh list and switch (create entity)
         await handleSheetTabClick(name);
       } else {
-        toast.error('שגיאה ביצירת גיליון בגוגל: ' + (data.error || 'Unknown'));
+        const errorMsg = data.error 
+          ? (typeof data.error === 'object' ? JSON.stringify(data.error) : String(data.error)) 
+          : 'Unknown error';
+        toast.error('שגיאה ביצירת גיליון בגוגל: ' + errorMsg);
       }
     } catch (e) {
       console.error(e);
-      toast.error('שגיאה ביצירת גיליון');
+      const errorMsg = e?.message || (typeof e === 'object' ? JSON.stringify(e) : String(e)) || 'שגיאה לא ידועה';
+      toast.error('שגיאה ביצירת גיליון: ' + errorMsg);
     }
   };
 
