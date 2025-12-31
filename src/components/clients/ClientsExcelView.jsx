@@ -120,7 +120,7 @@ export default function ClientsExcelView({ clients, onRefresh }) {
       <GenericSpreadsheet
         spreadsheet={virtualSpreadsheet}
         customSaveHandler={handleSave}
-        fullScreenMode={false}
+        fullScreenMode={true}
       />
     </div>
   );

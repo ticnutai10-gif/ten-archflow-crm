@@ -3493,7 +3493,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
             {/* Right Side: Search & Collab */}
             <div className="flex items-center gap-2 flex-shrink-0">
               <div className="relative">
-                <div className="flex items-center w-64 bg-white border border-slate-200 rounded-lg shadow-sm focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all">
+                <div className="flex items-center w-40 bg-white border border-slate-200 rounded-lg shadow-sm focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all">
                   <Search className="w-4 h-4 text-slate-400 mr-2 flex-shrink-0" />
                   <Input 
                     placeholder="חיפוש מהיר בכל הטבלה..." 

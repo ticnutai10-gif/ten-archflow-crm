@@ -115,7 +115,7 @@ export default function ClientSpreadsheet({
         <GenericSpreadsheet
           spreadsheet={selectedSpreadsheet}
           onUpdate={loadSpreadsheets}
-          fullScreenMode={false}
+          fullScreenMode={true}
           onBack={() => setSelectedSpreadsheet(null)}
         />
       </div>
