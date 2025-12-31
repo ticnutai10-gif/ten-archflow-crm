@@ -82,7 +82,15 @@ export default function MeetingForm({ meeting, clients, projects, initialDate, o
   };
 
   const addReminder = () => {
-    const newReminder = { minutes_before: 60, method: 'in-app', sent: false };
+    const newReminder = { 
+      minutes_before: 60, 
+      notify_popup: true,
+      notify_audio: true,
+      notify_email: false,
+      notify_whatsapp: false,
+      audio_ringtone: 'ding',
+      sent: false 
+    };
     updateField('reminders', [...(formData.reminders || []), newReminder]);
   };
 
@@ -364,36 +372,64 @@ export default function MeetingForm({ meeting, clients, projects, initialDate, o
                       </Select>
                     </div>
 
-                    <div className="space-y-1">
-                      <Label className="text-xs">שיטת התראה</Label>
-                      <Select 
-                        value={reminder.method} 
-                        onValueChange={(v) => updateReminder(idx, 'method', v)}
-                      >
-                        <SelectTrigger className="h-9">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="in-app">
-                            <div className="flex items-center gap-2">
-                              <Bell className="w-4 h-4" />
-                              באפליקציה בלבד
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="email">
-                            <div className="flex items-center gap-2">
-                              <Mail className="w-4 h-4" />
-                              מייל בלבד
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="both">
-                            <div className="flex items-center gap-2">
-                              <Smartphone className="w-4 h-4" />
-                              שניהם
-                            </div>
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
+                    <div className="space-y-2 col-span-2">
+                      <Label className="text-xs font-semibold">ערוצי התראה</Label>
+                      <div className="flex flex-wrap gap-3 p-2 bg-slate-50 rounded border">
+                        <div className="flex items-center gap-1.5">
+                          <Switch 
+                            checked={reminder.notify_popup} 
+                            onCheckedChange={(v) => updateReminder(idx, 'notify_popup', v)} 
+                            className="scale-75"
+                          />
+                          <span className="text-xs">פופ־אפ</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Switch 
+                            checked={reminder.notify_audio} 
+                            onCheckedChange={(v) => updateReminder(idx, 'notify_audio', v)} 
+                            className="scale-75"
+                          />
+                          <span className="text-xs">קול</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Switch 
+                            checked={reminder.notify_whatsapp} 
+                            onCheckedChange={(v) => updateReminder(idx, 'notify_whatsapp', v)} 
+                            className="scale-75"
+                          />
+                          <span className="text-xs">וואטסאפ</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Switch 
+                            checked={reminder.notify_email} 
+                            onCheckedChange={(v) => updateReminder(idx, 'notify_email', v)} 
+                            className="scale-75"
+                          />
+                          <span className="text-xs">מייל</span>
+                        </div>
+                      </div>
+                      
+                      {reminder.notify_audio && (
+                        <div className="mt-2">
+                          <Select 
+                            value={reminder.audio_ringtone || 'ding'} 
+                            onValueChange={(v) => updateReminder(idx, 'audio_ringtone', v)}
+                          >
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue placeholder="בחר רינגטון" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="ding">🔔 צלצול קלאסי</SelectItem>
+                              <SelectItem value="chime">🔔 פעמונים</SelectItem>
+                              <SelectItem value="beethoven_5th">🎼 בטהובן - ה-5</SelectItem>
+                              <SelectItem value="vivaldi_spring">🎼 ויוואלדי - אביב</SelectItem>
+                              <SelectItem value="mozart_night">🎼 מוצרט - לילה</SelectItem>
+                              <SelectItem value="bach_cello">🎼 באך - צ'לו</SelectItem>
+                              <SelectItem value="pachelbel_canon">🎼 פכלבל - קאנון</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
                     </div>
                   </div>
 

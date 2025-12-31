@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Task, User } from '@/entities/all'; // Added User import
 import { toast } from "sonner";
@@ -49,10 +48,31 @@ async function playCustomRingtone(ringtoneId) {
   }
 }
 
+const CLASSICAL_RINGTONES = {
+  'beethoven_5th': 'https://upload.wikimedia.org/wikipedia/commons/e/eb/Beethoven_Symphony_No._5_1st_movement_opening.ogg',
+  'vivaldi_spring': 'https://upload.wikimedia.org/wikipedia/commons/3/3c/Antonio_Vivaldi_-_Spring_Mvt_1_Allegro_-_John_Harrison_violin.ogg',
+  'mozart_night': 'https://upload.wikimedia.org/wikipedia/commons/e/e1/Mozart_-_Eine_kleine_Nachtmusik_-_1._Allegro.ogg',
+  'bach_cello': 'https://upload.wikimedia.org/wikipedia/commons/d/d0/J.S.Bach_-_Cello_Suite_No._1_in_G_Major_-_I._Prelude.ogg',
+  'tchaikovsky_sugar': 'https://upload.wikimedia.org/wikipedia/commons/3/38/Tchaikovsky_-_Dance_of_the_Sugar_Plum_Fairy_-_The_Nutcracker.ogg',
+  'brahms_lullaby': 'https://upload.wikimedia.org/wikipedia/commons/2/21/Johannes_Brahms_-_Wiegenlied_Op._49%2C_No._4.ogg',
+  'chopin_nocturne': 'https://upload.wikimedia.org/wikipedia/commons/3/3e/Fr%C3%A9d%C3%A9ric_Chopin_-_Nocturne_Op._9_No._2.ogg',
+  'strauss_danube': 'https://upload.wikimedia.org/wikipedia/commons/2/27/Strauss_-_The_Blue_Danube.ogg',
+  'pachelbel_canon': 'https://upload.wikimedia.org/wikipedia/commons/0/07/Johann_Pachelbel_-_Canon_in_D_Major.ogg',
+  'debussy_clair': 'https://upload.wikimedia.org/wikipedia/commons/0/03/Clair_de_lune_%28Debussy%29_Suite_bergamasque.ogg'
+};
+
 function playRingtone(kind = 'ding') {
   // אם זה רינגטון מותאם אישית
   if (kind.startsWith('custom_')) {
     playCustomRingtone(kind.replace('custom_', ''));
+    return;
+  }
+
+  // רינגטונים קלאסיים
+  if (CLASSICAL_RINGTONES[kind]) {
+    const audio = new Audio(CLASSICAL_RINGTONES[kind]);
+    audio.volume = 0.6;
+    audio.play().catch(e => console.error("Audio play failed", e));
     return;
   }
 
@@ -120,7 +140,11 @@ export default function ReminderManager() {
       });
 
       if (due.length > 0) {
-        playRingtone(due[0].reminder_ringtone || 'ding');
+        // Play audio only if notify_audio is true (default to true if undefined for backward compatibility)
+        if (due[0].notify_audio !== false) {
+          playRingtone(due[0].reminder_ringtone || 'ding');
+        }
+        
         due.forEach(t => {
           toast.info(`תזכורת למשימה: ${t.title}`, {
             description: t.client_name ? `ללקוח: ${t.client_name}` : undefined,

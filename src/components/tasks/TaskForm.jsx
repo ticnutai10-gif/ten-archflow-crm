@@ -30,6 +30,9 @@ export default function TaskForm({ task, clients, projects, onSubmit, onCancel, 
     reminder_at: '',
     reminder_ringtone: 'ding',
     reminder_popup: true,
+    notify_whatsapp: false,
+    notify_email: false,
+    notify_audio: true,
     ...initialData
   });
 
@@ -137,6 +140,45 @@ export default function TaskForm({ task, clients, projects, onSubmit, onCancel, 
     { hour: 18, minute: 0, label: '18:00 ערב' },
     { hour: 20, minute: 0, label: '20:00 ערב' },
   ];
+
+  // Sync to Reminder entity for backend processing (Email/WhatsApp)
+  const syncToReminderEntity = async (taskData, createdTaskId) => {
+    if ((taskData.notify_email || taskData.notify_whatsapp) && taskData.reminder_at && taskData.reminder_enabled) {
+      try {
+        const user = await base44.auth.me();
+        await base44.entities.Reminder.create({
+          target_type: 'task',
+          target_id: createdTaskId || taskData.id,
+          target_name: taskData.title,
+          reminder_date: taskData.reminder_at,
+          created_by_email: user.email,
+          status: 'pending',
+          notify_whatsapp: taskData.notify_whatsapp,
+          notify_email: taskData.notify_email,
+          message: `תזכורת למשימה: ${taskData.title}\nפרויקט: ${taskData.project_name || '-'}\nלקוח: ${taskData.client_name || '-'}`
+        });
+      } catch (e) {
+        console.error("Failed to create backend reminder:", e);
+      }
+    }
+  };
+
+  const handleFormSubmit = async (data) => {
+    // If creating a new task, we need to wait for ID to create Reminder
+    // But onSubmit usually handles the API call. 
+    // We can't intercept the ID here easily unless onSubmit returns it.
+    // Assuming onSubmit returns the created object or we handle it inside onSubmit wrapper in parent.
+    // However, to keep it simple, we'll modify the data passed to onSubmit, and assume the parent or backend handles logic,
+    // OR we trigger the sync here if it's an update.
+    
+    // Actually, for TaskForm, the parent (Tasks.js or similar) calls the API. 
+    // We can't create the Reminder entity here for a NEW task without the ID.
+    // So we will just pass the flags to the Task entity (which we did by adding fields to Task.json).
+    // The backend `checkReminders` function currently queries `Reminder` entity.
+    // **SOLUTION**: I will update `checkReminders` to ALSO query `Task` entity directly for pending reminders.
+    // This is much cleaner than syncing two entities.
+    onSubmit(data);
+  };
 
   return (
     <Dialog open={true} onOpenChange={(open) => !open && onCancel()}>
@@ -272,31 +314,55 @@ export default function TaskForm({ task, clients, projects, onSubmit, onCancel, 
                   >
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="ding">צלצול קלאסי</SelectItem>
-                      <SelectItem value="chime">פעמונים</SelectItem>
-                      <SelectItem value="alarm">אזעקה</SelectItem>
-                      {customRingtones.map(ringtone => (
-                        <SelectItem key={ringtone.id} value={`custom_${ringtone.id}`}>
-                          🎵 {ringtone.name}
-                        </SelectItem>
-                      ))}
+                      <SelectItem value="ding">🔔 צלצול קלאסי</SelectItem>
+                      <SelectItem value="chime">🔔 פעמונים</SelectItem>
+                      <SelectItem value="alarm">🚨 אזעקה</SelectItem>
+                      
+                      <div className="p-1 px-2 text-xs font-semibold text-slate-500 bg-slate-50">מוזיקה קלאסית</div>
+                      <SelectItem value="beethoven_5th">🎼 בטהובן - הסימפוניה ה-5</SelectItem>
+                      <SelectItem value="vivaldi_spring">🎼 ויוואלדי - אביב</SelectItem>
+                      <SelectItem value="mozart_night">🎼 מוצרט - מוזיקת לילה זעירה</SelectItem>
+                      <SelectItem value="bach_cello">🎼 באך - סוויטת צ'לו</SelectItem>
+                      <SelectItem value="tchaikovsky_sugar">🎼 צ'ייקובסקי - מפצח האגוזים</SelectItem>
+                      <SelectItem value="brahms_lullaby">🎼 ברהמס - שיר ערש</SelectItem>
+                      <SelectItem value="chopin_nocturne">🎼 שופן - נוקטורן</SelectItem>
+                      <SelectItem value="debussy_clair">🎼 דביסי - לאור הירח</SelectItem>
+                      <SelectItem value="pachelbel_canon">🎼 פכלבל - קאנון ברה מז'ור</SelectItem>
+                      <SelectItem value="strauss_danube">🎼 שטראוס - הדנובה הכחולה</SelectItem>
+
+                      {customRingtones.length > 0 && (
+                        <>
+                          <div className="p-1 px-2 text-xs font-semibold text-slate-500 bg-slate-50">מותאם אישית</div>
+                          {customRingtones.map(ringtone => (
+                            <SelectItem key={ringtone.id} value={`custom_${ringtone.id}`}>
+                              🎵 {ringtone.name}
+                            </SelectItem>
+                          ))}
+                        </>
+                      )}
                     </SelectContent>
                   </Select>
-                  {customRingtones.length === 0 && (
-                    <p className="text-xs text-blue-600">
-                      💡 ניתן להוסיף רינגטונים מותאמים אישית בעמוד ההגדרות
-                    </p>
-                  )}
                 </div>
                 
-                <div className="space-y-2">
-                  <Label>פופ־אפ</Label>
-                  <div className="flex items-center gap-2 h-10">
-                    <Switch
-                      checked={!!formData.reminder_popup}
-                      onCheckedChange={(v) => updateField('reminder_popup', v)}
-                    />
-                    <span className="text-sm text-slate-600">הצג חלונית קופצת בזמן התזכורת</span>
+                <div className="space-y-3">
+                  <Label>ערוצי תזכורת</Label>
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between bg-white p-2 rounded border">
+                      <span className="text-sm flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-500"></div>הודעה באתר</span>
+                      <Switch checked={!!formData.reminder_popup} onCheckedChange={(v) => updateField('reminder_popup', v)} />
+                    </div>
+                    <div className="flex items-center justify-between bg-white p-2 rounded border">
+                      <span className="text-sm flex items-center gap-2">📢 תזכורת קולית</span>
+                      <Switch checked={formData.notify_audio !== false} onCheckedChange={(v) => updateField('notify_audio', v)} />
+                    </div>
+                    <div className="flex items-center justify-between bg-white p-2 rounded border">
+                      <span className="text-sm flex items-center gap-2">💬 וואטסאפ</span>
+                      <Switch checked={!!formData.notify_whatsapp} onCheckedChange={(v) => updateField('notify_whatsapp', v)} />
+                    </div>
+                    <div className="flex items-center justify-between bg-white p-2 rounded border">
+                      <span className="text-sm flex items-center gap-2">📧 אימייל</span>
+                      <Switch checked={!!formData.notify_email} onCheckedChange={(v) => updateField('notify_email', v)} />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -344,7 +410,7 @@ export default function TaskForm({ task, clients, projects, onSubmit, onCancel, 
         </div>
         <DialogFooter className="px-6 py-4 border-t border-slate-100 shrink-0 bg-slate-50/50 rounded-b-2xl">
           <Button variant="outline" onClick={onCancel}>ביטול</Button>
-          <Button onClick={() => onSubmit(formData)}>שמור משימה</Button>
+          <Button onClick={() => handleFormSubmit(formData)}>שמור משימה</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
