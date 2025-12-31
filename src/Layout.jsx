@@ -90,6 +90,15 @@ function LayoutInner({ children, currentPageName }) {
       return false;
     }
   });
+  const [sidebarWidth, setSidebarWidth] = useState(() => {
+    try {
+      const saved = localStorage.getItem('sidebar-width');
+      return saved ? parseInt(saved, 10) : 320;
+    } catch {
+      return 320;
+    }
+  });
+  const [isResizing, setIsResizing] = useState(false);
   const [hovered, setHovered] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const loadedRef = useRef(false);
@@ -213,8 +222,49 @@ function LayoutInner({ children, currentPageName }) {
     };
   }, []);
 
+  const startResizing = useCallback((e) => {
+    e.preventDefault();
+    setIsResizing(true);
+  }, []);
+
+  const stopResizing = useCallback(() => {
+    setIsResizing(false);
+  }, []);
+
+  const resize = useCallback(
+    (mouseMoveEvent) => {
+      if (isResizing) {
+        const newWidth = window.innerWidth - mouseMoveEvent.clientX;
+        if (newWidth > 240 && newWidth < 800) {
+          setSidebarWidth(newWidth);
+        }
+      }
+    },
+    [isResizing]
+  );
+
+  useEffect(() => {
+    if (isResizing) {
+      window.addEventListener("mousemove", resize);
+      window.addEventListener("mouseup", stopResizing);
+      // Disable text selection while resizing
+      document.body.style.userSelect = 'none';
+      document.body.style.cursor = 'col-resize';
+    }
+    return () => {
+      window.removeEventListener("mousemove", resize);
+      window.removeEventListener("mouseup", stopResizing);
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+    };
+  }, [isResizing, resize, stopResizing]);
+
+  useEffect(() => {
+    localStorage.setItem('sidebar-width', sidebarWidth);
+  }, [sidebarWidth]);
+
   const sidebarStyles = isExpanded ? {
-    width: '320px',
+    width: `${sidebarWidth}px`,
     opacity: 1,
     visibility: 'visible',
     transform: 'translateX(0)',
@@ -585,6 +635,15 @@ function LayoutInner({ children, currentPageName }) {
         >
           {(isExpanded || hovered || pinned) && (
             <div className="h-full bg-white border-l border-slate-200 shadow-lg relative group rounded-r-2xl overflow-hidden flex flex-col">
+              {/* Resize Handle */}
+              <div
+                className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400 transition-colors z-50 flex flex-col justify-center items-center group/handle"
+                onMouseDown={startResizing}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className={`h-8 w-1 rounded-full transition-colors ${isResizing ? 'bg-blue-600' : 'bg-slate-300 group-hover/handle:bg-blue-400'}`} />
+              </div>
+
               <div
                 className="relative p-6 min-h-[120px] flex items-center overflow-hidden rounded-tr-2xl rounded-tl-2xl"
                 style={{ backgroundColor: 'white', borderBottom: '1px solid #e2e8f0' }}
