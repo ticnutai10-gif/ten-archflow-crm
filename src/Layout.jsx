@@ -578,7 +578,7 @@ function LayoutInner({ children, currentPageName }) {
 
         {!isMobile && (
         <div
-          className="order-1 sticky top-0 h-screen sidebar-container"
+          className="order-1 sticky top-0 h-[100dvh] sidebar-container"
           style={sidebarStyles}
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}

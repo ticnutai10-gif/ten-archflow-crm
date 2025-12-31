@@ -328,7 +328,8 @@ export default function ClientsPage() {
       await loadClients();
 
     } catch (error) {
-      throw new Error(error.message || 'שגיאה בשמירת הלקוח');
+      const errorMessage = error?.message || (typeof error === 'object' ? JSON.stringify(error) : String(error)) || 'שגיאה בשמירת הלקוח';
+      throw new Error(errorMessage);
     }
   };
 

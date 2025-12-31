@@ -841,7 +841,8 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       }
     } catch (error) {
       console.error('❌ [SAVE] Error:', error);
-      toast.error('שגיאה בשמירה: ' + (error.message || 'לא ידוע'));
+      const errorMessage = error?.message || (typeof error === 'object' ? JSON.stringify(error) : String(error)) || 'שגיאה לא ידועה';
+      toast.error('שגיאה בשמירה: ' + errorMessage);
     }
   }, [spreadsheet?.id, spreadsheet?.client_id, spreadsheet?.client_name, onUpdate, showSubHeaders, customSaveHandler]);
 
