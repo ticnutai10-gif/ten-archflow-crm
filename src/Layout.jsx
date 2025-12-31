@@ -634,7 +634,7 @@ function LayoutInner({ children, currentPageName }) {
           onMouseLeave={handleMouseLeave}
         >
           {(isExpanded || hovered || pinned) && (
-            <div className="h-full bg-white border-2 border-[#2C3A50] shadow-lg relative group rounded-2xl overflow-hidden flex flex-col my-2 mr-2">
+            <div className="h-full bg-white border border-[#D4AF37] shadow-lg relative group rounded-2xl overflow-hidden flex flex-col my-2 mr-2">
               {/* Resize Handle */}
               <div
                 className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400 transition-colors z-50 flex flex-col justify-center items-center group/handle"
@@ -693,7 +693,7 @@ function LayoutInner({ children, currentPageName }) {
                 </div>
               </div>
 
-              <nav className="flex-1 p-2 space-y-1 overflow-y-auto no-scrollbar">
+              <nav className="flex-1 p-2 space-y-1 overflow-y-auto no-scrollbar [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                 {MENU_ITEMS.map((item) => {
                   const isActive = currentPageName === item.path;
                   const Icon = item.icon;
