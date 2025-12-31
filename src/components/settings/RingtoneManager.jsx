@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { User } from '@/entities/User';
+import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -22,7 +22,7 @@ export default function RingtoneManager() {
 
   const loadUserData = async () => {
     try {
-      const currentUser = await User.me();
+      const currentUser = await base44.auth.me();
       setUser(currentUser);
       setCustomRingtones(currentUser.custom_ringtones || []);
     } catch (error) {
@@ -61,7 +61,7 @@ export default function RingtoneManager() {
 
       const updatedRingtones = [...customRingtones, newRingtone];
       
-      await User.updateMyUserData({
+      await base44.auth.updateMe({
         custom_ringtones: updatedRingtones
       });
       
@@ -120,7 +120,7 @@ export default function RingtoneManager() {
     try {
       const updatedRingtones = customRingtones.filter(r => r.id !== ringtoneId);
       
-      await User.updateMyUserData({
+      await base44.auth.updateMe({
         custom_ringtones: updatedRingtones
       });
       

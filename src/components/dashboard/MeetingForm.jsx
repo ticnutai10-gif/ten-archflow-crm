@@ -434,6 +434,17 @@ export default function MeetingForm({ meeting, clients, projects, initialDate, o
                                 <SelectItem value="debussy_clair">🎼 דביסי - לאור הירח</SelectItem>
                                 <SelectItem value="pachelbel_canon">🎼 פכלבל - קאנון ברה מז'ור</SelectItem>
                                 <SelectItem value="strauss_danube">🎼 שטראוס - הדנובה הכחולה</SelectItem>
+                                
+                                {customRingtones.length > 0 && (
+                                  <>
+                                    <div className="p-1 px-2 text-xs font-semibold text-slate-500 bg-slate-50">מותאם אישית</div>
+                                    {customRingtones.map(ringtone => (
+                                      <SelectItem key={ringtone.id} value={`custom_${ringtone.id}`}>
+                                        🎵 {ringtone.name}
+                                      </SelectItem>
+                                    ))}
+                                  </>
+                                )}
                               </SelectContent>
                             </Select>
                           </div>
