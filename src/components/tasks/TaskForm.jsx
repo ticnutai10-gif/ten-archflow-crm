@@ -18,6 +18,7 @@ import {
 import ReminderTimePicker from "./ReminderTimePicker";
 import MultiRecipientSelector from "@/components/common/MultiRecipientSelector";
 import MultiPhoneSelector from "@/components/common/MultiPhoneSelector";
+import CheckRemindersButton from "@/components/debug/CheckRemindersButton";
 
 export default function TaskForm({ task, clients, projects, onSubmit, onCancel, initialData = {} }) {
   const [formData, setFormData] = useState(task || {
@@ -284,7 +285,10 @@ export default function TaskForm({ task, clients, projects, onSubmit, onCancel, 
           {/* תזכורות מרובות וחזרתיות */}
           <div className="mt-2 p-3 rounded-lg border bg-slate-50 space-y-4">
             <div className="flex items-center justify-between">
-              <Label className="font-semibold text-base">תזכורות וחזרתיות</Label>
+              <div className="flex items-center gap-2">
+                <Label className="font-semibold text-base">תזכורות וחזרתיות</Label>
+                <CheckRemindersButton />
+              </div>
               <Button type="button" variant="outline" size="sm" onClick={() => {
                 const newReminder = { 
                   reminder_at: formData.due_date ? `${formData.due_date}T09:00` : new Date().toISOString(),
