@@ -979,6 +979,7 @@ export default function AutomationsPage() {
           rule={editingRule} 
         />
       )}
+      </div>
     </div>
   );
 }
