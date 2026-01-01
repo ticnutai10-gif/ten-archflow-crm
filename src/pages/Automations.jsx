@@ -141,6 +141,19 @@ const ACTIONS = [
 
 const ICON_COLOR = "#2C3A50";
 
+const getTriggerColorStyle = (color) => {
+  switch (color) {
+    case 'blue': return '#dbeafe';
+    case 'green': return '#d1fae5';
+    case 'purple': return '#ede9fe';
+    case 'orange': return '#fed7aa';
+    case 'pink': return '#fce7f3';
+    case 'teal': return '#ccfbf1';
+    case 'red': return '#fee2e2';
+    default: return '#e0e7ff';
+  }
+};
+
 export default function AutomationsPage() {
   const [activeTab, setActiveTab] = useState("rules");
   const [rules, setRules] = useState([]);
@@ -435,7 +448,7 @@ export default function AutomationsPage() {
                               <div className="flex items-center gap-3 mb-3">
                                 <div 
                                   className="p-2 rounded-lg"
-                                  style={{ backgroundColor: `${triggerInfo.color === 'blue' ? '#dbeafe' : triggerInfo.color === 'green' ? '#d1fae5' : triggerInfo.color === 'purple' ? '#ede9fe' : triggerInfo.color === 'orange' ? '#fed7aa' : triggerInfo.color === 'pink' ? '#fce7f3' : triggerInfo.color === 'teal' ? '#ccfbf1' : triggerInfo.color === 'red' ? '#fee2e2' : '#e0e7ff'}` }}
+                                  style={{ backgroundColor: getTriggerColorStyle(triggerInfo.color) }}
                                 >
                                   <TriggerIcon className="w-5 h-5" style={{ color: ICON_COLOR }} />
                                 </div>
