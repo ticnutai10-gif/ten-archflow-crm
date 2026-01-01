@@ -16,6 +16,8 @@ import {
   History, TestTube
 } from "lucide-react";
 import { toast } from "sonner";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import MessageTemplatesManager from "@/components/settings/MessageTemplatesManager";
 import VisualRuleFlow from "@/components/automations/VisualRuleFlow";
 import AutomationHistory from "@/components/automations/AutomationHistory";
 import DryRunDialog from "@/components/automations/DryRunDialog";
