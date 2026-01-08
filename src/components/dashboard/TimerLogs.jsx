@@ -394,17 +394,59 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
 
       return matchesSearch && matchesClient && matchesUser && matchesTime;
     }).sort((a, b) => {
-      if (sortBy === 'created_date') {
-        const dateA = new Date(a.created_date || 0);
-        const dateB = new Date(b.created_date || 0);
-        return dateB - dateA;
+      const { key, direction } = sortConfig;
+      let valA = a[key];
+      let valB = b[key];
+
+      // Handle specific fields
+      if (key === 'created_by') {
+        valA = getUserDisplayName(getCreatedBy(a)) || '';
+        valB = getUserDisplayName(getCreatedBy(b)) || '';
+      } else if (key === 'client_name') {
+        valA = a.client_name || '';
+        valB = b.client_name || '';
+      } else if (key === 'title') {
+        valA = a.title || '';
+        valB = b.title || '';
+      } else if (key === 'log_date' || key === 'created_date') {
+        valA = new Date(valA || 0).getTime();
+        valB = new Date(valB || 0).getTime();
+      } else if (key === 'duration_seconds') {
+        valA = Number(valA || 0);
+        valB = Number(valB || 0);
       }
-      // default: log_date
-      const dateA = new Date(a.log_date || 0);
-      const dateB = new Date(b.log_date || 0);
-      return dateB - dateA;
+
+      if (valA < valB) return direction === 'asc' ? -1 : 1;
+      if (valA > valB) return direction === 'asc' ? 1 : -1;
+      return 0;
     });
-  }, [safeTimeLogs, searchTerm, clientFilter, userFilter, timeFilter, sortBy, customRange]);
+  }, [safeTimeLogs, searchTerm, clientFilter, userFilter, timeFilter, sortConfig, customRange]);
+
+  const handleSort = (key) => {
+    setSortConfig(current => ({
+      key,
+      direction: current.key === key && current.direction === 'desc' ? 'asc' : 'desc'
+    }));
+  };
+
+  const SortableHeader = ({ label, columnKey, className }) => {
+    const isActive = sortConfig.key === columnKey;
+    return (
+      <TableHead 
+        className={`text-right cursor-pointer hover:bg-slate-50 transition-colors select-none group ${className}`}
+        onClick={() => handleSort(columnKey)}
+      >
+        <div className="flex items-center gap-1">
+          {label}
+          <div className={`transition-opacity ${isActive ? 'opacity-100 text-blue-600' : 'opacity-0 group-hover:opacity-40'}`}>
+            {isActive && sortConfig.direction === 'asc' ? <ArrowUp className="w-3 h-3" /> : 
+             isActive && sortConfig.direction === 'desc' ? <ArrowDown className="w-3 h-3" /> :
+             <ArrowUpDown className="w-3 h-3" />}
+          </div>
+        </div>
+      </TableHead>
+    );
+  };
 
   // ✅ הגנה על totalTime
   const totalTime = React.useMemo(() => {
