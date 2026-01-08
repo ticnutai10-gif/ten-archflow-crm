@@ -705,167 +705,211 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
         </div>
       ) : null}
 
-      {/* כלי בקרה - שורה אחת קומפקטית */}
+      {/* כלי בקרה - סרגל עליון מסודר */}
       <div className="flex-shrink-0 bg-white border-b border-slate-200">
-        <div className="flex items-center gap-2 p-3 flex-wrap">
-          {/* כפתור הוספת זמן */}
-          <Button
-            onClick={() => {
-              setSelectedClientForAdd(null);
-              setShowAddDialog(true);
-            }}
-            size="icon"
-            className="h-9 w-9 bg-blue-600 hover:bg-blue-700 text-white shadow-md"
-            title="הוסף רישום זמן"
-          >
-            <Plus className="w-5 h-5" />
-          </Button>
-          {/* חיפוש */}
-          <div className="relative w-48">
-            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <Input
-              placeholder="חיפוש..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pr-10 h-9 text-sm"
-            />
-          </div>
+        <div className="flex flex-col gap-2 p-3">
+          
+          {/* שורה עליונה: פילטרים ראשיים */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* כפתור הוספת זמן */}
+            <Button
+              onClick={() => {
+                setSelectedClientForAdd(null);
+                setShowAddDialog(true);
+              }}
+              size="icon"
+              className="h-10 w-10 bg-blue-600 hover:bg-blue-700 text-white shadow-md rounded-xl"
+              title="הוסף רישום זמן"
+            >
+              <Plus className="w-5 h-5" />
+            </Button>
 
-          {/* פילטר לקוחות */}
-          <Select value={clientFilter} onValueChange={setClientFilter}>
-            <SelectTrigger className="w-40 h-9" title="לקוח">
-              <SelectValue placeholder="כל הלקוחות" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">כל הלקוחות</SelectItem>
-              {uniqueClients.map(client => (
-                <SelectItem key={client} value={client}>{client}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            {/* חיפוש */}
+            <div className="relative w-48">
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Input
+                placeholder="חיפוש..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pr-10 h-10 text-sm rounded-xl"
+              />
+            </div>
 
-          {/* פילטר משתמשים */}
-          <Select value={userFilter} onValueChange={setUserFilter}>
-            <SelectTrigger className="w-40 h-9" title="משתמש">
-              <SelectValue placeholder="כל העובדים" />
-            </SelectTrigger>
-            <SelectContent className="w-80">
-              <div className="p-2 border-b sticky top-0 bg-white z-10">
-                <div className="relative">
-                  <Search className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <Input
-                    placeholder="חפש משתמש..."
-                    value={userSearchTerm}
-                    onChange={(e) => setUserSearchTerm(e.target.value)}
-                    className="pr-8 h-9 text-sm"
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                </div>
-              </div>
+            {/* פילטרים */}
+            <Select value={clientFilter} onValueChange={setClientFilter}>
+              <SelectTrigger className="w-40 h-10 rounded-xl" title="לקוח">
+                <SelectValue placeholder="כל הלקוחות" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">כל הלקוחות</SelectItem>
+                {uniqueClients.map(client => (
+                  <SelectItem key={client} value={client}>{client}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-              <SelectItem value="all">
-                <div className="flex items-center gap-2 py-1">
-                  <Users className="w-4 h-4 text-slate-500" />
-                  <div>
-                    <div className="font-medium">כל המשתמשים</div>
-                    <div className="text-xs text-slate-500">{allUsers.length} משתמשים</div>
+            <Select value={userFilter} onValueChange={setUserFilter}>
+              <SelectTrigger className="w-40 h-10 rounded-xl" title="משתמש">
+                <SelectValue placeholder="כל העובדים" />
+              </SelectTrigger>
+              <SelectContent className="w-80">
+                <div className="p-2 border-b sticky top-0 bg-white z-10">
+                  <div className="relative">
+                    <Search className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <Input
+                      placeholder="חפש משתמש..."
+                      value={userSearchTerm}
+                      onChange={(e) => setUserSearchTerm(e.target.value)}
+                      className="pr-8 h-9 text-sm"
+                      onClick={(e) => e.stopPropagation()}
+                    />
                   </div>
                 </div>
-              </SelectItem>
-
-              {allUsers.length === 0 ? (
-                <div className="p-4 text-center text-slate-500 text-sm">
-                  <p className="font-semibold mb-2">⚠️ אין משתמשים</p>
-                  <p className="text-xs">לא נמצאו רישומי זמן עם created_by</p>
-                </div>
-              ) : (
-                <div className="max-h-96 overflow-y-auto">
-                  {filteredUsers.length === 0 ? (
-                    <div className="p-4 text-center text-slate-500 text-sm">
-                      אין תוצאות
+                <SelectItem value="all">
+                  <div className="flex items-center gap-2 py-1">
+                    <Users className="w-4 h-4 text-slate-500" />
+                    <div>
+                      <div className="font-medium">כל המשתמשים</div>
+                      <div className="text-xs text-slate-500">{allUsers.length} משתמשים</div>
                     </div>
-                  ) : (
-                    filteredUsers.map(user => (
-                      <SelectItem key={user.id} value={user.id}>
-                        <div className="flex items-center gap-3 py-1">
-                          <Avatar className="w-8 h-8">
-                            <AvatarFallback className="text-xs bg-gradient-to-br from-blue-500 to-purple-600 text-white">
-                              {user.name.substring(0, 2).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 min-w-0">
-                            <div className="font-medium text-sm truncate">{user.full_name || user.name}</div>
-                            <div className="text-xs text-slate-500 truncate">{user.email || user.id}</div>
-                            <div className="flex items-center gap-2 mt-1">
-                              <Badge variant="outline" className="text-[10px] px-1 py-0">
-                                {Math.round(user.totalHours * 10) / 10}ש׳
-                              </Badge>
-                              <Badge variant="outline" className="text-[10px] px-1 py-0">
-                                {user.clients.length} לקוחות
-                              </Badge>
+                  </div>
+                </SelectItem>
+                {allUsers.length === 0 ? (
+                  <div className="p-4 text-center text-slate-500 text-sm">
+                    <p className="font-semibold mb-2">⚠️ אין משתמשים</p>
+                    <p className="text-xs">לא נמצאו רישומי זמן עם created_by</p>
+                  </div>
+                ) : (
+                  <div className="max-h-96 overflow-y-auto">
+                    {filteredUsers.length === 0 ? (
+                      <div className="p-4 text-center text-slate-500 text-sm">
+                        אין תוצאות
+                      </div>
+                    ) : (
+                      filteredUsers.map(user => (
+                        <SelectItem key={user.id} value={user.id}>
+                          <div className="flex items-center gap-3 py-1">
+                            <Avatar className="w-8 h-8">
+                              <AvatarFallback className="text-xs bg-gradient-to-br from-blue-500 to-purple-600 text-white">
+                                {user.name.substring(0, 2).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium text-sm truncate">{user.full_name || user.name}</div>
+                              <div className="text-xs text-slate-500 truncate">{user.email || user.id}</div>
+                              <div className="flex items-center gap-2 mt-1">
+                                <Badge variant="outline" className="text-[10px] px-1 py-0">
+                                  {Math.round(user.totalHours * 10) / 10}ש׳
+                                </Badge>
+                                <Badge variant="outline" className="text-[10px] px-1 py-0">
+                                  {user.clients.length} לקוחות
+                                </Badge>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </SelectItem>
-                    ))
-                  )}
-                </div>
-              )}
-            </SelectContent>
-          </Select>
+                        </SelectItem>
+                      ))
+                    )}
+                  </div>
+                )}
+              </SelectContent>
+            </Select>
 
-          {/* פילטר זמן */}
-          <Select value={timeFilter} onValueChange={setTimeFilter}>
-            <SelectTrigger className="w-40 h-9" title="תקופה">
-              <SelectValue placeholder="כל התקופות" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">כל התקופות</SelectItem>
-              <SelectItem value="today">היום</SelectItem>
-              <SelectItem value="week">השבוע</SelectItem>
-              <SelectItem value="month">החודש</SelectItem>
-              <SelectItem value="custom">טווח מותאם אישית</SelectItem>
-            </SelectContent>
-          </Select>
+            <Select value={timeFilter} onValueChange={setTimeFilter}>
+              <SelectTrigger className="w-40 h-10 rounded-xl" title="תקופה">
+                <SelectValue placeholder="כל התקופות" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">כל התקופות</SelectItem>
+                <SelectItem value="today">היום</SelectItem>
+                <SelectItem value="week">השבוע</SelectItem>
+                <SelectItem value="month">החודש</SelectItem>
+                <SelectItem value="custom">טווח מותאם אישית</SelectItem>
+              </SelectContent>
+            </Select>
 
-          {/* בחירת תאריכים לטווח מותאם אישית */}
+            {/* כלים נוספים */}
+            <div className="flex items-center gap-2 mr-auto bg-slate-50 p-1 rounded-xl border border-slate-100">
+              <Button
+                variant={showStats ? "default" : "ghost"}
+                size="icon"
+                onClick={() => setShowStats(!showStats)}
+                title={showStats ? 'הסתר סטטיסטיקות' : 'הצג סטטיסטיקות'}
+                className="h-8 w-8 rounded-lg"
+              >
+                <BarChart3 className="w-4 h-4" />
+              </Button>
+
+              <div className="w-px h-6 bg-slate-200" />
+
+              <div className="flex items-center gap-0.5">
+                <Button
+                  variant={!summaryMode && viewMode === 'list' ? 'default' : 'ghost'}
+                  size="icon"
+                  className={`h-8 w-8 rounded-lg ${!summaryMode && viewMode === 'list' ? 'bg-slate-900 text-white' : ''}`}
+                  onClick={() => { setSummaryMode(false); setViewMode('list'); }}
+                  title="רשימה"
+                >
+                  <List className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant={!summaryMode && viewMode === 'table' ? 'default' : 'ghost'}
+                  size="icon"
+                  className={`h-8 w-8 rounded-lg ${!summaryMode && viewMode === 'table' ? 'bg-slate-900 text-white' : ''}`}
+                  onClick={() => { setSummaryMode(false); setViewMode('table'); }}
+                  title="טבלה"
+                >
+                  <TableIcon className="w-4 h-4" />
+                </Button>
+              </div>
+
+              <div className="w-px h-6 bg-slate-200" />
+
+              <Button
+                variant={selectionMode ? "default" : "ghost"}
+                size="icon"
+                onClick={() => { setSelectionMode(v => !v); setSelectedIds([]); }}
+                className={`h-8 w-8 rounded-lg ${selectionMode ? 'bg-purple-600 text-white' : ''}`}
+                title={selectionMode ? 'בטל בחירה' : 'בחירה מרובה'}
+              >
+                {selectionMode ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+              </Button>
+            </div>
+          </div>
+
+          {/* שורה שנייה: בחירת טווח תאריכים מותאם אישית */}
           {timeFilter === "custom" && (
-            <div className="flex items-center gap-3 animate-in fade-in slide-in-from-right-4 duration-300 mx-2">
-              <div className="flex flex-col gap-1">
-                <span className="text-[10px] text-slate-500 font-medium">הקלדה ידנית</span>
+            <div className="flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-300 bg-slate-50/50 p-2 rounded-xl border border-slate-100">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-slate-500 w-12">התחלה:</span>
                 <Input
                   placeholder="DD/MM/YYYY"
-                  className="w-32 text-center ltr font-mono text-sm h-[50px] bg-white border-2 border-[#D4AF37]/30 focus:border-[#D4AF37] rounded-xl"
+                  className="w-32 h-10 text-center text-sm bg-white border-slate-200 focus:border-[#D4AF37] rounded-xl"
                   onChange={(e) => {
                      const val = e.target.value;
-                     // Very basic validation/conversion could go here, or just let them type
-                     // For now, if it matches YYYY-MM-DD we update state, or if they type DD/MM/YYYY we try to parse
                      if (val.match(/^\d{4}-\d{2}-\d{2}$/)) {
                         setCustomRange(prev => ({ ...prev, from: val }));
                      }
                   }}
                 />
+                <LuxuriousDatePicker
+                  value={customRange.from}
+                  onChange={(val) => setCustomRange({ ...customRange, from: val })}
+                  label="מתאריך"
+                  placeholder="בחר תאריך"
+                  className="w-40 h-10"
+                />
               </div>
-              <LuxuriousDatePicker
-                value={customRange.from}
-                onChange={(val) => setCustomRange({ ...customRange, from: val })}
-                label="מתאריך"
-                placeholder="בחר תאריך התחלה"
-                className="w-44 h-[50px]"
-              />
-              <span className="text-slate-300 font-light text-2xl">−</span>
-              <LuxuriousDatePicker
-                value={customRange.to}
-                onChange={(val) => setCustomRange({ ...customRange, to: val })}
-                label="עד תאריך"
-                placeholder="בחר תאריך סיום"
-                className="w-44 h-[50px]"
-              />
-              <div className="flex flex-col gap-1">
-                <span className="text-[10px] text-slate-500 font-medium">הקלדה ידנית</span>
+
+              <div className="w-8 flex justify-center text-slate-300">
+                <span className="text-2xl font-light">−</span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-slate-500 w-12">סיום:</span>
                 <Input
                   placeholder="DD/MM/YYYY"
-                  className="w-32 text-center ltr font-mono text-sm h-[50px] bg-white border-2 border-[#D4AF37]/30 focus:border-[#D4AF37] rounded-xl"
+                  className="w-32 h-10 text-center text-sm bg-white border-slate-200 focus:border-[#D4AF37] rounded-xl"
                   onChange={(e) => {
                      const val = e.target.value;
                      if (val.match(/^\d{4}-\d{2}-\d{2}$/)) {
@@ -873,142 +917,62 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
                      }
                   }}
                 />
+                <LuxuriousDatePicker
+                  value={customRange.to}
+                  onChange={(val) => setCustomRange({ ...customRange, to: val })}
+                  label="עד תאריך"
+                  placeholder="בחר תאריך"
+                  className="w-40 h-10"
+                />
               </div>
             </div>
           )}
 
-          {/* מפריד */}
-          <div className="h-6 w-px bg-slate-300"></div>
+          {/* שורת פעולות נוספות (סיכום, בחירה מרובה) */}
+          {(summaryMode || selectionMode) && (
+            <div className="flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
+              {summaryMode && timeFilter !== "custom" && (
+                <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-lg">
+                  <span className="text-xs font-medium px-2">ניווט:</span>
+                  <div className="flex items-center gap-0.5">
+                    <Button variant="ghost" size="icon" className="h-7 w-7 rounded" onClick={handlePrevPeriod}>
+                      <ChevronDown className="w-3 h-3 rotate-90" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 rounded" onClick={handleCurrentPeriod}>
+                      <div className="w-1.5 h-1.5 rounded-full bg-slate-600" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 rounded" onClick={handleNextPeriod}>
+                      <ChevronDown className="w-3 h-3 -rotate-90" />
+                    </Button>
+                  </div>
+                  <Select value={summaryGranularity} onValueChange={setSummaryGranularity}>
+                    <SelectTrigger className="w-24 h-7 text-xs border-0 bg-white shadow-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="day">יום</SelectItem>
+                      <SelectItem value="week">שבוע</SelectItem>
+                      <SelectItem value="month">חודש</SelectItem>
+                      <SelectItem value="year">שנה</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
-          {/* מפריד */}
-          <div className="h-6 w-px bg-slate-300"></div>
-
-          {/* סטטיסטיקות */}
-          <Button
-            variant={showStats ? "default" : "ghost"}
-            size="icon"
-            onClick={() => setShowStats(!showStats)}
-            title={showStats ? 'הסתר סטטיסטיקות' : 'הצג סטטיסטיקות'}
-            className="h-9 w-9"
-          >
-            <BarChart3 className="w-4 h-4" />
-          </Button>
-
-          {/* תצוגות */}
-          <div className="flex items-center gap-0.5 bg-slate-100 rounded-md p-0.5">
-            <Button
-              variant={!summaryMode && viewMode === 'list' ? 'default' : 'ghost'}
-              size="icon"
-              className={!summaryMode && viewMode === 'list' ? 'h-8 w-8 bg-slate-900 text-white' : 'h-8 w-8'}
-              onClick={() => { setSummaryMode(false); setViewMode('list'); }}
-              title="רשימה"
-            >
-              <List className="w-4 h-4" />
-            </Button>
-            <Button
-              variant={!summaryMode && viewMode === 'table' ? 'default' : 'ghost'}
-              size="icon"
-              className={!summaryMode && viewMode === 'table' ? 'h-8 w-8 bg-slate-900 text-white' : 'h-8 w-8'}
-              onClick={() => { setSummaryMode(false); setViewMode('table'); }}
-              title="טבלה"
-            >
-              <TableIcon className="w-4 h-4" />
-            </Button>
-          </div>
-
-          {/* סיכום */}
-          <div className="flex items-center gap-1 bg-slate-100 rounded-md p-0.5">
-            <Button
-              variant={summaryMode ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setSummaryMode((v) => !v)}
-              title="סיכום"
-              className="h-8 px-2 text-xs"
-            >
-              סיכום
-            </Button>
-            
-            {summaryMode && timeFilter !== "custom" && (
-              <div className="flex items-center gap-0.5 mx-1 bg-slate-200/50 rounded-md p-0.5">
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-6 w-6" 
-                  onClick={handlePrevPeriod}
-                  title="הקודם"
-                >
-                  <ChevronDown className="w-3 h-3 rotate-90" />
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-6 w-6" 
-                  onClick={handleCurrentPeriod}
-                  title="היום"
-                >
-                  <div className="w-1.5 h-1.5 rounded-full bg-slate-600" />
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-6 w-6" 
-                  onClick={handleNextPeriod}
-                  title="הבא"
-                >
-                  <ChevronDown className="w-3 h-3 -rotate-90" />
-                </Button>
-              </div>
-            )}
-
-            <Select value={summaryGranularity} onValueChange={setSummaryGranularity}>
-              <SelectTrigger className="w-20 h-8 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="day">יום</SelectItem>
-                <SelectItem value="week">שבוע</SelectItem>
-                <SelectItem value="month">חודש</SelectItem>
-                <SelectItem value="year">שנה</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* מפריד */}
-          <div className="h-6 w-px bg-slate-300"></div>
-
-          {/* בחירה */}
-          <Button
-            variant={selectionMode ? "default" : "ghost"}
-            size="icon"
-            onClick={() => { setSelectionMode(v => !v); setSelectedIds([]); }}
-            className={selectionMode ? "h-9 w-9 bg-purple-600 hover:bg-purple-700 text-white" : "h-9 w-9"}
-            title={selectionMode ? 'בטל בחירה' : 'בחירה מרובה'}
-          >
-            {selectionMode ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
-          </Button>
-          
-          {selectionMode && (
-            <>
-              <Button variant="outline" size="sm" onClick={selectAll} className="h-9 text-xs px-2">
-                בחר הכל
-              </Button>
-              <Button 
-                variant="destructive" 
-                size="sm" 
-                onClick={bulkDelete} 
-                disabled={selectedIds.length === 0}
-                className="h-9 text-xs px-2"
-              >
-                <Trash2 className="w-3 h-3 ml-1" />
-                {selectedIds.length > 0 && `(${selectedIds.length})`}
-              </Button>
-            </>
+              {selectionMode && selectedIds.length > 0 && (
+                <div className="flex items-center gap-2 mr-auto bg-purple-50 border border-purple-100 p-1 rounded-lg px-3">
+                  <span className="text-xs font-medium text-purple-700">{selectedIds.length} נבחרו</span>
+                  <Button variant="outline" size="sm" onClick={selectAll} className="h-7 text-xs px-2 bg-white hover:bg-purple-100 text-purple-700 border-purple-200">
+                    בחר הכל
+                  </Button>
+                  <Button variant="destructive" size="sm" onClick={bulkDelete} className="h-7 text-xs px-2">
+                    <Trash2 className="w-3 h-3 ml-1" />
+                    מחק
+                  </Button>
+                </div>
+              )}
+            </div>
           )}
-
-          {/* סה"כ רישומים */}
-          <div className="mr-auto text-xs text-slate-500 font-medium">
-            {filteredLogs.length} / {safeTimeLogs.length}
-          </div>
         </div>
       </div>
 
