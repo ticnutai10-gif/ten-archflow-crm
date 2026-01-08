@@ -159,7 +159,7 @@ export default function LuxuriousDatePicker({ value, onChange, placeholder, labe
           className={cn(
             "relative flex items-center justify-start text-right font-normal transition-all duration-200",
             "border-2 border-[#D4AF37]/30 hover:border-[#D4AF37] rounded-xl bg-white",
-            "px-4 py-3 min-w-[160px] shadow-sm hover:shadow-md",
+            "px-3 min-w-[140px] shadow-sm hover:shadow-md",
             "group",
             className
           )}
