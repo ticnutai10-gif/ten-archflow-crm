@@ -303,6 +303,8 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
     }
   };
 
+  import LuxuriousDatePicker from "@/components/ui/LuxuriousDatePicker";
+
   // ✅ הגנה על uniqueClients
   const uniqueClients = React.useMemo(() => 
     [...new Set(safeTimeLogs.map(log => log?.client_name))].filter(Boolean),
@@ -829,26 +831,22 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
 
           {/* בחירת תאריכים לטווח מותאם אישית */}
           {timeFilter === "custom" && (
-            <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-4 duration-300">
-              <div className="relative">
-                <span className="absolute -top-2 right-2 text-[10px] bg-white px-1 text-slate-500">מתאריך</span>
-                <Input
-                  type="date"
-                  value={customRange.from}
-                  onChange={(e) => setCustomRange({ ...customRange, from: e.target.value })}
-                  className="h-9 w-32 text-xs"
-                />
-              </div>
-              <span className="text-slate-400">-</span>
-              <div className="relative">
-                <span className="absolute -top-2 right-2 text-[10px] bg-white px-1 text-slate-500">עד תאריך</span>
-                <Input
-                  type="date"
-                  value={customRange.to}
-                  onChange={(e) => setCustomRange({ ...customRange, to: e.target.value })}
-                  className="h-9 w-32 text-xs"
-                />
-              </div>
+            <div className="flex items-center gap-3 animate-in fade-in slide-in-from-right-4 duration-300 mx-2">
+              <LuxuriousDatePicker
+                value={customRange.from}
+                onChange={(val) => setCustomRange({ ...customRange, from: val })}
+                label="מתאריך"
+                placeholder="בחר תאריך התחלה"
+                className="w-44"
+              />
+              <span className="text-slate-300 font-light text-2xl">−</span>
+              <LuxuriousDatePicker
+                value={customRange.to}
+                onChange={(val) => setCustomRange({ ...customRange, to: val })}
+                label="עד תאריך"
+                placeholder="בחר תאריך סיום"
+                className="w-44"
+              />
             </div>
           )}
 
