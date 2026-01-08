@@ -1125,7 +1125,8 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
                       {selectionMode && <TableHead className="text-right w-10"></TableHead>}
                       <TableHead className="text-right">משתמש</TableHead>
                       <TableHead className="text-right">לקוח</TableHead>
-                      <TableHead className="text-right">תאריך</TableHead>
+                      <TableHead className="text-right">תאריך רישום</TableHead>
+                      <TableHead className="text-right">תאריך יצירה</TableHead>
                       <TableHead className="text-right">כותרת</TableHead>
                       <TableHead className="text-right">הערות</TableHead>
                       <TableHead className="text-right">משך</TableHead>
@@ -1191,6 +1192,9 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
                           </div>
                         </TableCell>
                         <TableCell className="whitespace-nowrap">{getDateLabel(log.log_date)}</TableCell>
+                        <TableCell className="whitespace-nowrap text-slate-500 text-xs">
+                          {log.created_date ? format(new Date(log.created_date), 'dd/MM/yy HH:mm') : '-'}
+                        </TableCell>
                         <TableCell className="max-w-[280px] truncate">{log.title || '—'}</TableCell>
                         <TableCell className="max-w-[360px] truncate text-slate-600">{log.notes || ''}</TableCell>
                         <TableCell className="whitespace-nowrap group/duration">
