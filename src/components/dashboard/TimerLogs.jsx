@@ -35,7 +35,12 @@ import {
   startOfMonth,
   endOfMonth,
   startOfYear,
-  endOfYear
+  endOfYear,
+  startOfDay,
+  endOfDay,
+  addDays,
+  addMonths,
+  addYears
 } from "date-fns";
 import { he } from "date-fns/locale";
 import { Link } from "react-router-dom";
@@ -94,6 +99,9 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
   const [userIdToDataMap, setUserIdToDataMap] = useState({});
   const [sortBy, setSortBy] = useState("log_date"); // log_date | created_date
   
+  // Summary view navigation state
+  const [viewDate, setViewDate] = useState(new Date());
+
   // Add time log dialog state
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [selectedClientForAdd, setSelectedClientForAdd] = useState(null);
@@ -431,25 +439,129 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
       .sort((a, b) => b.filteredHours - a.filteredHours);
   }, [allUsers, filteredLogs]);
 
+  // Navigation handlers for summary view
+  const handlePrevPeriod = () => {
+    const newDate = new Date(viewDate);
+    if (summaryGranularity === "day") {
+      newDate.setDate(newDate.getDate() - 7); // Move by week when in day view to see previous days
+    } else if (summaryGranularity === "week") {
+      newDate.setDate(newDate.getDate() - 28); // Move by ~month
+    } else if (summaryGranularity === "month") {
+      newDate.setMonth(newDate.getMonth() - 6); // Move by half year
+    } else {
+      newDate.setFullYear(newDate.getFullYear() - 5);
+    }
+    setViewDate(newDate);
+  };
+
+  const handleNextPeriod = () => {
+    const newDate = new Date(viewDate);
+    if (summaryGranularity === "day") {
+      newDate.setDate(newDate.getDate() + 7);
+    } else if (summaryGranularity === "week") {
+      newDate.setDate(newDate.getDate() + 28);
+    } else if (summaryGranularity === "month") {
+      newDate.setMonth(newDate.getMonth() + 6);
+    } else {
+      newDate.setFullYear(newDate.getFullYear() + 5);
+    }
+    setViewDate(newDate);
+  };
+
+  const handleCurrentPeriod = () => {
+    setViewDate(new Date());
+  };
+
   // Build summary columns
   const getSummaryColumns = () => {
-    const now = new Date();
     const cols = [];
+    
+    // If custom range is selected, generate columns based on that range
+    if (timeFilter === "custom" && customRange.from && customRange.to) {
+      const start = new Date(customRange.from);
+      const end = new Date(customRange.to);
+      end.setHours(23, 59, 59, 999);
+      
+      let current = new Date(start);
+      
+      // Safety break to prevent infinite loops or too many columns
+      let count = 0;
+      const MAX_COLS = 100; 
+
+      while (current <= end && count < MAX_COLS) {
+        if (summaryGranularity === "day") {
+          cols.push({
+            key: format(current, 'yyyy-MM-dd'),
+            label: format(current, 'dd/MM', { locale: he }),
+            start: startOfDay(current),
+            end: endOfDay(current)
+          });
+          current = addDays(current, 1);
+        } else if (summaryGranularity === "week") {
+          const weekStart = startOfWeek(current, { weekStartsOn: 0 });
+          const weekEnd = endOfWeek(current, { weekStartsOn: 0 });
+          // Ensure we don't add the same week multiple times if loop increments by day/logic
+          // Ideally we jump by week
+          if (!cols.find(c => c.key === format(weekStart, 'yyyy-MM-dd'))) {
+             cols.push({
+              key: format(weekStart, 'yyyy-MM-dd'),
+              label: `שבוע ${format(weekStart, 'dd/MM', { locale: he })}`,
+              start: weekStart,
+              end: weekEnd,
+            });
+          }
+          current = addDays(current, 7);
+        } else if (summaryGranularity === "month") {
+          const monthStart = startOfMonth(current);
+          const monthEnd = endOfMonth(current);
+          if (!cols.find(c => c.key === format(monthStart, 'yyyy-MM'))) {
+            cols.push({
+              key: format(monthStart, 'yyyy-MM'),
+              label: format(monthStart, 'MMM yyyy', { locale: he }),
+              start: monthStart,
+              end: monthEnd
+            });
+          }
+          current = addMonths(current, 1);
+        } else { // Year
+          const yearStart = startOfYear(current);
+          const yearEnd = endOfYear(current);
+          if (!cols.find(c => c.key === format(yearStart, 'yyyy'))) {
+            cols.push({
+              key: format(yearStart, 'yyyy'),
+              label: format(yearStart, 'yyyy'),
+              start: yearStart,
+              end: yearEnd
+            });
+          }
+          current = addYears(current, 1);
+        }
+        count++;
+      }
+      return cols;
+    }
+
+    // Default view based on viewDate
+    const baseDate = viewDate;
+    
     if (summaryGranularity === "day") {
+      // Show 7 days ending at viewDate (or surrounding it? let's do ending at)
       for (let i = 6; i >= 0; i--) {
-        const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+        const d = new Date(baseDate);
+        d.setDate(baseDate.getDate() - i);
         cols.push({
           key: format(d, 'yyyy-MM-dd'),
           label: format(d, 'dd/MM', { locale: he }),
-          start: new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0),
-          end: new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999)
+          start: startOfDay(d),
+          end: endOfDay(d)
         });
       }
     } else if (summaryGranularity === "week") {
-      const startOfCurrentWeek = startOfWeek(now, { weekStartsOn: 0 });
+      // Show 8 weeks
+      const startOfBaseWeek = startOfWeek(baseDate, { weekStartsOn: 0 });
       for (let i = 7; i >= 0; i--) {
-        const dateForWeek = new Date(startOfCurrentWeek);
-        dateForWeek.setDate(startOfCurrentWeek.getDate() - (i * 7));
+        const dateForWeek = new Date(startOfBaseWeek);
+        dateForWeek.setDate(startOfBaseWeek.getDate() - (i * 7));
 
         const start = startOfWeek(dateForWeek, { weekStartsOn: 0 });
         const end = endOfWeek(dateForWeek, { weekStartsOn: 0 });
@@ -461,8 +573,9 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
         });
       }
     } else if (summaryGranularity === "month") {
+      // Show 12 months
       for (let i = 11; i >= 0; i--) {
-        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const d = new Date(baseDate.getFullYear(), baseDate.getMonth() - i, 1);
         const start = startOfMonth(d);
         const end = endOfMonth(d);
         cols.push({
@@ -473,8 +586,9 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
         });
       }
     } else { // Year granularity
+      // Show 5 years
       for (let i = 4; i >= 0; i--) {
-        const d = new Date(now.getFullYear() - i, 0, 1);
+        const d = new Date(baseDate.getFullYear() - i, 0, 1);
         const start = startOfYear(d);
         const end = endOfYear(d);
         cols.push({
@@ -754,6 +868,39 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
             >
               סיכום
             </Button>
+            
+            {summaryMode && timeFilter !== "custom" && (
+              <div className="flex items-center gap-0.5 mx-1 bg-slate-200/50 rounded-md p-0.5">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-6 w-6" 
+                  onClick={handlePrevPeriod}
+                  title="הקודם"
+                >
+                  <ChevronDown className="w-3 h-3 rotate-90" />
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-6 w-6" 
+                  onClick={handleCurrentPeriod}
+                  title="היום"
+                >
+                  <div className="w-1.5 h-1.5 rounded-full bg-slate-600" />
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-6 w-6" 
+                  onClick={handleNextPeriod}
+                  title="הבא"
+                >
+                  <ChevronDown className="w-3 h-3 -rotate-90" />
+                </Button>
+              </div>
+            )}
+
             <Select value={summaryGranularity} onValueChange={setSummaryGranularity}>
               <SelectTrigger className="w-20 h-8 text-xs">
                 <SelectValue />
@@ -899,15 +1046,15 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
       <div className="flex-1 overflow-y-auto px-4 py-2">
         {/* Summary table mode */}
         {summaryMode ? (
-          <div className="bg-white border border-slate-200 rounded-lg overflow-auto">
-            <UITable>
+          <div className="bg-white border border-slate-200 rounded-lg overflow-x-auto w-full">
+            <UITable style={{ minWidth: 'max-content' }}>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="text-right min-w-[180px]">לקוח</TableHead>
+                  <TableHead className="text-right min-w-[180px] sticky right-0 bg-white z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">לקוח</TableHead>
+                  <TableHead className="text-right font-bold bg-slate-50 min-w-[80px]">סה״כ</TableHead>
                   {summaryColumns.map(col => (
-                    <TableHead key={col.key} className="text-right whitespace-nowrap">{col.label}</TableHead>
+                    <TableHead key={col.key} className="text-center whitespace-nowrap min-w-[100px] border-r border-slate-100">{col.label}</TableHead>
                   ))}
-                  <TableHead className="text-right">סה״כ</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -919,19 +1066,20 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
                   </TableRow>
                 ) : (
                   summaryRows.map(row => (
-                    <TableRow key={row.clientName} className="group">
-                     <TableCell className="font-medium">
+                    <TableRow key={row.clientName} className="group hover:bg-slate-50">
+                     <TableCell className="font-medium sticky right-0 bg-white group-hover:bg-slate-50 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                        <div className="flex items-center gap-2">
                          <Link
                            to={`${createPageUrl("Clients")}?open=details&client_name=${encodeURIComponent(row.clientName || "")}&tab=timelogs`}
-                           className="hover:text-blue-600 transition-colors flex-1"
+                           className="hover:text-blue-600 transition-colors flex-1 truncate max-w-[180px]"
+                           title={row.clientName}
                          >
                            {row.clientName}
                          </Link>
                          <Button
                            size="icon"
                            variant="ghost"
-                           className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                           className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
                            onClick={() => {
                              const client = clients.find(c => c.name === row.clientName);
                              setSelectedClientForAdd(client);
@@ -943,10 +1091,16 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
                          </Button>
                        </div>
                      </TableCell>
+                      <TableCell className="font-bold text-blue-600 bg-blue-50/30">{formatDuration(row.total)}</TableCell>
                       {summaryColumns.map(col => (
-                        <TableCell key={col.key} className="whitespace-nowrap">{formatDuration(row.totals[col.key] || 0)}</TableCell>
+                        <TableCell key={col.key} className="whitespace-nowrap text-center border-r border-slate-100 text-slate-600">
+                          {row.totals[col.key] > 0 ? (
+                            <span className="font-medium text-slate-900">{formatDuration(row.totals[col.key])}</span>
+                          ) : (
+                            <span className="text-slate-300">-</span>
+                          )}
+                        </TableCell>
                       ))}
-                      <TableCell className="font-bold text-blue-600">{formatDuration(row.total)}</TableCell>
                     </TableRow>
                   ))
                 )}
