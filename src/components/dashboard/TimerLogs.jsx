@@ -80,6 +80,7 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
   const [searchTerm, setSearchTerm] = useState("");
   const [clientFilter, setClientFilter] = useState("all");
   const [timeFilter, setTimeFilter] = useState("all");
+  const [customRange, setCustomRange] = useState({ from: "", to: "" });
   const [userFilter, setUserFilter] = useState("all");
   const [userSearchTerm, setUserSearchTerm] = useState("");
   const [showStats, setShowStats] = useState(false);
@@ -363,6 +364,18 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
             matchesTime = logDate.getMonth() === now.getMonth() &&
                         logDate.getFullYear() === now.getFullYear();
             break;
+          case 'custom':
+            if (customRange.from) {
+              const fromDate = new Date(customRange.from);
+              fromDate.setHours(0, 0, 0, 0);
+              if (logDate < fromDate) matchesTime = false;
+            }
+            if (customRange.to) {
+              const toDate = new Date(customRange.to);
+              toDate.setHours(23, 59, 59, 999);
+              if (logDate > toDate) matchesTime = false;
+            }
+            break;
           default:
             break;
         }
@@ -380,7 +393,7 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
       const dateB = new Date(b.log_date || 0);
       return dateB - dateA;
     });
-  }, [safeTimeLogs, searchTerm, clientFilter, userFilter, timeFilter, sortBy]);
+  }, [safeTimeLogs, searchTerm, clientFilter, userFilter, timeFilter, sortBy, customRange]);
 
   // ✅ הגנה על totalTime
   const totalTime = React.useMemo(() => {
@@ -651,8 +664,34 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
               <SelectItem value="today">היום</SelectItem>
               <SelectItem value="week">השבוע</SelectItem>
               <SelectItem value="month">החודש</SelectItem>
+              <SelectItem value="custom">טווח מותאם אישית</SelectItem>
             </SelectContent>
           </Select>
+
+          {/* בחירת תאריכים לטווח מותאם אישית */}
+          {timeFilter === "custom" && (
+            <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-4 duration-300">
+              <div className="relative">
+                <span className="absolute -top-2 right-2 text-[10px] bg-white px-1 text-slate-500">מתאריך</span>
+                <Input
+                  type="date"
+                  value={customRange.from}
+                  onChange={(e) => setCustomRange({ ...customRange, from: e.target.value })}
+                  className="h-9 w-32 text-xs"
+                />
+              </div>
+              <span className="text-slate-400">-</span>
+              <div className="relative">
+                <span className="absolute -top-2 right-2 text-[10px] bg-white px-1 text-slate-500">עד תאריך</span>
+                <Input
+                  type="date"
+                  value={customRange.to}
+                  onChange={(e) => setCustomRange({ ...customRange, to: e.target.value })}
+                  className="h-9 w-32 text-xs"
+                />
+              </div>
+            </div>
+          )}
 
           {/* מפריד */}
           <div className="h-6 w-px bg-slate-300"></div>
