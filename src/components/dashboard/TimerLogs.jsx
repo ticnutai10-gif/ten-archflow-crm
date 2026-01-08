@@ -22,7 +22,10 @@ import {
   Mail,
   UserCircle,
   ChevronDown,
-  Plus
+  Plus,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown
 } from 'lucide-react';
 import { Table as UITable, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
@@ -97,7 +100,7 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
   const [editing, setEditing] = useState(null);
   const [editData, setEditData] = useState({ title: "", notes: "" });
   const [userIdToDataMap, setUserIdToDataMap] = useState({});
-  const [sortBy, setSortBy] = useState("log_date"); // log_date | created_date
+  const [sortConfig, setSortConfig] = useState({ key: "log_date", direction: "desc" });
   
   // Summary view navigation state
   const [viewDate, setViewDate] = useState(new Date());
@@ -810,17 +813,6 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
           {/* מפריד */}
           <div className="h-6 w-px bg-slate-300"></div>
 
-          {/* מיון */}
-          <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="w-40 h-9" title="מיון">
-              <SelectValue placeholder="מיון לפי" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="log_date">תאריך רישום</SelectItem>
-              <SelectItem value="created_date">תאריך יצירה</SelectItem>
-            </SelectContent>
-          </Select>
-
           {/* מפריד */}
           <div className="h-6 w-px bg-slate-300"></div>
 
@@ -1123,13 +1115,13 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
                   <TableHeader>
                     <TableRow>
                       {selectionMode && <TableHead className="text-right w-10"></TableHead>}
-                      <TableHead className="text-right">משתמש</TableHead>
-                      <TableHead className="text-right">לקוח</TableHead>
-                      <TableHead className="text-right">תאריך רישום</TableHead>
-                      <TableHead className="text-right">תאריך יצירה</TableHead>
-                      <TableHead className="text-right">כותרת</TableHead>
+                      <SortableHeader label="משתמש" columnKey="created_by" />
+                      <SortableHeader label="לקוח" columnKey="client_name" />
+                      <SortableHeader label="תאריך רישום" columnKey="log_date" />
+                      <SortableHeader label="תאריך יצירה" columnKey="created_date" />
+                      <SortableHeader label="כותרת" columnKey="title" />
                       <TableHead className="text-right">הערות</TableHead>
-                      <TableHead className="text-right">משך</TableHead>
+                      <SortableHeader label="משך" columnKey="duration_seconds" />
                       <TableHead className="text-right">פעולות</TableHead>
                     </TableRow>
                   </TableHeader>
