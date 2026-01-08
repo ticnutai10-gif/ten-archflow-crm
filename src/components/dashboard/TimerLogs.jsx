@@ -82,6 +82,7 @@ function isEmail(str) {
 }
 
 import AddTimeLogDialog from "@/components/timelogs/AddTimeLogDialog";
+import LuxuriousDatePicker from "@/components/ui/LuxuriousDatePicker";
 
 export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] }) {
 
@@ -302,8 +303,6 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
       // Error updating
     }
   };
-
-  import LuxuriousDatePicker from "@/components/ui/LuxuriousDatePicker";
 
   // ✅ הגנה על uniqueClients
   const uniqueClients = React.useMemo(() => 
