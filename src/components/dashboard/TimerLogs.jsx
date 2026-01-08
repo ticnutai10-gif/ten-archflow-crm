@@ -1226,7 +1226,7 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
                           </div>
                         </TableCell>
                         <TableCell className="whitespace-nowrap">{getDateLabel(log.log_date)}</TableCell>
-                        <TableCell className="whitespace-nowrap text-slate-500 text-xs">
+                        <TableCell className="whitespace-nowrap text-blue-600 font-medium text-xs">
                           {log.created_date ? format(new Date(log.created_date), 'dd/MM/yy HH:mm') : '-'}
                         </TableCell>
                         <TableCell className="max-w-[280px] truncate">{log.title || '—'}</TableCell>
