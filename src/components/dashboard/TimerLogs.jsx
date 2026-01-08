@@ -829,24 +829,22 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
             </Select>
 
             {/* כלים נוספים */}
-            <div className="flex items-center gap-2 mr-auto bg-slate-50 p-1 rounded-xl border border-slate-100">
+            <div className="flex items-center gap-2 mr-auto">
               <Button
-                variant={showStats ? "default" : "ghost"}
+                variant={showStats ? "default" : "outline"}
                 size="icon"
                 onClick={() => setShowStats(!showStats)}
                 title={showStats ? 'הסתר סטטיסטיקות' : 'הצג סטטיסטיקות'}
-                className="h-8 w-8 rounded-lg"
+                className={`h-10 w-10 rounded-xl border-slate-200 ${showStats ? '' : 'bg-white text-slate-500 hover:text-blue-600'}`}
               >
-                <BarChart3 className="w-4 h-4" />
+                <BarChart3 className="w-5 h-5" />
               </Button>
 
-              <div className="w-px h-6 bg-slate-200" />
-
-              <div className="flex items-center gap-0.5">
+              <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1 h-10">
                 <Button
                   variant={!summaryMode && viewMode === 'list' ? 'default' : 'ghost'}
                   size="icon"
-                  className={`h-8 w-8 rounded-lg ${!summaryMode && viewMode === 'list' ? 'bg-slate-900 text-white' : ''}`}
+                  className={`h-8 w-8 rounded-lg ${!summaryMode && viewMode === 'list' ? 'bg-slate-900 text-white' : 'text-slate-500 hover:text-slate-900'}`}
                   onClick={() => { setSummaryMode(false); setViewMode('list'); }}
                   title="רשימה"
                 >
@@ -855,7 +853,7 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
                 <Button
                   variant={!summaryMode && viewMode === 'table' ? 'default' : 'ghost'}
                   size="icon"
-                  className={`h-8 w-8 rounded-lg ${!summaryMode && viewMode === 'table' ? 'bg-slate-900 text-white' : ''}`}
+                  className={`h-8 w-8 rounded-lg ${!summaryMode && viewMode === 'table' ? 'bg-slate-900 text-white' : 'text-slate-500 hover:text-slate-900'}`}
                   onClick={() => { setSummaryMode(false); setViewMode('table'); }}
                   title="טבלה"
                 >
@@ -863,16 +861,14 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
                 </Button>
               </div>
 
-              <div className="w-px h-6 bg-slate-200" />
-
               <Button
-                variant={selectionMode ? "default" : "ghost"}
+                variant={selectionMode ? "default" : "outline"}
                 size="icon"
                 onClick={() => { setSelectionMode(v => !v); setSelectedIds([]); }}
-                className={`h-8 w-8 rounded-lg ${selectionMode ? 'bg-purple-600 text-white' : ''}`}
+                className={`h-10 w-10 rounded-xl border-slate-200 ${selectionMode ? 'bg-purple-600 text-white' : 'bg-white text-slate-500 hover:text-purple-600'}`}
                 title={selectionMode ? 'בטל בחירה' : 'בחירה מרובה'}
               >
-                {selectionMode ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+                {selectionMode ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5" />}
               </Button>
             </div>
           </div>
