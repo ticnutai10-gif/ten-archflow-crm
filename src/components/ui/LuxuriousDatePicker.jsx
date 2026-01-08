@@ -77,19 +77,19 @@ export default function LuxuriousDatePicker({ value, onChange, placeholder, labe
   );
 
   const renderMonths = () => (
-    <div className="grid grid-cols-3 gap-3">
+    <div className="grid grid-cols-3 gap-4">
       {MONTHS.map((month, index) => (
         <button
           key={month}
           onClick={() => handleMonthSelect(index)}
           className={cn(
-            "p-3 rounded-xl text-sm font-semibold transition-all border",
+            "p-4 rounded-2xl text-lg font-bold transition-all border-2",
             displayMonth === index && view !== 'months' // Highlight current month if checking days
               ? "border-[#D4AF37] bg-amber-50 text-[#D4AF37]"
-              : "border-slate-100 hover:border-[#D4AF37]/50 hover:bg-amber-50/50 text-slate-700"
+              : "border-slate-100 hover:border-[#D4AF37]/50 hover:bg-amber-50/30 text-slate-700"
           )}
         >
-          <div className="text-xs text-slate-400 mb-1">{(index + 1).toString().padStart(2, '0')}</div>
+          <div className="text-sm text-slate-400 mb-2">{(index + 1).toString().padStart(2, '0')}</div>
           {month}
         </button>
       ))}
@@ -105,20 +105,20 @@ export default function LuxuriousDatePicker({ value, onChange, placeholder, labe
     const weekDays = ["א", "ב", "ג", "ד", "ה", "ו", "ש"];
 
     return (
-      <div className="space-y-2">
-        <div className="flex items-center justify-between mb-2 px-1">
-            <button onClick={() => setView('months')} className="text-sm font-bold text-[#D4AF37] hover:underline">
+      <div className="space-y-4">
+        <div className="flex items-center justify-center mb-4">
+            <button onClick={() => setView('months')} className="text-xl font-bold text-[#D4AF37] hover:underline">
                 {MONTHS[displayMonth]} {displayYear}
             </button>
         </div>
-        <div className="grid grid-cols-7 gap-1 text-center mb-2">
+        <div className="grid grid-cols-7 gap-2 text-center mb-4">
           {weekDays.map((d) => (
-            <div key={d} className="text-xs font-bold text-[#D4AF37]">
+            <div key={d} className="text-sm font-black text-[#D4AF37]">
               {d}
             </div>
           ))}
         </div>
-        <div className="grid grid-cols-7 gap-1">
+        <div className="grid grid-cols-7 gap-2">
           {padding.map((i) => (
             <div key={`pad-${i}`} />
           ))}
@@ -134,10 +134,10 @@ export default function LuxuriousDatePicker({ value, onChange, placeholder, labe
                 key={day}
                 onClick={() => handleDaySelect(day)}
                 className={cn(
-                  "h-8 w-8 rounded-full text-sm flex items-center justify-center transition-all",
+                  "h-10 w-10 rounded-full text-lg flex items-center justify-center transition-all",
                   isSelected
-                    ? "bg-[#D4AF37] text-white shadow-md transform scale-110"
-                    : "hover:bg-amber-50 text-slate-700 font-medium"
+                    ? "bg-[#D4AF37] text-white shadow-md transform scale-110 font-bold"
+                    : "hover:bg-amber-50 text-slate-700 font-medium hover:font-bold"
                 )}
               >
                 {day}
@@ -177,27 +177,27 @@ export default function LuxuriousDatePicker({ value, onChange, placeholder, labe
         className="w-[320px] p-0 border-2 border-[#D4AF37] rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.2)] bg-white overflow-hidden" 
         align="start"
       >
-        {/* Header */}
-        <div className="bg-gradient-to-r from-amber-50 via-white to-amber-50 p-4 border-b border-[#D4AF37]/20">
+        {/* Header - No Gradients, Larger Text */}
+        <div className="bg-white p-6 border-b border-[#D4AF37]/20">
           <div className="flex items-center justify-between">
             <Button
               variant="ghost"
               size="icon"
               onClick={() => handleYearChange(1)}
-              className="h-8 w-8 text-[#D4AF37] hover:bg-amber-100 hover:text-[#D4AF37] rounded-full"
+              className="h-10 w-10 text-[#D4AF37] hover:bg-amber-50 hover:text-[#D4AF37] rounded-full"
             >
-              <ChevronRight className="h-5 w-5" />
+              <ChevronRight className="h-6 w-6" />
             </Button>
             
             <button
               onClick={() => setView(view === "years" ? "months" : "years")}
-              className="flex items-center gap-2 text-xl font-bold text-slate-800 hover:text-[#D4AF37] transition-colors"
+              className="flex items-center gap-2 text-3xl font-bold text-slate-800 hover:text-[#D4AF37] transition-colors"
             >
               {displayYear}
               {view === "years" ? (
-                <ChevronUp className="h-4 w-4 text-[#D4AF37]" />
+                <ChevronUp className="h-6 w-6 text-[#D4AF37]" />
               ) : (
-                <ChevronDown className="h-4 w-4 text-[#D4AF37]" />
+                <ChevronDown className="h-6 w-6 text-[#D4AF37]" />
               )}
             </button>
 
@@ -205,22 +205,22 @@ export default function LuxuriousDatePicker({ value, onChange, placeholder, labe
               variant="ghost"
               size="icon"
               onClick={() => handleYearChange(-1)}
-              className="h-8 w-8 text-[#D4AF37] hover:bg-amber-100 hover:text-[#D4AF37] rounded-full"
+              className="h-10 w-10 text-[#D4AF37] hover:bg-amber-50 hover:text-[#D4AF37] rounded-full"
             >
-              <ChevronLeft className="h-5 w-5" />
+              <ChevronLeft className="h-6 w-6" />
             </Button>
           </div>
         </div>
 
-        {/* Content */}
-        <div className="p-4 bg-white min-h-[300px]">
+        {/* Content - Larger Text */}
+        <div className="p-6 bg-white min-h-[350px]">
           {view === "years" && renderYears()}
           {view === "months" && renderMonths()}
           {view === "days" && renderDays()}
         </div>
         
-        {/* Footer decoration */}
-        <div className="h-1.5 bg-gradient-to-r from-[#D4AF37] via-amber-300 to-[#D4AF37]" />
+        {/* Footer decoration - Solid Gold */}
+        <div className="h-2 bg-[#D4AF37]" />
       </PopoverContent>
     </Popover>
   );

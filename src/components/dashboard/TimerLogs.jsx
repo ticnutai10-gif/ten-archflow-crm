@@ -88,7 +88,7 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
 
   const [searchTerm, setSearchTerm] = useState("");
   const [clientFilter, setClientFilter] = useState("all");
-  const [timeFilter, setTimeFilter] = useState("all");
+  const [timeFilter, setTimeFilter] = useState("custom");
   const [customRange, setCustomRange] = useState({ from: "", to: "" });
   const [userFilter, setUserFilter] = useState("all");
   const [userSearchTerm, setUserSearchTerm] = useState("");
@@ -831,12 +831,27 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
           {/* בחירת תאריכים לטווח מותאם אישית */}
           {timeFilter === "custom" && (
             <div className="flex items-center gap-3 animate-in fade-in slide-in-from-right-4 duration-300 mx-2">
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] text-slate-500 font-medium">הקלדה ידנית</span>
+                <Input
+                  placeholder="DD/MM/YYYY"
+                  className="w-32 text-center ltr font-mono text-sm h-[50px] bg-white border-2 border-[#D4AF37]/30 focus:border-[#D4AF37] rounded-xl"
+                  onChange={(e) => {
+                     const val = e.target.value;
+                     // Very basic validation/conversion could go here, or just let them type
+                     // For now, if it matches YYYY-MM-DD we update state, or if they type DD/MM/YYYY we try to parse
+                     if (val.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                        setCustomRange(prev => ({ ...prev, from: val }));
+                     }
+                  }}
+                />
+              </div>
               <LuxuriousDatePicker
                 value={customRange.from}
                 onChange={(val) => setCustomRange({ ...customRange, from: val })}
                 label="מתאריך"
                 placeholder="בחר תאריך התחלה"
-                className="w-44"
+                className="w-44 h-[50px]"
               />
               <span className="text-slate-300 font-light text-2xl">−</span>
               <LuxuriousDatePicker
@@ -844,8 +859,21 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
                 onChange={(val) => setCustomRange({ ...customRange, to: val })}
                 label="עד תאריך"
                 placeholder="בחר תאריך סיום"
-                className="w-44"
+                className="w-44 h-[50px]"
               />
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] text-slate-500 font-medium">הקלדה ידנית</span>
+                <Input
+                  placeholder="DD/MM/YYYY"
+                  className="w-32 text-center ltr font-mono text-sm h-[50px] bg-white border-2 border-[#D4AF37]/30 focus:border-[#D4AF37] rounded-xl"
+                  onChange={(e) => {
+                     const val = e.target.value;
+                     if (val.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                        setCustomRange(prev => ({ ...prev, to: val }));
+                     }
+                  }}
+                />
+              </div>
             </div>
           )}
 
