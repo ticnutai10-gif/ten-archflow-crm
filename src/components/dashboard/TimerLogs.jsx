@@ -1161,6 +1161,7 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
                       <SortableHeader label="לקוח" columnKey="client_name" />
                       <SortableHeader label="תאריך רישום" columnKey="log_date" />
                       <SortableHeader label="תאריך יצירה" columnKey="created_date" />
+                      <SortableHeader label="שעת יצירה" columnKey="created_date" />
                       <SortableHeader label="כותרת" columnKey="title" />
                       <TableHead className="text-right">הערות</TableHead>
                       <SortableHeader label="משך" columnKey="duration_seconds" />
@@ -1227,7 +1228,10 @@ export default function TimerLogs({ timeLogs, isLoading, onUpdate, clients = [] 
                         </TableCell>
                         <TableCell className="whitespace-nowrap">{getDateLabel(log.log_date)}</TableCell>
                         <TableCell className="whitespace-nowrap text-blue-600 font-medium text-xs">
-                          {log.created_date ? format(new Date(log.created_date), 'dd/MM/yy HH:mm') : '-'}
+                          {log.created_date ? format(new Date(log.created_date), 'dd/MM/yy') : '-'}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-blue-600 font-medium text-xs">
+                          {log.created_date ? format(new Date(log.created_date), 'HH:mm') : '-'}
                         </TableCell>
                         <TableCell className="max-w-[280px] truncate">{log.title || '—'}</TableCell>
                         <TableCell className="max-w-[360px] truncate text-slate-600">{log.notes || ''}</TableCell>
