@@ -748,7 +748,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       }]);
       setHistoryIndex(0);
     }
-  }, [spreadsheet]);
+  }, [spreadsheet, globalTypesList, autoLinkColumnsToDataTypes]);
 
   const saveToHistory = useCallback((cols, rows, styles, notes, subH, mergedH, hStyles) => {
     console.log('📜 [HISTORY] saveToHistory called:', { 
