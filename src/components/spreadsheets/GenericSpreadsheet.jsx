@@ -1970,6 +1970,39 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
 
   const handleCellClick = (rowId, columnKey, event) => {
     const isAltPressed = event?.altKey || event?.getModifierState?.('AltGraph');
+    const column = columns.find(c => c.key === columnKey);
+    const row = filteredAndSortedData.find(r => r.id === rowId);
+    
+    // Special behavior for Client Columns
+    if (isClientColumn(column)) {
+      // 1. Alt + Click -> Edit Mode (override standard selection)
+      if (isAltPressed) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (!row) return;
+        setEditingCell(`${rowId}_${column.key}`);
+        setEditValue(String(row[column.key] || ''));
+        setTimeout(() => editInputRef.current?.focus(), 0);
+        return;
+      }
+      
+      // 2. Regular Click (no modifiers) -> Navigate to Client Folder
+      if (!event?.ctrlKey && !event?.metaKey && !event?.shiftKey) {
+        const clientName = row?.[columnKey];
+        if (clientName) {
+          const client = allClients.find(c => c.name?.toLowerCase() === clientName.toLowerCase());
+          if (client) {
+            const url = createPageUrl(`Clients?open=details&client_id=${client.id}`);
+            window.location.href = url;
+            return;
+          }
+        }
+        // If client not found, fall through to edit mode? 
+        // Better to allow edit so user can fix the name if it's wrong/missing
+      }
+    }
+
+    // Standard Alt+Click -> Add to Selection
     if (isAltPressed) {
       event.preventDefault();
       const cellKey = `${rowId}_${columnKey}`;
@@ -1982,27 +2015,18 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       return;
     }
 
-    // Enter - Navigate to client page with spreadsheet (optimized)
+    // Enter - Navigate to client page (keep existing logic for keyboard users)
     if (event?.key === 'Enter') {
       event.preventDefault();
-      const column = columns.find(c => c.key === columnKey);
-
       if (isClientColumn(column)) {
-        const row = filteredAndSortedData.find(r => r.id === rowId);
         const clientName = row?.[columnKey];
-
         if (clientName) {
           const client = allClients.find(c => 
             c.name?.toLowerCase() === clientName.toLowerCase()
           );
-
           if (client) {
-            const url = spreadsheet?.id 
-              ? createPageUrl(`Clients?clientId=${client.id}&spreadsheetId=${spreadsheet.id}`)
-              : createPageUrl(`Clients?clientId=${client.id}`);
-
-            window.history.pushState(null, '', url);
-            window.dispatchEvent(new PopStateEvent('popstate'));
+            const url = createPageUrl(`Clients?open=details&client_id=${client.id}`);
+            window.location.href = url;
           } else {
             toast.error('לקוח לא נמצא במערכת');
           }
@@ -2017,9 +2041,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       return;
     }
 
-    const row = filteredAndSortedData.find(r => r.id === rowId);
     if (!row) return;
-    const column = columns.find(c => c.key === columnKey);
 
     // Update presence
     setCurrentFocusedCell(`${rowId}_${column.key}`);
