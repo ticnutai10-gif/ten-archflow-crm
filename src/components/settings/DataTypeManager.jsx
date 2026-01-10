@@ -28,10 +28,11 @@ export default function DataTypeManager({ open, onClose, typeKey, typeName }) {
   const loadData = async () => {
     setLoading(true);
     try {
-      const results = await base44.entities.GlobalDataType.list();
-      const existing = results.find(item => item.type_key === typeKey);
+      // Use filter to be precise and sort by updated_date to get the latest version if duplicates exist
+      const results = await base44.entities.GlobalDataType.filter({ type_key: typeKey }, { updated_date: -1 }, 1);
       
-      if (existing) {
+      if (results && results.length > 0) {
+        const existing = results[0];
         setOptions(existing.options || []);
         setEntityId(existing.id);
       } else {
@@ -71,14 +72,26 @@ export default function DataTypeManager({ open, onClose, typeKey, typeName }) {
     });
 
     try {
-      if (entityId) {
-        await base44.entities.GlobalDataType.update(entityId, { options: normalized, name: typeName });
+      let currentId = entityId;
+      
+      // Double check if entity exists to prevent duplicates (race condition or first save)
+      if (!currentId) {
+         const existing = await base44.entities.GlobalDataType.filter({ type_key: typeKey }, { updated_date: -1 }, 1);
+         if (existing && existing.length > 0) {
+            currentId = existing[0].id;
+            setEntityId(currentId);
+         }
+      }
+
+      if (currentId) {
+        await base44.entities.GlobalDataType.update(currentId, { options: normalized, name: typeName });
       } else {
-        await base44.entities.GlobalDataType.create({
+        const res = await base44.entities.GlobalDataType.create({
           type_key: typeKey,
           name: typeName,
           options: normalized
         });
+        setEntityId(res.id);
       }
       
       // Dispatch event for real-time updates across the app
