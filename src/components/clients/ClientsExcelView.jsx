@@ -18,28 +18,36 @@ export default function ClientsExcelView({ clients, onRefresh }) {
   const [virtualSpreadsheet, setVirtualSpreadsheet] = useState(null);
   const [loading, setLoading] = useState(true);
   const [prefsLoaded, setPrefsLoaded] = useState(false);
+  const [globalDataTypes, setGlobalDataTypes] = useState([]);
   const prevClientsRef = useRef([]);
   const savedPrefsRef = useRef(null);
   const currentUserRef = useRef(null);
 
-  // Load user prefs ONCE on mount
+  // Load user prefs and global data types ONCE on mount
   useEffect(() => {
-    const loadPrefs = async () => {
+    const loadInitialData = async () => {
       try {
+        // Load user
         const user = await base44.auth.me();
         currentUserRef.current = user;
         
+        // Load user preferences
         const prefs = await base44.entities.UserPreferences.filter({ user_email: user.email });
         if (prefs && prefs.length > 0) {
           savedPrefsRef.current = prefs[0];
         }
+
+        // Load global data types to identify professional columns
+        const types = await base44.entities.GlobalDataType.list();
+        setGlobalDataTypes(types);
+
       } catch (e) {
-        console.error("Failed to load prefs", e);
+        console.error("Failed to load initial data", e);
       } finally {
         setPrefsLoaded(true);
       }
     };
-    loadPrefs();
+    loadInitialData();
   }, []);
 
   // Init spreadsheet only after prefs are loaded
@@ -49,52 +57,82 @@ export default function ClientsExcelView({ clients, onRefresh }) {
     }
   }, [clients, prefsLoaded]);
 
+  // Helper function to check if a column is a "professional" type column
+  const isProfessionalColumn = useCallback((column) => {
+    if (!column) return false;
+    
+    // Check by type key
+    if (column.type?.startsWith('custom_')) {
+      const matchingType = globalDataTypes.find(t => t.type_key === column.type);
+      if (matchingType?.is_professional_type) return true;
+    }
+    
+    // Check by title keywords
+    const professionalKeywords = ['קונסטרוקטור', 'יועץ', 'מודד', 'בעל מקצוע', 'קבלן', 'אדריכל', 'מהנדס'];
+    const titleLower = (column.title || '').toLowerCase();
+    return professionalKeywords.some(keyword => titleLower.includes(keyword));
+  }, [globalDataTypes]);
+
+  // Helper function to get the type_key for a professional column
+  const getProfessionalTypeKey = useCallback((column) => {
+    if (column.type?.startsWith('custom_')) {
+      return column.type;
+    }
+    // Try to match by name
+    const matchingType = globalDataTypes.find(t => 
+      t.name?.toLowerCase().trim() === column.title?.toLowerCase().trim()
+    );
+    return matchingType?.type_key || null;
+  }, [globalDataTypes]);
+
   const initSpreadsheet = () => {
     setLoading(true);
     
     const savedExcelPrefs = savedPrefsRef.current?.spreadsheet_columns?.clients_excel;
     
-    // CRITICAL: If user has saved columns, use ONLY those (respecting their visibility settings)
-    // If no saved prefs, use default columns
     let finalColumns;
     
     if (savedExcelPrefs?.columns && savedExcelPrefs.columns.length > 0) {
-      // Use saved columns EXACTLY as saved - do NOT merge with defaults
-      // This ensures deleted/hidden columns stay that way
       finalColumns = savedExcelPrefs.columns;
     } else {
-      // First time user - use defaults
       finalColumns = DEFAULT_BASE_COLUMNS;
     }
 
-    // Map clients to rows - CRITICAL: Map custom column values from constructor_name
+    // Map clients to rows with professional data mapping
     const rows = clients.map(client => {
       const row = {
         id: client.id,
         ...client
       };
       
-      // CRITICAL: Map constructor_name back to custom columns
-      // Find columns that are custom data types (e.g., קונסטרוקטור)
-      if (client.constructor_name) {
-        finalColumns.forEach(col => {
-          // Check if this column is a custom data type column (type starts with custom_ or title matches)
-          const isCustomTypeCol = col.type?.startsWith('custom_') || 
-                                  col.title?.includes('קונסטרוקטור') ||
-                                  col.title?.includes('בעל מקצוע');
-          if (isCustomTypeCol && !row[col.key]) {
-            row[col.key] = client.constructor_name;
-            console.log(`📍 [INIT] Mapped constructor_name "${client.constructor_name}" to column "${col.title}" (${col.key})`);
+      // CRITICAL: Map professionals data back to custom columns
+      const clientProfessionals = client.professionals || {};
+      
+      finalColumns.forEach(col => {
+        if (isProfessionalColumn(col)) {
+          const typeKey = getProfessionalTypeKey(col);
+          
+          // Try to get value from professionals object first
+          if (typeKey && clientProfessionals[typeKey]) {
+            row[col.key] = clientProfessionals[typeKey];
+            console.log(`📍 [INIT] Mapped professional "${typeKey}" value "${clientProfessionals[typeKey]}" to column "${col.title}"`);
           }
-        });
-      }
+          // Fallback to constructor_name for backward compatibility
+          else if (client.constructor_name && !row[col.key]) {
+            const colTitle = (col.title || '').toLowerCase();
+            if (colTitle.includes('קונסטרוקטור')) {
+              row[col.key] = client.constructor_name;
+              console.log(`📍 [INIT] Mapped constructor_name "${client.constructor_name}" to column "${col.title}" (backward compat)`);
+            }
+          }
+        }
+      });
       
       return row;
     });
 
-    console.log('🔄 [INIT] Loaded clients with constructor_name:', rows.filter(r => r.constructor_name).map(r => ({ name: r.name, constructor_name: r.constructor_name })));
+    console.log('🔄 [INIT] Loaded clients with professionals mapping');
 
-    // Create virtual spreadsheet object
     setVirtualSpreadsheet({
       id: 'virtual_clients_sheet',
       name: 'טבלת לקוחות',
@@ -111,7 +149,7 @@ export default function ClientsExcelView({ clients, onRefresh }) {
       }
     });
     
-    prevClientsRef.current = rows; // CRITICAL: Use mapped rows, not original clients
+    prevClientsRef.current = rows;
     setLoading(false);
   };
 
@@ -174,11 +212,9 @@ export default function ClientsExcelView({ clients, onRefresh }) {
     // 2. Detect changes and update clients
     const newRows = data.rows_data;
     const oldRows = prevClientsRef.current;
+    const columnsToCheck = data.columns || [];
     
     const updates = [];
-    
-    // Get columns to check for custom data type columns
-    const columnsToCheck = data.columns || [];
     
     newRows.forEach(newRow => {
       const oldRow = oldRows.find(r => r.id === newRow.id);
@@ -186,8 +222,8 @@ export default function ClientsExcelView({ clients, onRefresh }) {
         const changes = {};
         let hasChanges = false;
         
-        // CRITICAL: Check ALL client fields including constructor_name
-        ['name', 'status', 'stage', 'phone', 'email', 'company', 'address', 'source', 'budget_range', 'notes', 'constructor_name'].forEach(key => {
+        // Check standard client fields
+        ['name', 'status', 'stage', 'phone', 'email', 'company', 'address', 'source', 'budget_range', 'notes'].forEach(key => {
           if (String(newRow[key] || '') !== String(oldRow[key] || '')) {
             changes[key] = newRow[key];
             hasChanges = true;
@@ -195,29 +231,45 @@ export default function ClientsExcelView({ clients, onRefresh }) {
           }
         });
         
-        // CRITICAL: Check custom columns and map their values to constructor_name
+        // Check professional columns and build professionals object
+        const professionalsUpdate = { ...(oldRow.professionals || {}) };
+        let professionalsChanged = false;
+        
         columnsToCheck.forEach(col => {
-          const isCustomTypeCol = col.type?.startsWith('custom_') || 
-                                  col.title?.includes('קונסטרוקטור') ||
-                                  col.title?.includes('בעל מקצוע');
-          if (isCustomTypeCol) {
+          if (isProfessionalColumn(col)) {
             const newVal = newRow[col.key];
             const oldVal = oldRow[col.key];
+            
             if (String(newVal || '') !== String(oldVal || '')) {
-              // Map custom column value to constructor_name field
-              changes.constructor_name = newVal;
-              hasChanges = true;
-              console.log(`🔍 [CUSTOM COL CHANGE] ${col.title} (${col.key}): "${oldVal}" -> "${newVal}" => constructor_name`);
+              const typeKey = getProfessionalTypeKey(col);
+              
+              if (typeKey) {
+                professionalsUpdate[typeKey] = newVal || '';
+                professionalsChanged = true;
+                console.log(`🔍 [PROFESSIONAL CHANGE] ${col.title} (${typeKey}): "${oldVal}" -> "${newVal}"`);
+              }
+              
+              // Also update constructor_name for backward compatibility if it's a קונסטרוקטור column
+              const colTitle = (col.title || '').toLowerCase();
+              if (colTitle.includes('קונסטרוקטור')) {
+                changes.constructor_name = newVal;
+                hasChanges = true;
+              }
             }
           }
         });
+        
+        if (professionalsChanged) {
+          changes.professionals = professionalsUpdate;
+          hasChanges = true;
+        }
         
         if (hasChanges) {
           updates.push({ id: newRow.id, ...changes });
         }
       } else {
         if (newRow.id.startsWith('row_')) {
-           updates.push({ isNew: true, ...newRow });
+          updates.push({ isNew: true, ...newRow });
         }
       }
     });
@@ -243,7 +295,6 @@ export default function ClientsExcelView({ clients, onRefresh }) {
       console.log('💾 [EXCEL VIEW SAVE] COMPLETE');
       toast.success(`✓ ${updates.length} רשומות עודכנו`);
       
-      // CRITICAL: Update prevClientsRef with the NEW data (not old clients)
       prevClientsRef.current = newRows;
       
       if (onRefresh) onRefresh();
@@ -252,7 +303,7 @@ export default function ClientsExcelView({ clients, onRefresh }) {
       console.error('💾 [EXCEL VIEW SAVE] ERROR:', error);
       toast.error('שגיאה בשמירת שינויים');
     }
-  }, [onRefresh]);
+  }, [onRefresh, isProfessionalColumn, getProfessionalTypeKey]);
 
   if (loading || !virtualSpreadsheet) return <div className="p-12 text-center text-slate-500">טוען נתונים...</div>;
 
