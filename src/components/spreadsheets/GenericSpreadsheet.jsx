@@ -142,12 +142,16 @@ export function StageDisplay({ value, column, isEditing, onEdit, editValue, onSa
   const currentStage = FLAT_OPTIONS.find(s => s.value === value);
   
   const handleSelect = (val) => {
-    console.log('🟣 [STAGE] Selected:', val);
+    console.log('🟣 [STAGE DISPLAY] Selected value:', val, 'Column type:', column?.type);
     if (onDirectSave) {
+      console.log('🟣 [STAGE DISPLAY] Calling onDirectSave');
       onDirectSave(val);
     } else if (typeof onEdit === 'function' && typeof onSave === 'function') {
+      console.log('🟣 [STAGE DISPLAY] Calling onEdit + onSave (legacy)');
       onEdit(val);
       setTimeout(() => onSave(), 50);
+    } else {
+      console.warn('🟣 [STAGE DISPLAY] No save handler available!');
     }
   };
 

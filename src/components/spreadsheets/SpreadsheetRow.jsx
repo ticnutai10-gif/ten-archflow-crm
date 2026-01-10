@@ -115,18 +115,29 @@ const SpreadsheetRow = memo(({
   });
 
   const handleStageSelect = (val, colKey) => {
-    console.log('🟣 [ROW STAGE SELECT] START', { rowId: row.id, colKey, value: val });
+    console.log('🟣 [ROW STAGE SELECT] ===== START =====');
+    console.log('🟣 [ROW STAGE SELECT] rowId:', row.id);
+    console.log('🟣 [ROW STAGE SELECT] colKey:', colKey);
+    console.log('🟣 [ROW STAGE SELECT] selected value:', val);
+    console.log('🟣 [ROW STAGE SELECT] current row data:', row);
     
     const column = visibleColumns.find(c => c.key === colKey);
+    console.log('🟣 [ROW STAGE SELECT] column type:', column?.type);
+    
     let options = [];
     if (column.type === 'stage') options = globalDataTypes?.['stages'] || customStageOptions;
     else options = globalDataTypes?.[column.type] || [];
     
+    console.log('🟣 [ROW STAGE SELECT] options count:', options.length);
+    
     const flatOptions = (options || []).flatMap(g => [g, ...(g.children || [])]);
     const option = flatOptions.find(o => o.value === val);
     
+    console.log('🟣 [ROW STAGE SELECT] option details:', option);
+    console.log('🟣 [ROW STAGE SELECT] has fields?', option?.fields?.length > 0);
+    
     if (option && option.fields && option.fields.length > 0) {
-      console.log('🟣 [ROW STAGE SELECT] Has custom fields, showing dialog');
+      console.log('🟣 [ROW STAGE SELECT] Opening custom fields dialog');
       setTempFields({});
       setCustomFieldsDialog({
         option,
@@ -135,15 +146,21 @@ const SpreadsheetRow = memo(({
         currentMeta: cellMetadata?.[`${row.id}_${colKey}`] || {}
       });
     } else {
-      console.log('🟣 [ROW STAGE SELECT] No custom fields, calling onDirectSaveStage');
+      console.log('🟣 [ROW STAGE SELECT] Calling onDirectSaveStage immediately');
+      console.log('🟣 [ROW STAGE SELECT] onDirectSaveStage type:', typeof onDirectSaveStage);
       onDirectSaveStage(val, colKey);
+      console.log('🟣 [ROW STAGE SELECT] onDirectSaveStage called');
     }
+    console.log('🟣 [ROW STAGE SELECT] ===== END =====');
   };
 
   const saveCustomFields = () => {
+    console.log('💾 [CUSTOM FIELDS] Saving custom fields:', tempFields);
     const { val, colKey } = customFieldsDialog;
+    console.log('💾 [CUSTOM FIELDS] Calling onDirectSaveStage with metadata');
     onDirectSaveStage(val, colKey, tempFields);
     setCustomFieldsDialog(null);
+    console.log('💾 [CUSTOM FIELDS] Dialog closed');
   };
 
   return (
