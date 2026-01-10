@@ -3,72 +3,68 @@ import GenericSpreadsheet from "@/components/spreadsheets/GenericSpreadsheet";
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
 
+// Default base columns - used only when NO saved preferences exist
+const DEFAULT_BASE_COLUMNS = [
+  { key: 'name', title: 'שם לקוח', width: '200px', type: 'text', visible: true },
+  { key: 'status', title: 'סטטוס', width: '120px', type: 'select', visible: true, options: ['פוטנציאלי', 'פעיל', 'לא פעיל'] },
+  { key: 'stage', title: 'שלב', width: '150px', type: 'stage', visible: true },
+  { key: 'phone', title: 'טלפון', width: '150px', type: 'text', visible: true },
+  { key: 'email', title: 'אימייל', width: '200px', type: 'text', visible: true },
+  { key: 'address', title: 'כתובת', width: '200px', type: 'text', visible: true },
+  { key: 'notes', title: 'הערות', width: '300px', type: 'long_text', visible: true }
+];
+
 export default function ClientsExcelView({ clients, onRefresh }) {
   const [virtualSpreadsheet, setVirtualSpreadsheet] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [prefsLoaded, setPrefsLoaded] = useState(false);
   const prevClientsRef = useRef([]);
+  const savedPrefsRef = useRef(null);
+  const currentUserRef = useRef(null);
 
-  // Load user prefs
-  const [savedPrefs, setSavedPrefs] = useState(null);
-  const [currentUser, setCurrentUser] = useState(null);
-
+  // Load user prefs ONCE on mount
   useEffect(() => {
     const loadPrefs = async () => {
-        try {
-            const user = await base44.auth.me();
-            setCurrentUser(user);
-            const prefs = await base44.entities.UserPreferences.filter({ user_email: user.email });
-            if (prefs && prefs.length > 0) {
-                setSavedPrefs(prefs[0]);
-            }
-        } catch (e) {
-            console.error("Failed to load prefs", e);
+      try {
+        const user = await base44.auth.me();
+        currentUserRef.current = user;
+        
+        const prefs = await base44.entities.UserPreferences.filter({ user_email: user.email });
+        if (prefs && prefs.length > 0) {
+          savedPrefsRef.current = prefs[0];
         }
+      } catch (e) {
+        console.error("Failed to load prefs", e);
+      } finally {
+        setPrefsLoaded(true);
+      }
     };
     loadPrefs();
   }, []);
 
+  // Init spreadsheet only after prefs are loaded
   useEffect(() => {
-    // Only init if we have prefs loaded (or failed to load) to avoid double init
-    if (currentUser) {
-        initSpreadsheet();
+    if (prefsLoaded && clients) {
+      initSpreadsheet();
     }
-  }, [clients, savedPrefs]);
+  }, [clients, prefsLoaded]);
 
   const initSpreadsheet = () => {
     setLoading(true);
     
-    // Define base columns
-    const baseColumns = [
-      { key: 'name', title: 'שם לקוח', width: '200px', type: 'text', visible: true },
-      { key: 'status', title: 'סטטוס', width: '120px', type: 'select', visible: true, options: ['פוטנציאלי', 'פעיל', 'לא פעיל'] },
-      { key: 'stage', title: 'שלב', width: '150px', type: 'stage', visible: true },
-      { key: 'phone', title: 'טלפון', width: '150px', type: 'text', visible: true },
-      { key: 'email', title: 'אימייל', width: '200px', type: 'text', visible: true },
-      { key: 'company', title: 'חברה', width: '150px', type: 'text', visible: true },
-      { key: 'address', title: 'כתובת', width: '200px', type: 'text', visible: true },
-      { key: 'source', title: 'מקור הגעה', width: '120px', type: 'select', visible: true, options: ['הפניה', 'אתר אינטרנט', 'מדיה חברתית', 'פרסומת', 'אחר'] },
-      { key: 'budget_range', title: 'תקציב', width: '150px', type: 'select', visible: true, options: ['עד 500K', '500K-1M', '1M-2M', '2M-5M', 'מעל 5M'] },
-      { key: 'notes', title: 'הערות', width: '300px', type: 'long_text', visible: true }
-    ];
-
-    // Apply saved column preferences
-    let finalColumns = baseColumns;
-    if (savedPrefs?.spreadsheet_columns?.clients_excel?.columns) {
-        const savedCols = savedPrefs.spreadsheet_columns.clients_excel.columns;
-        // Merge saved props (width, visible, order) into base columns
-        // Also keep custom columns if any
-        finalColumns = savedCols.map(savedCol => {
-            const baseCol = baseColumns.find(bc => bc.key === savedCol.key);
-            return baseCol ? { ...baseCol, ...savedCol } : savedCol;
-        });
-        
-        // Add missing base columns at the end if not present (for new fields)
-        baseColumns.forEach(bc => {
-            if (!finalColumns.find(fc => fc.key === bc.key)) {
-                finalColumns.push(bc);
-            }
-        });
+    const savedExcelPrefs = savedPrefsRef.current?.spreadsheet_columns?.clients_excel;
+    
+    // CRITICAL: If user has saved columns, use ONLY those (respecting their visibility settings)
+    // If no saved prefs, use default columns
+    let finalColumns;
+    
+    if (savedExcelPrefs?.columns && savedExcelPrefs.columns.length > 0) {
+      // Use saved columns EXACTLY as saved - do NOT merge with defaults
+      // This ensures deleted/hidden columns stay that way
+      finalColumns = savedExcelPrefs.columns;
+    } else {
+      // First time user - use defaults
+      finalColumns = DEFAULT_BASE_COLUMNS;
     }
 
     // Map clients to rows
@@ -83,10 +79,12 @@ export default function ClientsExcelView({ clients, onRefresh }) {
       name: 'טבלת לקוחות',
       columns: finalColumns,
       rows_data: rows,
-      cell_styles: savedPrefs?.spreadsheet_columns?.clients_excel?.cell_styles || {}, 
+      saved_views: savedExcelPrefs?.saved_views || [],
+      active_view_id: savedExcelPrefs?.active_view_id || null,
+      cell_styles: savedExcelPrefs?.cell_styles || {}, 
       cell_notes: {},
-      freeze_settings: savedPrefs?.spreadsheet_columns?.clients_excel?.freeze_settings || { freeze_rows: 0, freeze_columns: 1 },
-      theme_settings: savedPrefs?.spreadsheet_columns?.clients_excel?.theme_settings || {
+      freeze_settings: savedExcelPrefs?.freeze_settings || { freeze_rows: 0, freeze_columns: 1 },
+      theme_settings: savedExcelPrefs?.theme_settings || {
         palette: "default",
         density: "comfortable"
       }
@@ -97,52 +95,58 @@ export default function ClientsExcelView({ clients, onRefresh }) {
   };
 
   const handleSave = useCallback(async (data) => {
+    const currentUser = currentUserRef.current;
+    
     // 1. Save Column & View Preferences
     if (currentUser) {
-        try {
-            const prefsData = {
-                columns: data.columns.map(c => ({ 
-                    key: c.key, 
-                    title: c.title, 
-                    width: c.width, 
-                    visible: c.visible, 
-                    type: c.type, 
-                    options: c.options 
-                })),
-                cell_styles: data.cell_styles,
-                freeze_settings: data.freeze_settings,
-                theme_settings: data.theme_settings
-            };
+      try {
+        const prefsData = {
+          columns: data.columns.map(c => ({ 
+            key: c.key, 
+            title: c.title, 
+            width: c.width, 
+            visible: c.visible, 
+            type: c.type, 
+            options: c.options 
+          })),
+          saved_views: data.saved_views || [],
+          active_view_id: data.active_view_id || null,
+          cell_styles: data.cell_styles || {},
+          freeze_settings: data.freeze_settings,
+          theme_settings: data.theme_settings
+        };
 
-            const existingPrefs = await base44.entities.UserPreferences.filter({ user_email: currentUser.email });
-            
-            if (existingPrefs && existingPrefs.length > 0) {
-                const currentCols = existingPrefs[0].spreadsheet_columns || {};
-                await base44.entities.UserPreferences.update(existingPrefs[0].id, {
-                    spreadsheet_columns: {
-                        ...currentCols,
-                        clients_excel: prefsData
-                    }
-                });
-            } else {
-                await base44.entities.UserPreferences.create({
-                    user_email: currentUser.email,
-                    spreadsheet_columns: {
-                        clients_excel: prefsData
-                    }
-                });
+        const existingPrefs = await base44.entities.UserPreferences.filter({ user_email: currentUser.email });
+        
+        if (existingPrefs && existingPrefs.length > 0) {
+          const currentCols = existingPrefs[0].spreadsheet_columns || {};
+          await base44.entities.UserPreferences.update(existingPrefs[0].id, {
+            spreadsheet_columns: {
+              ...currentCols,
+              clients_excel: prefsData
             }
-            // Update local state to prevent revert on next init
-            setSavedPrefs(prev => ({
-                ...prev,
-                spreadsheet_columns: {
-                    ...(prev?.spreadsheet_columns || {}),
-                    clients_excel: prefsData
-                }
-            }));
-        } catch (e) {
-            console.error("Failed to save view preferences", e);
+          });
+        } else {
+          await base44.entities.UserPreferences.create({
+            user_email: currentUser.email,
+            spreadsheet_columns: {
+              clients_excel: prefsData
+            }
+          });
         }
+        
+        // Update ref to prevent revert on next init
+        savedPrefsRef.current = {
+          ...savedPrefsRef.current,
+          spreadsheet_columns: {
+            ...(savedPrefsRef.current?.spreadsheet_columns || {}),
+            clients_excel: prefsData
+          }
+        };
+      } catch (e) {
+        console.error("Failed to save view preferences", e);
+        toast.error('שגיאה בשמירת הגדרות תצוגה');
+      }
     }
 
     // 2. Detect changes and update clients
