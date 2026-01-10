@@ -1094,6 +1094,68 @@ export default function AutomationsPage() {
                                   </div>
                                 </>
                               )}
+
+                              {action.type === 'set_cell_color' && (
+                                <>
+                                  <div className="flex gap-3 items-center">
+                                    <div>
+                                      <label className="text-xs text-slate-500 block mb-1">צבע התא</label>
+                                      <Input
+                                        type="color"
+                                        value={action.params?.color || "#22c55e"}
+                                        onChange={(e) => updateAction(index, 'color', e.target.value)}
+                                        className="w-20 h-10 cursor-pointer"
+                                      />
+                                    </div>
+                                    <div className="flex-1">
+                                      <label className="text-xs text-slate-500 block mb-1">עמודה (אופציונלי)</label>
+                                      <Input
+                                        placeholder="מפתח עמודה (השאר ריק לעמודת הטריגר)"
+                                        value={action.params?.column_key || ""}
+                                        onChange={(e) => updateAction(index, 'column_key', e.target.value)}
+                                      />
+                                    </div>
+                                  </div>
+                                  <div className="bg-pink-50 border border-pink-200 rounded-lg p-3 text-xs text-pink-800">
+                                    🎨 התא יצבע בצבע שנבחר כאשר התנאי מתקיים
+                                  </div>
+                                </>
+                              )}
+
+                              {action.type === 'set_row_color' && (
+                                <>
+                                  <div>
+                                    <label className="text-xs text-slate-500 block mb-1">צבע השורה</label>
+                                    <Input
+                                      type="color"
+                                      value={action.params?.color || "#fef3c7"}
+                                      onChange={(e) => updateAction(index, 'color', e.target.value)}
+                                      className="w-20 h-10 cursor-pointer"
+                                    />
+                                  </div>
+                                  <div className="bg-cyan-50 border border-cyan-200 rounded-lg p-3 text-xs text-cyan-800">
+                                    🎨 כל השורה תצבע בצבע שנבחר כאשר התנאי מתקיים
+                                  </div>
+                                </>
+                              )}
+
+                              {action.type === 'update_client_field' && (
+                                <>
+                                  <Input
+                                    placeholder="שם השדה (למשל: status, stage, notes)"
+                                    value={action.params?.field_name || ""}
+                                    onChange={(e) => updateAction(index, 'field_name', e.target.value)}
+                                  />
+                                  <Input
+                                    placeholder="ערך חדש"
+                                    value={action.params?.field_value || ""}
+                                    onChange={(e) => updateAction(index, 'field_value', e.target.value)}
+                                  />
+                                  <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3 text-xs text-indigo-800">
+                                    💡 עדכן שדה בכרטיס הלקוח אוטומטית. למשל: status → פעיל
+                                  </div>
+                                </>
+                              )}
                             </div>
                           </CardContent>
                         </Card>
