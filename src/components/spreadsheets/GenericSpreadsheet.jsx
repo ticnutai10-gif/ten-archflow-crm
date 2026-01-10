@@ -946,31 +946,28 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     toast.success('✓ פעולה שוחזרה');
   }, [history, historyIndex, saveToBackend]);
 
-  // Listen for client updates
+  // Listen for client updates - Refresh allClients list instead of modifying rowsData directly
   useEffect(() => {
-    const handleClientUpdate = (event) => {
+    const handleClientUpdate = async (event) => {
       const updatedClient = event.detail || {};
       if (!updatedClient.id) return;
       
-      console.log('📬 [GENERIC SPREADSHEET] Received client update:', updatedClient);
+      console.log('📬 [GENERIC SPREADSHEET] Received client update, refreshing allClients:', updatedClient.name);
       
-      // עדכן את השורות עם כל הנתונים העדכניים של הלקוח
-      setRowsData(prev => prev.map(row => {
-        if (row.client_id === updatedClient.id) {
-          return { 
-            ...row, 
-            stage: updatedClient.stage,
-            name: updatedClient.name,
-            // עדכן כל שדה אחר שרלוונטי
-          };
-        }
-        return row;
-      }));
+      // Refresh allClients instead of modifying rowsData (which causes race conditions)
+      try {
+        const clients = await base44.entities.Client.list();
+        const validClients = Array.isArray(clients) ? clients : [];
+        const filtered = filterClients(validClients);
+        setAllClients(filtered);
+      } catch (error) {
+        console.error('Error refreshing clients:', error);
+      }
     };
     
     window.addEventListener('client:updated', handleClientUpdate);
     return () => window.removeEventListener('client:updated', handleClientUpdate);
-  }, []);
+  }, [filterClients]);
 
   // Handle Escape for Full Screen
   useEffect(() => {
@@ -2026,15 +2023,19 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         if (clientName) {
           const client = allClients.find(c => c.name?.toLowerCase() === clientName.toLowerCase());
           if (client) {
-            // CRITICAL: Prevent entering edit mode by returning immediately
+            // CRITICAL: Prevent entering edit mode AND prevent any further processing
             event.preventDefault();
             event.stopPropagation();
+            // Use navigate instead of direct href to avoid full page reload issues
             const url = createPageUrl(`Clients?open=details&client_id=${client.id}`);
-            window.location.href = url;
-            return;
+            navigate(url);
+            return; // Exit immediately - do NOT fall through to edit mode
           }
         }
-        // If client not found, fall through to edit mode so user can fix the name
+        // If client not found, show picker to select/create client
+        setShowClientPicker(`${rowId}_${columnKey}`);
+        setClientSearchQuery(clientName || "");
+        return; // Exit - do NOT fall through to edit mode
       }
     }
 
