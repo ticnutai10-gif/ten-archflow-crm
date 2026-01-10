@@ -286,6 +286,9 @@ export default function DataTypeManager({ open, onClose, typeKey, typeName }) {
             <Circle className="w-6 h-6 text-purple-600" />
             ניהול {typeName}
           </DialogTitle>
+          <p className="text-sm text-slate-500 mt-1">
+            הוסף, ערוך, מחק או סדר מחדש את הקטגוריות. גרור כדי לשנות סדר.
+          </p>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto p-6">
@@ -403,21 +406,50 @@ export default function DataTypeManager({ open, onClose, typeKey, typeName }) {
                 </Droppable>
               </DragDropContext>
 
-              <Button onClick={handleAddOption} variant="outline" className="w-full border-dashed gap-2"><Plus className="w-4 h-4" />הוסף קטגוריה חדשה</Button>
+              <Button onClick={handleAddOption} variant="outline" className="w-full border-dashed gap-2 py-6 text-purple-600 hover:bg-purple-50 hover:border-purple-400">
+                <Plus className="w-5 h-5" />
+                הוסף קטגוריה חדשה
+              </Button>
               
-              <div className="flex gap-2 mt-4">
-                 <Button variant="outline" onClick={handleExportJSON} className="flex-1 gap-2"><FileJson className="w-4 h-4" /> ייצוא JSON</Button>
-                 <div className="relative flex-1">
+              {/* Import/Export Section */}
+              <div className="border-t pt-4 mt-4">
+                <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                  <FileJson className="w-4 h-4" />
+                  ייבוא וייצוא קטגוריות
+                </h3>
+                <p className="text-xs text-slate-500 mb-3">
+                  ייצא את הקטגוריות לקובץ לגיבוי, או ייבא קטגוריות מקובץ קיים
+                </p>
+                
+                <div className="grid grid-cols-2 gap-2">
+                  <Button variant="outline" onClick={handleExportJSON} className="gap-2 text-blue-600 border-blue-200 hover:bg-blue-50">
+                    <FileJson className="w-4 h-4" /> ייצוא JSON
+                  </Button>
+                  <div className="relative">
                     <input type="file" ref={fileInputRef} className="hidden" accept=".json" onChange={handleImport} />
-                    <Button variant="outline" onClick={() => fileInputRef.current.click()} className="w-full gap-2"><Upload className="w-4 h-4" /> ייבוא JSON</Button>
-                 </div>
-              </div>
-              <div className="flex gap-2 mt-2">
-                 <Button variant="outline" onClick={handleExportTXT} className="flex-1 gap-2"><FileText className="w-4 h-4" /> ייצוא TXT</Button>
-                 <div className="relative flex-1">
+                    <Button variant="outline" onClick={() => fileInputRef.current.click()} className="w-full gap-2 text-green-600 border-green-200 hover:bg-green-50">
+                      <Upload className="w-4 h-4" /> ייבוא JSON
+                    </Button>
+                  </div>
+                  <Button variant="outline" onClick={handleExportTXT} className="gap-2 text-amber-600 border-amber-200 hover:bg-amber-50">
+                    <FileText className="w-4 h-4" /> ייצוא TXT
+                  </Button>
+                  <div className="relative">
                     <input type="file" ref={txtInputRef} className="hidden" accept=".txt" onChange={handleImportTXT} />
-                    <Button variant="outline" onClick={() => txtInputRef.current.click()} className="w-full gap-2"><Upload className="w-4 h-4" /> ייבוא TXT</Button>
-                 </div>
+                    <Button variant="outline" onClick={() => txtInputRef.current.click()} className="w-full gap-2 text-orange-600 border-orange-200 hover:bg-orange-50">
+                      <Upload className="w-4 h-4" /> ייבוא TXT
+                    </Button>
+                  </div>
+                </div>
+                
+                {/* Help Text */}
+                <div className="bg-slate-50 rounded-lg p-3 mt-3 text-xs text-slate-600">
+                  <strong>📋 פורמט TXT:</strong> שורה לכל קטגוריה. צבע אופציונלי בסוגריים מרובעים.
+                  <br />
+                  <code className="bg-white px-1 rounded text-[10px]">נחשון [#6366f1]</code>
+                  <br />
+                  <code className="bg-white px-1 rounded text-[10px]">- תת קטגוריה [#22c55e]</code>
+                </div>
               </div>
             </div>
           )}
