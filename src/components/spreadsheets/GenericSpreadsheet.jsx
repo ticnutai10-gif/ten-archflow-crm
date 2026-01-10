@@ -1880,6 +1880,8 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   };
 
   const handleClientSelect = async (rowId, columnKey, client) => {
+    console.log('👤 [CLIENT SELECT] START', { rowId, columnKey, clientName: client.name });
+    
     const phoneCol = columns.find(c => c.key.includes('phone') || c.key.includes('טלפון'));
     const emailCol = columns.find(c => c.key.includes('email') || c.key.includes('מייל'));
     const companyCol = columns.find(c => c.key.includes('company') || c.key.includes('חברה'));
@@ -1888,25 +1890,22 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     const updatedRows = rowsData.map(row => {
       if (row.id === rowId) {
         const newRow = { ...row, [columnKey]: client.name };
-
         if (phoneCol && client.phone) newRow[phoneCol.key] = client.phone;
         if (emailCol && client.email) newRow[emailCol.key] = client.email;
         if (companyCol && client.company) newRow[companyCol.key] = client.company;
         if (addressCol && client.address) newRow[addressCol.key] = client.address;
-
         return newRow;
       }
       return row;
     });
 
-    // Update ref BEFORE state
+    console.log('👤 [CLIENT SELECT] Updating rowsData with client:', client.name);
     rowsDataRef.current = updatedRows;
-    
     setRowsData(updatedRows);
     setShowClientPicker(null);
     setClientSearchQuery("");
     
-    // Save immediately
+    console.log('👤 [CLIENT SELECT] Saving to backend...');
     saveToHistory(columnsRef.current, updatedRows, cellStylesRef.current, cellNotesRef.current);
     saveToBackend();
 
@@ -1916,11 +1915,11 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     if (companyCol && client.company) autoFilledFields.push('חברה');
     if (addressCol && client.address) autoFilledFields.push('כתובת');
 
-    if (autoFilledFields.length > 0) {
-      toast.success(`✓ לקוח נבחר ונתונים נוספים מולאו אוטומטית: ${autoFilledFields.join(', ')}`);
-    } else {
-      toast.success('✓ לקוח נבחר');
-    }
+    console.log('👤 [CLIENT SELECT] COMPLETE');
+    toast.success(autoFilledFields.length > 0 
+      ? `✓ לקוח נבחר ונתונים נוספים מולאו אוטומטית: ${autoFilledFields.join(', ')}`
+      : '✓ לקוח נבחר'
+    );
   };
 
   const isClientColumn = (column) => {
@@ -1935,14 +1934,26 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   };
 
   const handleCellClick = (rowId, columnKey, event) => {
+    console.log('🖱️ [CELL CLICK] START', { 
+      rowId, 
+      columnKey, 
+      isClientCol: isClientColumn(columns.find(c => c.key === columnKey)),
+      alt: event?.altKey,
+      ctrl: event?.ctrlKey,
+      shift: event?.shiftKey
+    });
+    
     const isAltPressed = event?.altKey || event?.getModifierState?.('AltGraph');
     const column = columns.find(c => c.key === columnKey);
     const row = filteredAndSortedData.find(r => r.id === rowId);
     
     // Special behavior for Client Columns
     if (isClientColumn(column)) {
-      // 1. Alt + Click -> Edit Mode (override standard selection)
+      console.log('🖱️ [CELL CLICK] Client column detected');
+      
+      // 1. Alt + Click -> Edit Mode
       if (isAltPressed) {
+        console.log('🖱️ [CELL CLICK] Alt+Click -> Edit Mode');
         event.preventDefault();
         event.stopPropagation();
         if (!row) return;
@@ -1952,25 +1963,32 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         return;
       }
       
-      // 2. Regular Click (no modifiers) -> Navigate to Client Folder
+      // 2. Regular Click (no modifiers) -> Navigate or Picker
       if (!event?.ctrlKey && !event?.metaKey && !event?.shiftKey) {
         const clientName = row?.[columnKey];
+        console.log('🖱️ [CELL CLICK] Regular click on client:', clientName);
+        
         if (clientName) {
           const client = allClients.find(c => c.name?.toLowerCase() === clientName.toLowerCase());
+          console.log('🖱️ [CELL CLICK] Client lookup result:', client ? `Found: ${client.name}` : 'Not found');
+          
           if (client) {
-            // CRITICAL: Prevent entering edit mode AND prevent any further processing
+            console.log('🖱️ [CELL CLICK] Navigating to client:', client.id);
             event.preventDefault();
             event.stopPropagation();
-            // Use navigate instead of direct href to avoid full page reload issues
             const url = createPageUrl(`Clients?open=details&client_id=${client.id}`);
             navigate(url);
-            return; // Exit immediately - do NOT fall through to edit mode
+            return;
           }
         }
-        // If client not found, show picker to select/create client
+        
+        // Client not found - show picker
+        console.log('🖱️ [CELL CLICK] Showing client picker');
+        event.preventDefault();
+        event.stopPropagation();
         setShowClientPicker(`${rowId}_${columnKey}`);
         setClientSearchQuery(clientName || "");
-        return; // Exit - do NOT fall through to edit mode
+        return;
       }
     }
 
@@ -3775,48 +3793,54 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                               validateCell={validateCell}
                               
                               onDirectSaveStage={async (stageValue, columnKey, newMetadata) => {
-                                const column = columns.find(c => c.key === columnKey);
+                                console.log('🎯 [DIRECT SAVE STAGE] START', { rowId: row.id, columnKey, stageValue });
+
                                 const updatedRows = rowsData.map(r => 
                                   r.id === row.id ? { ...r, [columnKey]: stageValue } : r
                                 );
-                                
-                                // Update refs BEFORE state changes
+
+                                console.log('🎯 [DIRECT SAVE STAGE] Updated rows prepared');
                                 rowsDataRef.current = updatedRows;
-                                
-                                // Update metadata if provided (custom fields)
+
                                 if (newMetadata) {
                                   const updatedMetadata = { ...cellMetadataRef.current, [`${row.id}_${columnKey}`]: newMetadata };
                                   cellMetadataRef.current = updatedMetadata;
                                   setCellMetadata(updatedMetadata);
                                 }
-                                
+
+                                console.log('🎯 [DIRECT SAVE STAGE] Setting rowsData state');
                                 setRowsData(updatedRows);
                                 setEditingCell(null);
                                 setEditValue("");
 
-                                // Save immediately - no setTimeout
+                                console.log('🎯 [DIRECT SAVE STAGE] Saving to backend');
                                 saveToHistory(columnsRef.current, updatedRows, cellStylesRef.current, cellNotesRef.current, subHeadersRef.current, mergedHeadersRef.current, headerStylesRef.current, cellMetadataRef.current);
                                 saveToBackend();
                                 toast.success('✓ עודכן בהצלחה');
 
-                                // Client update logic (async, after save)
+                                // Update linked client if exists
                                 const clientColumns = columnsRef.current.filter(col => 
                                   col.type === 'client' || col.key.toLowerCase().includes('client') || col.title?.toLowerCase().includes('לקוח')
                                 );
-                                
+
                                 if (clientColumns.length > 0) {
                                   const clientName = row[clientColumns[0].key];
                                   if (clientName) {
+                                    console.log('🎯 [DIRECT SAVE STAGE] Updating linked client:', clientName);
                                     try {
                                       const matchingClient = allClients.find(c => c.name?.toLowerCase() === clientName.toLowerCase());
                                       if (matchingClient) {
                                         await base44.entities.Client.update(matchingClient.id, { stage: stageValue });
                                         const updatedClient = await base44.entities.Client.get(matchingClient.id);
+                                        console.log('🎯 [DIRECT SAVE STAGE] Dispatching client:updated event');
                                         window.dispatchEvent(new CustomEvent('client:updated', { detail: updatedClient }));
                                       }
-                                    } catch (e) { console.error(e); }
+                                    } catch (e) { 
+                                      console.error('🎯 [DIRECT SAVE STAGE] Client update error:', e); 
+                                    }
                                   }
                                 }
+                                console.log('🎯 [DIRECT SAVE STAGE] COMPLETE');
                               }}
                             />
                           );

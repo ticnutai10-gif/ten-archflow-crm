@@ -115,7 +115,8 @@ const SpreadsheetRow = memo(({
   });
 
   const handleStageSelect = (val, colKey) => {
-    // Check if new stage requires fields
+    console.log('🟣 [ROW STAGE SELECT] START', { rowId: row.id, colKey, value: val });
+    
     const column = visibleColumns.find(c => c.key === colKey);
     let options = [];
     if (column.type === 'stage') options = globalDataTypes?.['stages'] || customStageOptions;
@@ -125,6 +126,7 @@ const SpreadsheetRow = memo(({
     const option = flatOptions.find(o => o.value === val);
     
     if (option && option.fields && option.fields.length > 0) {
+      console.log('🟣 [ROW STAGE SELECT] Has custom fields, showing dialog');
       setTempFields({});
       setCustomFieldsDialog({
         option,
@@ -133,6 +135,7 @@ const SpreadsheetRow = memo(({
         currentMeta: cellMetadata?.[`${row.id}_${colKey}`] || {}
       });
     } else {
+      console.log('🟣 [ROW STAGE SELECT] No custom fields, calling onDirectSaveStage');
       onDirectSaveStage(val, colKey);
     }
   };

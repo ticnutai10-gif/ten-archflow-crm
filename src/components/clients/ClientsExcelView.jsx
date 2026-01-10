@@ -95,6 +95,8 @@ export default function ClientsExcelView({ clients, onRefresh }) {
   };
 
   const handleSave = useCallback(async (data) => {
+    console.log('💾 [EXCEL VIEW SAVE] START', { rowCount: data.rows_data.length });
+    
     const currentUser = currentUserRef.current;
     
     // 1. Save Column & View Preferences
@@ -135,7 +137,6 @@ export default function ClientsExcelView({ clients, onRefresh }) {
           });
         }
         
-        // Update ref to prevent revert on next init
         savedPrefsRef.current = {
           ...savedPrefsRef.current,
           spreadsheet_columns: {
@@ -155,11 +156,9 @@ export default function ClientsExcelView({ clients, onRefresh }) {
     
     const updates = [];
     
-    // Simple diff
     newRows.forEach(newRow => {
       const oldRow = oldRows.find(r => r.id === newRow.id);
       if (oldRow) {
-        // Check for changed fields
         const changes = {};
         let hasChanges = false;
         
@@ -174,22 +173,23 @@ export default function ClientsExcelView({ clients, onRefresh }) {
           updates.push({ id: newRow.id, ...changes });
         }
       } else {
-        // New row (created in spreadsheet)
-        // Currently GenericSpreadsheet adds rows with temp IDs "row_..."
         if (newRow.id.startsWith('row_')) {
-           // This is a new client creation
            updates.push({ isNew: true, ...newRow });
         }
       }
     });
 
-    if (updates.length === 0) return;
+    if (updates.length === 0) {
+      console.log('💾 [EXCEL VIEW SAVE] No changes detected');
+      return;
+    }
 
+    console.log('💾 [EXCEL VIEW SAVE] Updating', updates.length, 'clients');
+    
     try {
       await Promise.all(updates.map(async (update) => {
         if (update.isNew) {
           const { isNew, id, ...clientData } = update;
-          // Create new client
           await base44.entities.Client.create(clientData);
         } else {
           const { id, ...changes } = update;
@@ -197,13 +197,13 @@ export default function ClientsExcelView({ clients, onRefresh }) {
         }
       }));
       
+      console.log('💾 [EXCEL VIEW SAVE] COMPLETE');
       toast.success(`✓ ${updates.length} רשומות עודכנו`);
-      // Update prevClientsRef with new data to prevent duplicate saves
       prevClientsRef.current = newRows;
       if (onRefresh) onRefresh();
       
     } catch (error) {
-      console.error('Error saving clients from spreadsheet:', error);
+      console.error('💾 [EXCEL VIEW SAVE] ERROR:', error);
       toast.error('שגיאה בשמירת שינויים');
     }
   }, [onRefresh]);
