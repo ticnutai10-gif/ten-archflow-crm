@@ -67,11 +67,13 @@ export default function ClientsExcelView({ clients, onRefresh }) {
       finalColumns = DEFAULT_BASE_COLUMNS;
     }
 
-    // Map clients to rows
+    // Map clients to rows - CRITICAL: Include ALL client fields
     const rows = clients.map(client => ({
       id: client.id,
-      ...client
+      ...client // This will include constructor_name if it exists
     }));
+
+    console.log('🔄 [INIT] Loaded clients with constructor_name:', rows.filter(r => r.constructor_name).map(r => ({ name: r.name, constructor_name: r.constructor_name })));
 
     // Create virtual spreadsheet object
     setVirtualSpreadsheet({
@@ -162,10 +164,12 @@ export default function ClientsExcelView({ clients, onRefresh }) {
         const changes = {};
         let hasChanges = false;
         
+        // CRITICAL: Check ALL client fields including constructor_name
         ['name', 'status', 'stage', 'phone', 'email', 'company', 'address', 'source', 'budget_range', 'notes', 'constructor_name'].forEach(key => {
           if (String(newRow[key] || '') !== String(oldRow[key] || '')) {
             changes[key] = newRow[key];
             hasChanges = true;
+            console.log(`🔍 [CHANGE DETECTED] ${key}: "${oldRow[key]}" -> "${newRow[key]}"`);
           }
         });
         
@@ -184,7 +188,7 @@ export default function ClientsExcelView({ clients, onRefresh }) {
       return;
     }
 
-    console.log('💾 [EXCEL VIEW SAVE] Updating', updates.length, 'clients');
+    console.log('💾 [EXCEL VIEW SAVE] Updating', updates.length, 'clients:', updates);
     
     try {
       await Promise.all(updates.map(async (update) => {
@@ -199,7 +203,10 @@ export default function ClientsExcelView({ clients, onRefresh }) {
       
       console.log('💾 [EXCEL VIEW SAVE] COMPLETE');
       toast.success(`✓ ${updates.length} רשומות עודכנו`);
+      
+      // CRITICAL: Update prevClientsRef with the NEW data (not old clients)
       prevClientsRef.current = newRows;
+      
       if (onRefresh) onRefresh();
       
     } catch (error) {
