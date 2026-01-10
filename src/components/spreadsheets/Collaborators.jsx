@@ -72,10 +72,10 @@ export default function Collaborators({ spreadsheetId, currentUser, currentCell,
     // Initial call
     updatePresence();
 
-    // Interval
-    const interval = setInterval(updatePresence, 5000); // Every 5 seconds
+    // Interval - Increased to reduce API load
+    const interval = setInterval(updatePresence, 30000); // Every 30 seconds (reduced from 5)
     return () => clearInterval(interval);
-  }, [spreadsheetId, currentUser, currentCell, myColor]);
+  }, [spreadsheetId, currentUser, currentCell, myColor, onCollaboratorsChange]);
 
   if (!collaborators.length) return null;
 

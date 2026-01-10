@@ -7,11 +7,6 @@ import { toast } from "sonner";
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
 export default function StageOptionsManager({ open, onClose, stageOptions, onSave }) {
-  console.log('🔵🔵🔵 [STAGE MANAGER] Component mounted/updated with props:', {
-    open,
-    stageOptionsLength: stageOptions?.length,
-    stageOptions: JSON.stringify(stageOptions, null, 2)
-  });
 
   const DEFAULT_WITH_LELO = [
     { value: 'ללא', label: 'ללא', color: '#cbd5e1', glow: 'rgba(203, 213, 225, 0.4)' },
@@ -23,29 +18,21 @@ export default function StageOptionsManager({ open, onClose, stageOptions, onSav
   ];
 
   const [editedOptions, setEditedOptions] = useState(() => {
-    console.log('🔵🔵🔵 [STAGE MANAGER] Initial state calculation for editedOptions');
-    const initial = stageOptions && stageOptions.length > 0 ? stageOptions : DEFAULT_WITH_LELO;
-    console.log('🔵🔵🔵 [STAGE MANAGER] Initial editedOptions:', JSON.stringify(initial, null, 2));
-    return initial;
+    return stageOptions && stageOptions.length > 0 ? stageOptions : DEFAULT_WITH_LELO;
   });
   
   const [editingIndex, setEditingIndex] = useState(null);
 
-  // Update editedOptions when stageOptions prop changes
+  // Update editedOptions when dialog opens
   React.useEffect(() => {
-    console.log('🔵🔵🔵 [STAGE MANAGER] useEffect triggered - stageOptions changed:', {
-      stageOptionsLength: stageOptions?.length,
-      stageOptions: JSON.stringify(stageOptions, null, 2)
-    });
+    if (!open) return;
     
     if (stageOptions && stageOptions.length > 0) {
-      console.log('🔵🔵🔵 [STAGE MANAGER] Setting editedOptions from prop');
       setEditedOptions(stageOptions);
     } else {
-      console.log('🔵🔵🔵 [STAGE MANAGER] No stageOptions in prop, using DEFAULT_WITH_LELO');
       setEditedOptions(DEFAULT_WITH_LELO);
     }
-  }, [stageOptions]);
+  }, [open, stageOptions]);
 
   const handleAddStage = () => {
     const newStage = {
@@ -102,14 +89,9 @@ export default function StageOptionsManager({ open, onClose, stageOptions, onSav
   };
 
   const handleSave = () => {
-    console.log('🔵🔵🔵 [STAGE MANAGER] handleSave called');
-    console.log('🔵🔵🔵 [STAGE MANAGER] editedOptions BEFORE validation:', JSON.stringify(editedOptions, null, 2));
-    
     // Validation (parents + children)
     const hasEmptyParent = editedOptions.some(opt => !String(opt.label || '').trim());
     const hasEmptyChild = editedOptions.some(opt => (opt.children || []).some(ch => !String(ch.label || '').trim()));
-    
-    console.log('🔵🔵🔵 [STAGE MANAGER] Validation results:', { hasEmptyParent, hasEmptyChild });
     
     if (hasEmptyParent || hasEmptyChild) {
       toast.error('כל השלבים ותתי-השלבים חייבים להכיל שם');
@@ -131,23 +113,7 @@ export default function StageOptionsManager({ open, onClose, stageOptions, onSav
     });
 
     const normalized = normalize(editedOptions);
-    console.log('🔵🔵🔵 [STAGE MANAGER] normalized options:', JSON.stringify(normalized, null, 2));
-
-    console.log('🔵🔵🔵 [STAGE MANAGER] Calling onSave with normalized options');
     onSave(normalized);
-    
-    // Dispatch event to notify other components
-    try {
-      console.log('🔵🔵🔵 [STAGE MANAGER] Dispatching stage:options:updated event');
-      window.dispatchEvent(new CustomEvent('stage:options:updated', {
-        detail: { stageOptions: normalized }
-      }));
-      console.log('🔵🔵🔵 [STAGE MANAGER] Event dispatched successfully');
-    } catch (e) {
-      console.warn('🔵🔵🔵 [STAGE MANAGER] Failed to dispatch stage options update event:', e);
-    }
-    
-    console.log('🔵🔵🔵 [STAGE MANAGER] Closing dialog');
     onClose();
   };
 

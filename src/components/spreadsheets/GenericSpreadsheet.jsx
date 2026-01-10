@@ -284,9 +284,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   // Load Global Data Types
   const loadGlobalTypes = useCallback(async () => {
     try {
-      console.log("🔄 [GENERIC SPREADSHEET] Loading Global Data Types...");
       const types = await base44.entities.GlobalDataType.list();
-      console.log("✅ [GENERIC SPREADSHEET] Global Data Types Loaded:", types);
       setGlobalTypesList(types);
       const map = {};
       types.forEach(t => {
@@ -294,16 +292,14 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       });
       setGlobalDataTypes(map);
     } catch (e) {
-      console.error("❌ [GENERIC SPREADSHEET] Failed to load global data types", e);
+      console.error("Failed to load global data types", e);
     }
   }, []);
 
   useEffect(() => {
     loadGlobalTypes();
     
-    const handleGlobalUpdate = (e) => {
-      console.log("📬 [GENERIC SPREADSHEET] Received global-data-type:updated event", e.detail);
-      // Reload full list to ensure we have new types/names correctly
+    const handleGlobalUpdate = () => {
       loadGlobalTypes();
     };
     window.addEventListener('global-data-type:updated', handleGlobalUpdate);
@@ -418,7 +414,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     };
     
     fetchData();
-    const interval = setInterval(fetchData, 10000); // Update every 10s
+    const interval = setInterval(fetchData, 60000); // Update every 60s (reduced from 10s)
     return () => clearInterval(interval);
   }, [spreadsheet?.id]);
 
@@ -472,9 +468,9 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       }
     };
 
-    const interval = setInterval(checkForUpdates, 5000); // Poll every 5 seconds
+    const interval = setInterval(checkForUpdates, 30000); // Poll every 30 seconds (reduced from 5s)
     return () => clearInterval(interval);
-  }, [spreadsheet?.id, editingCell]);
+  }, [spreadsheet?.id, editingCell, customSaveHandler]);
 
   const { filterClients } = useAccessControl();
 
@@ -716,24 +712,18 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       setActiveViewId(spreadsheet.active_view_id || null);
       setCharts(spreadsheet.charts || []);
       
-      console.log('🔵🔵🔵 [GENERIC SPREADSHEET] Loading spreadsheet custom_stage_options:', JSON.stringify(spreadsheet.custom_stage_options, null, 2));
-      console.log('🔵🔵🔵 [GENERIC SPREADSHEET] DEFAULT_STAGE_OPTIONS:', JSON.stringify(DEFAULT_STAGE_OPTIONS, null, 2));
-      
       let finalStageOptions = spreadsheet.custom_stage_options || DEFAULT_STAGE_OPTIONS;
       
       // Always ensure "ללא" exists
       const hasLelo = finalStageOptions.some(opt => opt.value === 'ללא');
-      console.log('🔵🔵🔵 [GENERIC SPREADSHEET] Has ללא option?', hasLelo);
       
       if (!hasLelo) {
-        console.log('🔵🔵🔵 [GENERIC SPREADSHEET] Adding ללא option to beginning');
         finalStageOptions = [
           { value: 'ללא', label: 'ללא', color: '#cbd5e1', glow: 'rgba(203, 213, 225, 0.4)' },
           ...finalStageOptions
         ];
       }
       
-      console.log('🔵🔵🔵 [GENERIC SPREADSHEET] Final stage options to set:', JSON.stringify(finalStageOptions, null, 2));
       setCustomStageOptions(finalStageOptions);
 
       setHistory([{ 
@@ -751,19 +741,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   }, [spreadsheet, globalTypesList, autoLinkColumnsToDataTypes]);
 
   const saveToHistory = useCallback((cols, rows, styles, notes, subH, mergedH, hStyles) => {
-    console.log('📜 [HISTORY] saveToHistory called:', { 
-      isUndoRedoAction, 
-      currentHistoryIndex: historyIndex,
-      rowsCount: rows?.length,
-      colsCount: cols?.length,
-      subHeadersCount: subH ? Object.keys(subH).length : 0,
-      mergedHeadersCount: mergedH ? Object.keys(mergedH).length : 0
-    });
-    
-    if (isUndoRedoAction) {
-      console.log('📜 [HISTORY] Skipped - isUndoRedoAction is true');
-      return;
-    }
+    if (isUndoRedoAction) return;
     
     setHistory(prev => {
       const newHistory = prev.slice(0, historyIndex + 1);
@@ -777,14 +755,9 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         headerStyles: hStyles || {}
       });
       if (newHistory.length > 50) newHistory.shift();
-      console.log('📜 [HISTORY] New history length:', newHistory.length);
       return newHistory;
     });
-    setHistoryIndex(prev => {
-      const newIndex = Math.min(prev + 1, 49);
-      console.log('📜 [HISTORY] New historyIndex:', newIndex);
-      return newIndex;
-    });
+    setHistoryIndex(prev => Math.min(prev + 1, 49));
   }, [historyIndex, isUndoRedoAction]);
 
   const saveToBackend = useCallback(async () => {
@@ -895,13 +868,10 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   }, [spreadsheet?.id, spreadsheet?.client_id, spreadsheet?.client_name, onUpdate, showSubHeaders, customSaveHandler]);
 
   const handleUndo = useCallback(() => {
-    console.log('⏪ [handleUndo] Called!', { historyIndex, historyLength: history.length });
     if (historyIndex <= 0) { 
-      console.log('⏪ [handleUndo] Nothing to undo - historyIndex is 0');
       toast.error('אין מה לבטל'); 
       return; 
     }
-    console.log('⏪ [handleUndo] Undoing to state:', historyIndex - 1);
     setIsUndoRedoAction(true);
     const prevState = history[historyIndex - 1];
     setColumns(prevState.columns);
@@ -921,13 +891,10 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   }, [history, historyIndex, saveToBackend]);
 
   const handleRedo = useCallback(() => {
-    console.log('⏩ [handleRedo] Called!', { historyIndex, historyLength: history.length });
     if (historyIndex >= history.length - 1) { 
-      console.log('⏩ [handleRedo] Nothing to redo - at end of history');
       toast.error('אין מה לשחזר'); 
       return; 
     }
-    console.log('⏩ [handleRedo] Redoing to state:', historyIndex + 1);
     setIsUndoRedoAction(true);
     const nextState = history[historyIndex + 1];
     setColumns(nextState.columns);
@@ -946,15 +913,9 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     toast.success('✓ פעולה שוחזרה');
   }, [history, historyIndex, saveToBackend]);
 
-  // Listen for client updates - Refresh allClients list instead of modifying rowsData directly
+  // Listen for client updates - Refresh allClients list
   useEffect(() => {
-    const handleClientUpdate = async (event) => {
-      const updatedClient = event.detail || {};
-      if (!updatedClient.id) return;
-      
-      console.log('📬 [GENERIC SPREADSHEET] Received client update, refreshing allClients:', updatedClient.name);
-      
-      // Refresh allClients instead of modifying rowsData (which causes race conditions)
+    const handleClientUpdate = async () => {
       try {
         const clients = await base44.entities.Client.list();
         const validClients = Array.isArray(clients) ? clients : [];
@@ -982,52 +943,26 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-      // DEBUG: Log all keyboard events
-      console.log('🎹 [KEYBOARD] Key pressed:', {
-        key: e.key,
-        code: e.code,
-        ctrl: e.ctrlKey,
-        meta: e.metaKey,
-        shift: e.shiftKey,
-        alt: e.altKey,
-        target: e.target.tagName,
-        defaultPrevented: e.defaultPrevented
-      });
-      
-      // Skip if user is typing in an input/textarea
       const target = e.target;
       const isTypingInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
       
-      // Use e.code for language-independent key detection (KeyZ, KeyY work regardless of keyboard layout)
       const isZKey = e.code === 'KeyZ' || e.key.toLowerCase() === 'z' || e.key === 'ז';
       const isYKey = e.code === 'KeyY' || e.key.toLowerCase() === 'y' || e.key === 'ט';
       
-      // Undo: Ctrl+Z (but NOT Ctrl+Shift which is for timer drag)
+      // Undo: Ctrl+Z
       if ((e.ctrlKey || e.metaKey) && isZKey && !e.shiftKey) { 
-        console.log('🔵 [UNDO] Ctrl+Z detected!', { isTypingInput, historyIndex, historyLength: history.length });
         e.preventDefault(); 
         e.stopPropagation();
         e.stopImmediatePropagation();
-        if (!isTypingInput) {
-          console.log('🔵 [UNDO] Calling handleUndo...');
-          handleUndo(); 
-        } else {
-          console.log('🔵 [UNDO] Skipped - user is typing in input');
-        }
+        if (!isTypingInput) handleUndo(); 
         return false;
       }
       // Redo: Ctrl+Y or Ctrl+Shift+Z
       if ((e.ctrlKey || e.metaKey) && (isYKey || (isZKey && e.shiftKey))) { 
-        console.log('🟢 [REDO] Ctrl+Y or Ctrl+Shift+Z detected!', { isTypingInput, historyIndex, historyLength: history.length });
         e.preventDefault(); 
         e.stopPropagation();
         e.stopImmediatePropagation();
-        if (!isTypingInput) {
-          console.log('🟢 [REDO] Calling handleRedo...');
-          handleRedo(); 
-        } else {
-          console.log('🟢 [REDO] Skipped - user is typing in input');
-        }
+        if (!isTypingInput) handleRedo(); 
         return false;
       }
 
@@ -2264,10 +2199,8 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
   const saveEdit = async () => {
     if (!editingCell) return;
     
-    // Fixed: Split by last occurrence of "_col" to handle row IDs that might contain underscores
     const lastColIndex = editingCell.lastIndexOf('_col');
     if (lastColIndex === -1) {
-      console.error('❌ Invalid cellKey:', editingCell);
       toast.error('שגיאה בזיהוי התא');
       return;
     }
@@ -2275,9 +2208,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     const rowId = editingCell.substring(0, lastColIndex);
     const columnKey = editingCell.substring(lastColIndex + 1);
     
-    console.log('💾 [SAVE] Saving cell:', { cellKey: editingCell, rowId, columnKey, editValue });
-    
-    // Auto-convert V/X for mixed_check columns
     const column = columns.find(c => c.key === columnKey);
     let finalValue = editValue;
     if (column?.type === 'mixed_check') {
@@ -2297,16 +2227,12 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       row.id === rowId ? { ...row, [columnKey]: finalValue } : row
     );
     
-    console.log('💾 [SAVE] Updated rows:', updatedRows);
-    
-    // Update refs BEFORE setting state to ensure saveToBackend uses correct data
     rowsDataRef.current = updatedRows;
     
     setRowsData(updatedRows);
     setEditingCell(null);
     setEditValue("");
     
-    // Save immediately without setTimeout
     saveToHistory(columnsRef.current, updatedRows, cellStylesRef.current, cellNotesRef.current, subHeadersRef.current, mergedHeadersRef.current, headerStylesRef.current);
     saveToBackend();
     
@@ -3102,12 +3028,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     return offsets;
   }, [filteredAndSortedData, rowHeights, showSubHeaders, mergedHeaders, subHeaders]);
 
-  console.log('📊 [RENDER] State:', {
-    selectedHeaders: Array.from(selectedHeaders),
-    mergedHeaders: Object.keys(mergedHeaders),
-    showSubHeaders,
-    subHeaders: Object.keys(subHeaders)
-  });
+
 
   return (
     <div className={`w-full space-y-6 ${fullScreenMode ? 'h-full flex flex-col' : ''}`} dir="rtl">
@@ -4536,8 +4457,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         const colKey = editingCell.substring(lastColIndex + 1);
         const column = columns.find(c => c.key === colKey);
         
-        console.log('🔍 [POPUP] Checking if client column:', { column, isClientColumn: isClientColumn(column) });
-        
         if (!isClientColumn(column)) return null;
         
         const filteredClients = allClients.filter(c => 
@@ -4547,12 +4466,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
           c.email?.toLowerCase().includes(editValue.toLowerCase())
         ).slice(0, 15);
         
-        console.log('🔍 [POPUP] Filtered clients:', filteredClients.length, 'editValue:', editValue);
-        
-        if (filteredClients.length === 0) {
-          console.log('🔍 [POPUP] No filtered clients found');
-          return null;
-        }
+        if (filteredClients.length === 0) return null;
         
         return (
           <div 
