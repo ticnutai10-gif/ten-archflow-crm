@@ -198,6 +198,8 @@ export default function ClientsExcelView({ clients, onRefresh }) {
       }));
       
       toast.success(`✓ ${updates.length} רשומות עודכנו`);
+      // Update prevClientsRef with new data to prevent duplicate saves
+      prevClientsRef.current = newRows;
       if (onRefresh) onRefresh();
       
     } catch (error) {
