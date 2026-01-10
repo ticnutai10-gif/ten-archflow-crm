@@ -399,6 +399,13 @@ export default function DataTypeManager({ open, onClose, typeKey, typeName }) {
                     <Button variant="outline" onClick={() => fileInputRef.current.click()} className="w-full gap-2"><Upload className="w-4 h-4" /> ייבוא JSON</Button>
                  </div>
               </div>
+              <div className="flex gap-2 mt-2">
+                 <Button variant="outline" onClick={handleExportTXT} className="flex-1 gap-2"><FileText className="w-4 h-4" /> ייצוא TXT</Button>
+                 <div className="relative flex-1">
+                    <input type="file" ref={txtInputRef} className="hidden" accept=".txt" onChange={handleImportTXT} />
+                    <Button variant="outline" onClick={() => txtInputRef.current.click()} className="w-full gap-2"><Upload className="w-4 h-4" /> ייבוא TXT</Button>
+                 </div>
+              </div>
             </div>
           )}
         </div>
