@@ -45,6 +45,22 @@ const TRIGGERS = [
     description: 'מופעל כאשר לקוח עובר משלב לשלב בפייפליין (ברור תכן, תיק מידע, וכו\')'
   },
   { 
+    value: 'client_professional_assigned', 
+    label: 'בעל מקצוע שויך ללקוח', 
+    icon: User, 
+    color: 'amber',
+    description: 'מופעל כאשר בעל מקצוע (קונסטרוקטור, יועץ וכו\') מוקצה ללקוח',
+    hasDataTypeCondition: true
+  },
+  { 
+    value: 'data_type_value_changed', 
+    label: 'ערך סוג נתונים השתנה', 
+    icon: Zap, 
+    color: 'cyan',
+    description: 'מופעל כאשר ערך של סוג נתונים מותאם אישית משתנה',
+    hasDataTypeCondition: true
+  },
+  { 
     value: 'project_created', 
     label: 'פרויקט חדש נוצר', 
     icon: Briefcase, 
@@ -136,6 +152,30 @@ const ACTIONS = [
     color: 'amber',
     description: 'שלח תזכורת ללקוח או לצוות',
     params: ['recipient_email', 'subject', 'message', 'client_name']
+  },
+  { 
+    value: 'set_cell_color', 
+    label: 'צבע תא בטבלה', 
+    icon: Zap, 
+    color: 'pink',
+    description: 'שנה את צבע התא בטבלה כשערך משתנה',
+    params: ['color', 'column_key']
+  },
+  { 
+    value: 'set_row_color', 
+    label: 'צבע שורה בטבלה', 
+    icon: Zap, 
+    color: 'cyan',
+    description: 'שנה את צבע כל השורה בטבלה',
+    params: ['color']
+  },
+  { 
+    value: 'update_client_field', 
+    label: 'עדכן שדה בלקוח', 
+    icon: User, 
+    color: 'indigo',
+    description: 'עדכן שדה מסוים בכרטיס הלקוח',
+    params: ['field_name', 'field_value']
   }
 ];
 
