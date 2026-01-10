@@ -5,7 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { Download, Upload, ShieldCheck, Database, RefreshCw, Settings, CalendarClock, CheckCircle2, AlertTriangle, FileText, X } from "lucide-react";
+import { Download, Upload, ShieldCheck, Database, RefreshCw, Settings, CalendarClock, CheckCircle2, AlertTriangle, FileText, X, Archive } from "lucide-react";
+import { exportProjectFiles } from "@/functions/exportProjectFiles";
 import { exportEntities } from "@/functions/exportEntities";
 import { importBackupJson } from "@/functions/importBackupJson";
 import EntityImporter from "@/components/backup/EntityImporter";
@@ -309,6 +310,59 @@ export default function BackupPage() {
             </div>
           </div>
         </div>
+
+        {/* Export Full Project ZIP */}
+        <Card className="shadow-xl border-0 bg-gradient-to-r from-purple-50 to-indigo-50 border-l-4 border-l-purple-500">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-lg">
+                  <Archive className="w-8 h-8 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-slate-900 mb-1">ייצוא פרויקט מלא (ZIP)</h3>
+                  <p className="text-sm text-slate-600">הורד קובץ ZIP עם כל הנתונים, סכמות הישויות ותיעוד הפרויקט</p>
+                </div>
+              </div>
+              <Button 
+                onClick={async () => {
+                  setBusy(true);
+                  try {
+                    const response = await exportProjectFiles({});
+                    // Response is a blob
+                    const blob = new Blob([response.data], { type: 'application/zip' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `CRM_Tannenbaum_Export_${new Date().toISOString().split('T')[0]}.zip`;
+                    document.body.appendChild(a);
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    a.remove();
+                  } catch (error) {
+                    console.error('ZIP Export error:', error);
+                    alert('שגיאה בייצוא ZIP: ' + (error?.message || 'שגיאה לא ידועה'));
+                  }
+                  setBusy(false);
+                }}
+                disabled={busy}
+                className="gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-lg px-6 py-6 text-lg h-auto"
+              >
+                {busy ? (
+                  <>
+                    <RefreshCw className="w-5 h-5 animate-spin" />
+                    מייצא...
+                  </>
+                ) : (
+                  <>
+                    <Archive className="w-5 h-5" />
+                    הורד ZIP
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Automatic Backup Status */}
         <Card className="shadow-xl border-0 bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-l-green-500">
