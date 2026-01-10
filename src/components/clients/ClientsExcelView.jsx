@@ -67,11 +67,30 @@ export default function ClientsExcelView({ clients, onRefresh }) {
       finalColumns = DEFAULT_BASE_COLUMNS;
     }
 
-    // Map clients to rows - CRITICAL: Include ALL client fields
-    const rows = clients.map(client => ({
-      id: client.id,
-      ...client // This will include constructor_name if it exists
-    }));
+    // Map clients to rows - CRITICAL: Map custom column values from constructor_name
+    const rows = clients.map(client => {
+      const row = {
+        id: client.id,
+        ...client
+      };
+      
+      // CRITICAL: Map constructor_name back to custom columns
+      // Find columns that are custom data types (e.g., קונסטרוקטור)
+      if (client.constructor_name) {
+        finalColumns.forEach(col => {
+          // Check if this column is a custom data type column (type starts with custom_ or title matches)
+          const isCustomTypeCol = col.type?.startsWith('custom_') || 
+                                  col.title?.includes('קונסטרוקטור') ||
+                                  col.title?.includes('בעל מקצוע');
+          if (isCustomTypeCol && !row[col.key]) {
+            row[col.key] = client.constructor_name;
+            console.log(`📍 [INIT] Mapped constructor_name "${client.constructor_name}" to column "${col.title}" (${col.key})`);
+          }
+        });
+      }
+      
+      return row;
+    });
 
     console.log('🔄 [INIT] Loaded clients with constructor_name:', rows.filter(r => r.constructor_name).map(r => ({ name: r.name, constructor_name: r.constructor_name })));
 
@@ -92,7 +111,7 @@ export default function ClientsExcelView({ clients, onRefresh }) {
       }
     });
     
-    prevClientsRef.current = clients;
+    prevClientsRef.current = rows; // CRITICAL: Use mapped rows, not original clients
     setLoading(false);
   };
 
