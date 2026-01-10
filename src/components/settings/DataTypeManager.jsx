@@ -297,7 +297,12 @@ export default function DataTypeManager({ open, onClose, typeKey, typeName }) {
                                   <div className="grid grid-cols-2 gap-3">
                                     <div>
                                       <label className="text-xs font-semibold text-slate-600 mb-1 block">שם</label>
-                                      <Input value={option.label} onChange={(e) => handleEditOption(index, 'label', e.target.value)} autoFocus />
+                                      <Input 
+                                        value={option.label} 
+                                        onChange={(e) => handleEditOption(index, 'label', e.target.value)} 
+                                        autoFocus 
+                                        placeholder="קטגוריה חדשה"
+                                      />
                                     </div>
                                     <div>
                                       <label className="text-xs font-semibold text-slate-600 mb-1 block">צבע</label>
