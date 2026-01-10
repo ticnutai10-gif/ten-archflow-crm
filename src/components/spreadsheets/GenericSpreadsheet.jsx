@@ -640,13 +640,44 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     }
   };
 
+  // Auto-link columns to Global Data Types by matching column title to type name
+  const autoLinkColumnsToDataTypes = useCallback((cols, types) => {
+    if (!cols || !types || types.length === 0) return cols;
+    
+    return cols.map(col => {
+      // Skip if column already has a specialized type (not 'text' or 'select')
+      if (col.type && !['text', 'select'].includes(col.type)) return col;
+      
+      // Check if column title matches any global data type name (exact match, case-insensitive)
+      const matchingType = types.find(t => 
+        t.name?.toLowerCase().trim() === col.title?.toLowerCase().trim()
+      );
+      
+      if (matchingType) {
+        console.log(`🔗 [AUTO-LINK] Column "${col.title}" matched to GlobalDataType "${matchingType.name}" (${matchingType.type_key})`);
+        return {
+          ...col,
+          type: matchingType.type_key, // Set type to the GlobalDataType's key
+          autoLinkedToDataType: matchingType.type_key // Mark as auto-linked
+        };
+      }
+      
+      return col;
+    });
+  }, []);
+
   useEffect(() => {
     if (spreadsheet) {
-      const initialColumns = spreadsheet.columns || [];
+      let initialColumns = spreadsheet.columns || [];
       const initialRows = spreadsheet.rows_data || [];
       const initialStyles = spreadsheet.cell_styles || {};
       const initialNotes = spreadsheet.cell_notes || {};
       const initialMetadata = spreadsheet.cell_metadata || {};
+
+      // Auto-link columns to data types if globalTypesList is loaded
+      if (globalTypesList && globalTypesList.length > 0) {
+        initialColumns = autoLinkColumnsToDataTypes(initialColumns, globalTypesList);
+      }
 
       setColumns(initialColumns);
       setRowsData(initialRows);
