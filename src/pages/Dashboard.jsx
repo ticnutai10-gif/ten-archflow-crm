@@ -62,6 +62,8 @@ const AIInsightsPanel = React.lazy(() => import("../components/ai/AIInsightsPane
 const StatsWidget = React.lazy(() => import("../components/dashboard/StatsWidget"));
 const UpcomingDeadlinesWidget = React.lazy(() => import("../components/dashboard/UpcomingDeadlinesWidget"));
 const ActivityFeedWidget = React.lazy(() => import("../components/dashboard/ActivityFeedWidget"));
+const ClientsByStageWidget = React.lazy(() => import("../components/dashboard/ClientsByStageWidget"));
+const ProjectPipelineWidget = React.lazy(() => import("../components/dashboard/ProjectPipelineWidget"));
 import QuickCreationTabs from "../components/dashboard/QuickCreationTabs";
 import { useIsMobile } from "../components/utils/useMediaQuery";
 import { useAccessControl } from "../components/access/AccessValidator";
@@ -124,7 +126,9 @@ export default function Dashboard() {
   });
   const [visibleCards, setVisibleCards] = useState(initialPrefs?.visibleCards || {
     stats: true,
+    clientsByStage: true,
     quickActions: true,
+    projectPipeline: true,
     aiInsights: true,
     projectsOverview: true,
     upcomingDeadlines: true,
@@ -138,7 +142,9 @@ export default function Dashboard() {
   });
   const [cardOrder, setCardOrder] = useState(initialPrefs?.cardOrder || [
     { id: 'stats', name: 'סטטיסטיקות' },
+    { id: 'clientsByStage', name: 'לקוחות לפי שלב' },
     { id: 'quickActions', name: 'פעולות מהירות' },
+    { id: 'projectPipeline', name: 'פייפליין פרויקטים' },
     { id: 'aiInsights', name: 'תובנות AI' },
     { id: 'upcomingDeadlines', name: 'מועדים קרובים' },
     { id: 'activityFeed', name: 'פעילות אחרונה' },
@@ -565,11 +571,29 @@ export default function Dashboard() {
               );
             }
 
+            // Clients By Stage Widget
+            if (cardId === 'clientsByStage') {
+              return (
+                <div key={cardId} className="h-full">
+                  <ClientsByStageWidget />
+                </div>
+              );
+            }
+
             // Quick Actions
             if (cardId === 'quickActions') {
               return (
                 <div key={cardId} className="h-full">
                   <QuickCreationTabs clients={allClients} onUpdate={loadDashboardData} />
+                </div>
+              );
+            }
+
+            // Project Pipeline Widget
+            if (cardId === 'projectPipeline') {
+              return (
+                <div key={cardId} className={focusedCard === cardId ? 'w-full max-w-6xl' : 'md:col-span-2 lg:col-span-3'}>
+                  <ProjectPipelineWidget />
                 </div>
               );
             }
