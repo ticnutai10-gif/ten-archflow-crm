@@ -147,6 +147,93 @@ export default function DataTypeManager({ open, onClose, typeKey, typeName }) {
 
   // Import/Export Logic (simplified from StageOptionsManager)
   const fileInputRef = useRef(null);
+  const txtInputRef = useRef(null);
+  
+  const hexToRgbString = (hex) => {
+    const rgb = hexToRgb(hex);
+    return rgb ? `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.4)` : 'rgba(99, 102, 241, 0.4)';
+  };
+
+  const handleExportTXT = () => {
+    let textContent = "";
+    options.forEach(opt => {
+      textContent += `${opt.label} [${opt.color}]\n`;
+      if (opt.children) {
+        opt.children.forEach(child => {
+          textContent += `- ${child.label} [${child.color || '#22c55e'}]\n`;
+        });
+      }
+    });
+    
+    const blob = new Blob([textContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${typeKey}_config.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  const handleImportTXT = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const text = e.target.result;
+        const lines = text.split('\n');
+        const newOptions = [];
+        let currentParent = null;
+
+        lines.forEach(line => {
+          const trimmed = line.trim();
+          if (!trimmed) return;
+
+          // Extract color if exists [color]
+          const colorMatch = trimmed.match(/\[(#[a-fA-F0-9]{6})\]/);
+          const color = colorMatch ? colorMatch[1] : null;
+          let label = trimmed.replace(/\[#[a-fA-F0-9]{6}\]/, '').trim();
+
+          // Check if sub-category (starts with -)
+          if (line.trim().startsWith('-')) {
+            label = label.replace(/^-/, '').trim();
+            if (currentParent) {
+               if (!currentParent.children) currentParent.children = [];
+               currentParent.children.push({
+                 label,
+                 value: `sub_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                 color: color || '#22c55e',
+                 glow: color ? hexToRgbString(color) : 'rgba(34,197,94,0.4)'
+               });
+            }
+          } else {
+            // New Parent
+            const parent = {
+              label,
+              value: `opt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              color: color || '#6366f1',
+              glow: color ? hexToRgbString(color) : 'rgba(99, 102, 241, 0.4)',
+              children: []
+            };
+            newOptions.push(parent);
+            currentParent = parent;
+          }
+        });
+
+        if (newOptions.length > 0) {
+          setOptions(newOptions);
+          toast.success('ייבוא TXT הצליח');
+        } else {
+          toast.error('לא נמצאו קטגוריות בקובץ');
+        }
+      } catch (err) {
+        console.error(err);
+        toast.error('שגיאה בייבוא קובץ TXT');
+      }
+    };
+    reader.readAsText(file);
+  };
   
   const handleExportJSON = () => {
     const dataStr = JSON.stringify(options, null, 2);
