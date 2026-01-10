@@ -1967,13 +1967,16 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
       return row;
     });
 
+    // Update ref BEFORE state
+    rowsDataRef.current = updatedRows;
+    
     setRowsData(updatedRows);
     setShowClientPicker(null);
     setClientSearchQuery("");
-    setTimeout(() => {
-      saveToHistory(columnsRef.current, rowsDataRef.current, cellStylesRef.current, cellNotesRef.current);
-      saveToBackend();
-    }, 50);
+    
+    // Save immediately
+    saveToHistory(columnsRef.current, updatedRows, cellStylesRef.current, cellNotesRef.current);
+    saveToBackend();
 
     const autoFilledFields = [];
     if (phoneCol && client.phone) autoFilledFields.push('טלפון');
@@ -2293,17 +2296,16 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
     
     console.log('💾 [SAVE] Updated rows:', updatedRows);
     
+    // Update refs BEFORE setting state to ensure saveToBackend uses correct data
+    rowsDataRef.current = updatedRows;
+    
     setRowsData(updatedRows);
     setEditingCell(null);
     setEditValue("");
     
-    // Update refs immediately for saveToBackend
-    rowsDataRef.current = updatedRows;
-    
-    setTimeout(() => {
-      saveToHistory(columnsRef.current, updatedRows, cellStylesRef.current, cellNotesRef.current, subHeadersRef.current, mergedHeadersRef.current, headerStylesRef.current);
-      saveToBackend();
-    }, 50);
+    // Save immediately without setTimeout
+    saveToHistory(columnsRef.current, updatedRows, cellStylesRef.current, cellNotesRef.current, subHeadersRef.current, mergedHeadersRef.current, headerStylesRef.current);
+    saveToBackend();
     
     toast.success('✓ התא נשמר');
   };
@@ -3853,19 +3855,27 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                 const updatedRows = rowsData.map(r => 
                                   r.id === row.id ? { ...r, [columnKey]: stageValue } : r
                                 );
-                                setRowsData(updatedRows);
-                                setEditingCell(null);
-                                setEditValue("");
+                                
+                                // Update refs BEFORE state changes
                                 rowsDataRef.current = updatedRows;
                                 
                                 // Update metadata if provided (custom fields)
                                 if (newMetadata) {
                                   const updatedMetadata = { ...cellMetadataRef.current, [`${row.id}_${columnKey}`]: newMetadata };
-                                  setCellMetadata(updatedMetadata);
                                   cellMetadataRef.current = updatedMetadata;
+                                  setCellMetadata(updatedMetadata);
                                 }
+                                
+                                setRowsData(updatedRows);
+                                setEditingCell(null);
+                                setEditValue("");
 
-                                // Client update logic
+                                // Save immediately - no setTimeout
+                                saveToHistory(columnsRef.current, updatedRows, cellStylesRef.current, cellNotesRef.current, subHeadersRef.current, mergedHeadersRef.current, headerStylesRef.current, cellMetadataRef.current);
+                                saveToBackend();
+                                toast.success('✓ עודכן בהצלחה');
+
+                                // Client update logic (async, after save)
                                 const clientColumns = columnsRef.current.filter(col => 
                                   col.type === 'client' || col.key.toLowerCase().includes('client') || col.title?.toLowerCase().includes('לקוח')
                                 );
@@ -3883,12 +3893,6 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                     } catch (e) { console.error(e); }
                                   }
                                 }
-                                
-                                setTimeout(() => {
-                                  saveToHistory(columnsRef.current, updatedRows, cellStylesRef.current, cellNotesRef.current, subHeadersRef.current, mergedHeadersRef.current, headerStylesRef.current, cellMetadataRef.current);
-                                  saveToBackend();
-                                }, 50);
-                                toast.success('✓ עודכן בהצלחה');
                               }}
                             />
                           );

@@ -297,7 +297,7 @@ const SpreadsheetRow = memo(({
                         onDirectSave={(val) => handleStageSelect(val, column.key)}
                       />
                     ) : isClientColumn(column) ? (
-                      isEditing ? <Input ref={editInputRef} value={editValue} onChange={(e) => setEditValue(e.target.value)} onBlur={() => setTimeout(saveEdit, 200)} onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') setEditingCell(null); }} className="h-full w-full border-none shadow-none focus:ring-0 bg-transparent p-0 text-inherit" autoFocus dir="rtl" /> : (
+                      isEditing ? <Input ref={editInputRef} value={editValue} onChange={(e) => setEditValue(e.target.value)} onBlur={saveEdit} onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') setEditingCell(null); }} className="h-full w-full border-none shadow-none focus:ring-0 bg-transparent p-0 text-inherit" autoFocus dir="rtl" /> : (
                         <div className="flex items-center gap-2 truncate group/cell w-full">
                           {cellValue ? (
                             <>
