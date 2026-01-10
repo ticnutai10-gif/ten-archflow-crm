@@ -3827,6 +3827,7 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                   col.type === 'client' || col.key.toLowerCase().includes('client') || col.title?.toLowerCase().includes('לקוח')
                                 );
 
+                                // Update linked client based on column type
                                 if (clientColumns.length > 0) {
                                   const clientName = row[clientColumns[0].key];
                                   if (clientName) {
@@ -3834,10 +3835,23 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                     try {
                                       const matchingClient = allClients.find(c => c.name?.toLowerCase() === clientName.toLowerCase());
                                       if (matchingClient) {
-                                        await base44.entities.Client.update(matchingClient.id, { stage: stageValue });
-                                        const updatedClient = await base44.entities.Client.get(matchingClient.id);
-                                        console.log('🎯 [DIRECT SAVE STAGE] Dispatching client:updated event');
-                                        window.dispatchEvent(new CustomEvent('client:updated', { detail: updatedClient }));
+                                        const column = columnsRef.current.find(c => c.key === columnKey);
+                                        let updateData = {};
+                                        
+                                        // Check if this is a constructor/professional column
+                                        if (column?.type?.startsWith('custom_') || column?.title?.includes('קונסטרוקטור') || column?.title?.includes('בעל מקצוע')) {
+                                          updateData = { constructor_name: stageValue };
+                                          console.log('🎯 [DIRECT SAVE STAGE] Updating constructor_name:', stageValue);
+                                        } else if (column?.type === 'stage') {
+                                          updateData = { stage: stageValue };
+                                        }
+                                        
+                                        if (Object.keys(updateData).length > 0) {
+                                          await base44.entities.Client.update(matchingClient.id, updateData);
+                                          const updatedClient = await base44.entities.Client.get(matchingClient.id);
+                                          console.log('🎯 [DIRECT SAVE STAGE] Dispatching client:updated event');
+                                          window.dispatchEvent(new CustomEvent('client:updated', { detail: updatedClient }));
+                                        }
                                       }
                                     } catch (e) { 
                                       console.error('🎯 [DIRECT SAVE STAGE] Client update error:', e); 

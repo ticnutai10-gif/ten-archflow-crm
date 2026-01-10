@@ -162,7 +162,7 @@ export default function ClientsExcelView({ clients, onRefresh }) {
         const changes = {};
         let hasChanges = false;
         
-        ['name', 'status', 'stage', 'phone', 'email', 'company', 'address', 'source', 'budget_range', 'notes'].forEach(key => {
+        ['name', 'status', 'stage', 'phone', 'email', 'company', 'address', 'source', 'budget_range', 'notes', 'constructor_name'].forEach(key => {
           if (String(newRow[key] || '') !== String(oldRow[key] || '')) {
             changes[key] = newRow[key];
             hasChanges = true;
