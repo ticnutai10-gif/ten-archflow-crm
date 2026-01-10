@@ -2026,13 +2026,15 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
         if (clientName) {
           const client = allClients.find(c => c.name?.toLowerCase() === clientName.toLowerCase());
           if (client) {
+            // CRITICAL: Prevent entering edit mode by returning immediately
+            event.preventDefault();
+            event.stopPropagation();
             const url = createPageUrl(`Clients?open=details&client_id=${client.id}`);
             window.location.href = url;
             return;
           }
         }
-        // If client not found, fall through to edit mode? 
-        // Better to allow edit so user can fix the name if it's wrong/missing
+        // If client not found, fall through to edit mode so user can fix the name
       }
     }
 
