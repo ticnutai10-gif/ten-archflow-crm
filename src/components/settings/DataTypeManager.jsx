@@ -97,7 +97,7 @@ export default function DataTypeManager({ open, onClose, typeKey, typeName }) {
   const handleAddOption = () => {
     const newOption = {
       value: `opt_${Date.now()}`,
-      label: 'קטגוריה חדשה',
+      label: '', 
       color: '#6366f1',
       glow: 'rgba(99, 102, 241, 0.4)',
       children: []
