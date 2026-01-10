@@ -3838,10 +3838,23 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                                         const column = columnsRef.current.find(c => c.key === columnKey);
                                         let updateData = {};
                                         
-                                        // Check if this is a constructor/professional column
-                                        if (column?.type?.startsWith('custom_') || column?.title?.includes('קונסטרוקטור') || column?.title?.includes('בעל מקצוע')) {
-                                          updateData = { constructor_name: stageValue };
-                                          console.log('🎯 [DIRECT SAVE STAGE] Updating constructor_name:', stageValue);
+                                        // Check if this is a professional column (custom data type)
+                                        if (column?.type?.startsWith('custom_')) {
+                                          // Update professionals object
+                                          const currentProfessionals = matchingClient.professionals || {};
+                                          updateData = { 
+                                            professionals: {
+                                              ...currentProfessionals,
+                                              [column.type]: stageValue
+                                            }
+                                          };
+                                          
+                                          // Backward compatibility for constructor
+                                          if (column?.title?.includes('קונסטרוקטור')) {
+                                            updateData.constructor_name = stageValue;
+                                          }
+                                          
+                                          console.log('🎯 [DIRECT SAVE STAGE] Updating professionals:', updateData);
                                         } else if (column?.type === 'stage') {
                                           updateData = { stage: stageValue };
                                         }
