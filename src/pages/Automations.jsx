@@ -13,7 +13,7 @@ import {
   Plus, Save, Trash2, Edit2, Play, Zap, 
   Mail, CheckSquare, AlertCircle, Clock, User, 
   Briefcase, Calendar, X, ArrowRight, Sparkles,
-  History, TestTube
+  History, TestTube, Palette, Layers
 } from "lucide-react";
 import { toast } from "sonner";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -361,9 +361,12 @@ export default function AutomationsPage() {
   };
 
   const [templates, setTemplates] = useState([]);
+  const [globalDataTypes, setGlobalDataTypes] = useState([]);
+  
   useEffect(() => {
     if (showDialog) {
       base44.entities.MessageTemplate.list().then(setTemplates).catch(() => {});
+      base44.entities.GlobalDataType.list().then(setGlobalDataTypes).catch(() => {});
     }
   }, [showDialog]);
 
@@ -664,6 +667,142 @@ export default function AutomationsPage() {
                   })}
                 </div>
               </div>
+
+              {/* Data Type Conditions (for specific triggers) */}
+              {(formData.trigger === 'client_professional_assigned' || formData.trigger === 'data_type_value_changed' || formData.trigger === 'client_stage_changed') && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
+                      <Layers className="w-4 h-4 text-amber-700" />
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-900">הגדר תנאים</h3>
+                  </div>
+                  
+                  <Card className="border-2 border-amber-200 bg-amber-50/50">
+                    <CardContent className="p-4 space-y-4">
+                      {formData.trigger === 'client_professional_assigned' && (
+                        <>
+                          <div>
+                            <label className="text-sm font-semibold text-slate-700 mb-2 block">סוג בעל המקצוע</label>
+                            <Select 
+                              value={formData.conditions?.data_type_key || ""} 
+                              onValueChange={(v) => setFormData(prev => ({ 
+                                ...prev, 
+                                conditions: { ...prev.conditions, data_type_key: v }
+                              }))}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="בחר סוג בעל מקצוע" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {globalDataTypes.filter(t => t.is_professional_type).map(type => (
+                                  <SelectItem key={type.type_key} value={type.type_key}>
+                                    {type.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          
+                          <div>
+                            <label className="text-sm font-semibold text-slate-700 mb-2 block">ערך ספציפי (אופציונלי)</label>
+                            <Input
+                              placeholder="השאר ריק כדי להפעיל על כל ערך"
+                              value={formData.conditions?.to_value || ""}
+                              onChange={(e) => setFormData(prev => ({ 
+                                ...prev, 
+                                conditions: { ...prev.conditions, to_value: e.target.value }
+                              }))}
+                            />
+                            <p className="text-xs text-slate-500 mt-1">למשל: "נחשון" - יופעל רק כשבוחרים בנחשון כקונסטרוקטור</p>
+                          </div>
+                        </>
+                      )}
+                      
+                      {formData.trigger === 'data_type_value_changed' && (
+                        <>
+                          <div>
+                            <label className="text-sm font-semibold text-slate-700 mb-2 block">סוג הנתונים</label>
+                            <Select 
+                              value={formData.conditions?.data_type_key || ""} 
+                              onValueChange={(v) => setFormData(prev => ({ 
+                                ...prev, 
+                                conditions: { ...prev.conditions, data_type_key: v }
+                              }))}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="בחר סוג נתונים" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {globalDataTypes.map(type => (
+                                  <SelectItem key={type.type_key} value={type.type_key}>
+                                    {type.name} {type.is_professional_type && '(בעל מקצוע)'}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="text-sm font-semibold text-slate-700 mb-2 block">מערך (אופציונלי)</label>
+                              <Input
+                                placeholder="ערך קודם"
+                                value={formData.conditions?.from_value || ""}
+                                onChange={(e) => setFormData(prev => ({ 
+                                  ...prev, 
+                                  conditions: { ...prev.conditions, from_value: e.target.value }
+                                }))}
+                              />
+                            </div>
+                            <div>
+                              <label className="text-sm font-semibold text-slate-700 mb-2 block">לערך (אופציונלי)</label>
+                              <Input
+                                placeholder="ערך חדש"
+                                value={formData.conditions?.to_value || ""}
+                                onChange={(e) => setFormData(prev => ({ 
+                                  ...prev, 
+                                  conditions: { ...prev.conditions, to_value: e.target.value }
+                                }))}
+                              />
+                            </div>
+                          </div>
+                        </>
+                      )}
+                      
+                      {formData.trigger === 'client_stage_changed' && (
+                        <>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="text-sm font-semibold text-slate-700 mb-2 block">משלב (אופציונלי)</label>
+                              <Input
+                                placeholder="שלב קודם"
+                                value={formData.conditions?.from_value || ""}
+                                onChange={(e) => setFormData(prev => ({ 
+                                  ...prev, 
+                                  conditions: { ...prev.conditions, from_value: e.target.value }
+                                }))}
+                              />
+                            </div>
+                            <div>
+                              <label className="text-sm font-semibold text-slate-700 mb-2 block">לשלב (אופציונלי)</label>
+                              <Input
+                                placeholder="שלב חדש (למשל: היתרים)"
+                                value={formData.conditions?.to_value || ""}
+                                onChange={(e) => setFormData(prev => ({ 
+                                  ...prev, 
+                                  conditions: { ...prev.conditions, to_value: e.target.value }
+                                }))}
+                              />
+                            </div>
+                          </div>
+                          <p className="text-xs text-slate-500">השאר ריק כדי להפעיל על כל שינוי שלב</p>
+                        </>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
 
               {/* Actions */}
               <div className="space-y-3">
