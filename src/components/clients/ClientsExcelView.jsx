@@ -177,6 +177,9 @@ export default function ClientsExcelView({ clients, onRefresh }) {
     
     const updates = [];
     
+    // Get columns to check for custom data type columns
+    const columnsToCheck = data.columns || [];
+    
     newRows.forEach(newRow => {
       const oldRow = oldRows.find(r => r.id === newRow.id);
       if (oldRow) {
@@ -189,6 +192,23 @@ export default function ClientsExcelView({ clients, onRefresh }) {
             changes[key] = newRow[key];
             hasChanges = true;
             console.log(`🔍 [CHANGE DETECTED] ${key}: "${oldRow[key]}" -> "${newRow[key]}"`);
+          }
+        });
+        
+        // CRITICAL: Check custom columns and map their values to constructor_name
+        columnsToCheck.forEach(col => {
+          const isCustomTypeCol = col.type?.startsWith('custom_') || 
+                                  col.title?.includes('קונסטרוקטור') ||
+                                  col.title?.includes('בעל מקצוע');
+          if (isCustomTypeCol) {
+            const newVal = newRow[col.key];
+            const oldVal = oldRow[col.key];
+            if (String(newVal || '') !== String(oldVal || '')) {
+              // Map custom column value to constructor_name field
+              changes.constructor_name = newVal;
+              hasChanges = true;
+              console.log(`🔍 [CUSTOM COL CHANGE] ${col.title} (${col.key}): "${oldVal}" -> "${newVal}" => constructor_name`);
+            }
           }
         });
         
