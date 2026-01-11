@@ -4307,7 +4307,16 @@ export default function GenericSpreadsheet({ spreadsheet, onUpdate, fullScreenMo
                   <button key={client.id} onClick={() => addRowFromClient(client)} className="w-full p-4 hover:bg-blue-50 rounded-lg text-right border border-transparent hover:border-blue-200 transition-all group">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <div className="font-bold text-slate-900 mb-1">{client.name}</div>
+                        <div 
+                          className="font-bold text-slate-900 mb-1 hover:text-blue-600 transition-colors"
+                          onDoubleClick={(e) => {
+                            e.stopPropagation();
+                            window.location.href = createPageUrl(`Clients?open=details&client_id=${client.id}`);
+                          }}
+                          title="לחיצה כפולה לפתיחת תיק לקוח"
+                        >
+                          {client.name}
+                        </div>
                         <div className="space-y-0.5 text-xs text-slate-600">
                           {client.company && <div>🏢 {client.company}</div>}
                           {client.phone && <div>📞 {client.phone}</div>}
