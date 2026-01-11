@@ -176,7 +176,14 @@ export default function ClientCard({
           )}
 
           <div className="flex-1 min-w-0">
-            <CardTitle className="text-lg font-bold text-slate-900 truncate flex items-center gap-2 mb-2">
+            <CardTitle 
+              className="text-lg font-bold text-slate-900 truncate flex items-center gap-2 mb-2 hover:text-blue-600 transition-colors"
+              onDoubleClick={(e) => {
+                e.stopPropagation();
+                if (typeof onView === 'function') onView();
+              }}
+              title="לחיצה כפולה לפתיחת תיק לקוח"
+            >
               {client.stage && (() => {
                 const currentStage = stageOptions.find(s => s.value === client.stage);
                 if (currentStage) {

@@ -243,7 +243,14 @@ export default function ClientTable({
                         }
                         return null;
                       })()}
-                      <span className="hover:text-blue-600 transition-colors">
+                      <span 
+                        className="hover:text-blue-600 transition-colors cursor-pointer"
+                        onDoubleClick={(e) => {
+                          e.stopPropagation();
+                          if (typeof onView === 'function') onView(client);
+                        }}
+                        title="לחיצה כפולה לפתיחת תיק לקוח"
+                      >
                         {client.name}
                       </span>
                     </div>
