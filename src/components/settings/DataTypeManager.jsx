@@ -27,32 +27,56 @@ export default function DataTypeManager({ open, onClose, typeKey, typeName }) {
 
   const loadData = async () => {
     setLoading(true);
+    console.log("[DataTypeManager] 🔄 loadData START - typeKey:", typeKey);
     try {
-      // Use filter to be precise and sort by updated_date to get the latest version if duplicates exist
-      const results = await base44.entities.GlobalDataType.filter({ type_key: typeKey }, { updated_date: -1 }, 1);
+      // First, list ALL GlobalDataType to debug
+      console.log("[DataTypeManager] 📋 Fetching ALL GlobalDataType records...");
+      const allTypes = await base44.entities.GlobalDataType.list();
+      console.log("[DataTypeManager] 📋 All GlobalDataType records:", allTypes);
+      console.log("[DataTypeManager] 📋 Total count:", allTypes?.length || 0);
       
-      if (results && results.length > 0) {
-        const existing = results[0];
-        setOptions(existing.options || []);
-        setEntityId(existing.id);
+      // Find matching record manually
+      const matchingRecord = allTypes?.find(t => t.type_key === typeKey);
+      console.log("[DataTypeManager] 🔍 Looking for type_key:", typeKey);
+      console.log("[DataTypeManager] 🔍 Matching record found:", matchingRecord);
+      
+      if (matchingRecord) {
+        console.log("[DataTypeManager] ✅ Found existing record!");
+        console.log("[DataTypeManager] ✅ Record ID:", matchingRecord.id);
+        console.log("[DataTypeManager] ✅ Record name:", matchingRecord.name);
+        console.log("[DataTypeManager] ✅ Record options:", matchingRecord.options);
+        console.log("[DataTypeManager] ✅ Options count:", matchingRecord.options?.length || 0);
+        
+        setOptions(matchingRecord.options || []);
+        setEntityId(matchingRecord.id);
       } else {
+        console.log("[DataTypeManager] ⚠️ No matching record found for type_key:", typeKey);
+        console.log("[DataTypeManager] ⚠️ Available type_keys:", allTypes?.map(t => t.type_key));
         setOptions([]);
         setEntityId(null);
       }
     } catch (error) {
-      console.error("Error loading data types:", error);
+      console.error("[DataTypeManager] ❌ Error loading data types:", error);
       toast.error("שגיאה בטעינת נתונים");
     } finally {
       setLoading(false);
+      console.log("[DataTypeManager] 🔄 loadData END");
     }
   };
 
   const handleSave = async () => {
+    console.log("[DataTypeManager] 💾 handleSave START");
+    console.log("[DataTypeManager] 💾 Current options:", options);
+    console.log("[DataTypeManager] 💾 Current entityId:", entityId);
+    console.log("[DataTypeManager] 💾 typeKey:", typeKey);
+    console.log("[DataTypeManager] 💾 typeName:", typeName);
+    
     // Validation
     const hasEmptyParent = options.some(opt => !String(opt.label || '').trim());
     const hasEmptyChild = options.some(opt => (opt.children || []).some(ch => !String(ch.label || '').trim()));
     
     if (hasEmptyParent || hasEmptyChild) {
+      console.log("[DataTypeManager] ❌ Validation failed - empty labels");
       toast.error('כל הקטגוריות ותתי-הקטגוריות חייבות להכיל שם');
       return;
     }
@@ -71,30 +95,45 @@ export default function DataTypeManager({ open, onClose, typeKey, typeName }) {
       return { ...opt, glow, children };
     });
 
+    console.log("[DataTypeManager] 💾 Normalized options:", normalized);
+
     try {
       let currentId = entityId;
       
       // Double check if entity exists to prevent duplicates (race condition or first save)
       if (!currentId) {
-         const existing = await base44.entities.GlobalDataType.filter({ type_key: typeKey }, { updated_date: -1 }, 1);
-         if (existing && existing.length > 0) {
-            currentId = existing[0].id;
+         console.log("[DataTypeManager] 🔍 No entityId, searching for existing record...");
+         const allTypes = await base44.entities.GlobalDataType.list();
+         const existing = allTypes?.find(t => t.type_key === typeKey);
+         console.log("[DataTypeManager] 🔍 Found existing?", existing);
+         if (existing) {
+            currentId = existing.id;
             setEntityId(currentId);
+            console.log("[DataTypeManager] 🔍 Using existing ID:", currentId);
          }
       }
 
       if (currentId) {
-        await base44.entities.GlobalDataType.update(currentId, { options: normalized, name: typeName });
+        console.log("[DataTypeManager] 📝 UPDATING existing record ID:", currentId);
+        const updateData = { options: normalized, name: typeName };
+        console.log("[DataTypeManager] 📝 Update payload:", updateData);
+        await base44.entities.GlobalDataType.update(currentId, updateData);
+        console.log("[DataTypeManager] ✅ Update SUCCESS");
       } else {
-        const res = await base44.entities.GlobalDataType.create({
+        console.log("[DataTypeManager] 🆕 CREATING new record...");
+        const createData = {
           type_key: typeKey,
           name: typeName,
           options: normalized
-        });
+        };
+        console.log("[DataTypeManager] 🆕 Create payload:", createData);
+        const res = await base44.entities.GlobalDataType.create(createData);
+        console.log("[DataTypeManager] ✅ Create SUCCESS, new ID:", res.id);
         setEntityId(res.id);
       }
       
       // Dispatch event for real-time updates across the app
+      console.log("[DataTypeManager] 📡 Dispatching global-data-type:updated event");
       window.dispatchEvent(new CustomEvent('global-data-type:updated', {
         detail: { typeKey, options: normalized }
       }));
@@ -102,9 +141,11 @@ export default function DataTypeManager({ open, onClose, typeKey, typeName }) {
       toast.success('השינויים נשמרו בהצלחה');
       onClose();
     } catch (error) {
-      console.error("Error saving data type:", error);
-      toast.error("שגיאה בשמירה");
+      console.error("[DataTypeManager] ❌ Error saving data type:", error);
+      console.error("[DataTypeManager] ❌ Error details:", error?.response?.data || error?.message);
+      toast.error("שגיאה בשמירה: " + (error?.message || "שגיאה לא ידועה"));
     }
+    console.log("[DataTypeManager] 💾 handleSave END");
   };
 
   const handleAddOption = () => {
