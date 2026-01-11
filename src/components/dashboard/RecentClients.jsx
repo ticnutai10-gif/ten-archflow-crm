@@ -189,7 +189,15 @@ export default function RecentClients({ isLoading, className = '' }) {
                               title={currentStage.label}
                             />
                           )}
-                          <h4 className="font-semibold text-slate-900 truncate">
+                          <h4 
+                            className="font-semibold text-slate-900 truncate hover:text-blue-600 transition-colors"
+                            onDoubleClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              window.location.href = createPageUrl(`Clients?open=details&client_name=${encodeURIComponent(client.name || "")}`);
+                            }}
+                            title="לחיצה כפולה לפתיחת תיק לקוח"
+                          >
                             {client.name || 'לקוח ללא שם'}
                           </h4>
                         </div>
