@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Circle, FileText, ArrowLeftRight, ShoppingCart, ArrowRight, Plus, Layers, Loader2 } from "lucide-react";
+import { Circle, FileText, ArrowLeftRight, ShoppingCart, ArrowRight, Plus, Layers, Loader2, Pencil, Trash2 } from "lucide-react";
 import DataTypeManager from "@/components/settings/DataTypeManager";
 import { useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
@@ -17,6 +17,8 @@ export default function DataTypesPage() {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [newTypeName, setNewTypeName] = useState("");
   const [newTypeDescription, setNewTypeDescription] = useState("");
+  const [editingType, setEditingType] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
 
   const HARDCODED_TYPES = [
     { key: "stages", label: "שלבים (מואר)", icon: Circle, color: "text-purple-600", bg: "bg-purple-100", description: "ניהול שלבי התקדמות בפרויקטים ולקוחות" },
@@ -83,6 +85,45 @@ export default function DataTypesPage() {
         console.error("Error creating type:", error);
         toast.error("שגיאה ביצירת סוג נתונים");
     }
+  };
+
+  const handleEditType = async () => {
+    if (!editingType || !newTypeName.trim()) return;
+    
+    try {
+        const dbType = dbTypes.find(t => t.type_key === editingType.key);
+        if (dbType) {
+            await base44.entities.GlobalDataType.update(dbType.id, { name: newTypeName });
+            toast.success("סוג הנתונים עודכן בהצלחה");
+            window.dispatchEvent(new CustomEvent('global-data-type:updated'));
+            fetchTypes();
+        }
+        setEditingType(null);
+        setNewTypeName("");
+    } catch (error) {
+        console.error("Error updating type:", error);
+        toast.error("שגיאה בעדכון סוג נתונים");
+    }
+  };
+
+  const handleDeleteType = async (typeKey) => {
+    try {
+        const dbType = dbTypes.find(t => t.type_key === typeKey);
+        if (dbType) {
+            await base44.entities.GlobalDataType.delete(dbType.id);
+            toast.success("סוג הנתונים נמחק בהצלחה");
+            window.dispatchEvent(new CustomEvent('global-data-type:updated'));
+            fetchTypes();
+        }
+        setDeleteConfirm(null);
+    } catch (error) {
+        console.error("Error deleting type:", error);
+        toast.error("שגיאה במחיקת סוג נתונים");
+    }
+  };
+
+  const isCustomType = (typeKey) => {
+    return typeKey.startsWith('custom_') || !HARDCODED_TYPES.find(t => t.key === typeKey);
   };
 
   // Merge hardcoded types with DB types
@@ -156,6 +197,33 @@ export default function DataTypesPage() {
                 className="cursor-pointer hover:shadow-lg transition-all hover:border-purple-200 group relative overflow-hidden"
                 onClick={() => setSelectedType(type)}
             >
+                {/* Edit/Delete buttons on hover */}
+                {isCustomType(type.key) && (
+                    <div className="absolute top-2 left-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingType(type);
+                                setNewTypeName(type.label);
+                            }}
+                            className="p-2 rounded-lg bg-white/90 hover:bg-blue-50 border border-slate-200 shadow-sm transition-all hover:scale-110"
+                            title="עריכה"
+                        >
+                            <Pencil className="w-4 h-4 text-blue-600" />
+                        </button>
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setDeleteConfirm(type.key);
+                            }}
+                            className="p-2 rounded-lg bg-white/90 hover:bg-red-50 border border-slate-200 shadow-sm transition-all hover:scale-110"
+                            title="מחיקה"
+                        >
+                            <Trash2 className="w-4 h-4 text-red-600" />
+                        </button>
+                    </div>
+                )}
+                
                 <CardHeader className="flex flex-row items-center gap-4 pb-2">
                 <div className={`p-3 rounded-xl ${type.bg} group-hover:scale-110 transition-transform`}>
                     <type.icon className={`w-8 h-8 ${type.color}`} />
@@ -186,6 +254,7 @@ export default function DataTypesPage() {
         />
       )}
 
+      {/* Add New Dialog */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
         <DialogContent dir="rtl">
             <DialogHeader>
@@ -200,7 +269,6 @@ export default function DataTypesPage() {
                         placeholder="הכנס שם..."
                     />
                 </div>
-                {/* Description field is UI only for now as schema support is unclear, but good for UX */}
                 <div>
                     <label className="text-sm font-medium mb-1 block">תיאור (אופציונלי)</label>
                     <Input 
@@ -213,6 +281,46 @@ export default function DataTypesPage() {
             <DialogFooter>
                 <Button variant="outline" onClick={() => setShowAddDialog(false)}>ביטול</Button>
                 <Button onClick={handleCreateType}>צור</Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={!!editingType} onOpenChange={(open) => !open && setEditingType(null)}>
+        <DialogContent dir="rtl">
+            <DialogHeader>
+                <DialogTitle>עריכת סוג נתונים</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 p-6">
+                <div>
+                    <label className="text-sm font-medium mb-1 block">שם הסוג</label>
+                    <Input 
+                        value={newTypeName} 
+                        onChange={(e) => setNewTypeName(e.target.value)}
+                        placeholder="הכנס שם..."
+                    />
+                </div>
+            </div>
+            <DialogFooter>
+                <Button variant="outline" onClick={() => { setEditingType(null); setNewTypeName(""); }}>ביטול</Button>
+                <Button onClick={handleEditType}>שמור</Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!deleteConfirm} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
+        <DialogContent dir="rtl">
+            <DialogHeader>
+                <DialogTitle className="text-red-600">מחיקת סוג נתונים</DialogTitle>
+            </DialogHeader>
+            <div className="p-6">
+                <p className="text-slate-600">האם אתה בטוח שברצונך למחוק סוג נתונים זה?</p>
+                <p className="text-sm text-red-500 mt-2">פעולה זו לא ניתנת לביטול!</p>
+            </div>
+            <DialogFooter>
+                <Button variant="outline" onClick={() => setDeleteConfirm(null)}>ביטול</Button>
+                <Button variant="destructive" onClick={() => handleDeleteType(deleteConfirm)}>מחק</Button>
             </DialogFooter>
         </DialogContent>
       </Dialog>
