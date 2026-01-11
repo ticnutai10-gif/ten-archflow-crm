@@ -30,15 +30,26 @@ export default function DataTypesPage() {
   const fetchTypes = async () => {
     try {
       setLoading(true);
-      console.log("Fetching global data types...");
+      console.log("[DataTypes] 🔄 fetchTypes START");
       const results = await base44.entities.GlobalDataType.list();
-      console.log("Fetched types:", results);
-      setDbTypes(results);
+      console.log("[DataTypes] 📋 Fetched types count:", results?.length);
+      console.log("[DataTypes] 📋 Fetched types:", results);
+      results?.forEach((t, i) => {
+        console.log(`[DataTypes] 📋 Type ${i}:`, {
+          id: t.id,
+          type_key: t.type_key,
+          name: t.name,
+          options_count: t.options?.length || 0,
+          options: t.options
+        });
+      });
+      setDbTypes(results || []);
     } catch (error) {
-      console.error("Error fetching data types:", error);
+      console.error("[DataTypes] ❌ Error fetching data types:", error);
       toast.error("שגיאה בטעינת סוגי נתונים");
     } finally {
       setLoading(false);
+      console.log("[DataTypes] 🔄 fetchTypes END");
     }
   };
 
@@ -55,6 +66,9 @@ export default function DataTypesPage() {
   }, []);
 
   const handleCreateType = async () => {
+    console.log("[DataTypes] 🆕 handleCreateType START");
+    console.log("[DataTypes] 🆕 newTypeName:", newTypeName);
+    
     if (!newTypeName.trim()) {
         toast.error("נא להזין שם לסוג הנתונים");
         return;
@@ -62,7 +76,7 @@ export default function DataTypesPage() {
 
     try {
         const typeKey = `custom_${Date.now()}`;
-        console.log("Creating new type:", { name: newTypeName, key: typeKey });
+        console.log("[DataTypes] 🆕 Creating new type:", { name: newTypeName, key: typeKey });
         
         const newType = await base44.entities.GlobalDataType.create({
             name: newTypeName,
@@ -70,6 +84,7 @@ export default function DataTypesPage() {
             options: [],
         });
 
+        console.log("[DataTypes] ✅ New type created:", newType);
         toast.success("סוג נתונים חדש נוצר בהצלחה");
         
         // Dispatch event for other components
@@ -80,11 +95,16 @@ export default function DataTypesPage() {
         setShowAddDialog(false);
         setNewTypeName("");
         setNewTypeDescription("");
-        fetchTypes();
+        
+        // Reload to verify
+        console.log("[DataTypes] 🔄 Reloading types after create...");
+        await fetchTypes();
     } catch (error) {
-        console.error("Error creating type:", error);
-        toast.error("שגיאה ביצירת סוג נתונים");
+        console.error("[DataTypes] ❌ Error creating type:", error);
+        console.error("[DataTypes] ❌ Error details:", error?.response?.data || error?.message);
+        toast.error("שגיאה ביצירת סוג נתונים: " + (error?.message || ""));
     }
+    console.log("[DataTypes] 🆕 handleCreateType END");
   };
 
   const handleEditType = async () => {
