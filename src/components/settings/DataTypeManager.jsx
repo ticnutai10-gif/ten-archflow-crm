@@ -29,29 +29,44 @@ export default function DataTypeManager({ open, onClose, typeKey, typeName }) {
     setLoading(true);
     console.log("[DataTypeManager] 🔄 loadData START - typeKey:", typeKey);
     try {
-      // First, list ALL GlobalDataType to debug
-      console.log("[DataTypeManager] 📋 Fetching ALL GlobalDataType records...");
-      const allTypes = await base44.entities.GlobalDataType.list();
-      console.log("[DataTypeManager] 📋 All GlobalDataType records:", allTypes);
-      console.log("[DataTypeManager] 📋 Total count:", allTypes?.length || 0);
+      const allTypes = await base44.entities.GlobalDataType.list('-updated_date');
+      console.log("[DataTypeManager] 📋 Total records:", allTypes?.length || 0);
       
-      // Find matching record manually
-      const matchingRecord = allTypes?.find(t => t.type_key === typeKey);
-      console.log("[DataTypeManager] 🔍 Looking for type_key:", typeKey);
-      console.log("[DataTypeManager] 🔍 Matching record found:", matchingRecord);
+      // Find ALL matching records for this type_key
+      const matchingRecords = allTypes?.filter(t => t.type_key === typeKey) || [];
+      console.log("[DataTypeManager] 🔍 Found", matchingRecords.length, "records for type_key:", typeKey);
       
-      if (matchingRecord) {
-        console.log("[DataTypeManager] ✅ Found existing record!");
-        console.log("[DataTypeManager] ✅ Record ID:", matchingRecord.id);
-        console.log("[DataTypeManager] ✅ Record name:", matchingRecord.name);
-        console.log("[DataTypeManager] ✅ Record options:", matchingRecord.options);
-        console.log("[DataTypeManager] ✅ Options count:", matchingRecord.options?.length || 0);
+      if (matchingRecords.length > 0) {
+        // Sort by updated_date descending and pick the one with most options (or most recent)
+        const sortedRecords = matchingRecords.sort((a, b) => {
+          // Prefer record with more options
+          const aOptions = a.options?.length || 0;
+          const bOptions = b.options?.length || 0;
+          if (aOptions !== bOptions) return bOptions - aOptions;
+          // If same options count, prefer newer
+          return new Date(b.updated_date) - new Date(a.updated_date);
+        });
         
-        setOptions(matchingRecord.options || []);
-        setEntityId(matchingRecord.id);
+        const bestRecord = sortedRecords[0];
+        console.log("[DataTypeManager] ✅ Using best record:", bestRecord.id, "with", bestRecord.options?.length || 0, "options");
+        
+        setOptions(bestRecord.options || []);
+        setEntityId(bestRecord.id);
+        
+        // Clean up duplicates in background (delete older/emptier records)
+        if (sortedRecords.length > 1) {
+          console.log("[DataTypeManager] 🧹 Cleaning up", sortedRecords.length - 1, "duplicate records...");
+          for (let i = 1; i < sortedRecords.length; i++) {
+            try {
+              await base44.entities.GlobalDataType.delete(sortedRecords[i].id);
+              console.log("[DataTypeManager] 🗑️ Deleted duplicate:", sortedRecords[i].id);
+            } catch (e) {
+              console.warn("[DataTypeManager] ⚠️ Failed to delete duplicate:", e);
+            }
+          }
+        }
       } else {
-        console.log("[DataTypeManager] ⚠️ No matching record found for type_key:", typeKey);
-        console.log("[DataTypeManager] ⚠️ Available type_keys:", allTypes?.map(t => t.type_key));
+        console.log("[DataTypeManager] ⚠️ No record found for type_key:", typeKey);
         setOptions([]);
         setEntityId(null);
       }
@@ -60,7 +75,6 @@ export default function DataTypeManager({ open, onClose, typeKey, typeName }) {
       toast.error("שגיאה בטעינת נתונים");
     } finally {
       setLoading(false);
-      console.log("[DataTypeManager] 🔄 loadData END");
     }
   };
 
