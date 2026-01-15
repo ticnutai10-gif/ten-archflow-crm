@@ -322,58 +322,183 @@ export default function BackupPage() {
           </div>
         </div>
 
-        {/* Export Full Project ZIP */}
-        <Card className="shadow-xl border-0 bg-gradient-to-r from-purple-50 to-indigo-50 border-l-4 border-l-purple-500">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-lg">
-                  <Archive className="w-8 h-8 text-white" />
+        {/* Quick Export Buttons */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Export Full Project ZIP */}
+          <Card className="shadow-xl border-0 bg-gradient-to-r from-purple-50 to-indigo-50 border-l-4 border-l-purple-500">
+            <CardContent className="p-5">
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-lg">
+                    <Archive className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900">פרויקט מלא</h3>
+                    <p className="text-xs text-slate-600">ZIP עם כל הנתונים</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-xl font-bold text-slate-900 mb-1">ייצוא פרויקט מלא (ZIP)</h3>
-                  <p className="text-sm text-slate-600">הורד קובץ ZIP עם כל הנתונים, סכמות הישויות ותיעוד הפרויקט</p>
-                </div>
+                <Button 
+                  onClick={async () => {
+                    setBusy(true);
+                    try {
+                      const response = await exportProjectFiles({});
+                      const blob = new Blob([response.data], { type: 'application/zip' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `CRM_Tannenbaum_Export_${new Date().toISOString().split('T')[0]}.zip`;
+                      document.body.appendChild(a);
+                      a.click();
+                      URL.revokeObjectURL(url);
+                      a.remove();
+                    } catch (error) {
+                      console.error('ZIP Export error:', error);
+                      alert('שגיאה בייצוא ZIP: ' + (error?.message || 'שגיאה לא ידועה'));
+                    }
+                    setBusy(false);
+                  }}
+                  disabled={busy}
+                  className="w-full gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-lg"
+                >
+                  {busy ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Archive className="w-4 h-4" />}
+                  הורד ZIP
+                </Button>
               </div>
-              <Button 
-                onClick={async () => {
-                  setBusy(true);
-                  try {
-                    const response = await exportProjectFiles({});
-                    // Response is a blob
-                    const blob = new Blob([response.data], { type: 'application/zip' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `CRM_Tannenbaum_Export_${new Date().toISOString().split('T')[0]}.zip`;
-                    document.body.appendChild(a);
-                    a.click();
-                    URL.revokeObjectURL(url);
-                    a.remove();
-                  } catch (error) {
-                    console.error('ZIP Export error:', error);
-                    alert('שגיאה בייצוא ZIP: ' + (error?.message || 'שגיאה לא ידועה'));
-                  }
-                  setBusy(false);
-                }}
-                disabled={busy}
-                className="gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-lg px-6 py-6 text-lg h-auto"
-              >
-                {busy ? (
-                  <>
-                    <RefreshCw className="w-5 h-5 animate-spin" />
-                    מייצא...
-                  </>
-                ) : (
-                  <>
-                    <Archive className="w-5 h-5" />
-                    הורד ZIP
-                  </>
-                )}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+
+          {/* Export Spreadsheets Only */}
+          <Card className="shadow-xl border-0 bg-gradient-to-r from-teal-50 to-cyan-50 border-l-4 border-l-teal-500">
+            <CardContent className="p-5">
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center shadow-lg">
+                    <Table className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900">טבלאות בלבד</h3>
+                    <p className="text-xs text-slate-600">כל הטבלאות המותאמות</p>
+                  </div>
+                </div>
+                <Button 
+                  onClick={async () => {
+                    setBusy(true);
+                    try {
+                      const response = await exportEntities({ categories: ['CustomSpreadsheet'], format: 'json' });
+                      const jsonData = JSON.stringify(response.data || response, null, 2);
+                      const blob = new Blob([jsonData], { type: "application/json" });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = `spreadsheets-backup-${new Date().toISOString().split('T')[0]}.json`;
+                      document.body.appendChild(a);
+                      a.click();
+                      URL.revokeObjectURL(url);
+                      a.remove();
+                    } catch (error) {
+                      console.error('Spreadsheets Export error:', error);
+                      alert('שגיאה בייצוא טבלאות: ' + (error?.message || 'שגיאה לא ידועה'));
+                    }
+                    setBusy(false);
+                  }}
+                  disabled={busy}
+                  className="w-full gap-2 bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white shadow-lg"
+                >
+                  {busy ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Table className="w-4 h-4" />}
+                  הורד טבלאות
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Export Tasks & SubTasks */}
+          <Card className="shadow-xl border-0 bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-l-green-500">
+            <CardContent className="p-5">
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg">
+                    <CheckCircle2 className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900">משימות מלא</h3>
+                    <p className="text-xs text-slate-600">משימות + תת-משימות</p>
+                  </div>
+                </div>
+                <Button 
+                  onClick={async () => {
+                    setBusy(true);
+                    try {
+                      const response = await exportEntities({ categories: ['Task', 'SubTask'], format: 'json' });
+                      const jsonData = JSON.stringify(response.data || response, null, 2);
+                      const blob = new Blob([jsonData], { type: "application/json" });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = `tasks-backup-${new Date().toISOString().split('T')[0]}.json`;
+                      document.body.appendChild(a);
+                      a.click();
+                      URL.revokeObjectURL(url);
+                      a.remove();
+                    } catch (error) {
+                      console.error('Tasks Export error:', error);
+                      alert('שגיאה בייצוא משימות: ' + (error?.message || 'שגיאה לא ידועה'));
+                    }
+                    setBusy(false);
+                  }}
+                  disabled={busy}
+                  className="w-full gap-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg"
+                >
+                  {busy ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                  הורד משימות
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Export Clients & Projects */}
+          <Card className="shadow-xl border-0 bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-l-blue-500">
+            <CardContent className="p-5">
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
+                    <FolderOpen className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900">לקוחות ופרויקטים</h3>
+                    <p className="text-xs text-slate-600">נתוני ליבה עיקריים</p>
+                  </div>
+                </div>
+                <Button 
+                  onClick={async () => {
+                    setBusy(true);
+                    try {
+                      const response = await exportEntities({ categories: ['Client', 'Project', 'Quote', 'Invoice'], format: 'json' });
+                      const jsonData = JSON.stringify(response.data || response, null, 2);
+                      const blob = new Blob([jsonData], { type: "application/json" });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = `clients-projects-backup-${new Date().toISOString().split('T')[0]}.json`;
+                      document.body.appendChild(a);
+                      a.click();
+                      URL.revokeObjectURL(url);
+                      a.remove();
+                    } catch (error) {
+                      console.error('Clients Export error:', error);
+                      alert('שגיאה בייצוא לקוחות: ' + (error?.message || 'שגיאה לא ידועה'));
+                    }
+                    setBusy(false);
+                  }}
+                  disabled={busy}
+                  className="w-full gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg"
+                >
+                  {busy ? <RefreshCw className="w-4 h-4 animate-spin" /> : <FolderOpen className="w-4 h-4" />}
+                  הורד לקוחות
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Automatic Backup Status */}
         <Card className="shadow-xl border-0 bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-l-green-500">
