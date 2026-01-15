@@ -205,8 +205,10 @@ Deno.serve(async (req) => {
     const jsonData = {
       backup_info: {
         created_at: now.toISOString(),
-        format_version: '1.0',
-        app: 'ArchFlow CRM'
+        format_version: '2.0',
+        app: 'ArchFlow CRM',
+        includes_spreadsheet_data: categories.includes('CustomSpreadsheet'),
+        includes_subtasks: categories.includes('SubTask')
       },
       statistics: {
         total_records: totalRecords,
@@ -217,7 +219,18 @@ Deno.serve(async (req) => {
       data: allData,
       summary: Object.fromEntries(
         categories.map(cat => [cat, (allData[cat] || []).length])
-      )
+      ),
+      // Add detailed spreadsheet info if included
+      spreadsheet_details: categories.includes('CustomSpreadsheet') ? 
+        (allData['CustomSpreadsheet'] || []).map(sheet => ({
+          id: sheet.id,
+          name: sheet.name,
+          client_name: sheet.client_name,
+          columns_count: (sheet.columns || []).length,
+          rows_count: (sheet.rows_data || []).length,
+          has_google_sync: !!sheet.google_sheet_id,
+          created_date: sheet.created_date
+        })) : null
     };
     
     const jsonStr = JSON.stringify(jsonData, null, 2);
