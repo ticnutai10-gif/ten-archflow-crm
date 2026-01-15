@@ -88,8 +88,11 @@ Deno.serve(async (req) => {
     
     const format = (payload?.format || 'csv').toLowerCase();
     const categories = Array.isArray(payload?.categories) ? payload.categories : [
-      'Client', 'Project', 'Quote', 'Task', 'TimeLog', 'Invoice'
+      'Client', 'Project', 'Quote', 'Task', 'SubTask', 'TimeLog', 'Invoice', 'Meeting', 'CustomSpreadsheet', 'GlobalDataType'
     ];
+    
+    // Option to export each category separately
+    const separateFiles = payload?.separateFiles === true;
 
     console.log("[exportAllData] Format:", format, "Categories:", categories.length);
 
