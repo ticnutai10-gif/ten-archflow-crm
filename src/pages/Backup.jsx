@@ -60,7 +60,7 @@ const CATEGORY_INFO = {
 const ALL_CATEGORIES = Object.keys(CATEGORY_INFO);
 
 export default function BackupPage() {
-  const [selected, setSelected] = useState(new Set(["Client","Task","TimeLog"]));
+  const [selected, setSelected] = useState(new Set(["Client","Project","Task","SubTask","TimeLog","Meeting","CustomSpreadsheet","Quote"]));
   const [importerEntity, setImporterEntity] = useState(null);
   const [busy, setBusy] = useState(false);
   const [autoEnabled, setAutoEnabled] = useState(false);
