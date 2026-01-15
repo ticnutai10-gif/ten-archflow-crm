@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { Download, Upload, ShieldCheck, Database, RefreshCw, Settings, CalendarClock, CheckCircle2, AlertTriangle, FileText, X, Archive } from "lucide-react";
+import { Download, Upload, ShieldCheck, Database, RefreshCw, Settings, CalendarClock, CheckCircle2, AlertTriangle, FileText, X, Archive, Table, FileDown, FolderOpen } from "lucide-react";
 import { exportProjectFiles } from "@/functions/exportProjectFiles";
 import { exportEntities } from "@/functions/exportEntities";
 import { importBackupJson } from "@/functions/importBackupJson";
@@ -19,31 +19,42 @@ const CATEGORY_INFO = {
   "Client": { label: "לקוחות", icon: "👥", color: "blue", description: "כל נתוני הלקוחות ופרטי הקשר" },
   "Project": { label: "פרויקטים", icon: "🏗️", color: "purple", description: "פרויקטים, תקציבים ולוחות זמנים" },
   "Task": { label: "משימות", icon: "✅", color: "green", description: "משימות, מטלות ופעולות" },
+  "SubTask": { label: "תת-משימות", icon: "📝", color: "emerald", description: "משימות משנה ותת-פריטים" },
   "TimeLog": { label: "שעות עבודה", icon: "⏱️", color: "orange", description: "תיעוד שעות עבודה" },
   "Quote": { label: "הצעות מחיר", icon: "💰", color: "yellow", description: "הצעות מחיר ללקוחות" },
   "Invoice": { label: "חשבוניות", icon: "🧾", color: "red", description: "חשבוניות וחיובים" },
+  "Meeting": { label: "פגישות", icon: "📅", color: "blue", description: "פגישות ואירועים" },
+  "CustomSpreadsheet": { label: "טבלאות מותאמות", icon: "📊", color: "teal", description: "טבלאות אקסל מותאמות (כולל נתוני שורות)" },
+  "GlobalDataType": { label: "סוגי נתונים גלובליים", icon: "🏷️", color: "violet", description: "הגדרות סוגי נתונים מותאמים" },
+  "SheetComment": { label: "תגובות בטבלאות", icon: "💬", color: "cyan", description: "תגובות והערות בטבלאות" },
+  "Reminder": { label: "תזכורות", icon: "⏰", color: "amber", description: "תזכורות מתוזמנות" },
   "Decision": { label: "החלטות", icon: "🎯", color: "indigo", description: "החלטות פרויקטליות" },
   "ClientApproval": { label: "אישורי לקוח", icon: "✔️", color: "teal", description: "אישורים מלקוחות" },
   "ClientFeedback": { label: "משוב לקוחות", icon: "💬", color: "pink", description: "פידבקים והערות" },
   "CommunicationMessage": { label: "הודעות", icon: "📧", color: "cyan", description: "תקשורת עם לקוחות" },
   "Document": { label: "מסמכים", icon: "📄", color: "slate", description: "קבצים ומסמכים" },
+  "SmartDocument": { label: "מסמכים חכמים", icon: "📑", color: "indigo", description: "תבניות מסמכים חכמות" },
   "TeamMember": { label: "חברי צוות", icon: "👤", color: "violet", description: "נתוני צוות" },
   "AccessControl": { label: "הרשאות", icon: "🔐", color: "red", description: "ניהול הרשאות גישה" },
   "ClientFile": { label: "קבצי לקוחות", icon: "📁", color: "blue", description: "קבצים של לקוחות" },
   "QuoteFile": { label: "קבצי הצעות", icon: "📎", color: "yellow", description: "קבצים מצורפים להצעות" },
-  "Meeting": { label: "פגישות", icon: "📅", color: "blue", description: "פגישות ואירועים" },
   "UserPreferences": { label: "העדפות משתמש", icon: "⚙️", color: "gray", description: "הגדרות אישיות" },
+  "UserAvailability": { label: "זמינות משתמשים", icon: "🗓️", color: "green", description: "הגדרות זמינות" },
   "Notification": { label: "התראות", icon: "🔔", color: "orange", description: "התראות ועדכונים" },
+  "NotificationSettings": { label: "הגדרות התראות", icon: "🔕", color: "slate", description: "הגדרות התראות משתמש" },
   "WorkflowAutomation": { label: "אוטומציות", icon: "🤖", color: "purple", description: "תהליכים אוטומטיים" },
+  "AutomationRule": { label: "כללי אוטומציה", icon: "⚡", color: "yellow", description: "חוקי אוטומציה" },
+  "AutomationLog": { label: "לוגי אוטומציות", icon: "📜", color: "slate", description: "היסטוריית הפעלת אוטומציות" },
   "InternalChat": { label: "צ'אט פנימי", icon: "💭", color: "blue", description: "שיחות צוות פנימיות" },
   "InternalMessage": { label: "הודעות פנימיות", icon: "✉️", color: "cyan", description: "הודעות בין חברי צוות" },
   "ChatConversation": { label: "שיחות AI", icon: "🤖", color: "indigo", description: "שיחות עם AI" },
-  "CustomSpreadsheet": { label: "טבלאות מותאמות", icon: "📊", color: "green", description: "טבלאות אקסל מותאמות" },
   "DailyReportSchedule": { label: "דוחות יומיים", icon: "📈", color: "blue", description: "תזמון דוחות" },
-  "SubTask": { label: "תת-משימות", icon: "📝", color: "green", description: "משימות משנה" },
+  "DailyMeetingSummary": { label: "סיכומי פגישות", icon: "📋", color: "green", description: "סיכומים יומיים של פגישות" },
   "MessageTemplate": { label: "תבניות הודעות", icon: "📋", color: "purple", description: "תבניות למסרים" },
   "AIInsight": { label: "תובנות AI", icon: "🧠", color: "violet", description: "תובנות ממערכת AI" },
-  "AutomationRule": { label: "כללי אוטומציה", icon: "⚡", color: "yellow", description: "חוקי אוטומציה" }
+  "AuditLog": { label: "לוגי פעילות", icon: "📝", color: "slate", description: "היסטוריית שינויים במערכת" },
+  "SyncLog": { label: "לוגי סנכרון", icon: "🔄", color: "cyan", description: "היסטוריית סנכרון Google Sheets" },
+  "AppSettings": { label: "הגדרות אפליקציה", icon: "🔧", color: "gray", description: "הגדרות מערכת כלליות" }
 };
 
 const ALL_CATEGORIES = Object.keys(CATEGORY_INFO);
