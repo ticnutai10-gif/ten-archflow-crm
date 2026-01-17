@@ -362,7 +362,69 @@ export default function BackupPage() {
           </div>
         </div>
 
-        {/* Quick Export Buttons */}
+        {/* Quick Export by Group */}
+        <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm">
+          <CardHeader className="border-b bg-gradient-to-l from-amber-50 to-white pb-4">
+            <CardTitle className="flex items-center gap-3 text-2xl">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg">
+                <Zap className="w-6 h-6 text-white" />
+              </div>
+              ייצוא מהיר לפי קטגוריה
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+              {Object.entries(CATEGORY_GROUPS).map(([groupKey, group]) => {
+                const groupCount = group.categories.reduce((sum, cat) => {
+                  const count = categoryCounts[cat];
+                  return sum + (typeof count === 'number' ? count : 0);
+                }, 0);
+                
+                return (
+                  <button
+                    key={groupKey}
+                    onClick={async () => {
+                      setBusy(true);
+                      try {
+                        const response = await exportEntities({ categories: group.categories, format: 'json' });
+                        const jsonData = JSON.stringify(response.data || response, null, 2);
+                        const blob = new Blob([jsonData], { type: "application/json" });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = `${groupKey}-backup-${new Date().toISOString().split('T')[0]}.json`;
+                        document.body.appendChild(a);
+                        a.click();
+                        URL.revokeObjectURL(url);
+                        a.remove();
+                      } catch (error) {
+                        console.error(`${group.label} Export error:`, error);
+                        alert(`שגיאה בייצוא ${group.label}: ` + (error?.message || 'שגיאה לא ידועה'));
+                      }
+                      setBusy(false);
+                    }}
+                    disabled={busy}
+                    className={`
+                      p-4 rounded-xl border-2 transition-all text-center
+                      border-${group.color}-200 bg-gradient-to-br from-${group.color}-50 to-white
+                      hover:border-${group.color}-400 hover:shadow-lg hover:scale-105
+                      disabled:opacity-50 disabled:cursor-not-allowed
+                    `}
+                  >
+                    <div className="text-2xl mb-2">{group.icon}</div>
+                    <div className="font-bold text-slate-900 text-sm mb-1">{group.label}</div>
+                    <div className="text-xs text-slate-500">{group.categories.length} סוגים</div>
+                    <Badge className="mt-2 text-xs" variant="outline">
+                      {loadingCounts ? '...' : groupCount.toLocaleString()} רשומות
+                    </Badge>
+                  </button>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Main Quick Export Buttons */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Export Full Project ZIP */}
           <Card className="shadow-xl border-0 bg-gradient-to-r from-purple-50 to-indigo-50 border-l-4 border-l-purple-500">
@@ -373,7 +435,7 @@ export default function BackupPage() {
                     <Archive className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-slate-900">פרויקט מלא</h3>
+                    <h3 className="text-lg font-bold text-slate-900">גיבוי מלא</h3>
                     <p className="text-xs text-slate-600">ZIP עם כל הנתונים</p>
                   </div>
                 </div>
@@ -386,7 +448,7 @@ export default function BackupPage() {
                       const url = URL.createObjectURL(blob);
                       const a = document.createElement('a');
                       a.href = url;
-                      a.download = `CRM_Tannenbaum_Export_${new Date().toISOString().split('T')[0]}.zip`;
+                      a.download = `CRM_Tannenbaum_Full_Backup_${new Date().toISOString().split('T')[0]}.zip`;
                       document.body.appendChild(a);
                       a.click();
                       URL.revokeObjectURL(url);
@@ -401,13 +463,13 @@ export default function BackupPage() {
                   className="w-full gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-lg"
                 >
                   {busy ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Archive className="w-4 h-4" />}
-                  הורד ZIP
+                  הורד ZIP מלא
                 </Button>
               </div>
             </CardContent>
           </Card>
 
-          {/* Export Spreadsheets Only */}
+          {/* Export Spreadsheets + Data */}
           <Card className="shadow-xl border-0 bg-gradient-to-r from-teal-50 to-cyan-50 border-l-4 border-l-teal-500">
             <CardContent className="p-5">
               <div className="flex flex-col gap-4">
@@ -416,21 +478,21 @@ export default function BackupPage() {
                     <Table className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-slate-900">טבלאות בלבד</h3>
-                    <p className="text-xs text-slate-600">כל הטבלאות המותאמות</p>
+                    <h3 className="text-lg font-bold text-slate-900">טבלאות מלא</h3>
+                    <p className="text-xs text-slate-600">טבלאות + תגובות + נוכחות</p>
                   </div>
                 </div>
                 <Button 
                   onClick={async () => {
                     setBusy(true);
                     try {
-                      const response = await exportEntities({ categories: ['CustomSpreadsheet'], format: 'json' });
+                      const response = await exportEntities({ categories: CATEGORY_GROUPS.spreadsheets.categories, format: 'json' });
                       const jsonData = JSON.stringify(response.data || response, null, 2);
                       const blob = new Blob([jsonData], { type: "application/json" });
                       const url = URL.createObjectURL(blob);
                       const a = document.createElement("a");
                       a.href = url;
-                      a.download = `spreadsheets-backup-${new Date().toISOString().split('T')[0]}.json`;
+                      a.download = `spreadsheets-full-backup-${new Date().toISOString().split('T')[0]}.json`;
                       document.body.appendChild(a);
                       a.click();
                       URL.revokeObjectURL(url);
@@ -451,7 +513,7 @@ export default function BackupPage() {
             </CardContent>
           </Card>
 
-          {/* Export Tasks & SubTasks */}
+          {/* Export Tasks Full */}
           <Card className="shadow-xl border-0 bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-l-green-500">
             <CardContent className="p-5">
               <div className="flex flex-col gap-4">
@@ -461,20 +523,20 @@ export default function BackupPage() {
                   </div>
                   <div>
                     <h3 className="text-lg font-bold text-slate-900">משימות מלא</h3>
-                    <p className="text-xs text-slate-600">משימות + תת-משימות</p>
+                    <p className="text-xs text-slate-600">משימות + תת-משימות + שעות</p>
                   </div>
                 </div>
                 <Button 
                   onClick={async () => {
                     setBusy(true);
                     try {
-                      const response = await exportEntities({ categories: ['Task', 'SubTask'], format: 'json' });
+                      const response = await exportEntities({ categories: CATEGORY_GROUPS.tasks.categories, format: 'json' });
                       const jsonData = JSON.stringify(response.data || response, null, 2);
                       const blob = new Blob([jsonData], { type: "application/json" });
                       const url = URL.createObjectURL(blob);
                       const a = document.createElement("a");
                       a.href = url;
-                      a.download = `tasks-backup-${new Date().toISOString().split('T')[0]}.json`;
+                      a.download = `tasks-full-backup-${new Date().toISOString().split('T')[0]}.json`;
                       document.body.appendChild(a);
                       a.click();
                       URL.revokeObjectURL(url);
@@ -495,45 +557,45 @@ export default function BackupPage() {
             </CardContent>
           </Card>
 
-          {/* Export Clients & Projects */}
-          <Card className="shadow-xl border-0 bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-l-blue-500">
+          {/* Export Users & Team */}
+          <Card className="shadow-xl border-0 bg-gradient-to-r from-violet-50 to-purple-50 border-l-4 border-l-violet-500">
             <CardContent className="p-5">
               <div className="flex flex-col gap-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
-                    <FolderOpen className="w-6 h-6 text-white" />
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg">
+                    <Users className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-slate-900">לקוחות ופרויקטים</h3>
-                    <p className="text-xs text-slate-600">נתוני ליבה עיקריים</p>
+                    <h3 className="text-lg font-bold text-slate-900">צוות ומשתמשים</h3>
+                    <p className="text-xs text-slate-600">הרשאות + העדפות + זמינות</p>
                   </div>
                 </div>
                 <Button 
                   onClick={async () => {
                     setBusy(true);
                     try {
-                      const response = await exportEntities({ categories: ['Client', 'Project', 'Quote', 'Invoice'], format: 'json' });
+                      const response = await exportEntities({ categories: CATEGORY_GROUPS.users.categories, format: 'json' });
                       const jsonData = JSON.stringify(response.data || response, null, 2);
                       const blob = new Blob([jsonData], { type: "application/json" });
                       const url = URL.createObjectURL(blob);
                       const a = document.createElement("a");
                       a.href = url;
-                      a.download = `clients-projects-backup-${new Date().toISOString().split('T')[0]}.json`;
+                      a.download = `users-team-backup-${new Date().toISOString().split('T')[0]}.json`;
                       document.body.appendChild(a);
                       a.click();
                       URL.revokeObjectURL(url);
                       a.remove();
                     } catch (error) {
-                      console.error('Clients Export error:', error);
-                      alert('שגיאה בייצוא לקוחות: ' + (error?.message || 'שגיאה לא ידועה'));
+                      console.error('Users Export error:', error);
+                      alert('שגיאה בייצוא משתמשים: ' + (error?.message || 'שגיאה לא ידועה'));
                     }
                     setBusy(false);
                   }}
                   disabled={busy}
-                  className="w-full gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg"
+                  className="w-full gap-2 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white shadow-lg"
                 >
-                  {busy ? <RefreshCw className="w-4 h-4 animate-spin" /> : <FolderOpen className="w-4 h-4" />}
-                  הורד לקוחות
+                  {busy ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Users className="w-4 h-4" />}
+                  הורד משתמשים
                 </Button>
               </div>
             </CardContent>
