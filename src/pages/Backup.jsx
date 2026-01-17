@@ -643,68 +643,109 @@ export default function BackupPage() {
               </div>
             </div>
           </CardHeader>
-          <CardContent className="p-6">
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-              {ALL_CATEGORIES.map((name) => {
-                const info = CATEGORY_INFO[name];
-                const count = categoryCounts[name];
-                const isLoading = loadingCounts && count === undefined;
-                const isSelected = selected.has(name);
-                
-                return (
-                  <label 
-                    key={name} 
-                    className={`
-                      relative overflow-hidden flex flex-col gap-2 p-4 rounded-xl border-2 
-                      transition-all cursor-pointer group
-                      ${isSelected 
-                        ? 'border-blue-400 bg-gradient-to-br from-blue-50 to-indigo-50 shadow-lg scale-105' 
-                        : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-md'
+          <CardContent className="p-6 space-y-6">
+            {/* Group Selection Buttons */}
+            <div className="flex flex-wrap gap-2 pb-4 border-b">
+              <span className="text-sm font-bold text-slate-600 ml-2">בחירה מהירה:</span>
+              {Object.entries(CATEGORY_GROUPS).map(([groupKey, group]) => (
+                <Button
+                  key={groupKey}
+                  size="sm"
+                  variant="outline"
+                  className="gap-1 text-xs"
+                  onClick={() => {
+                    setSelected(prev => {
+                      const next = new Set(prev);
+                      const allInGroup = group.categories.every(cat => next.has(cat));
+                      if (allInGroup) {
+                        group.categories.forEach(cat => next.delete(cat));
+                      } else {
+                        group.categories.forEach(cat => next.add(cat));
                       }
-                    `}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <Checkbox 
-                          checked={isSelected} 
-                          onCheckedChange={() => toggleCategory(name)}
-                          className="mt-0.5"
-                        />
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xl">{info.icon}</span>
-                            <span className="font-bold text-slate-900">{info.label}</span>
-                          </div>
-                          <p className="text-xs text-slate-500 mt-0.5">{info.description}</p>
-                        </div>
-                      </div>
-                    </div>
-                    <div className={`
-                      mt-2 pt-2 border-t flex items-center justify-between
-                      ${isSelected ? 'border-blue-200' : 'border-slate-100'}
-                    `}>
-                      <span className="text-xs text-slate-400 font-mono">{name}</span>
-                      <div className={`
-                        px-2 py-1 rounded-lg text-xs font-bold
-                        ${isSelected ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'}
-                      `}>
-                        {isLoading ? (
-                          <span className="flex items-center gap-1">
-                            <RefreshCw className="w-3 h-3 animate-spin" />
-                            ...
-                          </span>
-                        ) : (
-                          <span>{count !== undefined && count !== '?' ? count.toLocaleString() : '?'}</span>
-                        )}
-                      </div>
-                    </div>
-                    {isSelected && (
-                      <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-blue-500 to-indigo-600"></div>
-                    )}
-                  </label>
-                );
-              })}
+                      return next;
+                    });
+                  }}
+                >
+                  <span>{group.icon}</span>
+                  {group.label}
+                </Button>
+              ))}
             </div>
+
+            {/* Categories by Group */}
+            {Object.entries(CATEGORY_GROUPS).map(([groupKey, group]) => (
+              <div key={groupKey} className="space-y-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-lg">{group.icon}</span>
+                  <h4 className="font-bold text-slate-800">{group.label}</h4>
+                  <Badge variant="outline" className="text-xs">
+                    {group.categories.filter(cat => selected.has(cat)).length}/{group.categories.length}
+                  </Badge>
+                </div>
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                  {group.categories.map((name) => {
+                    const info = CATEGORY_INFO[name];
+                    if (!info) return null;
+                    const count = categoryCounts[name];
+                    const isLoading = loadingCounts && count === undefined;
+                    const isSelected = selected.has(name);
+                    
+                    return (
+                      <label 
+                        key={name} 
+                        className={`
+                          relative overflow-hidden flex flex-col gap-2 p-4 rounded-xl border-2 
+                          transition-all cursor-pointer group
+                          ${isSelected 
+                            ? 'border-blue-400 bg-gradient-to-br from-blue-50 to-indigo-50 shadow-lg scale-[1.02]' 
+                            : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-md'
+                          }
+                        `}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <Checkbox 
+                              checked={isSelected} 
+                              onCheckedChange={() => toggleCategory(name)}
+                              className="mt-0.5"
+                            />
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xl">{info.icon}</span>
+                                <span className="font-bold text-slate-900">{info.label}</span>
+                              </div>
+                              <p className="text-xs text-slate-500 mt-0.5">{info.description}</p>
+                            </div>
+                          </div>
+                        </div>
+                        <div className={`
+                          mt-2 pt-2 border-t flex items-center justify-between
+                          ${isSelected ? 'border-blue-200' : 'border-slate-100'}
+                        `}>
+                          <span className="text-xs text-slate-400 font-mono">{name}</span>
+                          <div className={`
+                            px-2 py-1 rounded-lg text-xs font-bold
+                            ${isSelected ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'}
+                          `}>
+                            {isLoading ? (
+                              <span className="flex items-center gap-1">
+                                <RefreshCw className="w-3 h-3 animate-spin" />
+                                ...
+                              </span>
+                            ) : (
+                              <span>{count !== undefined && count !== '?' ? count.toLocaleString() : '?'}</span>
+                            )}
+                          </div>
+                        </div>
+                        {isSelected && (
+                          <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-blue-500 to-indigo-600"></div>
+                        )}
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </CardContent>
         </Card>
 
