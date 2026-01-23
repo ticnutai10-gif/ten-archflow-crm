@@ -205,64 +205,81 @@ export default function ExportDialog({
         </DialogHeader>
 
         <div className="py-4 space-y-6">
-          <div className="space-y-3">
-            <Label>בחר פורמט</Label>
-            <RadioGroup value={format} onValueChange={setFormat} className="grid grid-cols-2 gap-4">
-              <div>
-                <RadioGroupItem value="xlsx" id="xlsx" className="peer sr-only" />
-                <Label
-                  htmlFor="xlsx"
-                  className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-blue-600 peer-data-[state=checked]:bg-blue-50 cursor-pointer"
-                >
-                  <FileSpreadsheet className="mb-2 h-6 w-6 text-green-600" />
-                  Excel (XLSX)
-                </Label>
+          {isExporting ? (
+            <div className="space-y-4 py-6">
+              <div className="flex items-center justify-center gap-3">
+                {progress < 100 ? (
+                  <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+                ) : (
+                  <CheckCircle2 className="w-6 h-6 text-green-600" />
+                )}
+                <span className="text-lg font-medium">{statusText}</span>
               </div>
-              
-              <div>
-                <RadioGroupItem value="json" id="json" className="peer sr-only" />
-                <Label
-                  htmlFor="json"
-                  className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-blue-600 peer-data-[state=checked]:bg-blue-50 cursor-pointer"
-                >
-                  <FileCode className="mb-2 h-6 w-6 text-orange-600" />
-                  JSON
-                </Label>
-              </div>
-
-              <div>
-                <RadioGroupItem value="csv" id="csv" className="peer sr-only" disabled />
-                <Label
-                  htmlFor="csv"
-                  className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 opacity-50 cursor-not-allowed"
-                >
-                  <FileText className="mb-2 h-6 w-6 text-slate-500" />
-                  CSV (ישן)
-                </Label>
-              </div>
-
-              <div>
-                <RadioGroupItem value="google_sheets" id="google_sheets" className="peer sr-only" />
-                <Label
-                  htmlFor="google_sheets"
-                  className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-blue-600 peer-data-[state=checked]:bg-blue-50 cursor-pointer"
-                >
-                  <FileSpreadsheet className="mb-2 h-6 w-6 text-green-700" />
-                  Google Sheets
-                </Label>
-              </div>
-            </RadioGroup>
-          </div>
-
-          {format === 'xlsx' && (
-            <div className="flex items-center space-x-2 space-x-reverse bg-slate-50 p-3 rounded-lg">
-              <Checkbox 
-                id="styles" 
-                checked={includeStyles} 
-                onCheckedChange={setIncludeStyles}
-              />
-              <Label htmlFor="styles" className="cursor-pointer">כלול עיצובים (צבעים, הדגשות)</Label>
+              <Progress value={progress} className="h-3" />
+              <div className="text-center text-sm text-slate-500">{progress}%</div>
             </div>
+          ) : (
+            <>
+              <div className="space-y-3">
+                <Label>בחר פורמט</Label>
+                <RadioGroup value={format} onValueChange={setFormat} className="grid grid-cols-2 gap-4">
+                  <div>
+                    <RadioGroupItem value="xlsx" id="xlsx" className="peer sr-only" />
+                    <Label
+                      htmlFor="xlsx"
+                      className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-blue-600 peer-data-[state=checked]:bg-blue-50 cursor-pointer"
+                    >
+                      <FileSpreadsheet className="mb-2 h-6 w-6 text-green-600" />
+                      Excel (XLSX)
+                    </Label>
+                  </div>
+                  
+                  <div>
+                    <RadioGroupItem value="json" id="json" className="peer sr-only" />
+                    <Label
+                      htmlFor="json"
+                      className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-blue-600 peer-data-[state=checked]:bg-blue-50 cursor-pointer"
+                    >
+                      <FileCode className="mb-2 h-6 w-6 text-orange-600" />
+                      JSON
+                    </Label>
+                  </div>
+
+                  <div>
+                    <RadioGroupItem value="csv" id="csv" className="peer sr-only" />
+                    <Label
+                      htmlFor="csv"
+                      className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-blue-600 peer-data-[state=checked]:bg-blue-50 cursor-pointer"
+                    >
+                      <FileText className="mb-2 h-6 w-6 text-blue-600" />
+                      CSV
+                    </Label>
+                  </div>
+
+                  <div>
+                    <RadioGroupItem value="google_sheets" id="google_sheets" className="peer sr-only" />
+                    <Label
+                      htmlFor="google_sheets"
+                      className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-blue-600 peer-data-[state=checked]:bg-blue-50 cursor-pointer"
+                    >
+                      <FileSpreadsheet className="mb-2 h-6 w-6 text-green-700" />
+                      Google Sheets
+                    </Label>
+                  </div>
+                </RadioGroup>
+              </div>
+
+              {(format === 'xlsx' || format === 'json') && (
+                <div className="flex items-center space-x-2 space-x-reverse bg-slate-50 p-3 rounded-lg">
+                  <Checkbox 
+                    id="styles" 
+                    checked={includeStyles} 
+                    onCheckedChange={setIncludeStyles}
+                  />
+                  <Label htmlFor="styles" className="cursor-pointer">כלול עיצובים (צבעים, הדגשות)</Label>
+                </div>
+              )}
+            </>
           )}
         </div>
 
