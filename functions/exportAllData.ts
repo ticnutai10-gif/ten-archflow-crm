@@ -128,40 +128,41 @@ Deno.serve(async (req) => {
 
     // CSV Export
     if (format === 'csv') {
-      let csvContent = `# ArchFlow CRM Backup\n# Created: ${now.toISOString()}\n# Total Records: ${totalRecords}\n\n`;
+      // Build CSV content without the comment lines that break Excel
+      let csvContent = '';
       
       for (const name of categories) {
         const rows = allData[name] || [];
         if (rows.length === 0) {
-          csvContent += `### ${name} ###\n# No data\n\n`;
-          continue;
+          continue; // Skip empty entities
         }
-        
-        csvContent += `### ${name} (${rows.length} records) ###\n`;
         
         const cleanRows = cleanDataForCsv(rows);
         
+        // Get all unique keys
         const allKeys = new Set();
         cleanRows.forEach(row => {
           Object.keys(row || {}).forEach(key => allKeys.add(key));
         });
         const headers = Array.from(allKeys);
         
-        csvContent += headers.map(h => escapeCsv(h)).join(',') + '\n';
+        // Add entity type as first column to identify which entity this row belongs to
+        csvContent += '_entity_type,' + headers.map(h => escapeCsv(h)).join(',') + '\n';
         
         cleanRows.forEach(row => {
           const values = headers.map(header => {
             return escapeCsv(row[header] || '');
           });
-          csvContent += values.join(',') + '\n';
+          csvContent += escapeCsv(name) + ',' + values.join(',') + '\n';
         });
-        
-        csvContent += '\n';
       }
       
-      const csvBytes = new TextEncoder().encode(csvContent);
+      // If no data at all, create a simple header
+      if (!csvContent) {
+        csvContent = '_entity_type,id,message\ninfo,,No data found for selected categories\n';
+      }
       
-      return new Response(csvBytes, {
+      return new Response(csvContent, {
         status: 200,
         headers: {
           'Content-Type': 'text/csv; charset=utf-8',
