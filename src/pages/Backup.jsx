@@ -287,10 +287,65 @@ export default function BackupPage() {
       }
       
       console.log("[Backup] Export completed successfully");
+      
+      // Add to history
+      if (window.addBackupToHistory) {
+        window.addBackupToHistory({
+          id: Date.now().toString(),
+          date: new Date().toISOString(),
+          format,
+          categories: Array.from(selected),
+          size: 0, // Will be calculated from blob
+          status: 'success',
+          name: `גיבוי ${format.toUpperCase()}`
+        });
+      }
+      
+      toast.success(`הייצוא הושלם בהצלחה! (${format.toUpperCase()})`);
     } catch (error) {
       console.error('Export error:', error);
-      alert('שגיאה ביצוא הנתונים: ' + (error?.message || error?.response?.data?.error || 'שגיאה לא ידועה'));
+      toast.error('שגיאה ביצוא הנתונים: ' + (error?.message || error?.response?.data?.error || 'שגיאה לא ידועה'));
+      
+      // Add failed to history
+      if (window.addBackupToHistory) {
+        window.addBackupToHistory({
+          id: Date.now().toString(),
+          date: new Date().toISOString(),
+          format,
+          categories: Array.from(selected),
+          size: 0,
+          status: 'error',
+          name: `גיבוי ${format.toUpperCase()} (נכשל)`
+        });
+      }
     }
+    setBusy(false);
+  };
+  
+  // NEW: Parse import file and show compare dialog
+  const handleImportWithCompare = async (file) => {
+    if (!file) return;
+    setBusy(true);
+    
+    try {
+      const text = await file.text();
+      let data = {};
+      
+      if (file.name.endsWith('.json')) {
+        data = JSON.parse(text);
+      } else {
+        toast.error('השוואה נתמכת רק בקבצי JSON');
+        setBusy(false);
+        return;
+      }
+      
+      setImportDataForCompare(data);
+      setShowCompare(true);
+    } catch (error) {
+      console.error('Parse error:', error);
+      toast.error('שגיאה בקריאת הקובץ');
+    }
+    
     setBusy(false);
   };
 
