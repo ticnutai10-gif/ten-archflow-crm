@@ -958,6 +958,13 @@ export default function BackupPage() {
             )}
           </CardContent>
         </Card>
+        
+        {/* Backup History Panel */}
+        <BackupHistoryPanel />
+        
+          </TabsContent>
+          
+          <TabsContent value="import" className="space-y-6">
 
         {/* ייבוא נתונים */}
         <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm">
