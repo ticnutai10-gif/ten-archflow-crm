@@ -4,9 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Download, FileSpreadsheet, FileJson, FileText, Check, FileCode } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Download, FileSpreadsheet, FileText, FileCode, CheckCircle2, Loader2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
+import * as XLSX from "xlsx";
 
 export default function ExportDialog({ 
   open, 
