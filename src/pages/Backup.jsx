@@ -39,9 +39,12 @@ const CATEGORY_INFO = {
   "DailyMeetingSummary": { label: "סיכומי פגישות", icon: "📋", color: "green", description: "סיכומים יומיים של פגישות", group: "calendar" },
   
   // === טבלאות מותאמות ===
-  "CustomSpreadsheet": { label: "טבלאות מותאמות", icon: "📊", color: "teal", description: "טבלאות אקסל מותאמות (כולל נתוני שורות)", group: "spreadsheets" },
+  "CustomSpreadsheet": { label: "טבלאות מותאמות", icon: "📊", color: "teal", description: "טבלאות אקסל מותאמות (כולל נתוני שורות, עיצוב ותגובות)", group: "spreadsheets" },
   "SheetComment": { label: "תגובות בטבלאות", icon: "💬", color: "cyan", description: "תגובות והערות בטבלאות", group: "spreadsheets" },
   "SheetPresence": { label: "נוכחות בטבלאות", icon: "👁️", color: "blue", description: "מעקב נוכחות משתמשים בטבלאות", group: "spreadsheets" },
+  
+  // === טבלאות לקוחות (שדות מותאמים) ===
+  "ClientCustomFields": { label: "שדות לקוחות מותאמים", icon: "📋", color: "indigo", description: "נתוני שדות מותאמים של לקוחות (custom_data)", group: "client_spreadsheets" },
   
   // === הגדרות נתונים ===
   "GlobalDataType": { label: "סוגי נתונים גלובליים", icon: "🏷️", color: "violet", description: "הגדרות סוגי נתונים מותאמים", group: "settings" },
