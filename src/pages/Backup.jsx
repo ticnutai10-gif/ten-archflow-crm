@@ -96,6 +96,7 @@ const CATEGORY_GROUPS = {
   tasks: { label: "משימות ושעות", icon: "✅", color: "green", categories: ["Task", "SubTask", "TimeLog"] },
   calendar: { label: "לוח שנה", icon: "📅", color: "purple", categories: ["Meeting", "Reminder", "DailyMeetingSummary"] },
   spreadsheets: { label: "טבלאות מותאמות", icon: "📊", color: "teal", categories: ["CustomSpreadsheet", "SheetComment", "SheetPresence"] },
+  client_spreadsheets: { label: "נתוני לקוחות מורחב", icon: "👥", color: "indigo", categories: ["Client", "ClientCustomFields"] },
   users: { label: "צוות ומשתמשים", icon: "👥", color: "violet", categories: ["TeamMember", "AccessControl", "UserPreferences", "UserAvailability", "NotificationSettings"] },
   communication: { label: "תקשורת", icon: "💬", color: "cyan", categories: ["CommunicationMessage", "InternalChat", "InternalMessage", "MessageTemplate", "Notification"] },
   documents: { label: "מסמכים וקבצים", icon: "📁", color: "slate", categories: ["Document", "SmartDocument", "ClientFile", "QuoteFile"] },
