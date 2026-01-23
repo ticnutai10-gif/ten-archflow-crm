@@ -1288,6 +1288,39 @@ export default function BackupPage() {
             onDone={() => setImporterEntity(null)}
           />
         )}
+        
+        {/* Data Preview Dialog */}
+        <DataPreviewDialog
+          open={showPreview}
+          onClose={() => setShowPreview(false)}
+          categories={Array.from(selected)}
+          categoryInfo={CATEGORY_INFO}
+          onExport={(data) => {
+            const jsonData = JSON.stringify(data, null, 2);
+            const blob = new Blob([jsonData], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `custom-export-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            URL.revokeObjectURL(url);
+            a.remove();
+            setShowPreview(false);
+            toast.success('הייצוא המותאם הושלם');
+          }}
+        />
+        
+        {/* Import Compare Dialog */}
+        <ImportCompareDialog
+          open={showCompare}
+          onClose={() => setShowCompare(false)}
+          importData={importDataForCompare}
+          onConfirmImport={(data) => {
+            toast.success('הייבוא הושלם בהצלחה');
+            setImportFile(null);
+          }}
+        />
       </div>
     </div>
   );
