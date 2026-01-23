@@ -27,10 +27,21 @@ export default function ExportDialog({
 
   const handleExport = async () => {
     setIsExporting(true);
+    setProgress(0);
+    setStatusText("מתחיל ייצוא...");
+    
     try {
+      // Google Sheets export
       if (format === 'google_sheets') {
+        setStatusText("מתחבר ל-Google Sheets...");
+        setProgress(20);
         if (onExportToGoogle) {
+          setProgress(50);
+          setStatusText("מעלה נתונים...");
           await onExportToGoogle();
+          setProgress(100);
+          setStatusText("הושלם!");
+          await new Promise(r => setTimeout(r, 500));
           onClose();
         } else {
           toast.error("ייצוא ל-Google Sheets אינו זמין כרגע");
@@ -39,8 +50,11 @@ export default function ExportDialog({
         return;
       }
 
-      // JSON export - do it client-side for reliability
+      // JSON export - client-side
       if (format === 'json') {
+        setStatusText("מכין נתונים...");
+        setProgress(30);
+        
         const exportData = {
           name: spreadsheetName,
           exported_at: new Date().toISOString(),
@@ -53,8 +67,15 @@ export default function ExportDialog({
           }
         };
         
+        setStatusText("יוצר קובץ JSON...");
+        setProgress(60);
+        
         const jsonStr = JSON.stringify(exportData, null, 2);
         const blob = new Blob([jsonStr], { type: 'application/json; charset=utf-8' });
+        
+        setStatusText("מוריד קובץ...");
+        setProgress(90);
+        
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -64,72 +85,112 @@ export default function ExportDialog({
         window.URL.revokeObjectURL(url);
         a.remove();
         
+        setProgress(100);
+        setStatusText("הושלם בהצלחה!");
         toast.success("קובץ JSON יוצא בהצלחה");
+        await new Promise(r => setTimeout(r, 500));
         onClose();
         setIsExporting(false);
         return;
       }
 
-      // For Excel, use the backend function
-      const payload = {
-        format,
-        data: rowsData,
-        columns: columns,
-        styles: cellStyles,
-        options: {
-          includeStyles,
-          sheetName: spreadsheetName
-        }
-      };
-
-      // Try using the SDK invoke which returns axios response
-      const response = await base44.functions.invoke('exportSpreadsheet', payload);
-      
-      // Check if we got binary data
-      if (response.data) {
-        let blob;
-        if (response.data instanceof ArrayBuffer || response.data instanceof Uint8Array) {
-          blob = new Blob([response.data], { 
-            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
-          });
-        } else if (typeof response.data === 'string') {
-          // Maybe base64?
-          try {
-            const binary = atob(response.data);
-            const bytes = new Uint8Array(binary.length);
-            for (let i = 0; i < binary.length; i++) {
-              bytes[i] = binary.charCodeAt(i);
-            }
-            blob = new Blob([bytes], { 
-              type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
-            });
-          } catch {
-            blob = new Blob([response.data], { type: 'application/octet-stream' });
-          }
-        } else {
-          // Fallback - stringify if object
-          blob = new Blob([JSON.stringify(response.data)], { type: 'application/json' });
-        }
+      // CSV export - client-side
+      if (format === 'csv') {
+        setStatusText("מכין נתונים...");
+        setProgress(20);
+        
+        const visibleColumns = (columns || []).filter(c => c.visible !== false);
+        const headers = visibleColumns.map(c => c.title || c.key).join(',');
+        
+        setStatusText("ממיר לפורמט CSV...");
+        setProgress(50);
+        
+        const csvRows = (rowsData || []).map(row => {
+          return visibleColumns.map(col => {
+            const val = row[col.key] ?? '';
+            const strVal = String(val).replace(/"/g, '""');
+            return `"${strVal}"`;
+          }).join(',');
+        });
+        
+        const csvContent = '\uFEFF' + [headers, ...csvRows].join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv; charset=utf-8' });
+        
+        setStatusText("מוריד קובץ...");
+        setProgress(90);
         
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `${spreadsheetName || 'export'}.${format === 'xlsx' ? 'xlsx' : format}`;
+        a.download = `${spreadsheetName || 'export'}.csv`;
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
         a.remove();
         
-        toast.success("הקובץ יוצא בהצלחה");
+        setProgress(100);
+        setStatusText("הושלם בהצלחה!");
+        toast.success("קובץ CSV יוצא בהצלחה");
+        await new Promise(r => setTimeout(r, 500));
         onClose();
-      } else {
-        throw new Error('לא התקבלו נתונים מהשרת');
+        setIsExporting(false);
+        return;
       }
+
+      // Excel export - client-side using xlsx library
+      if (format === 'xlsx') {
+        setStatusText("מכין נתונים...");
+        setProgress(20);
+        
+        const visibleColumns = (columns || []).filter(c => c.visible !== false);
+        
+        setStatusText("יוצר גיליון Excel...");
+        setProgress(40);
+        
+        // Prepare data for Excel
+        const wsData = [];
+        
+        // Headers
+        wsData.push(visibleColumns.map(c => c.title || c.key));
+        
+        // Data rows
+        (rowsData || []).forEach(row => {
+          wsData.push(visibleColumns.map(col => row[col.key] ?? ''));
+        });
+        
+        setStatusText("מעצב גיליון...");
+        setProgress(60);
+        
+        const ws = XLSX.utils.aoa_to_sheet(wsData);
+        
+        // Set column widths
+        ws['!cols'] = visibleColumns.map(col => ({
+          wch: Math.max(15, (col.title || col.key).length + 5)
+        }));
+        
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, spreadsheetName?.substring(0, 31) || 'Sheet1');
+        
+        setStatusText("מוריד קובץ...");
+        setProgress(90);
+        
+        XLSX.writeFile(wb, `${spreadsheetName || 'export'}.xlsx`);
+        
+        setProgress(100);
+        setStatusText("הושלם בהצלחה!");
+        toast.success("קובץ Excel יוצא בהצלחה");
+        await new Promise(r => setTimeout(r, 500));
+        onClose();
+      }
+      
     } catch (error) {
       console.error("Export error:", error);
+      setStatusText("שגיאה בייצוא");
       toast.error("שגיאה בייצוא: " + (error?.message || 'שגיאה לא ידועה'));
     } finally {
       setIsExporting(false);
+      setProgress(0);
+      setStatusText("");
     }
   };
 
