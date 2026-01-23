@@ -452,6 +452,15 @@ export default function BackupPage() {
             <p className="text-slate-600 text-lg">מערכת גיבוי משוכללת עם ייצוא בפורמטים מרובים</p>
           </div>
           <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              className="gap-2 bg-white shadow-md"
+              onClick={() => setShowPreview(true)}
+              disabled={selected.size === 0}
+            >
+              <Eye className="w-4 h-4" />
+              תצוגה מקדימה
+            </Button>
             <div className="bg-white rounded-xl px-6 py-3 shadow-md border border-blue-100">
               <div className="text-2xl font-bold text-blue-600">{totalSelectedRecords.toLocaleString()}</div>
               <div className="text-xs text-slate-500">רשומות נבחרות</div>
@@ -462,6 +471,25 @@ export default function BackupPage() {
             </div>
           </div>
         </div>
+        
+        {/* Main Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid grid-cols-3 w-full max-w-lg mx-auto mb-6 bg-white shadow-md">
+            <TabsTrigger value="export" className="gap-2">
+              <Download className="w-4 h-4" />
+              ייצוא
+            </TabsTrigger>
+            <TabsTrigger value="import" className="gap-2">
+              <Upload className="w-4 h-4" />
+              ייבוא
+            </TabsTrigger>
+            <TabsTrigger value="schedule" className="gap-2">
+              <CalendarClock className="w-4 h-4" />
+              תזמון
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="export" className="space-y-6">
 
         {/* Quick Export by Group */}
         <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm">
