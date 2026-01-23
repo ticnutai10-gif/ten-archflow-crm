@@ -26,7 +26,7 @@ export default function ExportDialog({
     try {
       if (format === 'google_sheets') {
         if (onExportToGoogle) {
-          onExportToGoogle();
+          await onExportToGoogle();
           onClose();
         } else {
           toast.error("ייצוא ל-Google Sheets אינו זמין כרגע");
@@ -35,7 +35,38 @@ export default function ExportDialog({
         return;
       }
 
-      // Prepare payload
+      // JSON export - do it client-side for reliability
+      if (format === 'json') {
+        const exportData = {
+          name: spreadsheetName,
+          exported_at: new Date().toISOString(),
+          columns: columns,
+          rows_data: rowsData,
+          cell_styles: includeStyles ? cellStyles : {},
+          summary: {
+            total_rows: (rowsData || []).length,
+            total_columns: (columns || []).length
+          }
+        };
+        
+        const jsonStr = JSON.stringify(exportData, null, 2);
+        const blob = new Blob([jsonStr], { type: 'application/json; charset=utf-8' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${spreadsheetName || 'export'}.json`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        a.remove();
+        
+        toast.success("קובץ JSON יוצא בהצלחה");
+        onClose();
+        setIsExporting(false);
+        return;
+      }
+
+      // For Excel, use the backend function
       const payload = {
         format,
         data: rowsData,
@@ -47,80 +78,52 @@ export default function ExportDialog({
         }
       };
 
-      // Call backend
+      // Try using the SDK invoke which returns axios response
       const response = await base44.functions.invoke('exportSpreadsheet', payload);
       
-      // Handle file download
-      // The backend returns a blob/buffer
-      // We need to handle this manually since SDK might try to parse JSON
-      
-      // Re-fetch using native fetch to get blob if SDK parses it weirdly
-      // OR use the data from SDK if it handles binary.
-      // Base44 SDK 'invoke' usually returns JSON. For binary, we might need a direct call or specific handling.
-      // Assuming 'invoke' returns the parsed JSON body, but we need binary.
-      // Let's use fetch directly for binary download
-      
-      // TODO: Check if base44 SDK supports binary response.
-      // If not, we can construct the URL manually.
-      
-      // Fallback: Using direct fetch with authentication headers
-      // Since we don't have easy access to auth headers here without SDK internals,
-      // we might need to rely on the backend returning a signed URL or base64.
-      // BUT, let's try to fetch using the function URL if we can get it.
-      
-      // ALTERNATIVE: Backend returns base64 in JSON.
-      // Let's stick to standard invoke and see. If it fails, we switch to Base64.
-      // For now, let's try to fetch the function URL directly.
-      
-      // Let's try to use the 'exportSpreadsheet' logic completely in client side for small data?
-      // No, we already wrote the backend function.
-      
-      // Let's modify the frontend to use fetch with token.
-      const session = await base44.auth.getSession();
-      const token = session?.access_token;
-      
-      // Construct function URL (assuming standard pattern or getting it from somewhere)
-      // Actually, we can use the `functions/exportSpreadsheet` path relative to API? 
-      // Base44 functions are usually at /functions/functionName
-      
-      // Better approach: Modify backend to return Base64 string if frontend SDK limits binary.
-      // But standard 'response.blob()' works with fetch.
-      
-      const functionUrl = `/functions/exportSpreadsheet`; 
-      // Note: In local dev or some envs this might differ. 
-      // Let's try using `base44.functions.invoke` and expect it to handle it?
-      // SDK `invoke` does `response.json()`. It will fail for binary.
-      
-      // We will use `fetch` to call the function.
-      const res = await fetch(functionUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(payload)
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Export failed');
+      // Check if we got binary data
+      if (response.data) {
+        let blob;
+        if (response.data instanceof ArrayBuffer || response.data instanceof Uint8Array) {
+          blob = new Blob([response.data], { 
+            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+          });
+        } else if (typeof response.data === 'string') {
+          // Maybe base64?
+          try {
+            const binary = atob(response.data);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) {
+              bytes[i] = binary.charCodeAt(i);
+            }
+            blob = new Blob([bytes], { 
+              type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+            });
+          } catch {
+            blob = new Blob([response.data], { type: 'application/octet-stream' });
+          }
+        } else {
+          // Fallback - stringify if object
+          blob = new Blob([JSON.stringify(response.data)], { type: 'application/json' });
+        }
+        
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${spreadsheetName || 'export'}.${format === 'xlsx' ? 'xlsx' : format}`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        a.remove();
+        
+        toast.success("הקובץ יוצא בהצלחה");
+        onClose();
+      } else {
+        throw new Error('לא התקבלו נתונים מהשרת');
       }
-
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${spreadsheetName}.${format}`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      a.remove();
-
-      toast.success("הקובץ יוצא בהצלחה");
-      onClose();
     } catch (error) {
       console.error("Export error:", error);
-      toast.error("שגיאה בייצוא: " + error.message);
+      toast.error("שגיאה בייצוא: " + (error?.message || 'שגיאה לא ידועה'));
     } finally {
       setIsExporting(false);
     }
