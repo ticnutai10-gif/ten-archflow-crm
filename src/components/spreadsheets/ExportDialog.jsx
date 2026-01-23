@@ -283,14 +283,17 @@ export default function ExportDialog({
           )}
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={isExporting}>
-            ביטול
-          </Button>
-          <Button onClick={handleExport} disabled={isExporting} className="bg-blue-600 hover:bg-blue-700">
-            {isExporting ? "מייצא..." : "ייצא"}
-          </Button>
-        </DialogFooter>
+        {!isExporting && (
+          <DialogFooter>
+            <Button variant="outline" onClick={onClose}>
+              ביטול
+            </Button>
+            <Button onClick={handleExport} className="bg-blue-600 hover:bg-blue-700 gap-2">
+              <Download className="w-4 h-4" />
+              ייצא
+            </Button>
+          </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   );
