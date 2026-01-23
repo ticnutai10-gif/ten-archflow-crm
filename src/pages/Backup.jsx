@@ -1070,6 +1070,18 @@ export default function BackupPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    {importFile.name.endsWith('.json') && (
+                      <Button 
+                        size="lg"
+                        variant="outline"
+                        onClick={() => handleImportWithCompare(importFile)}
+                        disabled={busy}
+                        className="gap-2 border-amber-300 text-amber-700 hover:bg-amber-50"
+                      >
+                        <GitCompare className="w-5 h-5" />
+                        השווה לפני ייבוא
+                      </Button>
+                    )}
                     <Button 
                       size="lg"
                       onClick={() => handleImportFile(importFile)}
