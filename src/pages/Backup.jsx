@@ -735,6 +735,154 @@ export default function BackupPage() {
           </Card>
         </div>
 
+        {/* Export Spreadsheets with Full Data */}
+        <Card className="shadow-xl border-0 bg-gradient-to-r from-indigo-50 to-blue-50 border-l-4 border-l-indigo-500">
+          <CardHeader className="border-b bg-gradient-to-l from-indigo-50 to-white pb-4">
+            <CardTitle className="flex items-center gap-3 text-2xl">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center shadow-lg">
+                <Table className="w-6 h-6 text-white" />
+              </div>
+              גיבוי מלא של טבלאות (כולל rows_data)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-6">
+            <p className="text-sm text-slate-600 mb-4">
+              גיבוי מלא של כל הטבלאות המותאמות כולל כל השורות, העיצוב, תגובות וסטיילינג. מתאים לשחזור מלא.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Button 
+                onClick={async () => {
+                  setBusy(true);
+                  try {
+                    // Fetch CustomSpreadsheet with all data
+                    const spreadsheets = await base44.entities.CustomSpreadsheet.list('-created_date', 10000);
+                    const comments = await base44.entities.SheetComment.list('-created_date', 50000);
+                    
+                    const exportData = {
+                      generated_at: new Date().toISOString(),
+                      type: 'spreadsheets_full_backup',
+                      spreadsheets: spreadsheets.map(sheet => ({
+                        ...sheet,
+                        _backup_info: {
+                          rows_count: (sheet.rows_data || []).length,
+                          columns_count: (sheet.columns || []).length,
+                          has_styles: !!sheet.cell_styles && Object.keys(sheet.cell_styles).length > 0,
+                          has_comments: comments.filter(c => c.spreadsheet_id === sheet.id).length
+                        }
+                      })),
+                      comments: comments,
+                      summary: {
+                        total_spreadsheets: spreadsheets.length,
+                        total_rows: spreadsheets.reduce((sum, s) => sum + (s.rows_data || []).length, 0),
+                        total_comments: comments.length
+                      }
+                    };
+                    
+                    const jsonData = JSON.stringify(exportData, null, 2);
+                    const blob = new Blob([jsonData], { type: "application/json" });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `spreadsheets-full-backup-${new Date().toISOString().split('T')[0]}.json`;
+                    document.body.appendChild(a);
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    a.remove();
+                    toast.success('גיבוי הטבלאות הושלם בהצלחה');
+                  } catch (error) {
+                    console.error('Spreadsheets Full Export error:', error);
+                    toast.error('שגיאה בגיבוי טבלאות: ' + (error?.message || 'שגיאה לא ידועה'));
+                  }
+                  setBusy(false);
+                }}
+                disabled={busy}
+                className="gap-2 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white shadow-lg"
+              >
+                {busy ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                JSON מלא (מומלץ)
+              </Button>
+              
+              <Button 
+                onClick={async () => {
+                  setBusy(true);
+                  try {
+                    const response = await exportAllData({ format: 'excel', categories: ['CustomSpreadsheet'] });
+                    const blob = new Blob([response.data], { 
+                      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+                    });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `spreadsheets-${new Date().toISOString().split('T')[0]}.xlsx`;
+                    document.body.appendChild(a);
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    a.remove();
+                    toast.success('גיבוי Excel הושלם');
+                  } catch (error) {
+                    console.error('Spreadsheets Excel Export error:', error);
+                    toast.error('שגיאה בייצוא Excel: ' + (error?.message || 'שגיאה לא ידועה'));
+                  }
+                  setBusy(false);
+                }}
+                disabled={busy}
+                variant="outline"
+                className="gap-2"
+              >
+                {busy ? <RefreshCw className="w-4 h-4 animate-spin" /> : <FileBarChart className="w-4 h-4" />}
+                Excel (כל גיליון בנפרד)
+              </Button>
+              
+              <Button 
+                onClick={async () => {
+                  setBusy(true);
+                  try {
+                    // Export clients with their custom_data expanded
+                    const clients = await base44.entities.Client.list('-created_date', 10000);
+                    
+                    const exportData = {
+                      generated_at: new Date().toISOString(),
+                      type: 'clients_with_custom_fields',
+                      clients: clients.map(client => ({
+                        ...client,
+                        _custom_data_expanded: client.custom_data || {},
+                        _professionals_expanded: client.professionals || {}
+                      })),
+                      summary: {
+                        total_clients: clients.length,
+                        with_custom_data: clients.filter(c => c.custom_data && Object.keys(c.custom_data).length > 0).length,
+                        with_professionals: clients.filter(c => c.professionals && Object.keys(c.professionals).length > 0).length
+                      }
+                    };
+                    
+                    const jsonData = JSON.stringify(exportData, null, 2);
+                    const blob = new Blob([jsonData], { type: "application/json" });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `clients-full-backup-${new Date().toISOString().split('T')[0]}.json`;
+                    document.body.appendChild(a);
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    a.remove();
+                    toast.success('גיבוי לקוחות הושלם בהצלחה');
+                  } catch (error) {
+                    console.error('Clients Full Export error:', error);
+                    toast.error('שגיאה בגיבוי לקוחות: ' + (error?.message || 'שגיאה לא ידועה'));
+                  }
+                  setBusy(false);
+                }}
+                disabled={busy}
+                variant="outline"
+                className="gap-2"
+              >
+                {busy ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Users className="w-4 h-4" />}
+                לקוחות + שדות מותאמים
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
 
 
         {/* בחירת קטגוריות */}
