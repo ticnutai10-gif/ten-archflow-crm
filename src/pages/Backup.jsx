@@ -731,26 +731,7 @@ export default function BackupPage() {
           </Card>
         </div>
 
-        {/* Automatic Backup Status */}
-        <Card className="shadow-xl border-0 bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-l-green-500">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg">
-                  <CalendarClock className="w-8 h-8 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-slate-900 mb-1">גיבוי אוטומטי שבועי</h3>
-                  <p className="text-sm text-slate-600">הגיבוי רץ אוטומטית כל יום ראשון בשעה 02:00 ונשלח למייל המנהלים</p>
-                  {lastRun && (
-                    <p className="text-xs text-slate-500 mt-1">גיבוי אחרון: {new Date(lastRun).toLocaleString('he-IL')}</p>
-                  )}
-                </div>
-              </div>
-              <CheckCircle2 className="w-12 h-12 text-green-500" />
-            </div>
-          </CardContent>
-        </Card>
+
 
         {/* בחירת קטגוריות */}
         <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm">
