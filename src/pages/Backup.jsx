@@ -120,6 +120,12 @@ export default function BackupPage() {
   // NEW: State for record counts per category
   const [categoryCounts, setCategoryCounts] = useState({});
   const [loadingCounts, setLoadingCounts] = useState(true);
+  
+  // NEW: Advanced features state
+  const [showPreview, setShowPreview] = useState(false);
+  const [showCompare, setShowCompare] = useState(false);
+  const [importDataForCompare, setImportDataForCompare] = useState({});
+  const [activeTab, setActiveTab] = useState('export');
 
   useEffect(() => {
     // load user backup prefs
