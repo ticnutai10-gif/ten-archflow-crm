@@ -1096,47 +1096,7 @@ export default function BackupPage() {
           </CardContent>
         </Card>
 
-        {/* הגדרות גיבוי אוטומטי בכניסה */}
-        <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm">
-          <CardHeader className="border-b bg-gradient-to-l from-purple-50 to-white pb-4">
-            <CardTitle className="flex items-center gap-3 text-2xl">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center shadow-lg">
-                <Settings className="w-6 h-6 text-white" />
-              </div>
-              גיבוי אוטומטי בעת כניסה
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-6 space-y-4">
-            <div className="flex items-center gap-4 flex-wrap">
-              <label className="flex items-center gap-3 cursor-pointer px-4 py-3 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors">
-                <Checkbox checked={autoEnabled} onCheckedChange={setAutoEnabled} disabled={busy} />
-                <span className="font-semibold text-slate-900">הפעל גיבוי בכניסה לעמוד</span>
-              </label>
-              <Select value={autoFreq} onValueChange={setAutoFreq} disabled={busy || !autoEnabled}>
-                <SelectTrigger className="w-40 h-12">
-                  <SelectValue placeholder="תדירות" />
-                </SelectTrigger>
-                <SelectContent align="end">
-                  <SelectItem value="daily">פעם ביום</SelectItem>
-                  <SelectItem value="weekly">פעם בשבוע</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button 
-                onClick={saveAutoSettings} 
-                disabled={busy}
-                className="gap-2 bg-purple-600 hover:bg-purple-700 h-12"
-              >
-                <CheckCircle2 className="w-4 h-4" />
-                שמור הגדרות
-              </Button>
-            </div>
-            {lastRun && (
-              <div className="text-sm text-slate-600 bg-slate-50 rounded-lg p-3">
-                📅 גיבוי אחרון: {new Date(lastRun).toLocaleString('he-IL', { dateStyle: 'full', timeStyle: 'short' })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+
 
         {/* ייבוא לפי קטגוריה */}
         <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm">
