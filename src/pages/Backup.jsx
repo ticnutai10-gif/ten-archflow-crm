@@ -209,11 +209,10 @@ export default function BackupPage() {
         a.click();
         URL.revokeObjectURL(url);
         a.remove();
-      } else {
-        // For Excel/CSV/XML, use the exportAllData function
-        console.log("[Backup] Calling exportAllData with:", { format, categories });
-        const response = await exportAllData({ format, categories });
-        console.log("[Backup] exportAllData response size:", response.data?.length || 'unknown');
+      } else if (format === 'excel') {
+        // For Excel - create CSV and let user open in Excel (true .xlsx requires a library)
+        console.log("[Backup] Creating Excel-compatible CSV for:", categories);
+        const response = await exportAllData({ format: 'csv', categories });
         
         if (!response.data) {
           console.error("[Backup] No data in response:", response);
@@ -221,9 +220,46 @@ export default function BackupPage() {
           return;
         }
         
-        const blob = new Blob([response.data], { 
-          type: format === 'excel' ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' :
-                format === 'csv' ? 'text/csv; charset=utf-8' :
+        // Add BOM for Excel Hebrew support
+        const BOM = '\uFEFF';
+        const csvWithBom = BOM + (typeof response.data === 'string' ? response.data : new TextDecoder().decode(response.data));
+        const blob = new Blob([csvWithBom], { type: 'text/csv; charset=utf-8' });
+        
+        console.log("[Backup] Created Excel CSV blob size:", blob.size, "bytes");
+        
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `backup-${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        URL.revokeObjectURL(url);
+        a.remove();
+      } else {
+        // For CSV/XML, use the exportAllData function
+        console.log("[Backup] Calling exportAllData with:", { format, categories });
+        const response = await exportAllData({ format, categories });
+        console.log("[Backup] exportAllData response:", response);
+        
+        if (!response.data) {
+          console.error("[Backup] No data in response:", response);
+          alert('שגיאה: לא התקבלו נתונים מהשרת');
+          return;
+        }
+        
+        // Handle both string and ArrayBuffer responses
+        let content = response.data;
+        if (content instanceof ArrayBuffer) {
+          content = new TextDecoder().decode(content);
+        }
+        
+        // Add BOM for CSV Hebrew support
+        if (format === 'csv') {
+          content = '\uFEFF' + content;
+        }
+        
+        const blob = new Blob([content], { 
+          type: format === 'csv' ? 'text/csv; charset=utf-8' :
                 format === 'xml' ? 'application/xml; charset=utf-8' : 'application/octet-stream'
         });
         
@@ -232,8 +268,7 @@ export default function BackupPage() {
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        const ext = format === 'excel' ? 'xlsx' : format;
-        a.download = `backup-${new Date().toISOString().split('T')[0]}.${ext}`;
+        a.download = `backup-${new Date().toISOString().split('T')[0]}.${format}`;
         document.body.appendChild(a);
         a.click();
         URL.revokeObjectURL(url);
