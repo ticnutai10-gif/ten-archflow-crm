@@ -127,6 +127,169 @@ Deno.serve(async (req) => {
     const now = new Date();
     const dateStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
 
+    // Excel Export (true .xlsx with formatting)
+    if (format === 'excel') {
+      const workbook = XLSX.utils.book_new();
+      
+      for (const name of categories) {
+        const rows = allData[name] || [];
+        if (rows.length === 0) continue;
+        
+        const cleanRows = cleanDataForCsv(rows);
+        
+        // Special handling for CustomSpreadsheet - export with full styling
+        if (name === 'CustomSpreadsheet') {
+          for (const spreadsheet of rows) {
+            const sheetName = (spreadsheet.name || 'Sheet').substring(0, 31).replace(/[\\/*?:\[\]]/g, '_');
+            const sheetRows = spreadsheet.rows_data || [];
+            const columns = spreadsheet.columns || [];
+            
+            if (sheetRows.length === 0) continue;
+            
+            // Build data with headers
+            const headers = columns.map(col => col.title || col.key);
+            const dataRows = sheetRows.map(row => {
+              return columns.map(col => {
+                const val = row[col.key];
+                return val !== null && val !== undefined ? val : '';
+              });
+            });
+            
+            const wsData = [headers, ...dataRows];
+            const ws = XLSX.utils.aoa_to_sheet(wsData);
+            
+            // Apply column widths
+            ws['!cols'] = columns.map(col => {
+              const width = parseInt(col.width) || 100;
+              return { wch: Math.max(10, Math.floor(width / 7)) };
+            });
+            
+            // Apply cell styles from spreadsheet.cell_styles
+            const cellStyles = spreadsheet.cell_styles || {};
+            const headerStyles = spreadsheet.header_styles || {};
+            
+            // Style headers (row 1)
+            for (let c = 0; c < headers.length; c++) {
+              const cellRef = XLSX.utils.encode_cell({ r: 0, c });
+              if (!ws[cellRef]) ws[cellRef] = { v: headers[c], t: 's' };
+              ws[cellRef].s = {
+                font: { bold: true, color: { rgb: "FFFFFF" } },
+                fill: { fgColor: { rgb: "2C3A50" } },
+                alignment: { horizontal: "center", vertical: "center" }
+              };
+              
+              // Apply custom header styles if exist
+              const colKey = columns[c]?.key;
+              if (headerStyles[colKey]) {
+                const hs = headerStyles[colKey];
+                if (hs.backgroundColor) {
+                  ws[cellRef].s.fill = { fgColor: { rgb: hs.backgroundColor.replace('#', '') } };
+                }
+                if (hs.color) {
+                  ws[cellRef].s.font = { ...ws[cellRef].s.font, color: { rgb: hs.color.replace('#', '') } };
+                }
+              }
+            }
+            
+            // Apply cell styles for data rows
+            for (let r = 0; r < sheetRows.length; r++) {
+              const rowId = sheetRows[r].id || sheetRows[r]._id || `row_${r}`;
+              for (let c = 0; c < columns.length; c++) {
+                const cellRef = XLSX.utils.encode_cell({ r: r + 1, c });
+                const colKey = columns[c]?.key;
+                const styleKey = `${rowId}_${colKey}`;
+                
+                if (cellStyles[styleKey] && ws[cellRef]) {
+                  const style = cellStyles[styleKey];
+                  ws[cellRef].s = ws[cellRef].s || {};
+                  
+                  if (style.backgroundColor) {
+                    ws[cellRef].s.fill = { fgColor: { rgb: style.backgroundColor.replace('#', '') } };
+                  }
+                  if (style.color) {
+                    ws[cellRef].s.font = { ...(ws[cellRef].s.font || {}), color: { rgb: style.color.replace('#', '') } };
+                  }
+                  if (style.fontWeight === 'bold') {
+                    ws[cellRef].s.font = { ...(ws[cellRef].s.font || {}), bold: true };
+                  }
+                }
+              }
+            }
+            
+            // Handle merged cells
+            if (spreadsheet.merged_cells) {
+              ws['!merges'] = ws['!merges'] || [];
+              for (const [mergeKey, mergeInfo] of Object.entries(spreadsheet.merged_cells)) {
+                if (mergeInfo.start && mergeInfo.end) {
+                  ws['!merges'].push({
+                    s: { r: mergeInfo.start.row + 1, c: mergeInfo.start.col },
+                    e: { r: mergeInfo.end.row + 1, c: mergeInfo.end.col }
+                  });
+                }
+              }
+            }
+            
+            // Freeze header row
+            ws['!freeze'] = { xSplit: 0, ySplit: 1 };
+            
+            XLSX.utils.book_append_sheet(workbook, ws, sheetName);
+          }
+        } else {
+          // Regular entity - simple export
+          const allKeys = new Set();
+          cleanRows.forEach(row => {
+            Object.keys(row || {}).forEach(key => allKeys.add(key));
+          });
+          const headers = Array.from(allKeys);
+          
+          const dataRows = cleanRows.map(row => headers.map(h => row[h] || ''));
+          const wsData = [headers, ...dataRows];
+          const ws = XLSX.utils.aoa_to_sheet(wsData);
+          
+          // Style headers
+          for (let c = 0; c < headers.length; c++) {
+            const cellRef = XLSX.utils.encode_cell({ r: 0, c });
+            if (ws[cellRef]) {
+              ws[cellRef].s = {
+                font: { bold: true, color: { rgb: "FFFFFF" } },
+                fill: { fgColor: { rgb: "4A5568" } },
+                alignment: { horizontal: "center" }
+              };
+            }
+          }
+          
+          // Auto-width columns
+          ws['!cols'] = headers.map(h => ({ wch: Math.max(12, Math.min(40, h.length + 5)) }));
+          
+          const sheetName = name.substring(0, 31);
+          XLSX.utils.book_append_sheet(workbook, ws, sheetName);
+        }
+      }
+      
+      // Add summary sheet
+      const summaryData = [
+        ['ArchFlow CRM Backup Summary'],
+        ['Created', now.toISOString()],
+        ['Total Records', totalRecords],
+        [''],
+        ['Entity', 'Count'],
+        ...categories.map(cat => [cat, (allData[cat] || []).length])
+      ];
+      const summaryWs = XLSX.utils.aoa_to_sheet(summaryData);
+      summaryWs['!cols'] = [{ wch: 25 }, { wch: 15 }];
+      XLSX.utils.book_append_sheet(workbook, summaryWs, 'Summary');
+      
+      const xlsxBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+      
+      return new Response(xlsxBuffer, {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'Content-Disposition': `attachment; filename=full-backup-${dateStr}.xlsx`
+        }
+      });
+    }
+
     // CSV Export
     if (format === 'csv') {
       // Build CSV content without the comment lines that break Excel
