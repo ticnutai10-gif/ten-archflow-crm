@@ -210,9 +210,9 @@ export default function BackupPage() {
         URL.revokeObjectURL(url);
         a.remove();
       } else if (format === 'excel') {
-        // For Excel - create CSV and let user open in Excel (true .xlsx requires a library)
-        console.log("[Backup] Creating Excel-compatible CSV for:", categories);
-        const response = await exportAllData({ format: 'csv', categories });
+        // True Excel .xlsx export with formatting
+        console.log("[Backup] Creating Excel XLSX for:", categories);
+        const response = await exportAllData({ format: 'excel', categories });
         
         if (!response.data) {
           console.error("[Backup] No data in response:", response);
@@ -220,17 +220,16 @@ export default function BackupPage() {
           return;
         }
         
-        // Add BOM for Excel Hebrew support
-        const BOM = '\uFEFF';
-        const csvWithBom = BOM + (typeof response.data === 'string' ? response.data : new TextDecoder().decode(response.data));
-        const blob = new Blob([csvWithBom], { type: 'text/csv; charset=utf-8' });
+        const blob = new Blob([response.data], { 
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+        });
         
-        console.log("[Backup] Created Excel CSV blob size:", blob.size, "bytes");
+        console.log("[Backup] Created Excel blob size:", blob.size, "bytes");
         
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `backup-${new Date().toISOString().split('T')[0]}.csv`;
+        a.download = `backup-${new Date().toISOString().split('T')[0]}.xlsx`;
         document.body.appendChild(a);
         a.click();
         URL.revokeObjectURL(url);
