@@ -5,15 +5,21 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { Download, Upload, ShieldCheck, Database, RefreshCw, Settings, CalendarClock, CheckCircle2, AlertTriangle, FileText, X, Archive, Table, FileDown, FolderOpen, Users, MessageSquare, Briefcase, Calendar, Zap, FileBarChart } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Download, Upload, ShieldCheck, Database, RefreshCw, Settings, CalendarClock, CheckCircle2, AlertTriangle, FileText, X, Archive, Table, FileDown, FolderOpen, Users, MessageSquare, Briefcase, Calendar, Zap, FileBarChart, Eye, GitCompare, History, Clock } from "lucide-react";
 import { exportProjectFiles } from "@/functions/exportProjectFiles";
 import { exportEntities } from "@/functions/exportEntities";
 import { importBackupJson } from "@/functions/importBackupJson";
 import EntityImporter from "@/components/backup/EntityImporter";
+import DataPreviewDialog from "@/components/backup/DataPreviewDialog";
+import BackupHistoryPanel from "@/components/backup/BackupHistoryPanel";
+import ImportCompareDialog from "@/components/backup/ImportCompareDialog";
+import ScheduledBackupCard from "@/components/backup/ScheduledBackupCard";
 import { User } from "@/entities/User";
 import { exportAllData } from "@/functions/exportAllData";
 import { importBackupData } from "@/functions/importBackupData";
 import { base44 } from "@/api/base44Client";
+import { toast } from "sonner";
 
 const CATEGORY_INFO = {
   // === נתוני ליבה ===
