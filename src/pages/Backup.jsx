@@ -1137,9 +1137,9 @@ export default function BackupPage() {
           </CardContent>
         </Card>
         
-          </TabsContent>
+        </TabsContent>
           
-          <TabsContent value="schedule" className="space-y-6">
+        <TabsContent value="schedule" className="space-y-6">
             <div className="grid lg:grid-cols-2 gap-6">
               <ScheduledBackupCard 
                 categories={ALL_CATEGORIES}
