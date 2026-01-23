@@ -22,6 +22,8 @@ export default function ExportDialog({
   const [format, setFormat] = useState("xlsx");
   const [includeStyles, setIncludeStyles] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [statusText, setStatusText] = useState("");
 
   const handleExport = async () => {
     setIsExporting(true);
