@@ -5,7 +5,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { ArrowRight, Plus, ListTodo, BarChart3, Users, Flag, DollarSign, Wallet, Edit2, Save } from 'lucide-react';
+import { ArrowRight, Plus, ListTodo, BarChart3, Users, Flag, DollarSign, Wallet, Edit2, Save, FileText } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '@/utils';
 import { toast } from 'sonner';
@@ -23,6 +23,8 @@ import MilestonesManager from '../components/projects/MilestonesManager';
 import BudgetManager from '../components/projects/BudgetManager';
 import CashflowManager from '../components/projects/CashflowManager';
 import CriticalTasksSummary from '../components/projects/CriticalTasksSummary';
+import ProgressReportGenerator from '../components/projects/ProgressReportGenerator';
+import ReportScheduleManager from '../components/projects/ReportScheduleManager';
 
 export default function ProjectDetails() {
   const navigate = useNavigate();
@@ -34,6 +36,7 @@ export default function ProjectDetails() {
   const [activeTab, setActiveTab] = useState('tasks');
   const [client, setClient] = useState(null);
   const [projects, setProjects] = useState([]);
+  const [showReportGenerator, setShowReportGenerator] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -155,13 +158,23 @@ export default function ProjectDetails() {
               </div>
             </div>
             
-            <Button
-              onClick={() => setShowSubTaskForm(true)}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              <Plus className="w-4 h-4 ml-2" />
-              תת-משימה חדשה
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => setShowReportGenerator(true)}
+                variant="outline"
+                className="border-purple-200 text-purple-700 hover:bg-purple-50"
+              >
+                <FileText className="w-4 h-4 ml-2" />
+                דוח התקדמות
+              </Button>
+              <Button
+                onClick={() => setShowSubTaskForm(true)}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                <Plus className="w-4 h-4 ml-2" />
+                תת-משימה חדשה
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -197,6 +210,10 @@ export default function ProjectDetails() {
             </TabsTrigger>
             <TabsTrigger value="ai-assistant" className="gap-2">
               עוזר AI
+            </TabsTrigger>
+            <TabsTrigger value="reports" className="gap-2">
+              <FileText className="w-4 h-4" />
+              דוחות
             </TabsTrigger>
             <TabsTrigger value="history" className="gap-2">
               היסטוריה
@@ -531,6 +548,33 @@ export default function ProjectDetails() {
             />
           </TabsContent>
 
+          {/* Reports Tab */}
+          <TabsContent value="reports">
+            <div className="space-y-6">
+              {/* Report Schedule Manager */}
+              <ReportScheduleManager 
+                projectId={project.id} 
+                projectName={project.name}
+              />
+              
+              {/* Generate Report Button */}
+              <Card>
+                <CardContent className="p-6 text-center">
+                  <FileText className="w-12 h-12 text-purple-400 mx-auto mb-3" />
+                  <h3 className="text-lg font-semibold mb-2">יצירת דוח התקדמות</h3>
+                  <p className="text-slate-600 mb-4">צור דוח התקדמות תקופתי ושלח ללקוח או לצוות</p>
+                  <Button 
+                    onClick={() => setShowReportGenerator(true)}
+                    className="bg-purple-600 hover:bg-purple-700"
+                  >
+                    <FileText className="w-4 h-4 ml-2" />
+                    יצירת דוח חדש
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
           <TabsContent value="history">
             <Card>
               <CardHeader>
@@ -554,6 +598,15 @@ export default function ProjectDetails() {
               setShowSubTaskForm(false);
               setEditingSubTask(null);
             }}
+          />
+        )}
+
+        {/* Progress Report Generator Modal */}
+        {showReportGenerator && (
+          <ProgressReportGenerator
+            project={project}
+            subtasks={subtasks}
+            onClose={() => setShowReportGenerator(false)}
           />
         )}
       </div>
