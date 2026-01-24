@@ -4,7 +4,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { X } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { X, Plus, Trash2, AlertTriangle } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 
 export default function SubTaskForm({ projectId, projectName, subtask, onSubmit, onCancel }) {
@@ -14,10 +15,14 @@ export default function SubTaskForm({ projectId, projectName, subtask, onSubmit,
     assigned_to: [],
     status: 'לא התחיל',
     priority: 'בינונית',
+    due_date: '',
     start_date: '',
     end_date: '',
     estimated_hours: 0,
     progress: 0,
+    is_critical: false,
+    subtasks: [],
+    tags: [],
     ...subtask
   });
   const [users, setUsers] = useState([]);
@@ -94,6 +99,19 @@ export default function SubTaskForm({ projectId, projectName, subtask, onSubmit,
             />
           </div>
 
+          {/* Critical Task Toggle */}
+          <div className="flex items-center gap-3 p-3 rounded-lg bg-red-50 border border-red-200">
+            <Checkbox
+              id="is_critical"
+              checked={formData.is_critical}
+              onCheckedChange={(checked) => setFormData({ ...formData, is_critical: checked })}
+            />
+            <label htmlFor="is_critical" className="flex items-center gap-2 cursor-pointer">
+              <AlertTriangle className="w-4 h-4 text-red-500" />
+              <span className="font-medium text-red-700">משימה קריטית</span>
+            </label>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label>סטטוס</Label>
@@ -122,9 +140,20 @@ export default function SubTaskForm({ projectId, projectName, subtask, onSubmit,
                   <SelectItem value="בינונית">בינונית</SelectItem>
                   <SelectItem value="גבוהה">גבוהה</SelectItem>
                   <SelectItem value="דחופה">דחופה</SelectItem>
+                  <SelectItem value="קריטית">קריטית</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          {/* Due Date - NEW */}
+          <div>
+            <Label>תאריך יעד</Label>
+            <Input
+              type="date"
+              value={formData.due_date}
+              onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -189,6 +218,106 @@ export default function SubTaskForm({ projectId, projectName, subtask, onSubmit,
                     </label>
                   ))}
                 </div>
+              )}
+            </div>
+          </div>
+
+          {/* Subtasks (Checklist) */}
+          <div>
+            <Label className="flex items-center justify-between">
+              <span>תתי-משימות (צ'קליסט)</span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  const newSubtask = {
+                    id: `sub_${Date.now()}`,
+                    title: '',
+                    completed: false,
+                    assigned_to: '',
+                    due_date: ''
+                  };
+                  setFormData({
+                    ...formData,
+                    subtasks: [...(formData.subtasks || []), newSubtask]
+                  });
+                }}
+              >
+                <Plus className="w-4 h-4 ml-1" />
+                הוסף
+              </Button>
+            </Label>
+            <div className="border rounded-lg divide-y max-h-48 overflow-y-auto">
+              {(formData.subtasks || []).length === 0 ? (
+                <div className="p-3 text-center text-sm text-slate-500">
+                  אין תתי-משימות
+                </div>
+              ) : (
+                (formData.subtasks || []).map((sub, idx) => (
+                  <div key={sub.id} className="p-2 flex items-center gap-2">
+                    <Checkbox
+                      checked={sub.completed}
+                      onCheckedChange={(checked) => {
+                        const updated = [...formData.subtasks];
+                        updated[idx] = { ...sub, completed: checked };
+                        setFormData({ ...formData, subtasks: updated });
+                      }}
+                    />
+                    <Input
+                      value={sub.title}
+                      onChange={(e) => {
+                        const updated = [...formData.subtasks];
+                        updated[idx] = { ...sub, title: e.target.value };
+                        setFormData({ ...formData, subtasks: updated });
+                      }}
+                      placeholder="כותרת תת-משימה"
+                      className="flex-1 h-8 text-sm"
+                    />
+                    <Select
+                      value={sub.assigned_to || ''}
+                      onValueChange={(val) => {
+                        const updated = [...formData.subtasks];
+                        updated[idx] = { ...sub, assigned_to: val };
+                        setFormData({ ...formData, subtasks: updated });
+                      }}
+                    >
+                      <SelectTrigger className="w-32 h-8 text-xs">
+                        <SelectValue placeholder="משתמש" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={null}>ללא</SelectItem>
+                        {users.map(u => (
+                          <SelectItem key={u.id} value={u.email}>
+                            {u.full_name || u.email}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      type="date"
+                      value={sub.due_date || ''}
+                      onChange={(e) => {
+                        const updated = [...formData.subtasks];
+                        updated[idx] = { ...sub, due_date: e.target.value };
+                        setFormData({ ...formData, subtasks: updated });
+                      }}
+                      className="w-32 h-8 text-xs"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-red-500 hover:text-red-600"
+                      onClick={() => {
+                        const updated = formData.subtasks.filter((_, i) => i !== idx);
+                        setFormData({ ...formData, subtasks: updated });
+                      }}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))
               )}
             </div>
           </div>
