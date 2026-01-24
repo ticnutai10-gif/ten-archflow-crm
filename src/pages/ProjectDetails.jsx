@@ -166,13 +166,28 @@ export default function ProjectDetails() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-6 grid grid-cols-2 md:grid-cols-4 gap-2">
+          <TabsList className="mb-6 flex flex-wrap gap-2">
+            <TabsTrigger value="overview" className="gap-2">
+              <BarChart3 className="w-4 h-4" />
+              סקירה
+            </TabsTrigger>
+            <TabsTrigger value="milestones" className="gap-2">
+              <Flag className="w-4 h-4" />
+              אבני דרך
+            </TabsTrigger>
+            <TabsTrigger value="budget" className="gap-2">
+              <DollarSign className="w-4 h-4" />
+              תקציב
+            </TabsTrigger>
+            <TabsTrigger value="cashflow" className="gap-2">
+              <Wallet className="w-4 h-4" />
+              תזרים
+            </TabsTrigger>
             <TabsTrigger value="tasks" className="gap-2">
               <ListTodo className="w-4 h-4" />
               משימות
             </TabsTrigger>
             <TabsTrigger value="gantt" className="gap-2">
-              <BarChart3 className="w-4 h-4" />
               Gantt
             </TabsTrigger>
             <TabsTrigger value="resources" className="gap-2">
