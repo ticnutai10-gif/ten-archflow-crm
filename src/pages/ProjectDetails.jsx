@@ -5,7 +5,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { ArrowRight, Plus, ListTodo, BarChart3, Users, Flag, DollarSign, Wallet, Edit2, Save, FileText } from 'lucide-react';
+import { ArrowRight, Plus, ListTodo, BarChart3, Users, Flag, DollarSign, Wallet, Edit2, Save, FileText, FolderOpen, Brain, ExternalLink, File, Upload } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '@/utils';
 import { toast } from 'sonner';
@@ -25,6 +25,7 @@ import CashflowManager from '../components/projects/CashflowManager';
 import CriticalTasksSummary from '../components/projects/CriticalTasksSummary';
 import ProgressReportGenerator from '../components/projects/ProgressReportGenerator';
 import ReportScheduleManager from '../components/projects/ReportScheduleManager';
+import AIDocumentSummarizer from '../components/ai/AIDocumentSummarizer';
 
 export default function ProjectDetails() {
   const navigate = useNavigate();
@@ -37,6 +38,7 @@ export default function ProjectDetails() {
   const [client, setClient] = useState(null);
   const [projects, setProjects] = useState([]);
   const [showReportGenerator, setShowReportGenerator] = useState(false);
+  const [selectedFileForAI, setSelectedFileForAI] = useState(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -210,6 +212,10 @@ export default function ProjectDetails() {
             </TabsTrigger>
             <TabsTrigger value="ai-assistant" className="gap-2">
               עוזר AI
+            </TabsTrigger>
+            <TabsTrigger value="files" className="gap-2">
+              <FolderOpen className="w-4 h-4" />
+              קבצים
             </TabsTrigger>
             <TabsTrigger value="reports" className="gap-2">
               <FileText className="w-4 h-4" />
@@ -546,6 +552,99 @@ export default function ProjectDetails() {
               client={client}
               subtasks={subtasks}
             />
+          </TabsContent>
+
+          {/* Files Tab with AI Summarizer */}
+          <TabsContent value="files">
+            <Card className="shadow-lg border-0">
+              <CardHeader className="border-b flex flex-row items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <FolderOpen className="w-5 h-5" />
+                  קבצים ומסמכים
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                {(!project.files || project.files.length === 0) && (!project.images || project.images.length === 0) ? (
+                  <div className="text-center py-12 text-slate-500">
+                    <FolderOpen className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                    <p>אין קבצים מצורפים לפרויקט</p>
+                    <p className="text-sm mt-1">הוסף קבצים דרך עריכת הפרויקט</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {/* Images */}
+                    {project.images?.length > 0 && (
+                      <div>
+                        <h4 className="font-semibold text-slate-700 mb-3">תמונות</h4>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                          {project.images.map((img, idx) => (
+                            <div key={idx} className="relative group">
+                              <img 
+                                src={img} 
+                                alt={`תמונה ${idx + 1}`} 
+                                className="w-full h-32 object-cover rounded-lg border"
+                              />
+                              <a 
+                                href={img} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="absolute top-2 left-2 bg-white/80 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <ExternalLink className="w-4 h-4 text-slate-600" />
+                              </a>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Files */}
+                    {project.files?.length > 0 && (
+                      <div>
+                        <h4 className="font-semibold text-slate-700 mb-3">קבצים</h4>
+                        <div className="space-y-2">
+                          {project.files.map((fileUrl, idx) => {
+                            const fileName = fileUrl.split('/').pop() || `קובץ ${idx + 1}`;
+                            return (
+                              <div 
+                                key={idx} 
+                                className="flex items-center gap-3 p-3 border rounded-lg hover:bg-slate-50 transition-colors"
+                              >
+                                <File className="w-5 h-5 text-slate-500" />
+                                <span className="flex-1 text-slate-800 truncate">{fileName}</span>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setSelectedFileForAI({ url: fileUrl, name: fileName })}
+                                  className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                                  title="סיכום AI"
+                                >
+                                  <Brain className="w-4 h-4" />
+                                </Button>
+                                <a href={fileUrl} target="_blank" rel="noopener noreferrer">
+                                  <ExternalLink className="w-4 h-4 text-slate-400 hover:text-slate-600" />
+                                </a>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* AI Document Summarizer */}
+                    {selectedFileForAI && (
+                      <div className="mt-6">
+                        <AIDocumentSummarizer
+                          fileUrl={selectedFileForAI.url}
+                          fileName={selectedFileForAI.name}
+                          onClose={() => setSelectedFileForAI(null)}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* Reports Tab */}

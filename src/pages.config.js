@@ -24,6 +24,7 @@ import InternalChat from './pages/InternalChat';
 import Invoices from './pages/Invoices';
 import Meetings from './pages/Meetings';
 import Planner from './pages/Planner';
+import ProjectAnalytics from './pages/ProjectAnalytics';
 import ProjectDetails from './pages/ProjectDetails';
 import Projects from './pages/Projects';
 import Quotes from './pages/Quotes';
@@ -37,7 +38,6 @@ import TimeLogs from './pages/TimeLogs';
 import TimerShowcase from './pages/TimerShowcase';
 import UserApprovals from './pages/UserApprovals';
 import WorkflowBuilder from './pages/WorkflowBuilder';
-import ProjectAnalytics from './pages/ProjectAnalytics';
 import __Layout from './Layout.jsx';
 
 
@@ -68,6 +68,7 @@ export const PAGES = {
     "Invoices": Invoices,
     "Meetings": Meetings,
     "Planner": Planner,
+    "ProjectAnalytics": ProjectAnalytics,
     "ProjectDetails": ProjectDetails,
     "Projects": Projects,
     "Quotes": Quotes,
@@ -81,7 +82,6 @@ export const PAGES = {
     "TimerShowcase": TimerShowcase,
     "UserApprovals": UserApprovals,
     "WorkflowBuilder": WorkflowBuilder,
-    "ProjectAnalytics": ProjectAnalytics,
 }
 
 export const pagesConfig = {
