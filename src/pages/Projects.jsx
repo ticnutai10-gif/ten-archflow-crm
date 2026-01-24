@@ -560,7 +560,8 @@ export default function ProjectsPage() {
               )}
             </div>
           </div>
-        ))}
+        ))
+        }
 
         {/* Mobile FAB for adding new project */}
         {isMobile && (
