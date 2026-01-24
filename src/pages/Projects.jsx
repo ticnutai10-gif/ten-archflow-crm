@@ -297,8 +297,15 @@ export default function ProjectsPage() {
           </div>
         )}
 
+        {/* Dashboard View */}
+        {viewMode === 'dashboard' && !isMobile && (
+          <div className="mb-8">
+            <ProjectsDashboard projects={projects} tasks={tasks} />
+          </div>
+        )}
+
         {/* Stats - Compact on Mobile */}
-        {!isMobile && (
+        {viewMode === 'list' && !isMobile && (
           <div className="mb-8">
             <ProjectStats projects={projects} isLoading={isLoading} />
           </div>
