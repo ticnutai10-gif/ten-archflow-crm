@@ -67,9 +67,10 @@ export default function ProjectsPage() {
   const loadProjects = async () => {
     setIsLoading(true);
     try {
-      const [projectsData, clientsData] = await Promise.all([
+      const [projectsData, clientsData, tasksData] = await Promise.all([
         base44.entities.Project.list('-created_date'),
-        base44.entities.Client.list()
+        base44.entities.Client.list(),
+        base44.entities.Task.list('-created_date', 500).catch(() => [])
       ]);
 
       const filteredProjects = filterProjects(projectsData);
@@ -85,6 +86,7 @@ export default function ProjectsPage() {
 
       setProjects(filteredProjects);
       setClients(filteredClients);
+      setTasks(tasksData || []);
     } catch (error) {
       console.error('❌ [PROJECTS] Error:', error);
     }
