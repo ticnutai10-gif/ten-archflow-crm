@@ -440,8 +440,8 @@ export default function ProjectsPage() {
           />
         )}
 
-        {/* Projects Grid / List */}
-        {isMobile ? (
+        {/* Projects Grid / List - Only in list mode */}
+        {(viewMode === 'list' || isMobile) && (isMobile ? (
           // Mobile List View
           <div className="space-y-3">
             {isLoading ? (
