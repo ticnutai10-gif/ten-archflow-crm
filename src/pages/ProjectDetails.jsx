@@ -36,7 +36,7 @@ export default function ProjectDetails() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const projectId = params.get('project_id');
+    const projectId = params.get('project_id') || params.get('id');
     
     if (!projectId) {
       alert('לא נמצא מזהה פרויקט');
