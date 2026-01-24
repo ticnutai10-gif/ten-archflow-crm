@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
-import { Loader2, Send, Sparkles, Trash2, Plus, Mail, CheckCircle, ListTodo, Calendar, Users, TrendingUp, Target, MessageCircle, FileText, MessageSquare, RotateCcw, Save, FolderOpen } from 'lucide-react';
+import { Loader2, Send, Sparkles, Trash2, Plus, Mail, CheckCircle, ListTodo, Calendar, Users, TrendingUp, Target, MessageCircle, FileText, MessageSquare, RotateCcw, Save, FolderOpen, Brain, Zap, BarChart3, AlertTriangle, Lightbulb, Clock, RefreshCw } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,6 +33,13 @@ import ReactMarkdown from 'react-markdown';
 import { toast } from 'sonner';
 
 const FOLDERS = ['כללי', 'לקוחות', 'פרויקטים', 'משימות', 'דוחות', 'אחר'];
+
+const AI_CAPABILITIES = [
+  { id: 'analysis', label: 'ניתוח עסקי', icon: BarChart3, color: 'text-blue-600' },
+  { id: 'prediction', label: 'חיזויים', icon: TrendingUp, color: 'text-purple-600' },
+  { id: 'automation', label: 'אוטומציה', icon: Zap, color: 'text-amber-600' },
+  { id: 'insights', label: 'תובנות', icon: Lightbulb, color: 'text-green-600' },
+];
 
 function ActionButton({ action, onExecute }) {
   const [isExecuting, setIsExecuting] = useState(false);
@@ -95,11 +102,19 @@ export default function AIChat() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [thinkingStage, setThinkingStage] = useState('');
   const messagesEndRef = useRef(null);
   const [clients, setClients] = useState([]);
   const [selectedClient, setSelectedClient] = useState(null);
   const [selectedFolder, setSelectedFolder] = useState('כללי');
   const [showAssignDialog, setShowAssignDialog] = useState(false);
+  const [aiMode, setAiMode] = useState('smart'); // 'smart', 'creative', 'precise'
+  const [showCapabilities, setShowCapabilities] = useState(false);
+  const [conversationContext, setConversationContext] = useState({
+    mentionedEntities: [],
+    currentTopic: null,
+    userIntent: null
+  });
 
   // טעינת לקוחות
   useEffect(() => {
@@ -477,13 +492,15 @@ export default function AIChat() {
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
 
-    const userMessage = { role: 'user', content: input };
+    const userMessage = { role: 'user', content: input, timestamp: new Date().toISOString() };
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setLoading(true);
+    setThinkingStage('מנתח את הבקשה...');
 
     try {
       const currentUser = await base44.auth.me();
+      setThinkingStage('טוען נתונים מהמערכת...');
       
       // Load comprehensive data
       const [projects, clients, tasks, communications, decisions, meetings, quotes, timeLogs, subtasks, teamMembers, allCommunications] = await Promise.all([
@@ -752,6 +769,18 @@ ${tasks.filter(t => t.reminder_enabled).length} מתוך ${tasks.length} משי�
         }
       });
 
+      // Update conversation context
+      setConversationContext({
+        mentionedEntities: [...Array.from(mentionedClients), ...Array.from(mentionedProjects)],
+        currentTopic: mentionedProjects.size > 0 ? 'project' : mentionedClients.size > 0 ? 'client' : 'general',
+        userIntent: input.includes('קבע') || input.includes('תזמן') ? 'schedule' : 
+                   input.includes('צור') || input.includes('הוסף') ? 'create' :
+                   input.includes('סכם') || input.includes('דוח') ? 'summarize' :
+                   input.includes('נתח') || input.includes('בדוק') ? 'analyze' : 'query'
+      });
+
+      setThinkingStage('מעבד ויוצר תשובה...');
+
       const contextSummary = `
 📌 הקשר נוכחי של השיחה:
 ${mentionedClients.size > 0 ? `- לקוחות שהוזכרו בשיחה: ${Array.from(mentionedClients).join(', ')}` : ''}
@@ -759,6 +788,8 @@ ${mentionedProjects.size > 0 ? `- פרויקטים שהוזכרו בשיחה: ${
 
 ⚠️ חשוב: כאשר משתמש מתייחס ל"הוא", "שם", "זה", "איתו" וכו' - הוא מתכוון ללקוח/פרויקט האחרון שהוזכר בשיחה.
 אם משתמש אומר "קבע פגישה" או "שלח מייל" מבלי לציין שם - השתמש בלקוח האחרון שדובר עליו.
+
+🧠 מצב AI: ${aiMode === 'smart' ? 'חכם (מאזן בין דיוק ויצירתיות)' : aiMode === 'creative' ? 'יצירתי (רעיונות והצעות)' : 'מדויק (נתונים בלבד)'}
 `;
 
       const prompt = `${context}\n\n${contextSummary}\n\nהיסטוריית השיחה המלאה:\n${conversationHistory}\n\n${conversationHistory.length > 0 ? 'המשך השיחה - ' : ''}הודעה נוכחית מהמשתמש: ${input}\n\n⚡ התייחס להקשר המלא! זכור את כל המידע שכבר ניתן בשיחה. אם משתמש מתייחס למשהו שהוזכר קודם - השתמש בזה מיד בלי לבקש הבהרות מיותרות.`;
@@ -779,8 +810,18 @@ ${mentionedProjects.size > 0 ? `- פרויקטים שהוזכרו בשיחה: ${
         });
       }
 
-      const aiMessage = { role: 'assistant', content: result, actions };
+      const aiMessage = { 
+        role: 'assistant', 
+        content: result, 
+        actions,
+        timestamp: new Date().toISOString(),
+        context: {
+          entitiesMentioned: [...mentionedClients, ...mentionedProjects],
+          mode: aiMode
+        }
+      };
       setMessages(prev => [...prev, aiMessage]);
+      setThinkingStage('');
     } catch (error) {
       console.error('Error sending message:', error);
       setMessages(prev => [...prev, { 
@@ -789,6 +830,7 @@ ${mentionedProjects.size > 0 ? `- פרויקטים שהוזכרו בשיחה: ${
       }]);
     }
     setLoading(false);
+    setThinkingStage('');
   };
 
   const handleKeyPress = (e) => {
@@ -804,9 +846,33 @@ ${mentionedProjects.size > 0 ? `- פרויקטים שהוזכרו בשיחה: ${
         {/* Header */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-3">
-            <div className="inline-flex items-center gap-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 py-3 rounded-2xl shadow-lg">
-              <Sparkles className="w-6 h-6" />
-              <h1 className="text-2xl font-bold">צ'אט AI חכם</h1>
+            <div className="flex items-center gap-3">
+              <div className="inline-flex items-center gap-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 py-3 rounded-2xl shadow-lg">
+                <Brain className="w-6 h-6" />
+                <h1 className="text-2xl font-bold">AI מתקדם</h1>
+              </div>
+              
+              {/* AI Mode Selector */}
+              <div className="flex bg-white rounded-xl border border-slate-200 p-1 shadow-sm">
+                {[
+                  { id: 'smart', label: 'חכם', icon: Brain },
+                  { id: 'creative', label: 'יצירתי', icon: Lightbulb },
+                  { id: 'precise', label: 'מדויק', icon: Target }
+                ].map(mode => (
+                  <button
+                    key={mode.id}
+                    onClick={() => setAiMode(mode.id)}
+                    className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                      aiMode === mode.id 
+                        ? 'bg-purple-100 text-purple-700' 
+                        : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                  >
+                    <mode.icon className="w-4 h-4" />
+                    {mode.label}
+                  </button>
+                ))}
+              </div>
             </div>
             <div className="flex gap-2 items-center">
               {/* תגיות שיוך */}
@@ -885,7 +951,40 @@ ${mentionedProjects.size > 0 ? `- פרויקטים שהוזכרו בשיחה: ${
               </DropdownMenu>
             </div>
           </div>
-          <p className="text-slate-600 text-center">שאל אותי כל שאלה על הפרויקטים, הלקוחות והמשימות שלך</p>
+          <div className="flex items-center justify-center gap-2 flex-wrap">
+            <p className="text-slate-600">שאל אותי כל שאלה על הפרויקטים, הלקוחות והמשימות שלך</p>
+            <button 
+              onClick={() => setShowCapabilities(!showCapabilities)}
+              className="text-purple-600 hover:text-purple-700 text-sm underline"
+            >
+              {showCapabilities ? 'הסתר יכולות' : 'ראה יכולות AI'}
+            </button>
+          </div>
+          
+          {/* AI Capabilities Panel */}
+          {showCapabilities && (
+            <div className="mt-4 p-4 bg-white rounded-xl border border-purple-200 shadow-sm">
+              <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-purple-600" />
+                יכולות AI מתקדמות
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {AI_CAPABILITIES.map(cap => (
+                  <div key={cap.id} className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg">
+                    <cap.icon className={`w-5 h-5 ${cap.color}`} />
+                    <span className="text-sm font-medium text-slate-700">{cap.label}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3 text-sm text-slate-600">
+                <p>🔹 ניתוח מגמות ודפוסים בנתונים</p>
+                <p>🔹 חיזוי משך פרויקטים ועלויות</p>
+                <p>🔹 זיהוי סיכונים והזדמנויות</p>
+                <p>🔹 יצירת תוכן אוטומטי (מיילים, הצעות מחיר)</p>
+                <p>🔹 תזכורות וניהול משימות חכם</p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Chat Container */}
@@ -903,17 +1002,20 @@ ${mentionedProjects.size > 0 ? `- פרויקטים שהוזכרו בשיחה: ${
                     <p className="text-slate-500 mb-6">אני כאן כדי לעזור לך עם כל מה שקשור לפרויקטים, לקוחות ומשימות</p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-2xl mx-auto">
                       {[
-                        'מה הפרויקטים הפעילים שלי?',
-                        'תן לי סיכום של המשימות הדחופות',
-                        'אילו לקוחות דורשים תשומת לב?',
-                        'איך אני יכול לשפר את ניהול הפרויקטים?'
+                        { text: 'נתח את הביצועים העסקיים שלי', icon: BarChart3, color: 'text-blue-600' },
+                        { text: 'זהה לקוחות בסיכון שדורשים תשומת לב', icon: AlertTriangle, color: 'text-amber-600' },
+                        { text: 'חזה את משך הפרויקט הבא שלי', icon: TrendingUp, color: 'text-purple-600' },
+                        { text: 'צור סיכום שבועי של כל הפעילות', icon: FileText, color: 'text-green-600' },
+                        { text: 'מה המשימות הדחופות ביותר?', icon: Clock, color: 'text-red-600' },
+                        { text: 'הצע דרכים לשפר את הפרודוקטיביות', icon: Lightbulb, color: 'text-yellow-600' }
                       ].map((suggestion, i) => (
                         <button
                           key={i}
-                          onClick={() => setInput(suggestion)}
-                          className="p-3 bg-white border border-slate-200 rounded-xl hover:bg-purple-50 hover:border-purple-300 transition-all text-sm text-slate-700 text-right"
+                          onClick={() => setInput(suggestion.text)}
+                          className="p-3 bg-white border border-slate-200 rounded-xl hover:bg-purple-50 hover:border-purple-300 transition-all text-sm text-slate-700 text-right flex items-center gap-2"
                         >
-                          {suggestion}
+                          <suggestion.icon className={`w-5 h-5 ${suggestion.color}`} />
+                          {suggestion.text}
                         </button>
                       ))}
                     </div>
@@ -988,9 +1090,22 @@ ${mentionedProjects.size > 0 ? `- פרויקטים שהוזכרו בשיחה: ${
                   ))}
                   {loading && (
                     <div className="flex justify-end">
-                      <div className="bg-white border border-slate-200 rounded-2xl p-4 flex items-center gap-2">
-                        <Loader2 className="w-4 h-4 animate-spin text-purple-600" />
-                        <span className="text-sm text-slate-600">חושב...</span>
+                      <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-2xl p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="relative">
+                            <Brain className="w-6 h-6 text-purple-600" />
+                            <div className="absolute -top-1 -right-1 w-3 h-3 bg-purple-500 rounded-full animate-ping" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <Loader2 className="w-4 h-4 animate-spin text-purple-600" />
+                              <span className="text-sm font-medium text-purple-700">AI חושב...</span>
+                            </div>
+                            {thinkingStage && (
+                              <p className="text-xs text-slate-500 mt-1">{thinkingStage}</p>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   )}
