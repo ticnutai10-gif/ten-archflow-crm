@@ -1,13 +1,13 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { User, ClientFile } from '@/entities/all';
 import { googleDrive } from '@/functions/googleDrive';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FolderPlus, FilePlus, RefreshCw, Folder, File, ExternalLink } from 'lucide-react';
+import { FolderPlus, FilePlus, RefreshCw, Folder, File, ExternalLink, Brain, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { UploadFile as CoreUploadFile } from '@/integrations/Core';
 import { Input } from '@/components/ui/input';
+import AIDocumentSummarizer from '@/components/ai/AIDocumentSummarizer';
 
 // Helper to map mime to type
 const mapMimeToType = (mime = "") => {
@@ -23,6 +23,7 @@ export default function ClientFiles({ client, files, onFilesUpdate }) {
   const [isLoading, setIsLoading] = useState(true);
   const [clientFolder, setClientFolder] = useState(null);
   const [driveFiles, setDriveFiles] = useState([]);
+  const [selectedFileForAI, setSelectedFileForAI] = useState(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -219,14 +220,25 @@ export default function ClientFiles({ client, files, onFilesUpdate }) {
           ) : (
             <div className="space-y-2">
               {localFiles.map(f => (
-                <a key={f.id} href={f.link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 border rounded-lg hover:bg-slate-50 transition-colors">
+                <div key={f.id} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-slate-50 transition-colors">
                   <File className="w-5 h-5 text-slate-500" />
                   <div className="flex-1 min-w-0">
                     <div className="font-medium text-slate-800 truncate">{f.name}</div>
                     <div className="text-xs text-slate-500">{f.mime_type || f.type}</div>
                   </div>
-                  <ExternalLink className="w-4 h-4 text-slate-400" />
-                </a>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSelectedFileForAI({ url: f.link || f.file_url, name: f.name })}
+                    className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                    title="סיכום AI"
+                  >
+                    <Brain className="w-4 h-4" />
+                  </Button>
+                  <a href={f.link} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="w-4 h-4 text-slate-400 hover:text-slate-600" />
+                  </a>
+                </div>
               ))}
             </div>
           )}
@@ -253,11 +265,22 @@ export default function ClientFiles({ client, files, onFilesUpdate }) {
               ) : (
                 <div className="space-y-2">
                   {driveFiles.map(file => (
-                    <a href={file.webViewLink} target="_blank" rel="noopener noreferrer" key={file.id} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-slate-50 transition-colors">
+                    <div key={file.id} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-slate-50 transition-colors">
                       <img src={file.iconLink} alt="icon" className="w-5 h-5" />
                       <span className="flex-1 text-slate-800 truncate">{file.name}</span>
-                      <ExternalLink className="w-4 h-4 text-slate-400" />
-                    </a>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedFileForAI({ url: file.webViewLink, name: file.name })}
+                        className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                        title="סיכום AI"
+                      >
+                        <Brain className="w-4 h-4" />
+                      </Button>
+                      <a href={file.webViewLink} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="w-4 h-4 text-slate-400 hover:text-slate-600" />
+                      </a>
+                    </div>
                   ))}
                 </div>
               )
@@ -270,6 +293,17 @@ export default function ClientFiles({ client, files, onFilesUpdate }) {
             </div>
           )}
         </div>
+
+        {/* AI Document Summarizer Modal */}
+        {selectedFileForAI && (
+          <div className="mt-6">
+            <AIDocumentSummarizer
+              fileUrl={selectedFileForAI.url}
+              fileName={selectedFileForAI.name}
+              onClose={() => setSelectedFileForAI(null)}
+            />
+          </div>
+        )}
       </CardContent>
     </Card>
   );
