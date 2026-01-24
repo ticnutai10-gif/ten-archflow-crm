@@ -67,6 +67,7 @@ const MENU_ITEMS = [
   { name: "בקרת גישה", icon: Settings, path: "Access" },
   { name: "מתכנן משאבים", icon: BarChart3, path: "Planner" },
   { name: "דוחות", icon: BarChart3, path: "Reports" },
+  { name: "ניתוח AI", icon: Layers, path: "ProjectAnalytics" },
   { name: "דוחות יומיים", icon: Mail, path: "DailyReports" },
   { name: "מסמכים", icon: FileText, path: "Documents" },
   { name: "אינטגרציות", icon: Zap, path: "Integrations" },
