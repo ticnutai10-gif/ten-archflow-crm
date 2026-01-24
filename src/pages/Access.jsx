@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { AccessControl, Client, Project } from "@/entities/all";
 import { User } from "@/entities/User";
+import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +17,9 @@ import {
   XCircle,
   UserPlus,
   Settings as SettingsIcon,
-  Zap
+  Zap,
+  Download,
+  FileJson
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -47,6 +50,7 @@ export default function AccessPage() {
   const [showQuickPermissionsDialog, setShowQuickPermissionsDialog] = useState(false);
   const [showEditNameDialog, setShowEditNameDialog] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -173,6 +177,198 @@ export default function AccessPage() {
     setShowEditNameDialog(true);
   };
 
+  const handleExportAccessBackup = async () => {
+    setExporting(true);
+    try {
+      // Load all related data
+      const [auditLogs, timeLogs, tasks, meetings] = await Promise.all([
+        AccessControl.list().catch(() => []),
+        base44.entities.AuditLog.list('-performed_at', 5000).catch(() => []),
+        base44.entities.TimeLog.list('-created_date', 5000).catch(() => []),
+        base44.entities.Task.list().catch(() => []),
+        base44.entities.Meeting.list().catch(() => [])
+      ]);
+
+      // Build comprehensive user map
+      const userDataMap = {};
+
+      // Process all users
+      allUsers.forEach(user => {
+        const email = user.email?.toLowerCase();
+        if (!email) return;
+
+        userDataMap[email] = {
+          user_info: {
+            id: user.id,
+            email: user.email,
+            full_name: user.full_name || user.display_name,
+            role: user.role,
+            created_date: user.created_date
+          },
+          access_control: null,
+          activity: {
+            audit_logs_created: [],
+            time_logs_created: [],
+            tasks_assigned: [],
+            tasks_created: [],
+            meetings_created: []
+          }
+        };
+      });
+
+      // Add access control entries
+      entries.forEach(entry => {
+        const email = entry.email?.toLowerCase();
+        if (!email) return;
+
+        if (!userDataMap[email]) {
+          userDataMap[email] = {
+            user_info: {
+              email: entry.email,
+              full_name: entry.full_name
+            },
+            access_control: null,
+            activity: {
+              audit_logs_created: [],
+              time_logs_created: [],
+              tasks_assigned: [],
+              tasks_created: [],
+              meetings_created: []
+            }
+          };
+        }
+
+        userDataMap[email].access_control = {
+          id: entry.id,
+          role: entry.role,
+          active: entry.active,
+          assigned_clients: entry.assigned_clients || [],
+          assigned_projects: entry.assigned_projects || [],
+          client_id: entry.client_id,
+          client_name: entry.client_name,
+          created_date: entry.created_date
+        };
+      });
+
+      // Map audit logs to creators
+      auditLogs.forEach(log => {
+        const creatorEmail = log.performed_by?.toLowerCase();
+        if (creatorEmail && userDataMap[creatorEmail]) {
+          userDataMap[creatorEmail].activity.audit_logs_created.push({
+            id: log.id,
+            entity_type: log.entity_type,
+            entity_id: log.entity_id,
+            action: log.action,
+            description: log.description,
+            performed_at: log.performed_at
+          });
+        }
+      });
+
+      // Map time logs to creators
+      timeLogs.forEach(log => {
+        const creatorEmail = log.created_by?.toLowerCase();
+        if (creatorEmail && userDataMap[creatorEmail]) {
+          userDataMap[creatorEmail].activity.time_logs_created.push({
+            id: log.id,
+            client_name: log.client_name,
+            project_name: log.project_name,
+            description: log.description,
+            duration_seconds: log.duration_seconds,
+            log_date: log.log_date
+          });
+        }
+      });
+
+      // Map tasks
+      tasks.forEach(task => {
+        const creatorEmail = task.created_by?.toLowerCase();
+        const assignedTo = task.assigned_to?.toLowerCase();
+
+        if (creatorEmail && userDataMap[creatorEmail]) {
+          userDataMap[creatorEmail].activity.tasks_created.push({
+            id: task.id,
+            title: task.title,
+            status: task.status,
+            created_date: task.created_date
+          });
+        }
+
+        if (assignedTo && userDataMap[assignedTo]) {
+          userDataMap[assignedTo].activity.tasks_assigned.push({
+            id: task.id,
+            title: task.title,
+            status: task.status,
+            due_date: task.due_date
+          });
+        }
+      });
+
+      // Map meetings
+      meetings.forEach(meeting => {
+        const creatorEmail = meeting.created_by?.toLowerCase();
+        if (creatorEmail && userDataMap[creatorEmail]) {
+          userDataMap[creatorEmail].activity.meetings_created.push({
+            id: meeting.id,
+            title: meeting.title,
+            meeting_date: meeting.meeting_date,
+            client_name: meeting.client_name
+          });
+        }
+      });
+
+      // Create export object
+      const exportData = {
+        export_info: {
+          exported_at: new Date().toISOString(),
+          exported_by: me?.email,
+          total_users: Object.keys(userDataMap).length,
+          total_access_entries: entries.length,
+          total_audit_logs: auditLogs.length
+        },
+        super_admins: SUPER_ADMIN_EMAILS,
+        users: userDataMap,
+        raw_data: {
+          access_control_entries: entries,
+          all_users: allUsers.map(u => ({
+            id: u.id,
+            email: u.email,
+            full_name: u.full_name,
+            role: u.role,
+            created_date: u.created_date
+          })),
+          clients_summary: clients.map(c => ({
+            id: c.id,
+            name: c.name,
+            email: c.email
+          })),
+          projects_summary: projects.map(p => ({
+            id: p.id,
+            name: p.name,
+            client_name: p.client_name
+          }))
+        }
+      };
+
+      // Download JSON
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `access_control_backup_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast.success(`גיבוי הושלם! ${Object.keys(userDataMap).length} משתמשים יוצאו`);
+    } catch (error) {
+      console.error('Export error:', error);
+      toast.error('שגיאה ביצוא הגיבוי');
+    }
+    setExporting(false);
+  };
+
   const enrichedEntries = useMemo(() => {
     const merged = entries.map(entry => {
       const user = allUsers.find(u => u.email?.toLowerCase() === entry.email?.toLowerCase());
@@ -278,6 +474,21 @@ export default function AccessPage() {
           </div>
           
           <div className="flex gap-3">
+            <Button 
+              onClick={handleExportAccessBackup}
+              disabled={exporting}
+              variant="outline"
+              className="gap-2"
+            >
+              {exporting ? (
+                <>טוען...</>
+              ) : (
+                <>
+                  <Download className="w-5 h-5" />
+                  גיבוי מלא
+                </>
+              )}
+            </Button>
             <Button 
               onClick={() => setShowQuickPermissionsDialog(true)}
               className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 gap-2 px-6 py-6 text-lg font-semibold shadow-xl hover:shadow-2xl transition-all duration-200"
