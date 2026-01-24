@@ -39,6 +39,7 @@ import ClientTasks from "./ClientTasks";
 import ClientTimeline from "../portal/ClientTimeline";
 import ClientSpreadsheets from "./ClientSpreadsheets";
 import AuditLogViewer from "../common/AuditLogViewer";
+import ClientMeetingsSummary from "./ClientMeetingsSummary";
 
 const statusColors = {
   "פוטנציאלי": "bg-amber-100 text-amber-800 border-amber-200",
@@ -525,7 +526,7 @@ export default function ClientDetails({ client, onBack, onEdit }) {
           className="w-full" 
           dir="rtl"
         >
-          <TabsList className="grid w-full grid-cols-9 bg-white shadow-sm">
+          <TabsList className="grid w-full grid-cols-10 bg-white shadow-sm">
             <TabsTrigger value="timeline" className="gap-2">
               <Clock className="w-4 h-4" />
               ציר זמן
@@ -553,6 +554,10 @@ export default function ClientDetails({ client, onBack, onEdit }) {
             <TabsTrigger value="sheets" className="gap-2">
               <FileText className="w-4 h-4" />
               גיליונות
+            </TabsTrigger>
+            <TabsTrigger value="meetings" className="gap-2">
+              <Calendar className="w-4 h-4" />
+              פגישות
             </TabsTrigger>
             <TabsTrigger value="communication" className="gap-2">
               <MessageSquare className="w-4 h-4" />
@@ -626,6 +631,10 @@ export default function ClientDetails({ client, onBack, onEdit }) {
 
           <TabsContent value="sheets" className="mt-6">
             <ClientSheets client={client} clientId={client.id} />
+          </TabsContent>
+
+          <TabsContent value="meetings" className="mt-6">
+            <ClientMeetingsSummary clientId={client.id} clientName={client.name} />
           </TabsContent>
 
           <TabsContent value="communication" className="mt-6">
