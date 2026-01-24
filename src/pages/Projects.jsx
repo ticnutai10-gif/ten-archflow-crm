@@ -425,6 +425,7 @@ export default function ProjectsPage() {
             )}
           </CardContent>
         </Card>
+        )}
 
         {/* Project Form Modal */}
         {showForm && (
