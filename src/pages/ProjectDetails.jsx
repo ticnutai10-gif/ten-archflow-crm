@@ -202,6 +202,179 @@ export default function ProjectDetails() {
             </TabsTrigger>
           </TabsList>
 
+          {/* Overview Tab */}
+          <TabsContent value="overview">
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* Project Info Card */}
+              <Card className="shadow-lg border-0">
+                <CardHeader className="border-b">
+                  <CardTitle>פרטי הפרויקט</CardTitle>
+                </CardHeader>
+                <CardContent className="p-6 space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <div className="text-sm text-slate-500">סוג</div>
+                      <div className="font-semibold">{project.type || '-'}</div>
+                    </div>
+                    <div>
+                      <div className="text-sm text-slate-500">עדיפות</div>
+                      <div className="font-semibold">{project.priority || 'בינונית'}</div>
+                    </div>
+                    <div>
+                      <div className="text-sm text-slate-500">תאריך התחלה</div>
+                      <div className="font-semibold">{project.start_date || '-'}</div>
+                    </div>
+                    <div>
+                      <div className="text-sm text-slate-500">תאריך סיום משוער</div>
+                      <div className="font-semibold">{project.end_date || '-'}</div>
+                    </div>
+                    <div>
+                      <div className="text-sm text-slate-500">מיקום</div>
+                      <div className="font-semibold">{project.location || '-'}</div>
+                    </div>
+                    <div>
+                      <div className="text-sm text-slate-500">שטח</div>
+                      <div className="font-semibold">{project.area ? `${project.area} מ"ר` : '-'}</div>
+                    </div>
+                  </div>
+                  {project.description && (
+                    <div>
+                      <div className="text-sm text-slate-500 mb-1">תיאור</div>
+                      <div className="text-slate-700">{project.description}</div>
+                    </div>
+                  )}
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <span className="text-slate-500">התקדמות כללית</span>
+                      <span className="font-bold text-blue-600">{project.progress || 0}%</span>
+                    </div>
+                    <Progress value={project.progress || 0} className="h-3" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Budget Summary Card */}
+              <Card className="shadow-lg border-0">
+                <CardHeader className="border-b">
+                  <CardTitle className="flex items-center gap-2">
+                    <DollarSign className="w-5 h-5 text-green-600" />
+                    סיכום תקציב
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-blue-50 rounded-xl p-4 text-center">
+                      <div className="text-sm text-blue-600">תקציב מאושר</div>
+                      <div className="text-2xl font-bold text-blue-700">
+                        ₪{(project.budget || 0).toLocaleString()}
+                      </div>
+                    </div>
+                    <div className="bg-amber-50 rounded-xl p-4 text-center">
+                      <div className="text-sm text-amber-600">הוצאות בפועל</div>
+                      <div className="text-2xl font-bold text-amber-700">
+                        ₪{(project.total_expenses || 0).toLocaleString()}
+                      </div>
+                    </div>
+                    <div className="bg-green-50 rounded-xl p-4 text-center">
+                      <div className="text-sm text-green-600">הכנסות</div>
+                      <div className="text-2xl font-bold text-green-700">
+                        ₪{(project.total_income || 0).toLocaleString()}
+                      </div>
+                    </div>
+                    <div className={`rounded-xl p-4 text-center ${(project.budget || 0) - (project.total_expenses || 0) >= 0 ? 'bg-emerald-50' : 'bg-red-50'}`}>
+                      <div className={`text-sm ${(project.budget || 0) - (project.total_expenses || 0) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                        יתרה
+                      </div>
+                      <div className={`text-2xl font-bold ${(project.budget || 0) - (project.total_expenses || 0) >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
+                        ₪{((project.budget || 0) - (project.total_expenses || 0)).toLocaleString()}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Milestones Summary */}
+              <Card className="shadow-lg border-0 md:col-span-2">
+                <CardHeader className="border-b">
+                  <CardTitle className="flex items-center gap-2">
+                    <Flag className="w-5 h-5 text-purple-600" />
+                    אבני דרך ({(project.milestones || []).filter(m => m.completed).length}/{(project.milestones || []).length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-6">
+                  {(project.milestones || []).length === 0 ? (
+                    <div className="text-center py-4 text-slate-500">
+                      לא הוגדרו אבני דרך עדיין
+                      <Button 
+                        variant="link" 
+                        onClick={() => setActiveTab('milestones')}
+                        className="mr-2"
+                      >
+                        הוסף עכשיו
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2 flex-wrap">
+                      {(project.milestones || []).map((m, i) => (
+                        <Badge 
+                          key={i} 
+                          className={m.completed ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-700'}
+                        >
+                          {m.completed ? '✓' : '○'} {m.name}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Milestones Tab */}
+          <TabsContent value="milestones">
+            <MilestonesManager
+              milestones={project.milestones || []}
+              onChange={async (milestones) => {
+                const updated = { ...project, milestones };
+                await base44.entities.Project.update(project.id, { milestones });
+                setProject(updated);
+                toast.success('אבני הדרך עודכנו');
+              }}
+            />
+          </TabsContent>
+
+          {/* Budget Tab */}
+          <TabsContent value="budget">
+            <BudgetManager
+              budgetItems={project.budget_items || []}
+              totalBudget={project.budget || 0}
+              onChange={async (budget_items) => {
+                const total_expenses = budget_items.reduce((sum, item) => sum + (item.actual_amount || 0), 0);
+                const updated = { ...project, budget_items, total_expenses };
+                await base44.entities.Project.update(project.id, { budget_items, total_expenses });
+                setProject(updated);
+                toast.success('התקציב עודכן');
+              }}
+            />
+          </TabsContent>
+
+          {/* Cashflow Tab */}
+          <TabsContent value="cashflow">
+            <CashflowManager
+              cashflow={project.cashflow || []}
+              milestones={project.milestones || []}
+              onChange={async (cashflow) => {
+                const total_income = cashflow
+                  .filter(c => c.type === 'income' && c.status === 'התקבל')
+                  .reduce((sum, c) => sum + (c.amount || 0), 0);
+                const updated = { ...project, cashflow, total_income };
+                await base44.entities.Project.update(project.id, { cashflow, total_income });
+                setProject(updated);
+                toast.success('התזרים עודכן');
+              }}
+            />
+          </TabsContent>
+
           {/* Tasks List */}
           <TabsContent value="tasks">
             <Card>
