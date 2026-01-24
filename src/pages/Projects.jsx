@@ -342,7 +342,8 @@ export default function ProjectsPage() {
           </div>
         )}
 
-        {/* Filters and Search */}
+        {/* Filters and Search - Only in list mode */}
+        {(viewMode === 'list' || isMobile) && (
         <Card className={`${isMobile ? 'mb-4' : 'mb-6'} shadow-lg border-0 bg-white/80 backdrop-blur-sm`}>
           <CardContent className={isMobile ? "p-3" : "p-6"}>
             {/* Search */}
