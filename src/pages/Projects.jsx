@@ -223,10 +223,33 @@ export default function ProjectsPage() {
               <h1 className="text-4xl font-bold text-slate-900 mb-2">ניהול פרויקטים</h1>
               <p className="text-slate-600">מעקב אחר כל הפרויקטים והתקדמותם</p>
             </div>
-            <Button onClick={() => setShowForm(true)} className="bg-blue-600 hover:bg-blue-700">
-              <Plus className="w-4 h-4 mr-2" />
-              פרויקט חדש
-            </Button>
+            <div className="flex items-center gap-3">
+              {/* View Mode Toggle */}
+              <div className="bg-white rounded-lg border p-1 flex gap-1">
+                <Button
+                  variant={viewMode === 'dashboard' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('dashboard')}
+                  className={viewMode === 'dashboard' ? 'bg-blue-600' : ''}
+                >
+                  <LayoutDashboard className="w-4 h-4 ml-1" />
+                  דשבורד
+                </Button>
+                <Button
+                  variant={viewMode === 'list' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('list')}
+                  className={viewMode === 'list' ? 'bg-blue-600' : ''}
+                >
+                  <List className="w-4 h-4 ml-1" />
+                  רשימה
+                </Button>
+              </div>
+              <Button onClick={() => setShowForm(true)} className="bg-blue-600 hover:bg-blue-700">
+                <Plus className="w-4 h-4 mr-2" />
+                פרויקט חדש
+              </Button>
+            </div>
           </div>
         )}
 
