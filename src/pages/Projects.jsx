@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { Project, Client, User } from "@/entities/all"; // This import might become redundant if base44 fully replaces them, but keeping for safety as original code had it.
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Button } from "@/components/ui/button";
@@ -9,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { 
   FolderOpen, 
   Plus, 
@@ -25,7 +25,9 @@ import {
   Copy,
   Trash2,
   CheckSquare,
-  Square
+  Square,
+  LayoutDashboard,
+  List
 } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
@@ -33,6 +35,7 @@ import { he } from "date-fns/locale";
 import ProjectForm from "../components/projects/ProjectForm";
 import ProjectCard from "../components/projects/ProjectCard";
 import ProjectStats from "../components/projects/ProjectStats";
+import ProjectsDashboard from "../components/projects/ProjectsDashboard";
 import { useAccessControl } from "../components/access/AccessValidator";
 import { useIsMobile } from "../components/utils/useMediaQuery";
 
