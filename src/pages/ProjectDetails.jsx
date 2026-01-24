@@ -4,9 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowRight, Plus, ListTodo, BarChart3, Users } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { ArrowRight, Plus, ListTodo, BarChart3, Users, Flag, DollarSign, Wallet, Edit2, Save } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '@/utils';
+import { toast } from 'sonner';
 
 import SubTaskForm from '../components/projects/SubTaskForm';
 import ProjectGantt from '../components/projects/ProjectGantt';
@@ -17,6 +19,9 @@ import AIProgressSummary from '../components/communication/AIProgressSummary';
 import AIContentGenerator from '../components/communication/AIContentGenerator';
 import ProjectAIAssistant from '../components/communication/ProjectAIAssistant';
 import AuditLogViewer from '../components/common/AuditLogViewer';
+import MilestonesManager from '../components/projects/MilestonesManager';
+import BudgetManager from '../components/projects/BudgetManager';
+import CashflowManager from '../components/projects/CashflowManager';
 
 export default function ProjectDetails() {
   const navigate = useNavigate();
