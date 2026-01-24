@@ -55,6 +55,8 @@ export default function ProjectsPage() {
   const [sortBy, setSortBy] = useState("created_date");
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
+  const [viewMode, setViewMode] = useState("list"); // "list" or "dashboard"
+  const [tasks, setTasks] = useState([]);
 
   useEffect(() => {
     if (!accessLoading) {
