@@ -22,6 +22,7 @@ import AuditLogViewer from '../components/common/AuditLogViewer';
 import MilestonesManager from '../components/projects/MilestonesManager';
 import BudgetManager from '../components/projects/BudgetManager';
 import CashflowManager from '../components/projects/CashflowManager';
+import CriticalTasksSummary from '../components/projects/CriticalTasksSummary';
 
 export default function ProjectDetails() {
   const navigate = useNavigate();
@@ -377,9 +378,28 @@ export default function ProjectDetails() {
 
           {/* Tasks List */}
           <TabsContent value="tasks">
+            {/* Critical Tasks Summary */}
+            <div className="mb-6">
+              <CriticalTasksSummary 
+                subtasks={subtasks} 
+                onTaskClick={(task) => {
+                  setEditingSubTask(task);
+                  setShowSubTaskForm(true);
+                }}
+              />
+            </div>
+
             <Card>
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>תת-משימות ({subtasks.length})</CardTitle>
+                <Button
+                  onClick={() => setShowSubTaskForm(true)}
+                  size="sm"
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  <Plus className="w-4 h-4 ml-1" />
+                  משימה חדשה
+                </Button>
               </CardHeader>
               <CardContent>
                 {subtasks.length === 0 ? (
@@ -396,25 +416,49 @@ export default function ProjectDetails() {
                     {subtasks.map((task) => (
                       <div
                         key={task.id}
-                        className="border rounded-lg p-4 hover:bg-slate-50 transition-colors"
+                        className={`border rounded-lg p-4 hover:bg-slate-50 transition-colors ${
+                          task.is_critical || task.priority === 'קריטית' 
+                            ? 'border-red-300 bg-red-50/50' 
+                            : ''
+                        }`}
                       >
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
-                            <h3 className="font-semibold text-slate-900 mb-1">
-                              {task.title}
-                            </h3>
+                            <div className="flex items-center gap-2 mb-1">
+                              {(task.is_critical || task.priority === 'קריטית') && (
+                                <span className="text-red-500">🔴</span>
+                              )}
+                              <h3 className="font-semibold text-slate-900">
+                                {task.title}
+                              </h3>
+                            </div>
                             {task.description && (
                               <p className="text-sm text-slate-600 mb-2">
                                 {task.description}
                               </p>
                             )}
                             <div className="flex flex-wrap items-center gap-2">
-                              <Badge variant="outline" className="text-xs">
+                              <Badge variant="outline" className={`text-xs ${
+                                task.status === 'הושלם' ? 'bg-green-100 text-green-700' :
+                                task.status === 'בתהליך' ? 'bg-blue-100 text-blue-700' :
+                                task.status === 'חסום' ? 'bg-red-100 text-red-700' :
+                                ''
+                              }`}>
                                 {task.status}
                               </Badge>
-                              <Badge variant="outline" className="text-xs">
+                              <Badge variant="outline" className={`text-xs ${
+                                task.priority === 'קריטית' ? 'bg-red-100 text-red-700' :
+                                task.priority === 'דחופה' ? 'bg-orange-100 text-orange-700' :
+                                task.priority === 'גבוהה' ? 'bg-amber-100 text-amber-700' :
+                                ''
+                              }`}>
                                 {task.priority}
                               </Badge>
+                              {task.due_date && (
+                                <Badge variant="outline" className="text-xs">
+                                  📅 {task.due_date}
+                                </Badge>
+                              )}
                               {task.assigned_to?.length > 0 && (
                                 <Badge variant="outline" className="text-xs">
                                   <Users className="w-3 h-3 ml-1" />
@@ -429,6 +473,11 @@ export default function ProjectDetails() {
                               {task.progress > 0 && (
                                 <span className="text-xs text-blue-600">
                                   {task.progress}% הושלם
+                                </span>
+                              )}
+                              {task.subtasks?.length > 0 && (
+                                <span className="text-xs text-purple-600">
+                                  {task.subtasks.filter(s => s.completed).length}/{task.subtasks.length} תתי-משימות
                                 </span>
                               )}
                             </div>
