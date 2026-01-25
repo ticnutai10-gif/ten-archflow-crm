@@ -59,6 +59,7 @@ const MENU_ITEMS = [
   { name: "פגישות", icon: Calendar, path: "Meetings" },
   { name: "משימות", icon: CheckSquare2, path: "Tasks" },
   { name: "לוגי זמן", icon: Timer, path: "TimeLogs" },
+  { name: "דוחות שכר", icon: Calculator, path: "SalaryReports" },
   { name: "חשבוניות", icon: Receipt, path: "Invoices" },
   { name: "טבלאות", icon: FileText, path: "CustomSpreadsheets" },
   { name: "תיקיות", icon: FolderOpen, path: "Folders" },
