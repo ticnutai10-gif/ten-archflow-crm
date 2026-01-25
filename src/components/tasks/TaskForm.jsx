@@ -19,6 +19,7 @@ import ReminderTimePicker from "./ReminderTimePicker";
 import MultiRecipientSelector from "@/components/common/MultiRecipientSelector";
 import MultiPhoneSelector from "@/components/common/MultiPhoneSelector";
 import CheckRemindersButton from "@/components/debug/CheckRemindersButton";
+import FlexibleDueDatePicker from "./FlexibleDueDatePicker";
 
 export default function TaskForm({ task, clients, projects, onSubmit, onCancel, initialData = {} }) {
   const [formData, setFormData] = useState(task || {
@@ -29,6 +30,10 @@ export default function TaskForm({ task, clients, projects, onSubmit, onCancel, 
     status: 'חדשה',
     priority: 'בינונית',
     due_date: '',
+    due_date_type: 'fixed',
+    flexible_due_description: '',
+    auto_reminder_enabled: true,
+    auto_reminder_days_before: 1,
     category: 'אחר',
     reminder_enabled: false,
     reminder_at: '',
@@ -254,9 +259,30 @@ export default function TaskForm({ task, clients, projects, onSubmit, onCancel, 
               <Select value={formData.priority} onValueChange={(v) => updateField('priority', v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="גבוהה">גבוהה</SelectItem>
-                  <SelectItem value="בינונית">בינונית</SelectItem>
-                  <SelectItem value="נמוכה">נמוכה</SelectItem>
+                  <SelectItem value="קריטית">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 bg-red-600 rounded-full animate-pulse"></span>
+                      קריטית
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="גבוהה">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
+                      גבוהה
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="בינונית">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 bg-amber-500 rounded-full"></span>
+                      בינונית
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="נמוכה">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                      נמוכה
+                    </span>
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -277,9 +303,40 @@ export default function TaskForm({ task, clients, projects, onSubmit, onCancel, 
             </div>
           </div>
           
-          <div className="space-y-2">
-            <Label>תאריך יעד</Label>
-            <Input type="date" value={formData.due_date} onChange={(e) => updateField('due_date', e.target.value)} />
+          <FlexibleDueDatePicker
+            value={formData.due_date}
+            onChange={(v) => updateField('due_date', v)}
+            dueDateType={formData.due_date_type}
+            flexibleDescription={formData.flexible_due_description}
+            onDueDateTypeChange={(v) => updateField('due_date_type', v)}
+            onFlexibleDescriptionChange={(v) => updateField('flexible_due_description', v)}
+          />
+
+          {/* תזכורות אוטומטיות */}
+          <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-100">
+            <div className="flex items-center gap-2">
+              <Switch 
+                checked={formData.auto_reminder_enabled} 
+                onCheckedChange={(v) => updateField('auto_reminder_enabled', v)} 
+              />
+              <Label className="text-sm">תזכורת אוטומטית לפני תאריך היעד</Label>
+            </div>
+            {formData.auto_reminder_enabled && (
+              <Select 
+                value={String(formData.auto_reminder_days_before || 1)} 
+                onValueChange={(v) => updateField('auto_reminder_days_before', parseInt(v))}
+              >
+                <SelectTrigger className="w-32 h-8">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">יום אחד לפני</SelectItem>
+                  <SelectItem value="2">יומיים לפני</SelectItem>
+                  <SelectItem value="3">3 ימים לפני</SelectItem>
+                  <SelectItem value="7">שבוע לפני</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
           {/* תזכורות מרובות וחזרתיות */}
