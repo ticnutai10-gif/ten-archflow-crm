@@ -65,9 +65,10 @@ export default function SalaryReportsPage() {
       
       const reports = membersToCalculate.map(member => {
         const memberLogs = timeLogs.filter(log => {
-          const logDate = log.date || log.created_date?.split("T")[0];
-          const matchesMember = log.user_email === member.email || 
-                               log.created_by === member.email ||
+          const logDate = log.log_date || log.date || log.created_date?.split("T")[0];
+          // Support user_email (new), created_by (legacy), and team_member_id
+          const logEmployee = log.user_email || log.created_by;
+          const matchesMember = logEmployee === member.email || 
                                log.team_member_id === member.id;
           const matchesDate = logDate >= dateFrom && logDate <= dateTo;
           return matchesMember && matchesDate;
