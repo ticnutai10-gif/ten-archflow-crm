@@ -8,7 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Calendar, Users, Briefcase, MoreVertical, Edit, Trash2, Copy, CheckSquare, Square, AlertCircle, ShoppingCart } from "lucide-react";
+import { Calendar, Users, Briefcase, MoreVertical, Edit, Trash2, Copy, CheckSquare, Square, AlertCircle, ShoppingCart, Flame, Bell } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
 
@@ -20,8 +20,9 @@ const STATUS_COLORS = {
 };
 
 const PRIORITY_COLORS = {
-  "גבוהה": "bg-red-100 text-red-800 border-red-200",
-  "בינונית": "bg-yellow-100 text-yellow-800 border-yellow-200",
+  "קריטית": "bg-red-600 text-white border-red-700 animate-pulse",
+  "גבוהה": "bg-orange-100 text-orange-800 border-orange-200",
+  "בינונית": "bg-amber-100 text-amber-800 border-amber-200",
   "נמוכה": "bg-green-100 text-green-800 border-green-200"
 };
 
@@ -77,36 +78,40 @@ export default function TaskCard({
             </button>
           )}
 
-          {/* אייקון לפי קטגוריה */}
+          {/* אייקון לפי קטגוריה ועדיפות */}
           <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
-            taskPriority === 'דחופה' || taskPriority === 'גבוהה' 
-              ? 'bg-red-100' 
+            taskPriority === 'קריטית'
+              ? 'bg-red-600 animate-pulse'
+              : taskPriority === 'גבוהה' 
+              ? 'bg-orange-100' 
               : taskPriority === 'בינונית'
-              ? 'bg-yellow-100'
+              ? 'bg-amber-100'
               : 'bg-green-100'
           }`}>
-            {task.category === 'פגישה' ? (
+            {taskPriority === 'קריטית' ? (
+              <Flame className="w-6 h-6 text-white" />
+            ) : task.category === 'פגישה' ? (
               <Calendar className={`w-6 h-6 ${
-                taskPriority === 'דחופה' || taskPriority === 'גבוהה' 
-                  ? 'text-red-600' 
+                taskPriority === 'גבוהה' 
+                  ? 'text-orange-600' 
                   : taskPriority === 'בינונית'
-                  ? 'text-yellow-600'
+                  ? 'text-amber-600'
                   : 'text-green-600'
               }`} />
             ) : task.category === 'קניות' || task.category === 'קנייה' ? (
               <ShoppingCart className={`w-6 h-6 ${
-                taskPriority === 'דחופה' || taskPriority === 'גבוהה' 
-                  ? 'text-red-600' 
+                taskPriority === 'גבוהה' 
+                  ? 'text-orange-600' 
                   : taskPriority === 'בינונית'
-                  ? 'text-yellow-600'
+                  ? 'text-amber-600'
                   : 'text-green-600'
               }`} />
             ) : (
               <CheckSquare className={`w-6 h-6 ${
-                taskPriority === 'דחופה' || taskPriority === 'גבוהה' 
-                  ? 'text-red-600' 
+                taskPriority === 'גבוהה' 
+                  ? 'text-orange-600' 
                   : taskPriority === 'בינונית'
-                  ? 'text-yellow-600'
+                  ? 'text-amber-600'
                   : 'text-green-600'
               }`} />
             )}
@@ -205,6 +210,23 @@ export default function TaskCard({
                 </span>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* תזכורות אוטומטיות */}
+        {task.auto_reminder_enabled && task.due_date && (
+          <div className="pt-2 border-t">
+            <div className="flex items-center gap-1 text-xs text-blue-600">
+              <Bell className="w-3 h-3" />
+              <span>תזכורת אוטומטית {task.auto_reminder_days_before || 1} ימים לפני</span>
+            </div>
+          </div>
+        )}
+
+        {/* תיאור תאריך גמיש */}
+        {task.flexible_due_description && (
+          <div className="text-xs text-purple-600 bg-purple-50 px-2 py-1 rounded mt-2">
+            {task.flexible_due_description}
           </div>
         )}
       </CardContent>
