@@ -1,8 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import twilio from 'npm:twilio';
 
-// This function simulates SMS sending. 
-// In a real production app, you would integrate with providers like Twilio, MessageBird, or local Israeli SMS providers.
-// Required secrets for a real implementation would be: SMS_PROVIDER_API_KEY, SMS_SENDER_ID, etc.
+// SMS sending via Twilio - uses the same credentials as WhatsApp
 
 Deno.serve(async (req) => {
   try {
@@ -20,27 +19,50 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Missing "to" or "message" fields' }, { status: 400 });
     }
 
-    console.log(`[SMS Simulation] Sending SMS to ${to}: ${message}`);
+    const accountSid = Deno.env.get('TWILIO_ACCOUNT_SID');
+    const authToken = Deno.env.get('TWILIO_AUTH_TOKEN');
+    const fromNumber = Deno.env.get('TWILIO_PHONE_NUMBER');
 
-    // Here you would put the actual API call to the SMS provider.
-    // Example (commented out):
-    /*
-    const response = await fetch('https://api.smsprovider.com/send', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${Deno.env.get('SMS_API_KEY')}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ to, from: 'Tenenbaum', text: message })
+    // If Twilio is not configured, simulate
+    if (!accountSid || !authToken || !fromNumber) {
+      console.log(`[SMS Simulation] Sending SMS to ${to}: ${message}`);
+      return Response.json({ 
+        success: true, 
+        status: 'simulated', 
+        provider: 'simulation',
+        details: 'Twilio not configured. SMS simulated.' 
+      });
+    }
+
+    const client = twilio(accountSid, authToken);
+
+    // Format phone number
+    let formattedTo = to.replace(/\D/g, '');
+    if (!formattedTo.startsWith('+')) {
+      // Assume Israeli number if starts with 0
+      if (formattedTo.startsWith('0')) {
+        formattedTo = '+972' + formattedTo.substring(1);
+      } else if (!formattedTo.startsWith('972')) {
+        formattedTo = '+' + formattedTo;
+      } else {
+        formattedTo = '+' + formattedTo;
+      }
+    }
+
+    // Remove whatsapp: prefix from from number for SMS
+    let smsFromNumber = fromNumber.replace('whatsapp:', '');
+
+    const result = await client.messages.create({
+      from: smsFromNumber,
+      to: formattedTo,
+      body: message,
     });
-    */
 
-    // For now, we return success to simulate the feature
     return Response.json({ 
       success: true, 
       status: 'sent', 
-      provider: 'simulation',
-      details: 'SMS integration simulated. To enable real SMS, configure an SMS provider.' 
+      sid: result.sid,
+      provider: 'twilio'
     });
 
   } catch (error) {
