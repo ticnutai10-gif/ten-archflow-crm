@@ -72,20 +72,20 @@ export default function TaskKanban({ tasks, onTaskUpdate, onTaskEdit, onTaskDele
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {statusColumns.map(column => (
-          <Card key={column.key} className={`${column.color} min-h-96 rounded-2xl`}>
-            <CardHeader>
-              <CardTitle className="text-center">{column.title}</CardTitle>
-            </CardHeader>
-            <CardContent>
+          <div key={column.key} className="flex flex-col">
+            <div className={`${column.headerColor} text-white rounded-t-xl px-4 py-3`}>
+              <span className="font-semibold">{column.title}</span>
+            </div>
+            <div className={`${column.color} min-h-[400px] rounded-b-xl p-3`}>
               <div className="space-y-3">
                 {Array(3).fill(0).map((_, i) => (
-                  <div key={i} className="h-24 bg-white rounded animate-pulse" />
+                  <div key={i} className="h-24 bg-white rounded-xl animate-pulse" />
                 ))}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         ))}
       </div>
     );

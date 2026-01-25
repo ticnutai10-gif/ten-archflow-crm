@@ -521,6 +521,7 @@ export default function TasksPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">כל הדחיפויות</SelectItem>
+                      <SelectItem value="קריטית">🔥 קריטית</SelectItem>
                       <SelectItem value="גבוהה">גבוהה</SelectItem>
                       <SelectItem value="בינונית">בינונית</SelectItem>
                       <SelectItem value="נמוכה">נמוכה</SelectItem>
