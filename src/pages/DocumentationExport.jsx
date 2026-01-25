@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Download, FileJson, BookOpen } from "lucide-react";
+import { Download, FileJson, BookOpen, Loader2 } from "lucide-react";
+import { downloadDocumentation } from "@/functions/downloadDocumentation";
 
 const FULL_DOCUMENTATION = {
   _meta: {
@@ -817,18 +818,41 @@ const salary = hours * rate;`
 };
 
 export default function DocumentationExportPage() {
-  const downloadJSON = () => {
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const downloadJSON = async () => {
+    setIsDownloading(true);
+    try {
+      // Try backend function first
+      const response = await downloadDocumentation();
+      if (response?.data) {
+        const blob = new Blob([JSON.stringify(response.data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `CRM_Documentation_${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        return;
+      }
+    } catch (e) {
+      console.log('Backend failed, using frontend fallback:', e);
+    }
+
+    // Fallback to frontend generation
     const dataStr = JSON.stringify(FULL_DOCUMENTATION, null, 2);
-    const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
-    const fileName = `CRM_Documentation_${new Date().toISOString().split('T')[0]}.json`;
-    
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.setAttribute('href', dataUri);
-    link.setAttribute('download', fileName);
-    link.style.display = 'none';
+    link.href = url;
+    link.download = `CRM_Documentation_${new Date().toISOString().split('T')[0]}.json`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    setIsDownloading(false);
   };
 
   return (
@@ -859,8 +883,12 @@ export default function DocumentationExportPage() {
               </ul>
             </div>
 
-            <Button onClick={downloadJSON} size="lg" className="w-full gap-2">
-              <Download className="w-5 h-5" />
+            <Button onClick={downloadJSON} size="lg" className="w-full gap-2" disabled={isDownloading}>
+              {isDownloading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Download className="w-5 h-5" />
+              )}
               הורד קובץ JSON לתיעוד AI
             </Button>
 
