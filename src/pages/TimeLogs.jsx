@@ -532,7 +532,8 @@ export default function TimeLogsPage() {
         duration_seconds: totalSeconds,
         title: newLogData.title || '',
         notes: newLogData.notes || '',
-        created_by: currentUser?.email || 'unknown',
+        user_email: currentUser?.email || '',
+        user_name: currentUser?.full_name || currentUser?.email?.split('@')[0] || 'לא ידוע',
       });
 
       setAddTimeDialogOpen(false);
@@ -552,13 +553,14 @@ export default function TimeLogsPage() {
     }
   };
 
-  // ✅ הגנה על uniqueEmployees
+  // ✅ הגנה על uniqueEmployees - תומך גם בשדה החדש user_email וגם ב-created_by
   const uniqueEmployees = React.useMemo(() => {
     if (!Array.isArray(timeLogs)) {
       console.error('❌ [TimeLogsPage] timeLogs is not an array for uniqueEmployees!', timeLogs);
       return [];
     }
-    return [...new Set(timeLogs.map(log => log?.created_by))].filter(Boolean);
+    // Use user_email if available, fallback to created_by for backwards compatibility
+    return [...new Set(timeLogs.map(log => log?.user_email || log?.created_by))].filter(Boolean);
   }, [timeLogs]);
 
   // Filter logs
@@ -575,7 +577,9 @@ export default function TimeLogsPage() {
       const matchesSearch = log.client_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            log.title?.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesClient = clientFilter === "all" || log.client_name === clientFilter;
-      const matchesEmployee = employeeFilter === "all" || log.created_by === employeeFilter;
+      // Support both user_email (new) and created_by (legacy) for employee filtering
+      const logEmployee = log.user_email || log.created_by;
+      const matchesEmployee = employeeFilter === "all" || logEmployee === employeeFilter;
 
       let matchesTime = true;
       if (timeFilter !== "all" && log.log_date) {
@@ -756,18 +760,26 @@ export default function TimeLogsPage() {
   };
 
   // Employee hours distribution
-  // ✅ הגנה על employeeHours
+  // ✅ הגנה על employeeHours - תומך בשדות החדשים
   const employeeHours = () => {
     const empHours = {};
     filteredLogs.forEach(log => {
       if (!log) return; // Skip if log is null/undefined
-      const emp = log.created_by || 'לא ידוע';
+      // Use user_name if available, then user_email, fallback to created_by
+      const emp = log.user_name || log.user_email || log.created_by || 'לא ידוע';
       const hours = (log?.duration_seconds || 0) / 3600;
-      empHours[emp] = (empHours[emp] || 0) + hours;
+      
+      // Clean up employee name (remove email domain if it's an email)
+      const displayName = emp.includes('@') ? emp.split('@')[0] : emp;
+      empHours[displayName] = (empHours[displayName] || 0) + hours;
     });
     
     return Object.entries(empHours)
-      .map(([name, hours]) => ({ name: name.split('@')[0], hours: Math.round(hours * 10) / 10 }))
+      .map(([name, hours]) => ({ 
+        name, 
+        hours: Math.round(hours * 10) / 10,
+        fullName: name // Keep for tooltip
+      }))
       .sort((a, b) => b.hours - a.hours);
   };
 
