@@ -31,6 +31,7 @@ import Quotes from './pages/Quotes';
 import Register from './pages/Register';
 import RemoveDuplicates from './pages/RemoveDuplicates';
 import Reports from './pages/Reports';
+import SalaryReports from './pages/SalaryReports';
 import Settings from './pages/Settings';
 import SpreadsheetDetails from './pages/SpreadsheetDetails';
 import Tasks from './pages/Tasks';
@@ -38,7 +39,6 @@ import TimeLogs from './pages/TimeLogs';
 import TimerShowcase from './pages/TimerShowcase';
 import UserApprovals from './pages/UserApprovals';
 import WorkflowBuilder from './pages/WorkflowBuilder';
-import SalaryReports from './pages/SalaryReports';
 import __Layout from './Layout.jsx';
 
 
@@ -76,6 +76,7 @@ export const PAGES = {
     "Register": Register,
     "RemoveDuplicates": RemoveDuplicates,
     "Reports": Reports,
+    "SalaryReports": SalaryReports,
     "Settings": Settings,
     "SpreadsheetDetails": SpreadsheetDetails,
     "Tasks": Tasks,
@@ -83,7 +84,6 @@ export const PAGES = {
     "TimerShowcase": TimerShowcase,
     "UserApprovals": UserApprovals,
     "WorkflowBuilder": WorkflowBuilder,
-    "SalaryReports": SalaryReports,
 }
 
 export const pagesConfig = {

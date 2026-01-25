@@ -10,8 +10,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { 
   Calculator, Download, Mail, Clock, User, 
   Calendar, DollarSign, FileText, Send, Loader2,
-  TrendingUp, Users, AlertCircle
+  TrendingUp, Users, AlertCircle, MessageSquare, Phone, List
 } from "lucide-react";
+import BulkSendDialog from "@/components/communication/BulkSendDialog";
+import DistributionListManager from "@/components/communication/DistributionListManager";
 import { format, startOfMonth, endOfMonth, parseISO } from "date-fns";
 import { he } from "date-fns/locale";
 
@@ -30,6 +32,9 @@ export default function SalaryReportsPage() {
   const [salaryReport, setSalaryReport] = useState(null);
   const [emailRecipients, setEmailRecipients] = useState("");
   const [allMembersReport, setAllMembersReport] = useState([]);
+  const [showBulkSend, setShowBulkSend] = useState(false);
+  const [showListManager, setShowListManager] = useState(false);
+  const [bulkSendData, setBulkSendData] = useState({ recipients: [], subject: "", message: "", html: null });
 
   useEffect(() => {
     loadData();
@@ -305,6 +310,10 @@ export default function SalaryReportsPage() {
               <Download className="w-4 h-4 ml-2" />
               ייצוא CSV
             </Button>
+            <Button variant="outline" onClick={() => setShowListManager(true)}>
+              <List className="w-4 h-4 ml-2" />
+              רשימות תפוצה
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -368,16 +377,38 @@ export default function SalaryReportsPage() {
                       <td className="p-3">₪{report.vatAmount.toLocaleString()}</td>
                       <td className="p-3 font-bold text-green-600">₪{report.netAmount.toLocaleString()}</td>
                       <td className="p-3">
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => {
-                            setSalaryReport(report);
-                            setSelectedMember(report.member.id);
-                          }}
-                        >
-                          <FileText className="w-4 h-4" />
-                        </Button>
+                        <div className="flex gap-1">
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => {
+                              setSalaryReport(report);
+                              setSelectedMember(report.member.id);
+                            }}
+                          >
+                            <FileText className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setBulkSendData({
+                                recipients: [{ 
+                                  name: report.member.full_name, 
+                                  email: report.member.email,
+                                  phone: report.member.phone 
+                                }],
+                                subject: `דוח שעות ושכר - ${report.member.full_name} - ${format(parseISO(dateFrom), "MM/yyyy")}`,
+                                message: `שלום ${report.member.full_name},\n\nמצורף דוח השעות והשכר שלך לתקופה ${format(parseISO(dateFrom), "dd/MM/yyyy")} - ${format(parseISO(dateTo), "dd/MM/yyyy")}.\n\nסה"כ שעות: ${report.totalHours}\nסה"כ לתשלום: ₪${report.netAmount.toLocaleString()}`,
+                                html: generateReportHtml(report)
+                              });
+                              setShowBulkSend(true);
+                            }}
+                            className="text-green-600"
+                          >
+                            <Send className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -452,13 +483,15 @@ export default function SalaryReportsPage() {
               </div>
             </div>
 
-            {/* Send Email Section */}
+            {/* Send Report Section */}
             <div className="mt-6 pt-6 border-t">
               <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                <Mail className="w-5 h-5" />
-                שליחת דוח במייל
+                <Send className="w-5 h-5" />
+                שליחת דוח
               </h3>
-              <div className="flex gap-4">
+              
+              {/* Quick Email */}
+              <div className="flex gap-4 mb-4">
                 <div className="flex-1">
                   <Input
                     placeholder="כתובות מייל (מופרדות בפסיק)"
@@ -470,10 +503,80 @@ export default function SalaryReportsPage() {
                 <Button 
                   onClick={sendReportByEmail}
                   disabled={sending || !emailRecipients.trim()}
-                  className="bg-green-600 hover:bg-green-700"
+                  className="bg-blue-600 hover:bg-blue-700"
                 >
-                  {sending ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : <Send className="w-4 h-4 ml-2" />}
-                  שלח דוח
+                  {sending ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : <Mail className="w-4 h-4 ml-2" />}
+                  מייל מהיר
+                </Button>
+              </div>
+
+              {/* Advanced Send Options */}
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline"
+                  onClick={() => {
+                    setBulkSendData({
+                      recipients: [{ 
+                        name: salaryReport.member.full_name, 
+                        email: salaryReport.member.email,
+                        phone: salaryReport.member.phone
+                      }],
+                      subject: `דוח שעות ושכר - ${salaryReport.member.full_name} - ${format(parseISO(dateFrom), "MM/yyyy")}`,
+                      message: `שלום ${salaryReport.member.full_name},\n\nמצורף דוח השעות והשכר שלך לתקופה ${format(parseISO(dateFrom), "dd/MM/yyyy")} - ${format(parseISO(dateTo), "dd/MM/yyyy")}.\n\nסה"כ שעות: ${salaryReport.totalHours}\nסה"כ לתשלום: ₪${salaryReport.netAmount.toLocaleString()}`,
+                      html: generateReportHtml(salaryReport)
+                    });
+                    setShowBulkSend(true);
+                  }}
+                  className="gap-2"
+                >
+                  <MessageSquare className="w-4 h-4 text-green-600" />
+                  WhatsApp
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={() => {
+                    setBulkSendData({
+                      recipients: [{ 
+                        name: salaryReport.member.full_name, 
+                        email: salaryReport.member.email,
+                        phone: salaryReport.member.phone
+                      }],
+                      subject: `דוח שעות ושכר - ${salaryReport.member.full_name}`,
+                      message: `דוח שכר ${salaryReport.member.full_name}: ${salaryReport.totalHours} שעות, סה"כ ₪${salaryReport.netAmount.toLocaleString()}`,
+                      html: generateReportHtml(salaryReport)
+                    });
+                    setShowBulkSend(true);
+                  }}
+                  className="gap-2"
+                >
+                  <Phone className="w-4 h-4 text-purple-600" />
+                  SMS
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={() => {
+                    setBulkSendData({
+                      recipients: allMembersReport.length > 0 
+                        ? allMembersReport.map(r => ({ 
+                            name: r.member.full_name, 
+                            email: r.member.email,
+                            phone: r.member.phone 
+                          }))
+                        : [{ 
+                            name: salaryReport.member.full_name, 
+                            email: salaryReport.member.email,
+                            phone: salaryReport.member.phone
+                          }],
+                      subject: `דוחות שכר - ${format(parseISO(dateFrom), "MM/yyyy")}`,
+                      message: `שלום,\n\nמצורף דוח השעות והשכר לתקופה ${format(parseISO(dateFrom), "dd/MM/yyyy")} - ${format(parseISO(dateTo), "dd/MM/yyyy")}.`,
+                      html: null
+                    });
+                    setShowBulkSend(true);
+                  }}
+                  className="gap-2"
+                >
+                  <Users className="w-4 h-4" />
+                  שליחה מרובה
                 </Button>
               </div>
             </div>
@@ -495,6 +598,24 @@ export default function SalaryReportsPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Bulk Send Dialog */}
+      <BulkSendDialog
+        open={showBulkSend}
+        onClose={() => setShowBulkSend(false)}
+        defaultRecipients={bulkSendData.recipients}
+        defaultSubject={bulkSendData.subject}
+        defaultMessage={bulkSendData.message}
+        attachmentHtml={bulkSendData.html}
+        title="שליחת דוח שכר"
+      />
+
+      {/* Distribution List Manager */}
+      <DistributionListManager
+        open={showListManager}
+        onClose={() => setShowListManager(false)}
+        mode="manage"
+      />
     </div>
   );
 }
