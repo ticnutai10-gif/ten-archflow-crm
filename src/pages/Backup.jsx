@@ -215,7 +215,43 @@ export default function BackupPage() {
         const response = await exportEntities({ categories, format: 'json' });
         console.log("[Backup] exportEntities response:", response);
         
-        const jsonData = JSON.stringify(response.data || response, null, 2); // Ensure it's stringified JSON
+        // Add metadata for easier restore
+        const rawData = response.data || response;
+        const enrichedData = {
+          _backup_metadata: {
+            generated_at: new Date().toISOString(),
+            version: '2.0',
+            app_name: 'CRM Tannenbaum',
+            categories_exported: categories,
+            restore_instructions: {
+              he: 'לשחזור הנתונים, השתמש בכלי הייבוא בדף הגיבוי. ניתן גם לייבא לכל מערכת שתומכת ב-JSON',
+              en: 'To restore, use the import tool in Backup page. Can also import to any JSON-compatible system'
+            }
+          },
+          _data_schemas: categories.reduce((schemas, cat) => {
+            schemas[cat] = {
+              primary_key: 'id',
+              built_in_fields: ['id', 'created_date', 'updated_date', 'created_by'],
+              note: 'Full schema available in entities/' + cat + '.json'
+            };
+            return schemas;
+          }, {}),
+          _relationships: {
+            'TimeLog.user_email': 'User.email or TeamMember.email - מזהה העובד שיצר את הרישום',
+            'TimeLog.client_id': 'Client.id - הלקוח שעבורו בוצעה העבודה',
+            'TimeLog.project_id': 'Project.id - הפרויקט (אופציונלי)',
+            'Task.assigned_to': 'User.email or TeamMember.email - העובד המוקצה',
+            'Task.project_id': 'Project.id - הפרויקט המשויך',
+            'Task.client_id': 'Client.id - הלקוח המשויך',
+            'Project.client_id': 'Client.id - הלקוח של הפרויקט',
+            'Meeting.client_id': 'Client.id - הלקוח של הפגישה',
+            'SubTask.project_id': 'Project.id - הפרויקט של תת-המשימה',
+            'CustomSpreadsheet.client_id': 'Client.id - לקוח משויך (אם קיים)'
+          },
+          data: rawData
+        };
+        
+        const jsonData = JSON.stringify(enrichedData, null, 2);
         const blob = new Blob([jsonData], { type: "application/json" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
@@ -859,20 +895,36 @@ export default function BackupPage() {
                   try {
                     // Export clients with their custom_data expanded
                     const clients = await base44.entities.Client.list('-created_date', 10000);
-                    
+
                     const exportData = {
+                    _backup_metadata: {
                       generated_at: new Date().toISOString(),
                       type: 'clients_with_custom_fields',
-                      clients: clients.map(client => ({
-                        ...client,
-                        _custom_data_expanded: client.custom_data || {},
-                        _professionals_expanded: client.professionals || {}
-                      })),
-                      summary: {
-                        total_clients: clients.length,
-                        with_custom_data: clients.filter(c => c.custom_data && Object.keys(c.custom_data).length > 0).length,
-                        with_professionals: clients.filter(c => c.professionals && Object.keys(c.professionals).length > 0).length
+                      version: '2.0',
+                      app_name: 'CRM Tannenbaum',
+                      restore_instructions: {
+                        he: 'ליבוא הנתונים, השתמש בכלי הייבוא בדף הגיבוי. הנתונים כוללים שדות מותאמים ובעלי מקצוע',
+                        en: 'To restore, use the import tool. Data includes custom fields and professionals'
                       }
+                    },
+                    _data_schema: {
+                      Client: {
+                        primary_key: 'id',
+                        fields: ['id', 'name', 'email', 'phone', 'address', 'stage', 'status', 'source', 'custom_data', 'professionals', 'created_date', 'updated_date', 'created_by'],
+                        custom_data_structure: 'key-value pairs for user-defined fields',
+                        professionals_structure: 'key: professional_type, value: professional_name'
+                      }
+                    },
+                    clients: clients.map(client => ({
+                      ...client,
+                      _custom_data_expanded: client.custom_data || {},
+                      _professionals_expanded: client.professionals || {}
+                    })),
+                    summary: {
+                      total_clients: clients.length,
+                      with_custom_data: clients.filter(c => c.custom_data && Object.keys(c.custom_data).length > 0).length,
+                      with_professionals: clients.filter(c => c.professionals && Object.keys(c.professionals).length > 0).length
+                    }
                     };
                     
                     const jsonData = JSON.stringify(exportData, null, 2);
