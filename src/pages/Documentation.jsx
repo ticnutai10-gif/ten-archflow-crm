@@ -698,4 +698,376 @@ const salary = hours * rate;`}
                       { num: 6, entity: 'SubTask', reason: 'תת-משימות - תלוי ב-Project' },
                       { num: 7, entity: 'TimeLog', reason: 'לוגי זמן - תלוי ב-Client, Project, Task, TeamMember' },
                       { num: 8, entity: 'Meeting', reason: 'פגישות - תלוי ב-Client, Project' },
-                      { num: 9, entity: 'Quote',
+                      { num: 9, entity: 'Quote', reason: 'הצעות מחיר - תלוי ב-Client' },
+                      { num: 10, entity: 'Invoice', reason: 'חשבוניות - תלוי ב-Client, Project' },
+                      { num: 11, entity: 'CustomSpreadsheet', reason: 'טבלאות - תלוי ב-Client, GlobalDataType' },
+                      { num: 12, entity: 'Reminder', reason: 'תזכורות - יכולות להתייחס לכל ישות' },
+                      { num: 13, entity: 'SheetComment', reason: 'תגובות על טבלאות - תלוי ב-CustomSpreadsheet' },
+                    ].map(step => (
+                      <div key={step.num} className="flex items-start gap-3 p-3 bg-white rounded-lg border">
+                        <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold flex-shrink-0">
+                          {step.num}
+                        </div>
+                        <div className="flex-1">
+                          <div className="font-bold text-slate-800">{step.entity}</div>
+                          <div className="text-sm text-slate-600">{step.reason}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <Card className="bg-green-50 border-green-200">
+                  <CardHeader>
+                    <CardTitle className="text-green-800">דוגמת שחזור ב-JavaScript</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <pre className="bg-slate-900 text-green-400 p-4 rounded-lg text-xs overflow-x-auto" dir="ltr">
+{`// קריאת קובץ גיבוי
+const backup = JSON.parse(backupFileContent);
+
+// בדיקת תקינות
+if (backup._validation && !backup._validation.all_valid) {
+  console.warn('⚠️ Validation issues detected:', 
+    backup._validation.report);
+}
+
+// שחזור ישויות בסדר הנכון
+const entitiesToRestore = [
+  'GlobalDataType',
+  'TeamMember', 
+  'Client',
+  'Project',
+  'Task',
+  'TimeLog',
+  'Meeting',
+  'Quote',
+  'Invoice',
+  'CustomSpreadsheet'
+];
+
+for (const entityName of entitiesToRestore) {
+  const records = backup.data[entityName];
+  
+  if (!Array.isArray(records) || records.length === 0) {
+    console.log(\`⏭️  Skipping \${entityName} (no data)\`);
+    continue;
+  }
+  
+  console.log(\`📥 Restoring \${entityName}: \${records.length} records\`);
+  
+  for (const record of records) {
+    try {
+      // הסר שדות מערכת שנוצרים אוטומטית
+      const { created_date, updated_date, ...cleanData } = record;
+      
+      await base44.entities[entityName].create(cleanData);
+    } catch (error) {
+      console.error(\`❌ Failed to restore \${entityName}.\${record.id}:\`, error);
+    }
+  }
+}
+
+console.log('✅ Restore completed');`}</pre>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-purple-50 border-purple-200">
+                  <CardHeader>
+                    <CardTitle className="text-purple-800">שחזור טבלאות מותאמות</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <pre className="bg-slate-900 text-purple-400 p-4 rounded-lg text-xs overflow-x-auto" dir="ltr">
+{`// טבלאות דורשות טיפול מיוחד
+const spreadsheets = backup.data.CustomSpreadsheet;
+
+for (const sheet of spreadsheets) {
+  // ודא שכל השדות החיוניים קיימים
+  const required = ['columns', 'rows_data'];
+  const missing = required.filter(f => !sheet[f]);
+  
+  if (missing.length > 0) {
+    console.error(\`❌ Missing fields: \${missing.join(', ')}\`);
+    continue;
+  }
+  
+  // ודא שכל שורה מכילה ID
+  const rowsWithoutId = sheet.rows_data.filter(r => !r?.id);
+  if (rowsWithoutId.length > 0) {
+    console.warn(\`⚠️  \${rowsWithoutId.length} rows without ID, generating...\`);
+    sheet.rows_data = sheet.rows_data.map((r, i) => ({
+      ...r,
+      id: r.id || \`row_restored_\${Date.now()}_\${i}\`
+    }));
+  }
+  
+  // ודא שכל עמודה מכילה key ו-title
+  sheet.columns = sheet.columns.map((col, i) => ({
+    ...col,
+    key: col.key || \`col_restored_\${Date.now()}_\${i}\`,
+    title: col.title || \`Column \${i + 1}\`,
+    visible: col.visible !== false
+  }));
+  
+  // שחזר את הטבלה
+  await base44.entities.CustomSpreadsheet.create({
+    name: sheet.name,
+    description: sheet.description,
+    client_id: sheet.client_id,
+    client_name: sheet.client_name,
+    columns: sheet.columns,
+    rows_data: sheet.rows_data,
+    cell_styles: sheet.cell_styles || {},
+    cell_notes: sheet.cell_notes || {},
+    cell_metadata: sheet.cell_metadata || {},
+    merged_cells: sheet.merged_cells || {},
+    merged_headers: sheet.merged_headers || {},
+    sub_headers: sheet.sub_headers || {},
+    header_styles: sheet.header_styles || {},
+    theme_settings: sheet.theme_settings,
+    charts: sheet.charts || [],
+    saved_views: sheet.saved_views || [],
+    freeze_settings: sheet.freeze_settings,
+    custom_stage_options: sheet.custom_stage_options,
+    // שים לב: google_sheet_id לא משוחזר אוטומטית
+    // יש לחבר מחדש דרך הממשק
+  });
+  
+  console.log(\`✅ Restored spreadsheet: \${sheet.name}\`);
+}`}</pre>
+                  </CardContent>
+                </Card>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-sm">שחזור למערכת אחרת (Excel/CSV)</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="text-sm space-y-2">
+                        <p className="font-bold">קובץ JSON:</p>
+                        <ol className="space-y-1 pr-4">
+                          <li>1. פתח את backup.data[EntityName]</li>
+                          <li>2. כל רשומה היא שורה בטבלה</li>
+                          <li>3. השתמש ב-JSON→CSV converter</li>
+                        </ol>
+                        
+                        <p className="font-bold mt-3">קובץ Excel/CSV:</p>
+                        <ol className="space-y-1 pr-4">
+                          <li>1. כל גיליון = ישות אחת</li>
+                          <li>2. שורה ראשונה = כותרות</li>
+                          <li>3. עמודת _entity_type מזהה את הסוג</li>
+                        </ol>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-sm">אימות תקינות הנתונים</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-sm space-y-2">
+                        <p>בקובץ הגיבוי תמצא מידע ב-<code className="bg-slate-100 px-1">_validation</code>:</p>
+                        <pre className="bg-slate-100 p-2 rounded text-xs" dir="ltr">
+{`{
+  "all_valid": true/false,
+  "total_issues": 0,
+  "report": {
+    "TimeLog": {
+      "total": 150,
+      "issues": null,
+      "status": "valid"
+    }
+  }
+}`}</pre>
+                        <p className="text-amber-700 font-bold">
+                          ⚠️ אם all_valid = false, בדוק את ה-report לפני שחזור
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>דוגמאות לבעיות נפוצות ופתרונות</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="border-r-4 border-red-500 pr-4">
+                        <h5 className="font-bold text-red-700">❌ בעיה: TimeLog ללא עובד משויך</h5>
+                        <p className="text-sm text-slate-600 mt-1">
+                          <code>user_email</code> ו-<code>created_by</code> ריקים
+                        </p>
+                        <p className="text-sm text-green-700 mt-2">
+                          ✅ פתרון: השתמש ב-<code>created_by</code> מהמערכת או קבע ידנית עובד ברירת מחדל
+                        </p>
+                      </div>
+
+                      <div className="border-r-4 border-amber-500 pr-4">
+                        <h5 className="font-bold text-amber-700">⚠️ בעיה: CustomSpreadsheet ללא rows_data</h5>
+                        <p className="text-sm text-slate-600 mt-1">
+                          טבלה ללא שורות נתונים
+                        </p>
+                        <p className="text-sm text-green-700 mt-2">
+                          ✅ פתרון: צור טבלה ריקה או דלג על השחזור (טבלת Template)
+                        </p>
+                      </div>
+
+                      <div className="border-r-4 border-blue-500 pr-4">
+                        <h5 className="font-bold text-blue-700">💡 טיפ: קישורים שבורים</h5>
+                        <p className="text-sm text-slate-600 mt-1">
+                          Project עם client_id שלא קיים
+                        </p>
+                        <p className="text-sm text-green-700 mt-2">
+                          ✅ פתרון: השתמש ב-<code>client_name</code> כ-fallback, או צור לקוח חדש לפי השם
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="w-5 h-5 text-blue-600" />
+                  מבנה קובץ הגיבוי
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <pre className="bg-slate-900 text-cyan-400 p-4 rounded-lg text-xs overflow-x-auto" dir="ltr">
+{`{
+  "_backup_metadata": {
+    "generated_at": "2026-01-25T10:00:00.000Z",
+    "generated_by": "user@example.com",
+    "version": "2.0",
+    "app_name": "CRM Tannenbaum",
+    "format": "structured_backup",
+    "restore_instructions": { ... }
+  },
+  
+  "_data_schemas": {
+    "Client": {
+      "primary_key": "id",
+      "fields": [...],
+      "relations": [],
+      "description": "לקוחות המערכת"
+    },
+    "TimeLog": {
+      "primary_key": "id",
+      "fields": [...],
+      "relations": [
+        "client_id → Client.id",
+        "user_email → TeamMember.email"
+      ],
+      "description": "רישומי שעות עבודה"
+    }
+    // ... all entities
+  },
+  
+  "_validation": {
+    "performed_at": "2026-01-25T10:00:00.000Z",
+    "all_valid": true,
+    "total_issues": 0,
+    "report": { ... }
+  },
+  
+  "statistics": {
+    "total_records": 1250,
+    "categories_exported": [...],
+    "records_per_category": { ... }
+  },
+  
+  "data": {
+    "Client": [ {...}, {...}, ... ],
+    "Project": [ {...}, {...}, ... ],
+    "TimeLog": [ {...}, {...}, ... ],
+    "CustomSpreadsheet": [ {...}, {...}, ... ]
+    // ... all entities
+  },
+  
+  "spreadsheet_documentation": { ... },
+  "spreadsheet_details": [ ... ],
+  "employee_time_summary": [ ... ]
+}`}</pre>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>שחזור מהיר - סקריפט מוכן</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-slate-600">העתק את הקוד הזה לקונסול הדפדפן בעמוד הגיבוי:</p>
+                <div className="relative">
+                  <Button 
+                    size="sm" 
+                    variant="ghost"
+                    className="absolute top-2 left-2 z-10"
+                    onClick={() => copyToClipboard(restoreScript)}
+                  >
+                    <Copy className="w-4 h-4" />
+                  </Button>
+                  <pre className="bg-slate-900 text-green-400 p-4 rounded-lg text-xs overflow-x-auto pt-12" dir="ltr">
+{restoreScript}</pre>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+
+        {/* Footer */}
+        <Card className="bg-gradient-to-r from-amber-50 to-purple-50 border-2 border-amber-200">
+          <CardContent className="p-6 text-center">
+            <Building2 className="w-12 h-12 mx-auto text-amber-600 mb-4" />
+            <h3 className="font-bold text-xl text-slate-800 mb-2">CRM Tannenbaum</h3>
+            <p className="text-slate-600">מערכת ניהול לקוחות ופרויקטים מתקדמת</p>
+            <p className="text-sm text-slate-500 mt-2">גרסת מערכת: 2.0 | תיעוד נוצר אוטומטית</p>
+          </CardContent>
+        </Card>
+
+      </div>
+    </div>
+  );
+}
+
+const restoreScript = `// סקריפט שחזור מהיר
+async function restoreFromBackup(backupData) {
+  const order = [
+    'GlobalDataType', 'TeamMember', 'Client', 'Project', 
+    'Task', 'SubTask', 'TimeLog', 'Meeting', 'Quote', 
+    'Invoice', 'CustomSpreadsheet'
+  ];
+  
+  let restored = 0;
+  let failed = 0;
+  
+  for (const entity of order) {
+    const records = backupData.data[entity];
+    if (!records || records.length === 0) continue;
+    
+    console.log(\`📥 Restoring \${entity}...\`);
+    
+    for (const record of records) {
+      try {
+        const { created_date, updated_date, ...clean } = record;
+        await base44.entities[entity].create(clean);
+        restored++;
+      } catch (e) {
+        console.error(\`❌ \${entity}.\${record.id}:\`, e.message);
+        failed++;
+      }
+    }
+  }
+  
+  console.log(\`✅ Done: \${restored} restored, \${failed} failed\`);
+  return { restored, failed };
+}
+
+// שימוש:
+// const backup = await fetch('/backup.json').then(r => r.json());
+// await restoreFromBackup(backup);`;
