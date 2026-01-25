@@ -366,14 +366,68 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Validate data before export
+    const validationReport = {};
+    let totalIssues = 0;
+    
+    for (const [entityName, records] of Object.entries(allData)) {
+      if (!Array.isArray(records) || records.length === 0) continue;
+      
+      const entityIssues = [];
+      
+      // Basic validation
+      const noId = records.filter(r => !r?.id);
+      if (noId.length > 0) entityIssues.push({ type: 'missing_id', count: noId.length });
+      
+      // Entity-specific validation
+      if (entityName === 'TimeLog') {
+        const noEmployee = records.filter(r => !r?.user_email && !r?.created_by);
+        if (noEmployee.length > 0) entityIssues.push({ type: 'missing_employee', count: noEmployee.length, note: 'לוגים ללא עובד משויך' });
+      }
+      
+      if (entityName === 'CustomSpreadsheet') {
+        const noRows = records.filter(r => !r?.rows_data || r.rows_data.length === 0);
+        if (noRows.length > 0) entityIssues.push({ type: 'empty_spreadsheet', count: noRows.length, note: 'טבלאות ריקות' });
+      }
+      
+      validationReport[entityName] = {
+        total: records.length,
+        issues: entityIssues.length > 0 ? entityIssues : null,
+        status: entityIssues.length === 0 ? 'valid' : 'has_warnings'
+      };
+      
+      totalIssues += entityIssues.length;
+    }
+
     // JSON Export (default)
     const jsonData = {
-      backup_info: {
+      _backup_metadata: {
         created_at: now.toISOString(),
-        format_version: '2.0',
-        app: 'ArchFlow CRM',
-        includes_spreadsheet_data: categories.includes('CustomSpreadsheet'),
-        includes_subtasks: categories.includes('SubTask')
+        version: '2.0',
+        app_name: 'CRM Tannenbaum',
+        format: 'full_backup',
+        restore_instructions: {
+          he: 'לשחזור הנתונים:\n1. השתמש בכלי הייבוא בדף הגיבוי\n2. או ייבא ישירות למערכת אחרת - כל הנתונים ב-data\n3. טבלאות מותאמות כוללות את כל השורות (rows_data) והעיצוב',
+          en: 'To restore:\n1. Use import in Backup page\n2. Or import to another system - all data in data field\n3. Spreadsheets include all rows (rows_data) and styling'
+        }
+      },
+      _data_schemas: {
+        Client: { primary_key: 'id', relations: [], description: 'לקוחות' },
+        Project: { primary_key: 'id', relations: ['client_id → Client.id'], description: 'פרויקטים' },
+        Task: { primary_key: 'id', relations: ['project_id → Project.id', 'client_id → Client.id', 'assigned_to → User.email'], description: 'משימות' },
+        TimeLog: { primary_key: 'id', relations: ['client_id → Client.id', 'user_email → TeamMember.email'], description: 'לוגי זמן - קישור עובד-לקוח' },
+        TeamMember: { primary_key: 'id', relations: [], description: 'עובדים' },
+        CustomSpreadsheet: { primary_key: 'id', relations: ['client_id → Client.id'], description: 'טבלאות - rows_data מכיל את כל הנתונים' },
+        Meeting: { primary_key: 'id', relations: ['client_id → Client.id'], description: 'פגישות' },
+        Quote: { primary_key: 'id', relations: ['client_id → Client.id'], description: 'הצעות מחיר' },
+        Invoice: { primary_key: 'id', relations: ['client_id → Client.id'], description: 'חשבוניות' },
+        SubTask: { primary_key: 'id', relations: ['project_id → Project.id'], description: 'תת-משימות' }
+      },
+      _validation: {
+        performed_at: now.toISOString(),
+        all_valid: totalIssues === 0,
+        total_issues: totalIssues,
+        report: validationReport
       },
       statistics: {
         total_records: totalRecords,
@@ -385,7 +439,6 @@ Deno.serve(async (req) => {
       summary: Object.fromEntries(
         categories.map(cat => [cat, (allData[cat] || []).length])
       ),
-      // Add detailed spreadsheet info if included
       spreadsheet_details: categories.includes('CustomSpreadsheet') ? 
         (allData['CustomSpreadsheet'] || []).map(sheet => ({
           id: sheet.id,
@@ -393,9 +446,26 @@ Deno.serve(async (req) => {
           client_name: sheet.client_name,
           columns_count: (sheet.columns || []).length,
           rows_count: (sheet.rows_data || []).length,
+          has_styles: !!(sheet.cell_styles && Object.keys(sheet.cell_styles).length > 0),
+          has_notes: !!(sheet.cell_notes && Object.keys(sheet.cell_notes).length > 0),
           has_google_sync: !!sheet.google_sheet_id,
           created_date: sheet.created_date
-        })) : null
+        })) : null,
+      employee_time_summary: categories.includes('TimeLog') ?
+        (() => {
+          const summary = {};
+          (allData['TimeLog'] || []).forEach(log => {
+            const emp = log.user_email || log.created_by || 'unknown';
+            if (!summary[emp]) summary[emp] = { total_seconds: 0, logs_count: 0 };
+            summary[emp].total_seconds += (log.duration_seconds || 0);
+            summary[emp].logs_count++;
+          });
+          return Object.entries(summary).map(([email, data]) => ({
+            employee: email,
+            total_hours: Math.round(data.total_seconds / 3600 * 100) / 100,
+            logs_count: data.logs_count
+          }));
+        })() : null
     };
     
     const jsonStr = JSON.stringify(jsonData, null, 2);
