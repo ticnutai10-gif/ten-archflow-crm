@@ -31,7 +31,7 @@ const CATEGORY_INFO = {
   // === משימות ===
   "Task": { label: "משימות", icon: "✅", color: "green", description: "משימות, מטלות ופעולות", group: "tasks" },
   "SubTask": { label: "תת-משימות", icon: "📝", color: "emerald", description: "משימות משנה ותת-פריטים", group: "tasks" },
-  "TimeLog": { label: "שעות עבודה", icon: "⏱️", color: "orange", description: "תיעוד שעות עבודה", group: "tasks" },
+  "TimeLog": { label: "שעות עבודה", icon: "⏱️", color: "orange", description: "תיעוד שעות עבודה - כולל קישור לעובד ולקוח", group: "tasks" },
   
   // === לוח שנה ופגישות ===
   "Meeting": { label: "פגישות", icon: "📅", color: "blue", description: "פגישות ואירועים", group: "calendar" },
@@ -759,23 +759,43 @@ export default function BackupPage() {
                     const comments = await base44.entities.SheetComment.list('-created_date', 50000);
                     
                     const exportData = {
+                    _backup_metadata: {
                       generated_at: new Date().toISOString(),
                       type: 'spreadsheets_full_backup',
-                      spreadsheets: spreadsheets.map(sheet => ({
-                        ...sheet,
-                        _backup_info: {
-                          rows_count: (sheet.rows_data || []).length,
-                          columns_count: (sheet.columns || []).length,
-                          has_styles: !!sheet.cell_styles && Object.keys(sheet.cell_styles).length > 0,
-                          has_comments: comments.filter(c => c.spreadsheet_id === sheet.id).length
-                        }
-                      })),
-                      comments: comments,
-                      summary: {
-                        total_spreadsheets: spreadsheets.length,
-                        total_rows: spreadsheets.reduce((sum, s) => sum + (s.rows_data || []).length, 0),
-                        total_comments: comments.length
+                      version: '2.0',
+                      app_name: 'CRM Tannenbaum',
+                      restore_instructions: {
+                        he: 'ליבוא הנתונים, השתמש בכלי הייבוא בדף הגיבוי או יבא ישירות לכל מערכת שתומכת ב-JSON',
+                        en: 'To restore, use the import tool in the Backup page or import directly to any JSON-compatible system'
                       }
+                    },
+                    _data_schema: {
+                      CustomSpreadsheet: {
+                        primary_key: 'id',
+                        fields: ['id', 'name', 'description', 'columns', 'rows_data', 'cell_styles', 'cell_notes', 'created_date', 'updated_date', 'created_by'],
+                        relations: ['client_id -> Client.id']
+                      },
+                      SheetComment: {
+                        primary_key: 'id',
+                        fields: ['id', 'spreadsheet_id', 'row_id', 'column_key', 'content', 'created_by', 'created_date'],
+                        relations: ['spreadsheet_id -> CustomSpreadsheet.id']
+                      }
+                    },
+                    spreadsheets: spreadsheets.map(sheet => ({
+                      ...sheet,
+                      _backup_info: {
+                        rows_count: (sheet.rows_data || []).length,
+                        columns_count: (sheet.columns || []).length,
+                        has_styles: !!sheet.cell_styles && Object.keys(sheet.cell_styles).length > 0,
+                        has_comments: comments.filter(c => c.spreadsheet_id === sheet.id).length
+                      }
+                    })),
+                    comments: comments,
+                    summary: {
+                      total_spreadsheets: spreadsheets.length,
+                      total_rows: spreadsheets.reduce((sum, s) => sum + (s.rows_data || []).length, 0),
+                      total_comments: comments.length
+                    }
                     };
                     
                     const jsonData = JSON.stringify(exportData, null, 2);
