@@ -7,7 +7,7 @@ import {
   BarChart3, Archive, FolderOpen, MessageSquare,
   Calculator, Pin, PinOff, ChevronRight, Home,
   Briefcase, CheckSquare2, Timer, Receipt,
-  Calendar, Mail, Zap, Layers
+  Calendar, Mail, Zap, Layers, BookOpen
 } from "lucide-react";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import FloatingTimer from "@/components/timer/FloatingTimer";
@@ -77,7 +77,8 @@ const MENU_ITEMS = [
   { name: "יצוא", icon: Archive, path: "Exports" },
   { name: "גיבוי", icon: Archive, path: "Backup" },
   { name: "ניהול סוגי נתונים", icon: Layers, path: "DataTypes" },
-  { name: "הגדרות", icon: Settings, path: "Settings" }
+  { name: "הגדרות", icon: Settings, path: "Settings" },
+        { name: "תיעוד מערכת", icon: BookOpen, path: "Documentation" }
 ];
 
 function LayoutInner({ children, currentPageName }) {
