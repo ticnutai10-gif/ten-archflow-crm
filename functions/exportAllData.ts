@@ -388,6 +388,56 @@ Deno.serve(async (req) => {
       if (entityName === 'CustomSpreadsheet') {
         const noRows = records.filter(r => !r?.rows_data || r.rows_data.length === 0);
         if (noRows.length > 0) entityIssues.push({ type: 'empty_spreadsheet', count: noRows.length, note: 'טבלאות ריקות' });
+        
+        // Advanced spreadsheet validation
+        records.forEach((sheet, idx) => {
+          const sheetIssues = [];
+          
+          // Validate columns structure
+          if (!sheet.columns || !Array.isArray(sheet.columns)) {
+            sheetIssues.push('missing_columns_definition');
+          } else {
+            const invalidCols = sheet.columns.filter(c => !c?.key || !c?.title);
+            if (invalidCols.length > 0) sheetIssues.push(`${invalidCols.length}_invalid_columns`);
+          }
+          
+          // Validate rows data integrity
+          if (sheet.rows_data && Array.isArray(sheet.rows_data)) {
+            const rowsWithoutId = sheet.rows_data.filter(r => !r?.id);
+            if (rowsWithoutId.length > 0) sheetIssues.push(`${rowsWithoutId.length}_rows_without_id`);
+            
+            // Check for orphan cell styles (styles for non-existent cells)
+            if (sheet.cell_styles && typeof sheet.cell_styles === 'object') {
+              const validCellKeys = new Set();
+              sheet.rows_data.forEach(row => {
+                if (row?.id && sheet.columns) {
+                  sheet.columns.forEach(col => {
+                    if (col?.key) validCellKeys.add(`${row.id}_${col.key}`);
+                  });
+                }
+              });
+              const orphanStyles = Object.keys(sheet.cell_styles).filter(k => !validCellKeys.has(k));
+              if (orphanStyles.length > 0) sheetIssues.push(`${orphanStyles.length}_orphan_styles`);
+            }
+          }
+          
+          // Validate merged cells
+          if (sheet.merged_cells && typeof sheet.merged_cells === 'object') {
+            const invalidMerges = Object.entries(sheet.merged_cells).filter(([k, v]) => 
+              !v?.master || !v?.cells || !Array.isArray(v.cells)
+            );
+            if (invalidMerges.length > 0) sheetIssues.push(`${invalidMerges.length}_invalid_merges`);
+          }
+          
+          if (sheetIssues.length > 0) {
+            entityIssues.push({ 
+              type: 'spreadsheet_integrity', 
+              sheet_id: sheet.id, 
+              sheet_name: sheet.name,
+              issues: sheetIssues 
+            });
+          }
+        });
       }
       
       validationReport[entityName] = {
@@ -398,6 +448,111 @@ Deno.serve(async (req) => {
       
       totalIssues += entityIssues.length;
     }
+    
+    // Generate spreadsheet system documentation
+    const spreadsheetDocumentation = {
+      system_name: 'מערכת טבלאות מותאמות - CRM Tannenbaum',
+      version: '2.0',
+      description: 'מערכת טבלאות מתקדמת עם תמיכה בעיצוב, מיזוגים, תגובות ועוד',
+      
+      features: {
+        columns: {
+          description: 'עמודות הטבלה עם סוגים שונים',
+          types: [
+            { type: 'text', description: 'טקסט חופשי' },
+            { type: 'number', description: 'מספר' },
+            { type: 'date', description: 'תאריך' },
+            { type: 'client', description: 'בחירת לקוח מרשימה - מקושר לישות Client' },
+            { type: 'stage', description: 'שלב/סטטוס עם צבעים - מקושר ל-GlobalDataType' },
+            { type: 'checkmark', description: 'תיבת סימון V/X' },
+            { type: 'mixed_check', description: 'סימון מעורב' },
+            { type: 'select', description: 'בחירה מרשימה' },
+            { type: 'taba', description: 'נתון מסוג טאבה - מקושר ל-GlobalDataType' },
+            { type: 'transfer_rights', description: 'זכויות העברה - מקושר ל-GlobalDataType' },
+            { type: 'purchase_rights', description: 'זכויות רכישה - מקושר ל-GlobalDataType' },
+            { type: 'custom_*', description: 'סוג נתונים מותאם אישית - מקושר ל-GlobalDataType' }
+          ],
+          properties: ['key', 'title', 'type', 'width', 'visible', 'collapsed']
+        },
+        
+        rows_data: {
+          description: 'נתוני השורות - כל שורה היא אובייקט עם id וערכים לפי key של עמודות',
+          structure: '{ id: string, [column_key]: value }'
+        },
+        
+        cell_styles: {
+          description: 'עיצוב תאים - מפתח: rowId_colKey',
+          properties: ['backgroundColor', 'color', 'fontWeight', 'opacity'],
+          example: '{ "row_123_col_456": { "backgroundColor": "#fee2e2", "fontWeight": "bold" } }'
+        },
+        
+        cell_notes: {
+          description: 'הערות צהובות על תאים - מפתח: rowId_colKey',
+          structure: '{ "row_123_col_456": "טקסט ההערה" }'
+        },
+        
+        merged_cells: {
+          description: 'תאים ממוזגים',
+          structure: '{ mergeKey: { cells: string[], master: string, rowspan: number, colspan: number } }'
+        },
+        
+        merged_headers: {
+          description: 'כותרות עליונות ממוזגות',
+          structure: '{ mergeKey: { columns: string[], master: string, colspan: number, title: string } }'
+        },
+        
+        header_styles: {
+          description: 'עיצוב כותרות - מפתח: colKey או mergeKey',
+          properties: ['backgroundColor', 'color', 'fontWeight']
+        },
+        
+        sub_headers: {
+          description: 'כותרות משנה',
+          structure: '{ colKey: { title: string, position: "above"|"below" } }'
+        },
+        
+        theme_settings: {
+          description: 'הגדרות עיצוב כללי לטבלה',
+          properties: ['palette', 'borderStyle', 'headerFont', 'cellFont', 'fontSize', 'density', 'borderRadius', 'shadow', 'outerBorderColor', 'outerBorderSize']
+        },
+        
+        freeze_settings: {
+          description: 'הקפאת שורות ועמודות',
+          structure: '{ freeze_rows: number, freeze_columns: number }'
+        },
+        
+        charts: {
+          description: 'גרפים וויזואליזציות',
+          properties: ['id', 'name', 'type', 'config', 'data_source']
+        },
+        
+        saved_views: {
+          description: 'תצוגות שמורות - שומרות מצב עמודות, סינונים ומיונים',
+          properties: ['id', 'name', 'columns', 'filters', 'sort', 'isDefault']
+        },
+        
+        google_sync: {
+          description: 'סנכרון עם Google Sheets',
+          properties: ['google_sheet_id', 'google_sheet_name', 'sync_config'],
+          sync_modes: ['export_only', 'import_on_load', 'two_way']
+        }
+      },
+      
+      relationships: {
+        client_id: 'קישור ל-Client.id - הטבלה שייכת ללקוח',
+        columns_type_client: 'עמודות מסוג client מקושרות לרשימת הלקוחות',
+        columns_type_stage: 'עמודות מסוג stage/taba/custom מקושרות ל-GlobalDataType'
+      },
+      
+      restore_instructions: {
+        step1: 'צור ישות CustomSpreadsheet חדשה',
+        step2: 'העתק את כל השדות מהגיבוי (columns, rows_data, cell_styles וכו\')',
+        step3: 'ודא שה-columns מכילים key ו-title תקינים',
+        step4: 'ודא שה-rows_data מכילים id ייחודי לכל שורה',
+        step5: 'cell_styles ו-cell_notes משתמשים במפתח rowId_colKey',
+        step6: 'לסנכרון Google Sheets - חבר מחדש דרך הממשק'
+      }
+    };
 
     // JSON Export (default)
     const jsonData = {
@@ -439,17 +594,36 @@ Deno.serve(async (req) => {
       summary: Object.fromEntries(
         categories.map(cat => [cat, (allData[cat] || []).length])
       ),
+      spreadsheet_documentation: categories.includes('CustomSpreadsheet') ? spreadsheetDocumentation : null,
+      
       spreadsheet_details: categories.includes('CustomSpreadsheet') ? 
         (allData['CustomSpreadsheet'] || []).map(sheet => ({
           id: sheet.id,
           name: sheet.name,
+          client_id: sheet.client_id,
           client_name: sheet.client_name,
           columns_count: (sheet.columns || []).length,
+          columns_types: (sheet.columns || []).map(c => ({ key: c.key, title: c.title, type: c.type || 'text' })),
           rows_count: (sheet.rows_data || []).length,
           has_styles: !!(sheet.cell_styles && Object.keys(sheet.cell_styles).length > 0),
+          styles_count: sheet.cell_styles ? Object.keys(sheet.cell_styles).length : 0,
           has_notes: !!(sheet.cell_notes && Object.keys(sheet.cell_notes).length > 0),
+          notes_count: sheet.cell_notes ? Object.keys(sheet.cell_notes).length : 0,
+          has_merged_cells: !!(sheet.merged_cells && Object.keys(sheet.merged_cells).length > 0),
+          merged_cells_count: sheet.merged_cells ? Object.keys(sheet.merged_cells).length : 0,
+          has_merged_headers: !!(sheet.merged_headers && Object.keys(sheet.merged_headers).length > 0),
+          has_sub_headers: !!(sheet.sub_headers && Object.keys(sheet.sub_headers).length > 0),
+          has_charts: !!(sheet.charts && sheet.charts.length > 0),
+          charts_count: (sheet.charts || []).length,
+          has_saved_views: !!(sheet.saved_views && sheet.saved_views.length > 0),
+          has_theme: !!sheet.theme_settings,
           has_google_sync: !!sheet.google_sheet_id,
-          created_date: sheet.created_date
+          google_sheet_id: sheet.google_sheet_id || null,
+          google_sheet_name: sheet.google_sheet_name || null,
+          sync_direction: sheet.sync_config?.sync_direction || null,
+          freeze_settings: sheet.freeze_settings || null,
+          created_date: sheet.created_date,
+          updated_date: sheet.updated_date
         })) : null,
       employee_time_summary: categories.includes('TimeLog') ?
         (() => {
