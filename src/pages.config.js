@@ -14,6 +14,7 @@ import Dashboard from './pages/Dashboard';
 import DataTypes from './pages/DataTypes';
 import Decisions from './pages/Decisions';
 import Documentation from './pages/Documentation';
+import DocumentationExport from './pages/DocumentationExport';
 import Documents from './pages/Documents';
 import Exports from './pages/Exports';
 import Folders from './pages/Folders';
@@ -39,7 +40,6 @@ import TimeLogs from './pages/TimeLogs';
 import TimerShowcase from './pages/TimerShowcase';
 import UserApprovals from './pages/UserApprovals';
 import WorkflowBuilder from './pages/WorkflowBuilder';
-import DocumentationExport from './pages/DocumentationExport';
 import __Layout from './Layout.jsx';
 
 
@@ -60,6 +60,7 @@ export const PAGES = {
     "DataTypes": DataTypes,
     "Decisions": Decisions,
     "Documentation": Documentation,
+    "DocumentationExport": DocumentationExport,
     "Documents": Documents,
     "Exports": Exports,
     "Folders": Folders,
@@ -85,7 +86,6 @@ export const PAGES = {
     "TimerShowcase": TimerShowcase,
     "UserApprovals": UserApprovals,
     "WorkflowBuilder": WorkflowBuilder,
-    "DocumentationExport": DocumentationExport,
 }
 
 export const pagesConfig = {

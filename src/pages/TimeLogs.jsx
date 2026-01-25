@@ -65,8 +65,11 @@ import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isWithinInter
 import { he } from "date-fns/locale";
 
 import TimerLogsComponent from "../components/dashboard/TimerLogs";
+import TimeLogCalendarView from "../components/timelogs/TimeLogCalendarView";
+import TimeLogGanttView from "../components/timelogs/TimeLogGanttView";
 import { exportTimeLogsCsv } from "@/functions/exportTimeLogsCsv";
 import { UploadFile } from "@/integrations/Core";
+import { Project, Task } from "@/entities/all";
 
 function formatDuration(seconds) {
   const hours = Math.floor(seconds / 3600);
@@ -385,6 +388,8 @@ function CalendarView({ timeLogs, onDateClick, clients }) {
 export default function TimeLogsPage() {
   const [timeLogs, setTimeLogs] = useState([]);
   const [clients, setClients] = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [tasks, setTasks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [clientFilter, setClientFilter] = useState("all");
@@ -464,18 +469,26 @@ export default function TimeLogsPage() {
       });
 
       const clientsData = await Client.list().catch(() => []);
+      const projectsData = await Project.list().catch(() => []);
+      const tasksData = await Task.filter({}, '-created_date', 500).catch(() => []);
 
       // ✅ הגנה על התוצאות
       const validTimeLogs = Array.isArray(timeLogsData) ? timeLogsData : [];
       const validClients = Array.isArray(clientsData) ? clientsData : [];
+      const validProjects = Array.isArray(projectsData) ? projectsData : [];
+      const validTasks = Array.isArray(tasksData) ? tasksData : [];
 
       console.log('✅ [TimeLogsPage] Loaded data:', {
         timeLogs: validTimeLogs.length,
-        clients: validClients.length
+        clients: validClients.length,
+        projects: validProjects.length,
+        tasks: validTasks.length
       });
 
       setTimeLogs(validTimeLogs);
       setClients(validClients);
+      setProjects(validProjects);
+      setTasks(validTasks);
     } catch (error) {
       console.error('❌ [TimeLogsPage] Error loading time logs:', error);
       setTimeLogs([]);
@@ -926,6 +939,10 @@ export default function TimeLogsPage() {
                   <Calendar className="w-4 h-4 ml-2" />
                   לוח שנה
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setViewMode('gantt')}>
+                  <BarChart3 className="w-4 h-4 ml-2" />
+                  תצוגת גאנט
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setViewMode('table')}>
                   <TableIcon className="w-4 h-4 ml-2" />
                   תצוגת טבלה
@@ -952,14 +969,30 @@ export default function TimeLogsPage() {
         </div>
 
         {/* Content Based on View Mode */}
-        {/* ✅ תצוגת לוח שנה חדשה */}
+        {/* ✅ תצוגת לוח שנה משופרת */}
         {viewMode === 'calendar' ? (
           <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
             <CardContent className="p-6">
-              <CalendarView 
+              <TimeLogCalendarView 
                 timeLogs={filteredLogs} 
-                onDateClick={handleDateClick}
                 clients={clients}
+                projects={projects}
+                tasks={tasks}
+                onUpdate={loadData}
+                currentUser={currentUser}
+              />
+            </CardContent>
+          </Card>
+        ) : viewMode === 'gantt' ? (
+          <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+            <CardContent className="p-6">
+              <TimeLogGanttView 
+                timeLogs={filteredLogs} 
+                clients={clients}
+                projects={projects}
+                tasks={tasks}
+                onUpdate={loadData}
+                currentUser={currentUser}
               />
             </CardContent>
           </Card>
