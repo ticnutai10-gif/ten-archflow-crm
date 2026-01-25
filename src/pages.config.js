@@ -39,6 +39,7 @@ import TimeLogs from './pages/TimeLogs';
 import TimerShowcase from './pages/TimerShowcase';
 import UserApprovals from './pages/UserApprovals';
 import WorkflowBuilder from './pages/WorkflowBuilder';
+import DocumentationExport from './pages/DocumentationExport';
 import __Layout from './Layout.jsx';
 
 
@@ -84,6 +85,7 @@ export const PAGES = {
     "TimerShowcase": TimerShowcase,
     "UserApprovals": UserApprovals,
     "WorkflowBuilder": WorkflowBuilder,
+    "DocumentationExport": DocumentationExport,
 }
 
 export const pagesConfig = {
