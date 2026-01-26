@@ -20,6 +20,9 @@ import AIContentGenerator from '../components/communication/AIContentGenerator';
 import ProjectAIAssistant from '../components/communication/ProjectAIAssistant';
 import AuditLogViewer from '../components/common/AuditLogViewer';
 import MilestonesManager from '../components/projects/MilestonesManager';
+import MilestonesCalendar from '../components/projects/MilestonesCalendar';
+import ProjectGanttWithDependencies from '../components/projects/ProjectGanttWithDependencies';
+import AutoProgressReport from '../components/projects/AutoProgressReport';
 import BudgetManager from '../components/projects/BudgetManager';
 import CashflowManager from '../components/projects/CashflowManager';
 import CriticalTasksSummary from '../components/projects/CriticalTasksSummary';
@@ -39,6 +42,7 @@ export default function ProjectDetails() {
   const [projects, setProjects] = useState([]);
   const [showReportGenerator, setShowReportGenerator] = useState(false);
   const [selectedFileForAI, setSelectedFileForAI] = useState(null);
+  const [meetings, setMeetings] = useState([]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -71,6 +75,7 @@ export default function ProjectDetails() {
       }
       
       loadSubTasks(projectId);
+      loadMeetings(projectId);
     } catch (error) {
       console.error('Error loading project:', error);
       alert('שגיאה בטעינת הפרויקט');
@@ -85,6 +90,15 @@ export default function ProjectDetails() {
       setSubtasks(tasks || []);
     } catch (error) {
       console.error('Error loading subtasks:', error);
+    }
+  };
+
+  const loadMeetings = async (projectId) => {
+    try {
+      const mtgs = await base44.entities.Meeting.filter({ project_id: projectId });
+      setMeetings(mtgs || []);
+    } catch (error) {
+      console.error('Error loading meetings:', error);
     }
   };
 
@@ -356,15 +370,26 @@ export default function ProjectDetails() {
 
           {/* Milestones Tab */}
           <TabsContent value="milestones">
-            <MilestonesManager
-              milestones={project.milestones || []}
-              onChange={async (milestones) => {
-                const updated = { ...project, milestones };
-                await base44.entities.Project.update(project.id, { milestones });
-                setProject(updated);
-                toast.success('אבני הדרך עודכנו');
-              }}
-            />
+            <div className="space-y-6">
+              {/* Calendar View */}
+              <MilestonesCalendar 
+                milestones={project.milestones || []}
+                meetings={meetings}
+                onMilestoneClick={(m) => toast.info(`אבן דרך: ${m.name}`)}
+                onMeetingClick={(m) => toast.info(`פגישה: ${m.title}`)}
+              />
+              
+              {/* Milestones Manager */}
+              <MilestonesManager
+                milestones={project.milestones || []}
+                onChange={async (milestones) => {
+                  const updated = { ...project, milestones };
+                  await base44.entities.Project.update(project.id, { milestones });
+                  setProject(updated);
+                  toast.success('אבני הדרך עודכנו');
+                }}
+              />
+            </div>
           </TabsContent>
 
           {/* Budget Tab */}
@@ -534,9 +559,12 @@ export default function ProjectDetails() {
             </Card>
           </TabsContent>
 
-          {/* Gantt Chart */}
+          {/* Gantt Chart with Dependencies */}
           <TabsContent value="gantt">
-            <ProjectGantt projectId={project.id} />
+            <ProjectGanttWithDependencies 
+              projectId={project.id} 
+              onUpdate={() => loadSubTasks(project.id)}
+            />
           </TabsContent>
 
           {/* Resources */}
@@ -650,6 +678,13 @@ export default function ProjectDetails() {
           {/* Reports Tab */}
           <TabsContent value="reports">
             <div className="space-y-6">
+              {/* Auto Progress Report based on milestones */}
+              <AutoProgressReport 
+                project={project}
+                subtasks={subtasks}
+                milestones={project.milestones || []}
+              />
+
               {/* Report Schedule Manager */}
               <ReportScheduleManager 
                 projectId={project.id} 
@@ -660,14 +695,14 @@ export default function ProjectDetails() {
               <Card>
                 <CardContent className="p-6 text-center">
                   <FileText className="w-12 h-12 text-purple-400 mx-auto mb-3" />
-                  <h3 className="text-lg font-semibold mb-2">יצירת דוח התקדמות</h3>
-                  <p className="text-slate-600 mb-4">צור דוח התקדמות תקופתי ושלח ללקוח או לצוות</p>
+                  <h3 className="text-lg font-semibold mb-2">יצירת דוח התקדמות מותאם</h3>
+                  <p className="text-slate-600 mb-4">צור דוח התקדמות תקופתי מותאם אישית ושלח ללקוח או לצוות</p>
                   <Button 
                     onClick={() => setShowReportGenerator(true)}
                     className="bg-purple-600 hover:bg-purple-700"
                   >
                     <FileText className="w-4 h-4 ml-2" />
-                    יצירת דוח חדש
+                    יצירת דוח מותאם
                   </Button>
                 </CardContent>
               </Card>
