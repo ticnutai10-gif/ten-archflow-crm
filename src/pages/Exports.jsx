@@ -95,10 +95,9 @@ export default function Exports() {
 
   const handleExportFullBackup = async () => {
     try {
-      const response = await exportFullBackupZip();
-      // Ensure we have the raw binary data
-      const data = response.data;
-      const blob = new Blob([data], { type: "application/zip" });
+      const response = await exportFullBackupZip({ responseType: 'arraybuffer' });
+      // Create blob from arraybuffer
+      const blob = new Blob([response.data], { type: "application/zip" });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -109,7 +108,7 @@ export default function Exports() {
       a.remove();
     } catch (error) {
       console.error('Error exporting full backup:', error);
-      alert('שגיאה בייצוא גיבוי מלא.');
+      alert('שגיאה בייצוא גיבוי מלא: ' + error.message);
     }
   };
 
