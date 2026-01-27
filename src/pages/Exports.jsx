@@ -1,13 +1,14 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Download, FileText, Timer as TimerIcon, CheckSquare, Users, Building2 } from "lucide-react";
+import { Download, FileText, Timer as TimerIcon, CheckSquare, Users, Building2, Archive } from "lucide-react";
 import { exportTasks } from "@/functions/exportTasks";
 import { exportQuotes } from "@/functions/exportQuotes";
 import { exportTimeLogsCsv } from "@/functions/exportTimeLogsCsv";
 import { exportUsers } from "@/functions/exportUsers";
 import { exportClients } from "@/functions/exportClients";
 import { exportTimeLogsDetailed } from "@/functions/exportTimeLogsDetailed";
+import { exportFullBackupZip } from "@/functions/exportFullBackupZip";
 
 export default function Exports() {
   const downloadBlob = (data, filename, mime) => {
@@ -89,6 +90,16 @@ export default function Exports() {
     } catch (error) {
       console.error('Error exporting detailed time logs:', error);
       alert('שגיאה ביצוא לוגים מפורט.');
+    }
+  };
+
+  const handleExportFullBackup = async () => {
+    try {
+      const response = await exportFullBackupZip();
+      downloadBlob(response.data, `full_backup_${new Date().toISOString().split('T')[0]}.zip`, "application/zip");
+    } catch (error) {
+      console.error('Error exporting full backup:', error);
+      alert('שגיאה בייצוא גיבוי מלא.');
     }
   };
 
@@ -187,6 +198,23 @@ export default function Exports() {
               <div className="text-slate-600 text-sm">ייצוא כל הלוגים עם שם העובד שביצע, שכר שעתי, עלות לוג, וסה"כ שעות ועלות לכל לקוח.</div>
               <Button variant="outline" className="gap-2" onClick={handleExportTimeLogsDetailed}>
                 <Download className="w-4 h-4" /> הורד
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-lg border-0 bg-gradient-to-r from-purple-50 to-blue-50 rounded-2xl md:col-span-2">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 justify-end text-purple-800">
+                📦 גיבוי מלא (ZIP)
+                <Archive className="w-5 h-5 text-purple-600" />
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex items-center justify-between">
+              <div className="text-slate-700 text-sm">
+                <strong>קובץ ZIP מלא הכולל:</strong> משתמשים, לקוחות, לוגים מפורטים, טבלאות + נתוני הטבלאות, ומסמך תיעוד מפורט עם סטטיסטיקות וחיבורים.
+              </div>
+              <Button className="gap-2 bg-purple-600 hover:bg-purple-700" onClick={handleExportFullBackup}>
+                <Download className="w-4 h-4" /> הורד ZIP
               </Button>
             </CardContent>
           </Card>
