@@ -8,7 +8,7 @@ import { exportTimeLogsCsv } from "@/functions/exportTimeLogsCsv";
 import { exportUsers } from "@/functions/exportUsers";
 import { exportClients } from "@/functions/exportClients";
 import { exportTimeLogsDetailed } from "@/functions/exportTimeLogsDetailed";
-import { exportFullBackupZip } from "@/functions/exportFullBackupZip";
+import { exportFullBackupJson } from "@/functions/exportFullBackupJson";
 
 export default function Exports() {
   const downloadBlob = (data, filename, mime) => {
@@ -95,13 +95,13 @@ export default function Exports() {
 
   const handleExportFullBackup = async () => {
     try {
-      const response = await exportFullBackupZip({ responseType: 'arraybuffer' });
-      // Create blob from arraybuffer
-      const blob = new Blob([response.data], { type: "application/zip" });
+      const response = await exportFullBackupJson();
+      const jsonStr = typeof response.data === 'string' ? response.data : JSON.stringify(response.data, null, 2);
+      const blob = new Blob([jsonStr], { type: "application/json;charset=utf-8" });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `full_backup_${new Date().toISOString().split('T')[0]}.zip`;
+      a.download = `backup_${new Date().toISOString().split('T')[0]}.json`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -214,16 +214,16 @@ export default function Exports() {
           <Card className="shadow-lg border-0 bg-gradient-to-r from-purple-50 to-blue-50 rounded-2xl md:col-span-2">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 justify-end text-purple-800">
-                📦 גיבוי מלא (ZIP)
+                📦 גיבוי מלא (JSON)
                 <Archive className="w-5 h-5 text-purple-600" />
               </CardTitle>
             </CardHeader>
             <CardContent className="flex items-center justify-between">
               <div className="text-slate-700 text-sm">
-                <strong>קובץ ZIP מלא הכולל:</strong> משתמשים, לקוחות, לוגים מפורטים, טבלאות + נתוני הטבלאות, ומסמך תיעוד מפורט עם סטטיסטיקות וחיבורים.
+                <strong>קובץ JSON מלא הכולל:</strong> משתמשים, לקוחות, פרויקטים, משימות, פגישות, לוגי זמן, וטבלאות עם כל הנתונים.
               </div>
               <Button className="gap-2 bg-purple-600 hover:bg-purple-700" onClick={handleExportFullBackup}>
-                <Download className="w-4 h-4" /> הורד ZIP
+                <Download className="w-4 h-4" /> הורד JSON
               </Button>
             </CardContent>
           </Card>
