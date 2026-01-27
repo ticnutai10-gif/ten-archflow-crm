@@ -5,7 +5,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { ArrowRight, Plus, ListTodo, BarChart3, Users, Flag, DollarSign, Wallet, Edit2, Save, FileText, FolderOpen, Brain, ExternalLink, File, Upload } from 'lucide-react';
+import { ArrowRight, Plus, ListTodo, BarChart3, Users, Flag, DollarSign, Wallet, Edit2, Save, FileText, FolderOpen, Brain, ExternalLink, File, Upload, Table, Calculator } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '@/utils';
 import { toast } from 'sonner';
@@ -29,6 +29,9 @@ import CriticalTasksSummary from '../components/projects/CriticalTasksSummary';
 import ProgressReportGenerator from '../components/projects/ProgressReportGenerator';
 import ReportScheduleManager from '../components/projects/ReportScheduleManager';
 import AIDocumentSummarizer from '../components/ai/AIDocumentSummarizer';
+import ProjectTeamManager from '../components/projects/ProjectTeamManager';
+import ProjectCostSummary from '../components/projects/ProjectCostSummary';
+import ProjectSpreadsheets from '../components/projects/ProjectSpreadsheets';
 
 export default function ProjectDetails() {
   const navigate = useNavigate();
@@ -220,8 +223,19 @@ export default function ProjectDetails() {
             <TabsTrigger value="gantt" className="gap-2">
               Gantt
             </TabsTrigger>
-            <TabsTrigger value="resources" className="gap-2">
+            <TabsTrigger value="team" className="gap-2">
               <Users className="w-4 h-4" />
+              צוות
+            </TabsTrigger>
+            <TabsTrigger value="costs" className="gap-2">
+              <Calculator className="w-4 h-4" />
+              עלויות
+            </TabsTrigger>
+            <TabsTrigger value="spreadsheets" className="gap-2">
+              <Table className="w-4 h-4" />
+              טבלאות
+            </TabsTrigger>
+            <TabsTrigger value="resources" className="gap-2">
               משאבים
             </TabsTrigger>
             <TabsTrigger value="ai-assistant" className="gap-2">
@@ -564,6 +578,38 @@ export default function ProjectDetails() {
             <ProjectGanttWithDependencies 
               projectId={project.id} 
               onUpdate={() => loadSubTasks(project.id)}
+            />
+          </TabsContent>
+
+          {/* Team Management */}
+          <TabsContent value="team">
+            <ProjectTeamManager 
+              project={project}
+              onUpdate={async (updates) => {
+                const updated = { ...project, ...updates };
+                await base44.entities.Project.update(project.id, updates);
+                setProject(updated);
+              }}
+            />
+          </TabsContent>
+
+          {/* Costs Summary */}
+          <TabsContent value="costs">
+            <ProjectCostSummary 
+              project={project}
+              onUpdate={async (updates) => {
+                const updated = { ...project, ...updates };
+                await base44.entities.Project.update(project.id, updates);
+                setProject(updated);
+              }}
+            />
+          </TabsContent>
+
+          {/* Spreadsheets */}
+          <TabsContent value="spreadsheets">
+            <ProjectSpreadsheets 
+              projectId={project.id}
+              projectName={project.name}
             />
           </TabsContent>
 
