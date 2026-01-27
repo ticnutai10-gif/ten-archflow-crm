@@ -108,14 +108,15 @@ Deno.serve(async (req) => {
     const docContent = generateDocumentation(users, clients, timeLogs, spreadsheets, teamMembers);
     zip.file('documentation.md', docContent);
 
-    // Generate zip
-    const zipContent = await zip.generateAsync({ type: 'arraybuffer' });
+    // Generate zip as uint8array for proper binary handling
+    const zipContent = await zip.generateAsync({ type: 'uint8array' });
 
     return new Response(zipContent, {
       status: 200,
       headers: {
         'Content-Type': 'application/zip',
-        'Content-Disposition': `attachment; filename=full_backup_${new Date().toISOString().split('T')[0]}.zip`
+        'Content-Disposition': `attachment; filename=full_backup_${new Date().toISOString().split('T')[0]}.zip`,
+        'Content-Length': zipContent.length.toString()
       }
     });
   } catch (error) {
