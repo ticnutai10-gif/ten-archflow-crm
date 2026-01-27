@@ -1,11 +1,13 @@
-
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Download, FileText, Timer as TimerIcon, CheckSquare } from "lucide-react";
+import { Download, FileText, Timer as TimerIcon, CheckSquare, Users, Building2 } from "lucide-react";
 import { exportTasks } from "@/functions/exportTasks";
 import { exportQuotes } from "@/functions/exportQuotes";
 import { exportTimeLogsCsv } from "@/functions/exportTimeLogsCsv";
+import { exportUsers } from "@/functions/exportUsers";
+import { exportClients } from "@/functions/exportClients";
+import { exportTimeLogsDetailed } from "@/functions/exportTimeLogsDetailed";
 
 export default function Exports() {
   const downloadBlob = (data, filename, mime) => {
@@ -52,12 +54,41 @@ export default function Exports() {
   const handleExportTimeLogs = async () => {
     try {
       const response = await exportTimeLogsCsv();
-      // CSV data should be text directly in response.data
       const textData = response.data;
       downloadBlob(textData, "timelogs.csv", "text/csv;charset=utf-8;");
     } catch (error) {
       console.error('Error exporting time logs:', error);
       alert('שגיאה ביצוא רישומי הזמן.');
+    }
+  };
+
+  const handleExportUsers = async () => {
+    try {
+      const response = await exportUsers();
+      downloadBlob(response.data, "users.csv", "text/csv;charset=utf-8;");
+    } catch (error) {
+      console.error('Error exporting users:', error);
+      alert('שגיאה ביצוא משתמשים.');
+    }
+  };
+
+  const handleExportClients = async () => {
+    try {
+      const response = await exportClients();
+      downloadBlob(response.data, "clients.csv", "text/csv;charset=utf-8;");
+    } catch (error) {
+      console.error('Error exporting clients:', error);
+      alert('שגיאה ביצוא לקוחות.');
+    }
+  };
+
+  const handleExportTimeLogsDetailed = async () => {
+    try {
+      const response = await exportTimeLogsDetailed();
+      downloadBlob(response.data, "timelogs_detailed.csv", "text/csv;charset=utf-8;");
+    } catch (error) {
+      console.error('Error exporting detailed time logs:', error);
+      alert('שגיאה ביצוא לוגים מפורט.');
     }
   };
 
@@ -100,7 +131,7 @@ export default function Exports() {
             </CardContent>
           </Card>
 
-          <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm rounded-2xl md:col-span-2">
+          <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm rounded-2xl">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 justify-end">
                 CSV רישומי זמן (שלי)
@@ -108,8 +139,53 @@ export default function Exports() {
               </CardTitle>
             </CardHeader>
             <CardContent className="flex items-center justify-between">
-              <div className="text-slate-600 text-sm">ייצוא רישומי הזמן שלך ל-CSV (לקוח, תאריך, כותרת, הערות, משך).</div>
+              <div className="text-slate-600 text-sm">ייצוא רישומי הזמן שלך ל-CSV.</div>
               <Button variant="outline" className="gap-2" onClick={handleExportTimeLogs}>
+                <Download className="w-4 h-4" /> הורד
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm rounded-2xl">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 justify-end">
+                CSV משתמשים
+                <Users className="w-5 h-5 text-blue-600" />
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex items-center justify-between">
+              <div className="text-slate-600 text-sm">ייצוא כל המשתמשים כולל פרטי שכר ושעות.</div>
+              <Button variant="outline" className="gap-2" onClick={handleExportUsers}>
+                <Download className="w-4 h-4" /> הורד
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm rounded-2xl">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 justify-end">
+                CSV לקוחות
+                <Building2 className="w-5 h-5 text-orange-600" />
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex items-center justify-between">
+              <div className="text-slate-600 text-sm">ייצוא כל הלקוחות עם פרטי קשר וסטטוס.</div>
+              <Button variant="outline" className="gap-2" onClick={handleExportClients}>
+                <Download className="w-4 h-4" /> הורד
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm rounded-2xl md:col-span-2">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 justify-end">
+                CSV לוגים מפורט (כל המשתמשים + חיבור ללקוחות)
+                <TimerIcon className="w-5 h-5 text-teal-600" />
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex items-center justify-between">
+              <div className="text-slate-600 text-sm">ייצוא כל הלוגים עם שם העובד שביצע, שכר שעתי, עלות לוג, וסה"כ שעות ועלות לכל לקוח.</div>
+              <Button variant="outline" className="gap-2" onClick={handleExportTimeLogsDetailed}>
                 <Download className="w-4 h-4" /> הורד
               </Button>
             </CardContent>
