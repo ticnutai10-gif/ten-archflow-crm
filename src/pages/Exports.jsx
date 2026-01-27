@@ -96,7 +96,17 @@ export default function Exports() {
   const handleExportFullBackup = async () => {
     try {
       const response = await exportFullBackupZip();
-      downloadBlob(response.data, `full_backup_${new Date().toISOString().split('T')[0]}.zip`, "application/zip");
+      // Ensure we have the raw binary data
+      const data = response.data;
+      const blob = new Blob([data], { type: "application/zip" });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `full_backup_${new Date().toISOString().split('T')[0]}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
     } catch (error) {
       console.error('Error exporting full backup:', error);
       alert('שגיאה בייצוא גיבוי מלא.');
