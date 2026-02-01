@@ -2,6 +2,9 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
 Deno.serve(async (req) => {
   try {
+    const url = new URL(req.url);
+    const format = url.searchParams.get('format') || 'csv'; // csv, json, xlsx
+    
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     
@@ -78,16 +81,66 @@ Deno.serve(async (req) => {
       ];
     });
 
+    const dateStr = new Date().toISOString().split('T')[0];
+
+    if (format === 'json') {
+      const jsonData = {
+        metadata: {
+          exported_at: new Date().toISOString(),
+          exported_by: user.email,
+          total_clients: clients.length
+        },
+        headers,
+        clients: clients.map(c => {
+          const stats = clientStats[c.id] || {};
+          return {
+            ...c,
+            stats: {
+              projectCount: stats.projectCount || 0,
+              taskCount: stats.taskCount || 0,
+              completedTasks: stats.completedTasks || 0,
+              totalHours: (stats.totalHours || 0).toFixed(1)
+            }
+          };
+        })
+      };
+      
+      return new Response(JSON.stringify(jsonData, null, 2), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Content-Disposition': `attachment; filename="clients_table_${dateStr}.json"`
+        }
+      });
+    }
+
+    // CSV format (also used as base for xlsx)
     const csvContent = '\uFEFF' + [
       headers.join(','),
       ...rows.map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
     ].join('\n');
 
+    if (format === 'xlsx') {
+      // Return as tab-separated for Excel compatibility
+      const xlsContent = '\uFEFF' + [
+        headers.join('\t'),
+        ...rows.map(row => row.map(v => String(v).replace(/\t/g, ' ')).join('\t'))
+      ].join('\n');
+      
+      return new Response(xlsContent, {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/vnd.ms-excel; charset=utf-8',
+          'Content-Disposition': `attachment; filename="clients_table_${dateStr}.xls"`
+        }
+      });
+    }
+
     return new Response(csvContent, {
       status: 200,
       headers: {
         'Content-Type': 'text/csv; charset=utf-8',
-        'Content-Disposition': `attachment; filename="clients_table_${new Date().toISOString().split('T')[0]}.csv"`
+        'Content-Disposition': `attachment; filename="clients_table_${dateStr}.csv"`
       }
     });
   } catch (error) {
