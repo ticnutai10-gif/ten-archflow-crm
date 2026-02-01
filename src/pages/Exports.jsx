@@ -11,6 +11,8 @@ import { exportTimeLogsDetailed } from "@/functions/exportTimeLogsDetailed";
 import { exportFullBackupJson } from "@/functions/exportFullBackupJson";
 import { exportLogsByClient } from "@/functions/exportLogsByClient";
 import { exportLogsByUser } from "@/functions/exportLogsByUser";
+import { exportAllSpreadsheets } from "@/functions/exportAllSpreadsheets";
+import { exportClientsTable } from "@/functions/exportClientsTable";
 
 export default function Exports() {
   const downloadBlob = (data, filename, mime) => {
@@ -112,6 +114,26 @@ export default function Exports() {
     } catch (error) {
       console.error('Error exporting logs by user:', error);
       alert('שגיאה ביצוא לוגים לפי עובד.');
+    }
+  };
+
+  const handleExportAllSpreadsheets = async () => {
+    try {
+      const response = await exportAllSpreadsheets();
+      downloadBlob(response.data, `all_spreadsheets_${new Date().toISOString().split('T')[0]}.json`, "application/json;charset=utf-8;");
+    } catch (error) {
+      console.error('Error exporting spreadsheets:', error);
+      alert('שגיאה ביצוא טבלאות.');
+    }
+  };
+
+  const handleExportClientsTable = async () => {
+    try {
+      const response = await exportClientsTable();
+      downloadBlob(response.data, `clients_table_${new Date().toISOString().split('T')[0]}.csv`, "text/csv;charset=utf-8;");
+    } catch (error) {
+      console.error('Error exporting clients table:', error);
+      alert('שגיאה ביצוא טבלת לקוחות.');
     }
   };
 
@@ -262,6 +284,40 @@ export default function Exports() {
                 <strong>כל הלוגים מקובצים לפי עובד:</strong> תאריך, לקוח, משך, עלות, וסיכום לכל עובד.
               </div>
               <Button className="gap-2 bg-blue-600 hover:bg-blue-700" onClick={handleExportLogsByUser}>
+                <Download className="w-4 h-4" /> הורד
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-lg border-0 bg-gradient-to-r from-purple-50 to-violet-50 rounded-2xl">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 justify-end text-purple-800">
+                📋 כל הטבלאות (JSON)
+                <FileText className="w-5 h-5 text-purple-600" />
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex items-center justify-between">
+              <div className="text-slate-700 text-sm">
+                <strong>ייצוא כל הטבלאות המותאמות:</strong> כולל עמודות, נתונים, וקישור ללקוחות/פרויקטים.
+              </div>
+              <Button className="gap-2 bg-purple-600 hover:bg-purple-700" onClick={handleExportAllSpreadsheets}>
+                <Download className="w-4 h-4" /> הורד
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-lg border-0 bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 justify-end text-amber-800">
+                🏢 טבלת לקוחות מרכזית (Excel)
+                <Building2 className="w-5 h-5 text-amber-600" />
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex items-center justify-between">
+              <div className="text-slate-700 text-sm">
+                <strong>כל הלקוחות עם סטטיסטיקות:</strong> פרטים, פרויקטים, משימות, שעות עבודה.
+              </div>
+              <Button className="gap-2 bg-amber-600 hover:bg-amber-700" onClick={handleExportClientsTable}>
                 <Download className="w-4 h-4" /> הורד
               </Button>
             </CardContent>
