@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import GenericSpreadsheet from "@/components/spreadsheets/GenericSpreadsheet";
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Download } from "lucide-react";
 
 // Default base columns - used only when NO saved preferences exist
 const DEFAULT_BASE_COLUMNS = [
@@ -305,15 +307,61 @@ export default function ClientsExcelView({ clients, onRefresh }) {
     }
   }, [onRefresh, isProfessionalColumn, getProfessionalTypeKey]);
 
+  const exportToExcel = useCallback(() => {
+    if (!virtualSpreadsheet) return;
+    
+    const columns = virtualSpreadsheet.columns.filter(c => c.visible !== false);
+    const rows = virtualSpreadsheet.rows_data;
+    
+    // Build tab-separated content for Excel
+    const headers = columns.map(c => c.title || c.key);
+    const dataRows = rows.map(row => 
+      columns.map(c => String(row[c.key] || '').replace(/\t/g, ' ').replace(/\n/g, ' '))
+    );
+    
+    const xlsContent = '\uFEFF' + [
+      headers.join('\t'),
+      ...dataRows.map(r => r.join('\t'))
+    ].join('\n');
+    
+    const blob = new Blob([xlsContent], { type: 'application/vnd.ms-excel;charset=utf-8' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `clients_excel_${new Date().toISOString().split('T')[0]}.xls`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    a.remove();
+    
+    toast.success('הקובץ הורד בהצלחה');
+  }, [virtualSpreadsheet]);
+
   if (loading || !virtualSpreadsheet) return <div className="p-12 text-center text-slate-500">טוען נתונים...</div>;
 
   return (
     <div className="h-full bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden flex flex-col">
-      <GenericSpreadsheet
-        spreadsheet={virtualSpreadsheet}
-        customSaveHandler={handleSave}
-        fullScreenMode={true}
-      />
+      <div className="flex items-center justify-between px-4 py-2 border-b border-slate-200 bg-slate-50">
+        <div className="text-sm text-slate-600">
+          {virtualSpreadsheet.rows_data.length} לקוחות
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={exportToExcel}
+          className="gap-2"
+        >
+          <Download className="w-4 h-4" />
+          ייצוא לאקסל
+        </Button>
+      </div>
+      <div className="flex-1 overflow-hidden">
+        <GenericSpreadsheet
+          spreadsheet={virtualSpreadsheet}
+          customSaveHandler={handleSave}
+          fullScreenMode={true}
+        />
+      </div>
     </div>
   );
 }
