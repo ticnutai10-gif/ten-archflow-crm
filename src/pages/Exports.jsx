@@ -13,8 +13,20 @@ import { exportLogsByClient } from "@/functions/exportLogsByClient";
 import { exportLogsByUser } from "@/functions/exportLogsByUser";
 import { exportAllSpreadsheets } from "@/functions/exportAllSpreadsheets";
 import { exportClientsTable } from "@/functions/exportClientsTable";
+import { base44 } from "@/api/base44Client";
+import { useState, useEffect } from "react";
 
 export default function Exports() {
+  const [spreadsheets, setSpreadsheets] = useState([]);
+  const [loadingSheets, setLoadingSheets] = useState(true);
+
+  useEffect(() => {
+    base44.entities.CustomSpreadsheet.list('-created_date', 100)
+      .then(setSpreadsheets)
+      .catch(console.error)
+      .finally(() => setLoadingSheets(false));
+  }, []);
+
   const downloadBlob = (data, filename, mime) => {
     // Convert Uint8Array or ArrayBuffer to blob
     let blobData = data;
@@ -124,6 +136,25 @@ export default function Exports() {
     } catch (error) {
       console.error('Error exporting spreadsheets:', error);
       alert('שגיאה ביצוא טבלאות.');
+    }
+  };
+
+  const handleExportSingleSpreadsheet = async (sheetId, sheetName, format) => {
+    try {
+      const response = await exportAllSpreadsheets({ id: sheetId, format });
+      const dateStr = new Date().toISOString().split('T')[0];
+      const safeName = sheetName.replace(/[^a-zA-Z0-9א-ת\s]/g, '_');
+      
+      if (format === 'xlsx' || format === 'excel') {
+        downloadBlob(response.data, `${safeName}_${dateStr}.xls`, "application/vnd.ms-excel;charset=utf-8;");
+      } else if (format === 'csv') {
+        downloadBlob(response.data, `${safeName}_${dateStr}.csv`, "text/csv;charset=utf-8;");
+      } else {
+        downloadBlob(response.data, `${safeName}_${dateStr}.json`, "application/json;charset=utf-8;");
+      }
+    } catch (error) {
+      console.error('Error exporting spreadsheet:', error);
+      alert('שגיאה ביצוא טבלה.');
     }
   };
 
@@ -311,6 +342,45 @@ export default function Exports() {
               <Button className="gap-2 bg-purple-600 hover:bg-purple-700" onClick={handleExportAllSpreadsheets}>
                 <Download className="w-4 h-4" /> הורד
               </Button>
+            </CardContent>
+          </Card>
+
+          {/* Individual Spreadsheets Export */}
+          <Card className="shadow-lg border-0 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-2xl md:col-span-2">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 justify-end text-indigo-800">
+                📊 ייצוא טבלאות בודדות
+                <FileText className="w-5 h-5 text-indigo-600" />
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loadingSheets ? (
+                <div className="text-center text-slate-500 py-4">טוען טבלאות...</div>
+              ) : spreadsheets.length === 0 ? (
+                <div className="text-center text-slate-500 py-4">אין טבלאות מותאמות</div>
+              ) : (
+                <div className="space-y-3 max-h-80 overflow-y-auto">
+                  {spreadsheets.map(sheet => (
+                    <div key={sheet.id} className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200">
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" className="gap-1" onClick={() => handleExportSingleSpreadsheet(sheet.id, sheet.name, 'xlsx')}>
+                          <Download className="w-3 h-3" /> Excel
+                        </Button>
+                        <Button size="sm" variant="outline" className="gap-1" onClick={() => handleExportSingleSpreadsheet(sheet.id, sheet.name, 'csv')}>
+                          <Download className="w-3 h-3" /> CSV
+                        </Button>
+                        <Button size="sm" variant="outline" className="gap-1" onClick={() => handleExportSingleSpreadsheet(sheet.id, sheet.name, 'json')}>
+                          <Download className="w-3 h-3" /> JSON
+                        </Button>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-medium text-slate-800">{sheet.name}</div>
+                        {sheet.client_name && <div className="text-xs text-slate-500">{sheet.client_name}</div>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 
