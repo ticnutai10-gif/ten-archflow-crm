@@ -127,10 +127,18 @@ export default function Exports() {
     }
   };
 
-  const handleExportClientsTable = async () => {
+  const handleExportClientsTable = async (format = 'csv') => {
     try {
-      const response = await exportClientsTable();
-      downloadBlob(response.data, `clients_table_${new Date().toISOString().split('T')[0]}.csv`, "text/csv;charset=utf-8;");
+      const response = await exportClientsTable({ format });
+      const dateStr = new Date().toISOString().split('T')[0];
+      
+      if (format === 'json') {
+        downloadBlob(response.data, `clients_table_${dateStr}.json`, "application/json;charset=utf-8;");
+      } else if (format === 'xlsx') {
+        downloadBlob(response.data, `clients_table_${dateStr}.xls`, "application/vnd.ms-excel;charset=utf-8;");
+      } else {
+        downloadBlob(response.data, `clients_table_${dateStr}.csv`, "text/csv;charset=utf-8;");
+      }
     } catch (error) {
       console.error('Error exporting clients table:', error);
       alert('שגיאה ביצוא טבלת לקוחות.');
@@ -306,20 +314,28 @@ export default function Exports() {
             </CardContent>
           </Card>
 
-          <Card className="shadow-lg border-0 bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl">
+          <Card className="shadow-lg border-0 bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl md:col-span-2">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 justify-end text-amber-800">
-                🏢 טבלת לקוחות מרכזית (Excel)
+                🏢 טבלת לקוחות מרכזית
                 <Building2 className="w-5 h-5 text-amber-600" />
               </CardTitle>
             </CardHeader>
-            <CardContent className="flex items-center justify-between">
-              <div className="text-slate-700 text-sm">
+            <CardContent>
+              <div className="text-slate-700 text-sm mb-4">
                 <strong>כל הלקוחות עם סטטיסטיקות:</strong> פרטים, פרויקטים, משימות, שעות עבודה.
               </div>
-              <Button className="gap-2 bg-amber-600 hover:bg-amber-700" onClick={handleExportClientsTable}>
-                <Download className="w-4 h-4" /> הורד
-              </Button>
+              <div className="flex gap-2 flex-wrap justify-end">
+                <Button className="gap-2 bg-amber-600 hover:bg-amber-700" onClick={() => handleExportClientsTable('csv')}>
+                  <Download className="w-4 h-4" /> CSV
+                </Button>
+                <Button className="gap-2 bg-green-600 hover:bg-green-700" onClick={() => handleExportClientsTable('xlsx')}>
+                  <Download className="w-4 h-4" /> Excel
+                </Button>
+                <Button className="gap-2 bg-blue-600 hover:bg-blue-700" onClick={() => handleExportClientsTable('json')}>
+                  <Download className="w-4 h-4" /> JSON
+                </Button>
+              </div>
             </CardContent>
           </Card>
 
