@@ -158,6 +158,117 @@ export default function Exports() {
     }
   };
 
+  const handleExportAllSpreadsheetsExcel = async () => {
+    if (spreadsheets.length === 0) {
+      alert('אין טבלאות לייצוא');
+      return;
+    }
+
+    try {
+      const XLSX = await import('xlsx');
+      const workbook = XLSX.utils.book_new();
+      const dateStr = new Date().toISOString().split('T')[0];
+
+      spreadsheets.forEach(sheet => {
+        const columns = sheet.columns || [];
+        const rows = sheet.rows_data || [];
+        
+        // Build data array with headers
+        const headers = columns.map(c => c.title || c.key);
+        const data = [headers];
+        
+        rows.forEach(row => {
+          const rowData = columns.map(c => row[c.key] || '');
+          data.push(rowData);
+        });
+
+        const worksheet = XLSX.utils.aoa_to_sheet(data);
+        
+        // Safe sheet name (max 31 chars, no special chars)
+        let sheetName = (sheet.name || 'Sheet').substring(0, 31).replace(/[\\\/\?\*\[\]]/g, '_');
+        
+        // Ensure unique sheet names
+        let finalName = sheetName;
+        let counter = 1;
+        while (workbook.SheetNames.includes(finalName)) {
+          finalName = `${sheetName.substring(0, 28)}_${counter}`;
+          counter++;
+        }
+        
+        XLSX.utils.book_append_sheet(workbook, worksheet, finalName);
+      });
+
+      const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+      const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `all_spreadsheets_${dateStr}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+
+    } catch (error) {
+      console.error('Error exporting all spreadsheets to Excel:', error);
+      alert('שגיאה ביצוא לאקסל.');
+    }
+  };
+
+  const handleExportAllSpreadsheetsText = async () => {
+    if (spreadsheets.length === 0) {
+      alert('אין טבלאות לייצוא');
+      return;
+    }
+
+    try {
+      const dateStr = new Date().toISOString().split('T')[0];
+      let textContent = '';
+
+      spreadsheets.forEach((sheet, index) => {
+        const columns = sheet.columns || [];
+        const rows = sheet.rows_data || [];
+        
+        // Add sheet separator
+        if (index > 0) {
+          textContent += '\n\n' + '='.repeat(80) + '\n\n';
+        }
+        
+        // Sheet header
+        textContent += `📋 ${sheet.name || 'טבלה'}\n`;
+        if (sheet.client_name) textContent += `לקוח: ${sheet.client_name}\n`;
+        textContent += `מספר שורות: ${rows.length}\n`;
+        textContent += '-'.repeat(50) + '\n\n';
+        
+        // Column headers
+        const headers = columns.map(c => c.title || c.key);
+        textContent += headers.join('\t') + '\n';
+        textContent += '-'.repeat(50) + '\n';
+        
+        // Data rows
+        rows.forEach(row => {
+          const rowData = columns.map(c => String(row[c.key] || '').replace(/\t/g, ' ').replace(/\n/g, ' '));
+          textContent += rowData.join('\t') + '\n';
+        });
+      });
+
+      const blob = new Blob(['\uFEFF' + textContent], { type: 'text/plain;charset=utf-8' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `all_spreadsheets_${dateStr}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+
+    } catch (error) {
+      console.error('Error exporting all spreadsheets to text:', error);
+      alert('שגיאה ביצוא לטקסט.');
+    }
+  };
+
   const handleExportClientsTable = async (format = 'csv') => {
     try {
       const response = await exportClientsTable({ format });
@@ -342,6 +453,29 @@ export default function Exports() {
               <Button className="gap-2 bg-purple-600 hover:bg-purple-700" onClick={handleExportAllSpreadsheets}>
                 <Download className="w-4 h-4" /> הורד
               </Button>
+            </CardContent>
+          </Card>
+
+          {/* Export All Spreadsheets to Single Excel */}
+          <Card className="shadow-lg border-0 bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 justify-end text-green-800">
+                📗 כל הטבלאות לאקסל אחד
+                <FileText className="w-5 h-5 text-green-600" />
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="text-slate-700 text-sm">
+                <strong>קובץ Excel עם גליון נפרד לכל טבלה</strong>
+              </div>
+              <div className="flex gap-2">
+                <Button className="gap-2 bg-green-600 hover:bg-green-700" onClick={handleExportAllSpreadsheetsExcel}>
+                  <Download className="w-4 h-4" /> Excel (.xlsx)
+                </Button>
+                <Button variant="outline" className="gap-2" onClick={handleExportAllSpreadsheetsText}>
+                  <Download className="w-4 h-4" /> טקסט (.txt)
+                </Button>
+              </div>
             </CardContent>
           </Card>
 
