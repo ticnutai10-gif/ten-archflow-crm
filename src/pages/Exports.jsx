@@ -269,6 +269,120 @@ export default function Exports() {
     }
   };
 
+  const handleExportAllSpreadsheetsJson = async () => {
+    if (spreadsheets.length === 0) {
+      alert('אין טבלאות לייצוא');
+      return;
+    }
+
+    try {
+      const dateStr = new Date().toISOString().split('T')[0];
+      
+      const exportData = {
+        exported_at: new Date().toISOString(),
+        total_spreadsheets: spreadsheets.length,
+        spreadsheets: spreadsheets.map(sheet => ({
+          name: sheet.name,
+          client_name: sheet.client_name,
+          project_name: sheet.project_name,
+          columns: (sheet.columns || []).map(c => ({ key: c.key, title: c.title })),
+          rows: sheet.rows_data || []
+        }))
+      };
+
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json;charset=utf-8' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `all_spreadsheets_${dateStr}.json`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+
+    } catch (error) {
+      console.error('Error exporting all spreadsheets to JSON:', error);
+      alert('שגיאה ביצוא ל-JSON.');
+    }
+  };
+
+  const handleExportAllSpreadsheetsWord = async () => {
+    if (spreadsheets.length === 0) {
+      alert('אין טבלאות לייצוא');
+      return;
+    }
+
+    try {
+      const dateStr = new Date().toISOString().split('T')[0];
+      
+      // Build RTF content (compatible with Word)
+      let rtfContent = '{\\rtf1\\ansi\\deff0\n';
+      rtfContent += '{\\fonttbl{\\f0 Arial;}}\n';
+      rtfContent += '\\f0\\fs24\n';
+      
+      spreadsheets.forEach((sheet, index) => {
+        const columns = sheet.columns || [];
+        const rows = sheet.rows_data || [];
+        
+        // Page break between sheets (except first)
+        if (index > 0) {
+          rtfContent += '\\page\n';
+        }
+        
+        // Sheet title
+        rtfContent += `\\b\\fs32 ${sheet.name || 'טבלה'}\\b0\\fs24\\par\n`;
+        if (sheet.client_name) rtfContent += `לקוח: ${sheet.client_name}\\par\n`;
+        rtfContent += `מספר שורות: ${rows.length}\\par\\par\n`;
+        
+        // Table header
+        const colCount = columns.length;
+        rtfContent += `\\trowd\\trgaph100\n`;
+        columns.forEach((col, i) => {
+          rtfContent += `\\cellx${(i + 1) * 2000}`;
+        });
+        rtfContent += '\n';
+        
+        // Header row
+        columns.forEach(col => {
+          rtfContent += `\\intbl\\b ${col.title || col.key}\\b0\\cell`;
+        });
+        rtfContent += '\\row\n';
+        
+        // Data rows
+        rows.forEach(row => {
+          rtfContent += `\\trowd\\trgaph100\n`;
+          columns.forEach((col, i) => {
+            rtfContent += `\\cellx${(i + 1) * 2000}`;
+          });
+          rtfContent += '\n';
+          columns.forEach(col => {
+            const val = String(row[col.key] || '').replace(/\\/g, '\\\\').replace(/\{/g, '\\{').replace(/\}/g, '\\}');
+            rtfContent += `\\intbl ${val}\\cell`;
+          });
+          rtfContent += '\\row\n';
+        });
+        
+        rtfContent += '\\par\\par\n';
+      });
+      
+      rtfContent += '}';
+
+      const blob = new Blob([rtfContent], { type: 'application/rtf' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `all_spreadsheets_${dateStr}.rtf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+
+    } catch (error) {
+      console.error('Error exporting all spreadsheets to Word:', error);
+      alert('שגיאה ביצוא ל-Word.');
+    }
+  };
+
   const handleExportClientsTable = async (format = 'csv') => {
     try {
       const response = await exportClientsTable({ format });
@@ -468,12 +582,18 @@ export default function Exports() {
               <div className="text-slate-700 text-sm">
                 <strong>קובץ Excel עם גליון נפרד לכל טבלה</strong>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button className="gap-2 bg-green-600 hover:bg-green-700" onClick={handleExportAllSpreadsheetsExcel}>
-                  <Download className="w-4 h-4" /> Excel (.xlsx)
+                  <Download className="w-4 h-4" /> Excel
                 </Button>
                 <Button variant="outline" className="gap-2" onClick={handleExportAllSpreadsheetsText}>
-                  <Download className="w-4 h-4" /> טקסט (.txt)
+                  <Download className="w-4 h-4" /> TXT
+                </Button>
+                <Button variant="outline" className="gap-2" onClick={handleExportAllSpreadsheetsJson}>
+                  <Download className="w-4 h-4" /> JSON
+                </Button>
+                <Button variant="outline" className="gap-2" onClick={handleExportAllSpreadsheetsWord}>
+                  <Download className="w-4 h-4" /> Word
                 </Button>
               </div>
             </CardContent>
